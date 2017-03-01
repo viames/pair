@@ -154,9 +154,9 @@ abstract class Model {
 	 * 
 	 * @return	array:multitype
 	 */
-	public function getDataMapperObjects($class, $orderBy=NULL, $descOrder=FALSE) {
+	public function getActiveRecordObjects($class, $orderBy=NULL, $descOrder=FALSE) {
 
-		if (!class_exists($class) or !is_subclass_of($class, 'VMS\DataMapper')) {
+		if (!class_exists($class) or !is_subclass_of($class, 'VMS\ActiveRecord')) {
 			return array();
 		}
 		

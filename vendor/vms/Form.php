@@ -126,13 +126,13 @@ class Form {
 	}
 	
 	/**
-	 * Assigns all properties of passed DataMapper children to controls with same name.
+	 * Assigns all properties of passed ActiveRecord children to controls with same name.
 	 * 
-	 * @param	multitype	An object inherited by DataMapper.
+	 * @param	multitype	An object inherited by ActiveRecord.
 	 */
 	public function setValuesByObject($object) {
 
-		if (is_object($object) and is_subclass_of($object, 'VMS\DataMapper')) {
+		if (is_object($object) and is_subclass_of($object, 'VMS\ActiveRecord')) {
 
 			$properties = $object->getAllProperties();
 

@@ -46,13 +46,8 @@ class Database {
 	/**
 	 * Private constructor.
 	 */
-	private function __construct() {
+	private function __construct() {}
 		
-		// singleton objects
-		$this->app = Application::getInstance();
-		
-	}
-	
 	/**
 	 * Connects to db just the first time, returns singleton object everytime.
 	 * 
@@ -129,7 +124,8 @@ class Database {
 				}
 				
 				if (is_a($this->handler, 'PDO')) {
-					$this->app->logEvent('Database is' . ($persistent ? ' persistently' : '') . ' connected');
+					$logger = Logger::getInstance();
+					$logger->addEvent('Database is' . ($persistent ? ' persistently' : '') . ' connected');
 					$this->handler->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
 				} else {
 					throw new \PDOException('Db handler is not valid, connection failed');
@@ -151,7 +147,9 @@ class Database {
 	public function disconnect() {
 		
 		unset($this->handler);
-		$this->app->logEvent('Database is disconnected');
+		
+		$logger = Logger::getInstance();
+		$logger->addEvent('Database is disconnected');
 		
 	}
 	
@@ -706,7 +704,9 @@ class Database {
 	private function logQuery($query, $result) {
 		
 		$subtext = (int)$result . ' ' . (1==$result ? 'row' : 'rows');
-		$this->app->logEvent($query, 'query', $subtext);
+
+		$logger = Logger::getInstance();
+		$logger->addEvent($query, 'query', $subtext);
 		
 	}
 	

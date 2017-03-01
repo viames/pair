@@ -9,9 +9,9 @@
 namespace VMS;
 
 /**
- * Base class for data mapper pattern. Supports tables with a primary key, not suitable for compound key.
+ * Base class for active record pattern. Supports tables with a primary key, not suitable for compound key.
  */
-abstract class DataMapper {
+abstract class ActiveRecord {
 	
 	/**
 	 * Db handler object.
@@ -361,7 +361,7 @@ abstract class DataMapper {
 	
 	/**
 	 * Load object from DB and bind with its properties. If DB record is not found,
-	 * unset any properties of inherited object, but required props by DataMapper.
+	 * unset any properties of inherited object, but required props by ActiveRecord.
 	 * 
 	 * @param	int|string|array	Object primary or compound key ID to load.
 	 */
@@ -444,6 +444,8 @@ abstract class DataMapper {
 		$populated = TRUE;
 		
 		$keys = (array)$this->getId();
+		
+		if (!count($keys)) return FALSE;
 		
 		foreach ($keys as $k) {
 			if (!$k) $populated = FALSE;
@@ -746,11 +748,11 @@ abstract class DataMapper {
 		$res = $this->db->exec($query, $this->getSqlKeyValues());
 		
 		// list properties to not remove
-		$dataMapperProperties = array('db', 'loadedFromDb', 'typeList', 'errors');
+		$activeRecordsProperties = array('db', 'loadedFromDb', 'typeList', 'errors');
 		
 		// unset all properties
 		foreach ($this as $key => $value) {
-			if (!in_array($key, $dataMapperProperties)) {
+			if (!in_array($key, $activeRecordsProperties)) {
 				unset($this->$key);
 			}
 		}

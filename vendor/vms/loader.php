@@ -9,11 +9,11 @@
 // interfaces declarations
 require 'interfaces.php';
 
+require 'ActiveRecord.php';
 require 'Application.php';
 require 'Breadcrumb.php';
 require 'Controller.php';
 require 'Database.php';
-require 'DataMapper.php';
 require 'Form.php';
 require 'Input.php';
 require 'Logger.php';
@@ -29,7 +29,7 @@ require 'Utilities.php';
 require 'View.php';
 require 'Widget.php';
 
-// data mapper children
+// active record children
 require 'Acl.php';
 require 'ErrorLog.php';
 require 'Group.php';

@@ -79,14 +79,31 @@ class Router {
 	private $sendLog = TRUE;
 	
 	/**
-	 * Costruttore privato, usa Singleton
+	 * Private constructor, called by getInstance() method.
 	 */
-	private function __construct() {}
+	private function __construct() {
+
+		$this->baseUrl = BASE_URI;
+
+		// request URL
+		$this->url = $_SERVER['REQUEST_URI'];
+		
+		// remove baseUrl from URL
+		if (strpos($this->url,$this->baseUrl)===0) {
+			$this->url = substr($this->url,strlen($this->baseUrl));
+		}
+		
+		// remove trail slash, if any
+		if ('/'==$this->url{0}) $this->url = substr($this->url,1);
+			
+		$this->parseUrl();
+
+	}
 	
 	/**
-	 * Crea il singleton.
+	 * Create then return the singleton object. 
 	 * 
-	 * @return object
+	 * @return Router
 	 */
 	public static function getInstance() {
 	
@@ -102,7 +119,9 @@ class Router {
 	 * Will returns property’s value if set. Throw an exception and returns NULL if not set.
 	 *
 	 * @param	string	Property’s name.
+	 * 
 	 * @throws	Exception
+	 * 
 	 * @return	mixed|NULL
 	 */
 	public function __get($name) {
@@ -128,7 +147,8 @@ class Router {
 	 * Return an URL parameter, if exists. It escludes routing base params (module and action).
 	 * 
 	 * @param	mixed	Parameter position (zero based) or Key name.
-	 * @param	bool	Flag to decode a previously encoded value as char-only. 
+	 * @param	bool	Flag to decode a previously encoded value as char-only.
+	 *  
 	 * @return	string
 	 */
 	public function getParam($paramIdx, $decode=FALSE) {
@@ -202,13 +222,19 @@ class Router {
 	public function __set($name, $value) {
 	
 		$this->$name = $value;
-		
+
+		/*
 		if ('url'==$name) {
-			if ($this->baseUrl) {
-				$this->cutBaseUrl();
+
+			// removes base path from URL
+			if ($this->baseUrl and strpos($this->url,$this->baseUrl)===0) {
+				$this->url = substr($this->url,strlen($this->baseUrl));
 			}
+			
 			$this->parseUrl();
+			
 		}
+		*/
 	
 	}
 	
@@ -264,15 +290,7 @@ class Router {
 	 * 
 	 * @return	void
 	 */
-	private function parseUrl() {
-		
-		$app = Application::getInstance();
-		
-		// request URL
-		if (!$this->url) $this->url = $_SERVER['REQUEST_URI'];
-		
-		// remove trail slash, if any
-		if ('/'==$this->url{0}) $this->url = substr($this->url,1);
+	private function parseUrl() {		
 		
 		// the page nr called by URL
 		$directPage = NULL;
@@ -367,6 +385,7 @@ class Router {
 		
 		}
 
+		/* FIXME
 		$cookieName = ucfirst($this->module) . ucfirst($this->action);
 
 		// set a persistent state about pagination
@@ -386,6 +405,7 @@ class Router {
 			$app->logEvent('Page ' . $this->page . ' has been forced by Application');
 			
 		}
+		*/
 		
 	}
 
@@ -478,19 +498,6 @@ class Router {
 	
 	}
 
-	/**
-	 * Removes base path from URL. Useful for subdomain (for instance, local host development).
-	 * 
-	 * @return	string
-	 */
-	private function cutBaseUrl() {
-		
-		if ($this->baseUrl and strpos($this->url,$this->baseUrl)===0) {
-			$this->url = substr($this->url,strlen($this->baseUrl));
-		}
-		
-	}
-	
 	/**
 	 * Stampa l’URL calcolato in base ai parametri.
 	 * 

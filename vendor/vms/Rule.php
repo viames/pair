@@ -8,7 +8,7 @@
 
 namespace VMS;
 
-class Rule extends DataMapper {
+class Rule extends ActiveRecord {
 
 	/**
 	 * Table primary key.

@@ -119,10 +119,16 @@ class Application {
 		ini_set('display_errors',	TRUE);
 
 		// application folder without trailing slash
-		define ('APPLICATION_PATH',	dirname(dirname(dirname(__FILE__))));
+		define('APPLICATION_PATH',	dirname(dirname(dirname(__FILE__))));
 		
-		// load configuration constants
-		require APPLICATION_PATH . '/config.php';
+		$config = APPLICATION_PATH . '/config.php';
+		
+		// load configuration constants or start installation
+		if (file_exists($config)) {
+			require $config;
+		} else {
+			require APPLICATION_PATH . '/install.php';
+		}
 		
 		// force php server date to UTC
 		if (defined('UTC_DATE') and UTC_DATE) {
@@ -132,23 +138,23 @@ class Application {
 			define('BASE_TIMEZONE', ini_get('date.timezone'));
 		}
 		
-		// define full URL to web page index with trailing slash or NULL 
-		define ('BASE_HREF', isset($_SERVER['HTTP_HOST']) ? 'http://' . $_SERVER['HTTP_HOST'] . BASE_URI . '/' : NULL);
+		// define full URL to web page index with trailing slash or NULL
+		$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+		$baseHref = isset($_SERVER['HTTP_HOST']) ? $protocol . $_SERVER['HTTP_HOST'] . BASE_URI . '/' : NULL;
+		define('BASE_HREF', $baseHref);
 		
 		// error management
 		set_error_handler('\VMS\Utilities::customErrorHandler');
 		register_shutdown_function('\VMS\Utilities::fatalErrorHandler');
 		
-		// routing
+		// FIXME
+		// routing initialization
 		$route = Router::getInstance();
-		$route->baseUrl = BASE_URI;
+		//$route->setDefaults('users', 'default');
 		
 		// default page title, will be overwritten
 		$this->pageTitle = PRODUCT_NAME;
-		
-		// start global PHP session
-		session_start();
-		
+
 		// raw calls will jump templates inclusion, so turn-out output buffer
 		if (!$route->isRaw()) {
 			
@@ -164,7 +170,7 @@ class Application {
 
 		}
 		
-		// retrieves all cookie messages and puts in queue
+		// retrieve all cookie messages and puts in queue
 		$persistentMsg = $this->getPersistentState('EnqueuedMessages');
 		if (is_array($persistentMsg)) {
 			$this->messages = $persistentMsg;
@@ -188,7 +194,7 @@ class Application {
 			
 				// for login page we need a default template
 				$this->checkTemplate();
-				return 'templates/' . strtolower($this->template->name) . '/';
+				return 'templates/' . $this->template->name . '/';
 				break;
 				
 			// useful in html tag to set language code
@@ -197,15 +203,19 @@ class Application {
 				return $language->code;
 				break;
 				
-			default:			
+			default:
+				
+				// search into variable assigned to the template as first
 				if (array_key_exists($name, $this->vars)) {
 			
 					return $this->vars[$name];
-					
+				
+				// then search in properties
 				} else if (property_exists($this, $name)) {
 					
 					return $this->$name;
-					
+				
+				// then return NULL
 				} else {
 					
 					$this->logError('Property “'. $name .'” doesn’t exist for this object '. get_called_class());
@@ -262,7 +272,7 @@ class Application {
 	}
 	
 	/**
-	 * Creates singleton Application object and returns it.
+	 * Create singleton Application object and return it.
 	 * 
 	 * @return Application
 	 */
@@ -271,11 +281,11 @@ class Application {
 		// could be this class or inherited
 		$class = get_called_class();
 
-		if (is_null(self::$instance)) {
-			self::$instance = new $class();
+		if (is_null(static::$instance)) {
+			static::$instance = new $class();
 		}
 
-		return self::$instance;
+		return static::$instance;
 
 	}
 
@@ -450,6 +460,168 @@ class Application {
 	}
 
 	/**
+	 * Manage API login, logout and custom requests.
+	 * 
+	 * @param	string	Name of module that executes API requests.
+	 */
+	public function runApi($name) {
+
+		$route = Router::getInstance();
+
+		// check if API has been called
+		if (!trim($name) or $name != $route->module or !file_exists('modules/' . $name . '/controller.php')) {
+			return;
+		}
+
+		// define module constant and require controller file
+		define('MODULE_PATH', 'modules/' . $name . '/');
+		require ('modules/' . $name . '/controller.php');
+		
+		$sid = $route->getParam('sid');
+
+		$ctlName = $name . 'Controller';
+		$apiCtl = new $ctlName();
+
+		// set the action function
+		$action = $route->action ? $route->action . 'Action' : 'defaultAction';
+
+		// login and logout
+		if ('login' == $route->action or 'logout' == $route->action) {
+
+			// start controller
+			$apiCtl->$action();
+
+		// all the other requests with sid
+		} else if ($sid) {
+
+			// get passed session
+			$session = new Session($sid);
+
+			// check if sid is valid
+			if (!$session->isLoaded()) {
+				$apiCtl->sendError('Session is not valid');
+			}
+
+			// if session exists, extend session timeout
+			$session->extendTimeout();
+
+			// create User object for API
+			$user = new User($session->idUser);
+			$this->setCurrentUser($user);
+
+			// start controller
+			$apiCtl->$action();
+
+		// unauthorized request
+		} else {
+
+			$apiCtl->sendError('Request is not valid');
+
+		}
+
+		exit();
+
+	}
+
+	public function manageSession() {
+	
+		// get required singleton instances
+		$logger	 = Logger::getInstance();
+		$options = Options::getInstance();
+		$route	 = Router::getInstance();
+		$tran	 = Translator::getInstance();
+		
+		// start global PHP session
+		session_start();
+		
+		// session time length in minutes
+		$sessionTime = $options->getValue('session_time');
+		
+		// get existing previous session
+		$session = new Session(session_id());
+		
+		// session exists but expired
+		if ($session->isLoaded() and $session->isExpired($sessionTime)) {
+		
+			$comment = $tran->translate('USER_SESSION_EXPIRED');
+		
+			// sends js message about session expired
+			if ($route->isRaw()) {
+		
+				Utilities::printJsonError($comment);
+				exit();
+		
+			// redirects to login page
+			} else {
+		
+				// new empty session
+				$session = new Session();
+		
+				// page coming from
+				if (array_key_exists('HTTP_REFERER',$_SERVER)) {
+					$this->setState('referer', $_SERVER['HTTP_REFERER']);
+					$logger->addEvent('Referer: ' . $_SERVER['HTTP_REFERER']);
+				}
+		
+				// message to user
+				$this->enqueueMessage($comment);
+		
+			}
+		
+		}
+	
+		// clean all old sessions
+		Session::cleanOlderThan($sessionTime);
+		
+		// sets an empty user object
+		$this->setCurrentUser(new User());
+		
+		// user is not logged in
+		if (!$session->isLoaded()) {
+		
+			if (isset($_SERVER['HTTP_REFERER'])) {
+				$this->setState('referer', $_SERVER['HTTP_REFERER']);
+			}
+		
+			// redirect to login page
+			if (!('user'==$route->module and 'login'==$route->action)) {
+				$this->redirect('user/login');
+			}
+		
+		} else {
+		
+			// if session exists, extend session timeout
+			$session->extendTimeout();
+		
+			// create User object
+			$user = new User($session->idUser);
+			$this->setCurrentUser($user);
+		
+			$logger->addEvent('User session for ' . $user->fullName . ' is alive' .
+					', user time zone is ' . $this->currentUser->tzName .
+					' (' . sprintf('%+06.2f', (float)$this->currentUser->tzOffset) . ')');
+		
+			$resource = $route->module . '/' . $route->action;
+		
+			// checking permission
+			if ($this->currentUser->canAccess($route->module, $route->action)) {
+		
+				// access granted
+				$logger->addEvent('Access granted on resource ' . $resource);
+		
+			} else {
+		
+				// access denied
+				$this->enqueueError($tran->translate('ACCESS_FORBIDDEN', $resource));
+				$this->redirect($route->defaults['module'] . '/' . $route->defaults['action']);
+		
+			}
+		
+		}
+		
+	}
+
+	/**
 	 * Store variables of any type in a cookie for next retrievement. Existent variables with
 	 * same name will be overwritten.
 	 * 
@@ -528,9 +700,49 @@ class Application {
 	/**
 	 * Parses template file, substitues variables and returns it.
 	 *
-	 * @return	string
+	 * @return	NULL|string
 	 */
-	final public function renderTemplate() {
+	final public function startMvc() {
+		
+		$logger	= Logger::getInstance();
+		$route	= Router::getInstance();
+		$tran	= Translator::getInstance();
+		
+		$controllerFile = 'modules/' . $route->module . '/controller.php';
+		
+		// check controller file existence
+		if (!file_exists($controllerFile) or '404' == $route->url) {
+			
+			$this->enqueueError($tran->translate('RESOURCE_NOT_FOUND', $route->url));
+			$this->style = '404';
+			$this->pageTitle = 'HTTP 404 error';
+			
+		} else {
+		
+			// path to the required form
+			define('MODULE_PATH', 'modules/'. $route->module .'/');
+			
+			require ($controllerFile);
+			
+			// build controller and start the action
+			$controllerName = ucfirst($route->module) . 'Controller';
+			$action = $route->action ? $route->action . 'Action' : 'defaultAction';
+			$logger->addEvent('Starting controller method ' . $controllerName . '->' . $action . '()');
+			$controller = new $controllerName();
+			$controller->$action();
+			
+			// raw calls will jumps controller->display, ob and log
+			if ($route->isRaw()) {
+				return NULL;
+			}
+			
+			// invokes the view
+			$controller->display();
+			
+			// sets the event log
+			$this->log = $logger->getEventList();
+			
+		}
 		
 		// populates the placeholder for the content
 		$this->pageContent = ob_get_clean();

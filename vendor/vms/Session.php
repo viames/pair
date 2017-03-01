@@ -8,7 +8,7 @@
 
 namespace VMS;
 
-class Session extends DataMapper {
+class Session extends ActiveRecord {
 
 	/**
 	 * Property that binds db field id_session.
@@ -91,7 +91,7 @@ class Session extends DataMapper {
 	/**
 	 * Only one session is allowed, deletes previous for this user.
 	 * 
-	 * @see DataMapper::beforeCreate()
+	 * @see ActiveRecord::beforeCreate()
 	 */
 	public function beforeCreate() {
 

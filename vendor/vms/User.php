@@ -11,7 +11,7 @@ namespace VMS;
 /**
  * Base class for VMS framework users. Can be extended to have more user’s properties.
  */
-class User extends DataMapper {
+class User extends ActiveRecord {
 
 	/**
 	 * User unique identifier.

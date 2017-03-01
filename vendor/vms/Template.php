@@ -8,7 +8,7 @@
 
 namespace VMS;
 
-class Template extends DataMapper implements pluginInterface {
+class Template extends ActiveRecord implements pluginInterface {
 
 	/**
 	 * ID as primary key.

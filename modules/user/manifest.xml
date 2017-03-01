@@ -1,0 +1,2 @@
+<?xml version="1.0"?>
+<manifest><plugin type="module"><name>user</name><folder>user</folder><version>1.0</version><dateReleased>2015-04-07</dateReleased><appVersion>1.0</appVersion><options/><files><file>controller.php</file><file>js/javascript.js</file><file>js/jstz.js</file><file>languages/it.ini</file><file>layouts/login.php</file><file>layouts/profile.php</file><file>layouts/profileEdit.php</file><file>manifest.xml</file><file>model.php</file><file>viewLogin.php</file><file>viewProfile.php</file><file>viewProfileEdit.php</file></files></plugin></manifest>

@@ -8,7 +8,7 @@
 
 namespace VMS;
 
-class Module extends DataMapper implements pluginInterface {
+class Module extends ActiveRecord implements pluginInterface {
 
 	/**
 	 * Property that binds db field id.

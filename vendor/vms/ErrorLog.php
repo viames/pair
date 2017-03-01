@@ -8,7 +8,7 @@
 
 namespace VMS;
 
-class ErrorLog extends DataMapper {
+class ErrorLog extends ActiveRecord {
 
 	/**
 	 * Property that binds db field id.

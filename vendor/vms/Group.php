@@ -8,7 +8,7 @@
 
 namespace VMS;
 
-class Group extends DataMapper {
+class Group extends ActiveRecord {
 
 	/**
 	 * Property that binds db primary key id.

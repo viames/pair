@@ -23,6 +23,7 @@ class Menu {
 	 * @param	string	Title shown.
 	 * @param	string	Optional, can be an icon, a subtitle or icon placeholder.
 	 * @param	string	Optional, is CSS extra class definition.
+	 * @param	string	Optional, the anchor target.
 	 */
 	public function addItem($url, $title, $badge=NULL, $class=NULL, $target=NULL) {
 
@@ -71,6 +72,7 @@ class Menu {
 	 * @param	string	Title shown.
 	 * @param	string	Optional, can be an icon, a subtitle or icon placeholder.
 	 * @param	string	Optional, is CSS extra class definition.
+	 * @param	string	Optional, the anchor target.
 	 * 
 	 * @return	stdClass
 	 */

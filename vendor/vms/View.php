@@ -129,10 +129,10 @@ abstract class View {
 		// look for css files
 		if (is_dir($this->modulePath . '/css')) {
 			
-			// gets all folder files
+			// get all folder files
 			$files = Utilities::getDirectoryFilenames($this->modulePath . '/css');
 			
-			// loads files as script and adds timestamp to ignore caching
+			// load files as script and add timestamp to ignore browser caching
 			foreach ($files as $file) {
 				$fullPath = $this->moduleUrl . '/css/' . $file;
 				$this->app->loadCss($fullPath . '?' . filemtime($fullPath));
@@ -143,10 +143,10 @@ abstract class View {
 		// look for javascript files
 		if (is_dir($this->modulePath . '/js')) {
 				
-			// gets all folder files
+			// get all folder files
 			$files = Utilities::getDirectoryFilenames($this->modulePath . '/js');
 				
-			// loads files as script and adds timestamp to ignore caching
+			// load files as script and add timestamp to ignore browser caching
 			foreach ($files as $file) {
 				$fullPath = $this->moduleUrl . '/js/' . $file;
 				$this->app->loadJs($fullPath . '?' . filemtime($fullPath));
@@ -339,17 +339,6 @@ abstract class View {
 		}
 		
 		return $this->pagination->render();
-		
-	}
-	
-	/**
-	 * Sets the style for the current template in Application.
-	 * 
-	 * @param	string	Style name.
-	 */
-	public function setStyle($style) {
-		
-		$this->app->style = $style;
 		
 	}
 	

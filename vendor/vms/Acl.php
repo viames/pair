@@ -8,7 +8,7 @@
 
 namespace VMS;
 
-class Acl extends DataMapper {
+class Acl extends ActiveRecord {
 
 	/**
 	 * Property that binds db primary key id.

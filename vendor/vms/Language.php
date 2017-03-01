@@ -8,7 +8,7 @@
 
 namespace VMS;
 
-class Language extends DataMapper {
+class Language extends ActiveRecord {
 
 	/**
 	 * Unique identifier.

@@ -1,0 +1,2 @@
+<?xml version="1.0"?>
+<manifest><plugin type="module"><name>rules</name><folder>rules</folder><version>1.0</version><dateReleased>2015-04-20</dateReleased><appVersion>1.0</appVersion><options/><files><file>controller.php</file><file>languages/it.ini</file><file>layouts/default.php</file><file>layouts/edit.php</file><file>layouts/new.php</file><file>manifest.xml</file><file>model.php</file><file>viewDefault.php</file><file>viewEdit.php</file><file>viewNew.php</file></files></plugin></manifest>

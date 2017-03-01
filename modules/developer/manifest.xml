@@ -1,0 +1,2 @@
+<?xml version="1.0"?>
+<manifest><plugin type="module"><name>developer</name><folder>developer</folder><version>1.0</version><dateReleased>2015-04-07</dateReleased><appVersion>1.0</appVersion><options/><files><file>controller.php</file><file>languages/it.ini</file><file>layouts/accessDenied.php</file><file>layouts/classWizard.php</file><file>layouts/default.php</file><file>layouts/moduleWizard.php</file><file>manifest.xml</file><file>model.php</file><file>viewClassWizard.php</file><file>viewDefault.php</file><file>viewModuleWizard.php</file></files></plugin></manifest>

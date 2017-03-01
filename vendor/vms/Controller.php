@@ -295,7 +295,7 @@ abstract class Controller {
 		if (is_subclass_of($view, 'VMS\View')) {
 			$view->display();
 		} else {
-			$this->enqueueError($this->translator->translate('PAGE_NOT_FOUND', $this->route->module . '/' . $this->route->action));
+			$this->enqueueError($this->translator->translate('RESOURCE_NOT_FOUND', $this->route->module . '/' . $this->route->action));
 			$this->redirect($this->route->module . '/default');
 		}
 		
