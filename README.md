@@ -1,4 +1,4 @@
-# vms
+# VMS
 light weight and versatile PHP framework
 
 This bounch of files are the basis to develop medium or small PHP applications.
