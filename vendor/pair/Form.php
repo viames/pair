@@ -3,10 +3,10 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-namespace VMS;
+namespace Pair;
 
 class Form {
 	
@@ -132,7 +132,7 @@ class Form {
 	 */
 	public function setValuesByObject($object) {
 
-		if (is_object($object) and is_subclass_of($object, 'VMS\ActiveRecord')) {
+		if (is_object($object) and is_subclass_of($object, 'Pair\ActiveRecord')) {
 
 			$properties = $object->getAllProperties();
 
@@ -476,7 +476,7 @@ abstract class FormControl {
 	public function setValue($value) {
 
 		// special behavior for DateTime
-		if (is_a($value, 'DateTime') and is_a($this, 'VMS\FormControlInput')) {
+		if (is_a($value, 'DateTime') and is_a($this, 'Pair\FormControlInput')) {
 
 			// sets user timezone
 			$app = Application::getInstance();

@@ -1,7 +1,7 @@
 /**
  * @version $Id$
  * @author	VIames Marino
- * @package	VMS
+ * @package	Pair
  */
 
 $(document).ready(function() {

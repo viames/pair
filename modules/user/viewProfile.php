@@ -3,12 +3,12 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-use VMS\Group;
-use VMS\View;
-use VMS\Widget;
+use Pair\Group;
+use Pair\View;
+use Pair\Widget;
 
 class UserViewProfile extends View {
 

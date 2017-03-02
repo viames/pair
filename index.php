@@ -3,13 +3,13 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-use VMS\Application;
+use Pair\Application;
 
 // initialize the framework
-require 'vendor/vms/loader.php';
+require 'vendor/pair/loader.php';
 
 // declare product version
 define ('PRODUCT_VERSION', '1.0');

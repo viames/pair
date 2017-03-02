@@ -3,12 +3,12 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-use VMS\Form;
-use VMS\Language;
-use VMS\Model;
+use Pair\Form;
+use Pair\Language;
+use Pair\Model;
 
 class UserModel extends Model {
 

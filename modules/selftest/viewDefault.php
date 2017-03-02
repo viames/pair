@@ -3,13 +3,13 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-use VMS\Database;
-use VMS\Options;
-use VMS\View;
-use VMS\Widget;
+use Pair\Database;
+use Pair\Options;
+use Pair\View;
+use Pair\Widget;
 
 class SelftestViewDefault extends View {
 

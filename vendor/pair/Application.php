@@ -3,10 +3,10 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-namespace VMS;
+namespace Pair;
 
 /**
  * Singleton object globally available for caching, queuing messages and render the template.
@@ -144,8 +144,8 @@ class Application {
 		define('BASE_HREF', $baseHref);
 		
 		// error management
-		set_error_handler('\VMS\Utilities::customErrorHandler');
-		register_shutdown_function('\VMS\Utilities::fatalErrorHandler');
+		set_error_handler('\Pair\Utilities::customErrorHandler');
+		register_shutdown_function('\Pair\Utilities::fatalErrorHandler');
 		
 		// FIXME
 		// routing initialization
@@ -257,7 +257,7 @@ class Application {
 	 */
 	public function setCurrentUser($user) {
 		
-		if (is_a($user,'VMS\User')) {
+		if (is_a($user,'Pair\User')) {
 
 			$this->currentUser = $user;
 			$this->checkTemplate();

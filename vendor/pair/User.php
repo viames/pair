@@ -3,13 +3,13 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-namespace VMS;
+namespace Pair;
 
 /**
- * Base class for VMS framework users. Can be extended to have more user’s properties.
+ * Base class for Pair framework users. Can be extended to have more user’s properties.
  */
 class User extends ActiveRecord {
 

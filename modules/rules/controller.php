@@ -3,13 +3,13 @@
 /**
  * @version	$Id$
  * @author	Judmir Karriqi
- * @package	VMS
+ * @package	Pair
  */
 
-use VMS\Controller;
-use VMS\Input;
-use VMS\Module;
-use VMS\Rule;
+use Pair\Controller;
+use Pair\Input;
+use Pair\Module;
+use Pair\Rule;
 
 class RulesController extends Controller {
 
@@ -54,7 +54,7 @@ class RulesController extends Controller {
 
 	public function editAction() {
 
-		$rules = $this->getObjectRequestedById('VMS\Rule');
+		$rules = $this->getObjectRequestedById('Pair\Rule');
 
 		if ($rules) {
 			$this->view = 'edit';

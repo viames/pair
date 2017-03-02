@@ -3,14 +3,14 @@
 /**
  * @version	$Id$
  * @author	Judmir Karriqi
- * @package	VMS
+ * @package	Pair
  */
 
-use VMS\Module;
-use VMS\Router;
-use VMS\Rule;
-use VMS\View;
-use VMS\Widget;
+use Pair\Module;
+use Pair\Router;
+use Pair\Rule;
+use Pair\View;
+use Pair\Widget;
 
 class RulesViewEdit extends View {
 

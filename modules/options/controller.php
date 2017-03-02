@@ -3,12 +3,12 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-use VMS\Controller;
-use VMS\Input;
-use VMS\Options;
+use Pair\Controller;
+use Pair\Input;
+use Pair\Options;
 
 class OptionsController extends Controller {
 	

@@ -3,12 +3,12 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-use VMS\Options;
-use VMS\View;
-use VMS\Widget;
+use Pair\Options;
+use Pair\View;
+use Pair\Widget;
 
 class TemplatesViewDefault extends View {
 

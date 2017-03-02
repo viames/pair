@@ -3,7 +3,7 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
 ?><div class="ibox float-e-margins">

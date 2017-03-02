@@ -3,10 +3,10 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-namespace VMS;
+namespace Pair;
 
 /**
  * Base class for active record pattern. Supports tables with a primary key, not suitable for compound key.

@@ -3,10 +3,10 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-namespace VMS;
+namespace Pair;
 
 /**
  * Collection of useful methods for both internal framework needs and common application needs.

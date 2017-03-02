@@ -3,10 +3,10 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-namespace VMS;
+namespace Pair;
 
 abstract class Controller {
 	
@@ -292,7 +292,7 @@ abstract class Controller {
 		
 		$view = $this->getView();
 
-		if (is_subclass_of($view, 'VMS\View')) {
+		if (is_subclass_of($view, 'Pair\View')) {
 			$view->display();
 		} else {
 			$this->enqueueError($this->translator->translate('RESOURCE_NOT_FOUND', $this->route->module . '/' . $this->route->action));

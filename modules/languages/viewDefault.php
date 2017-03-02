@@ -3,11 +3,11 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-use VMS\View;
-use VMS\Widget;
+use Pair\View;
+use Pair\Widget;
 
 class LanguagesViewDefault extends View {
 
@@ -28,7 +28,7 @@ class LanguagesViewDefault extends View {
 		$this->app->sideMenuWidget = $widget->render('sideMenu');
 
 		// all registered languages
-		$languages = $this->model->getActiveRecordObjects('VMS\Language', 'code');
+		$languages = $this->model->getActiveRecordObjects('Pair\Language', 'code');
 
 		// adds translated line count and percentage
 		$this->model->setLanguagePercentage($languages);

@@ -3,7 +3,7 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
 ?><div class="moduleTitle"><?php $this->_('DEVELOPER') ?></div>

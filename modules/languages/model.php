@@ -3,12 +3,12 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-use VMS\Model;
-use VMS\Translator;
-use VMS\Language;
+use Pair\Model;
+use Pair\Translator;
+use Pair\Language;
 
 class LanguagesModel extends Model {
 

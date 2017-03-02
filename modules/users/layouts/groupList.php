@@ -3,10 +3,10 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-use VMS\Utilities;
+use Pair\Utilities;
 
 if (count($this->groups)) {
 

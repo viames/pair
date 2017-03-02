@@ -1,6 +1,6 @@
 -- MySQL dump 10.13  Distrib 5.7.15, for osx10.11 (x86_64)
 --
--- Host: localhost    Database: vms
+-- Host: localhost    Database: pair
 -- ------------------------------------------------------
 -- Server version	5.7.15
 
@@ -323,7 +323,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,1,1,'','admin','$2a$12$WfnHFTmVnZ.f8DO.rAi7OeU1Eco2/5gJ8w/2E5qHoVN3yN.luri/.','Administrator','User','admin@vms',1,1,'2017-03-01 19:47:50',0);
+INSERT INTO `users` VALUES (1,1,1,'','admin','$2a$12$WfnHFTmVnZ.f8DO.rAi7OeU1Eco2/5gJ8w/2E5qHoVN3yN.luri/.','Administrator','User','admin@pair',1,1,'2017-03-01 19:47:50',0);
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;

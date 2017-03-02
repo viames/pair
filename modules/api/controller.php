@@ -3,15 +3,15 @@
 /**
  * @version $Id$
  * @author	Viames Marino 
- * @package	VMS
+ * @package	Pair
  */
 
-use VMS\Controller;
-use VMS\Group;
-use VMS\Language;
-use VMS\Router;
-use VMS\Session;
-use VMS\User;
+use Pair\Controller;
+use Pair\Group;
+use Pair\Language;
+use Pair\Router;
+use Pair\Session;
+use Pair\User;
 
 class ApiController extends Controller {
 	

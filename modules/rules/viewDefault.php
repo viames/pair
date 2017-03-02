@@ -3,11 +3,11 @@
 /**
  * @version	$Id$
  * @author	Judmir Karriqi
- * @package	VMS
+ * @package	Pair
  */
 
-use VMS\View;
-use VMS\Widget;
+use Pair\View;
+use Pair\Widget;
 
 class RulesViewDefault extends View {
 

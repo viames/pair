@@ -3,14 +3,14 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-use VMS\Application;
-use VMS\Controller;
-use VMS\Input;
-use VMS\User;
-use VMS\Router;
+use Pair\Application;
+use Pair\Controller;
+use Pair\Input;
+use Pair\User;
+use Pair\Router;
 
 class UserController extends Controller {
 	

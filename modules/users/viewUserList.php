@@ -3,13 +3,13 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-use VMS\Breadcrumb;
-use VMS\User;
-use VMS\View;
-use VMS\Widget;
+use Pair\Breadcrumb;
+use Pair\User;
+use Pair\View;
+use Pair\Widget;
 
 class UsersViewUserList extends View {
 

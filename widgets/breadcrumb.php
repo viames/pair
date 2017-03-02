@@ -3,11 +3,11 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-use VMS\Application;
-use VMS\Breadcrumb;
+use Pair\Application;
+use Pair\Breadcrumb;
 
 $app = Application::getInstance();
 $breadcrumb = Breadcrumb::getInstance();
@@ -16,7 +16,7 @@ $breadcrumb = Breadcrumb::getInstance();
 	<div class="col-lg-10">
 		<h2><?php print $app->pageTitle ?></h2><?php
 
-			if (is_a($breadcrumb, 'VMS\Breadcrumb') and count($breadcrumb->getPaths())) {
+			if (is_a($breadcrumb, 'Pair\Breadcrumb') and count($breadcrumb->getPaths())) {
 	            
 				?><ol class="breadcrumb"><?php
 

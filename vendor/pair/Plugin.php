@@ -3,10 +3,10 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-namespace VMS;
+namespace Pair;
 
 class Plugin {
 	
@@ -172,7 +172,7 @@ class Plugin {
 		$pluginClass = ucfirst($mAttributes->type);
 		
 		if (in_array($pluginClass, array('Module', 'Template'))) {
-			$pluginClass = 'VMS\\' . $pluginClass;
+			$pluginClass = 'Pair\\' . $pluginClass;
 		}
 
 		// checks if plugin is already installed
@@ -471,8 +471,8 @@ class Plugin {
 		// gets class name for this plugin (Module, Template or other)
 		$pluginClass = ucfirst($mAttributes->type);
 		
-		// checks if class name is in VMS framework namespace
-		$class = class_exists('VMS\\' . $pluginClass) ? 'VMS\\' . $pluginClass : '\\' . $pluginClass;
+		// checks if class name is in Pair framework namespace
+		$class = class_exists('Pair\\' . $pluginClass) ? 'Pair\\' . $pluginClass : '\\' . $pluginClass;
 	
 		// creates plugin object
 		$plugin					= new $class();

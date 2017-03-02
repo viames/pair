@@ -3,17 +3,17 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-use VMS\Acl;
-use VMS\Application;
-use VMS\Form;
-use VMS\Group;
-use VMS\Language;
-use VMS\Model;
-use VMS\Translator;
-use VMS\User;
+use Pair\Acl;
+use Pair\Application;
+use Pair\Form;
+use Pair\Group;
+use Pair\Language;
+use Pair\Model;
+use Pair\Translator;
+use Pair\User;
 
 class UsersModel extends Model {
 

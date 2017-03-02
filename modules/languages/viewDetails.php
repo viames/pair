@@ -3,14 +3,14 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-use VMS\Breadcrumb;
-use VMS\Language;
-use VMS\Router;
-use VMS\View;
-use VMS\Widget;
+use Pair\Breadcrumb;
+use Pair\Language;
+use Pair\Router;
+use Pair\View;
+use Pair\Widget;
 
 class LanguagesViewDetails extends View {
 

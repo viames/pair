@@ -3,15 +3,15 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-use VMS\Acl;
-use VMS\Controller;
-use VMS\Group;
-use VMS\Input;
-use VMS\Router;
-use VMS\User;
+use Pair\Acl;
+use Pair\Controller;
+use Pair\Group;
+use Pair\Input;
+use Pair\Router;
+use Pair\User;
 
 class UsersController extends Controller {
 
@@ -69,7 +69,7 @@ class UsersController extends Controller {
 	
 		$user = $this->getRequestedUser();
 	
-		if (is_a($user, 'VMS\User') and $user->isLoaded()) {
+		if (is_a($user, 'Pair\User') and $user->isLoaded()) {
 			$this->view = 'userEdit';
 		} else {
 			$this->view = 'userList';

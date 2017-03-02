@@ -3,7 +3,7 @@
 /**
  * @version	$Id$
  * @author	judmir karriqi
- * @package	VMS
+ * @package	Pair
  */
 	
 ?><div class="moduleTitle"><?php $this->_('NEW_RULE') ?></div>

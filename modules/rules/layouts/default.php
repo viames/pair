@@ -3,10 +3,10 @@
 /**
  * @version	$Id$
  * @author	Judmir Karriqi
- * @package	VMS
+ * @package	Pair
  */
 
-use VMS\Utilities;
+use Pair\Utilities;
 
  ?><div>
 	<div class="moduleHead">

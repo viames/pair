@@ -3,10 +3,10 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-use VMS\Controller;
+use Pair\Controller;
 
 class SelftestController extends Controller {
 

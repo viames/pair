@@ -3,11 +3,11 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-use VMS\Application;
-use VMS\Translator;
+use Pair\Application;
+use Pair\Translator;
 
 $app = Application::getInstance();
 $translator	= Translator::getInstance();

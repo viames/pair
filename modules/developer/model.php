@@ -3,14 +3,14 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-use VMS\Application;
-use VMS\Form;
-use VMS\Language;
-use VMS\Model;
-use VMS\Translator;
+use Pair\Application;
+use Pair\Form;
+use Pair\Language;
+use Pair\Model;
+use Pair\Translator;
 
 class DeveloperModel extends Model {
 
@@ -111,7 +111,7 @@ class DeveloperModel extends Model {
 				$reflection = new ReflectionClass($class);
 				
 				// will adds just requested children
-				if ($reflection->isSubclassOf('VMS\ActiveRecord') and !$reflection->isAbstract()) {
+				if ($reflection->isSubclassOf('Pair\ActiveRecord') and !$reflection->isAbstract()) {
 					$mappedTables[] = $class::TABLE_NAME;
 				}
 			
@@ -131,7 +131,7 @@ class DeveloperModel extends Model {
 			include_once ('framework/' . $file);
 				
 			// will adds just requested children
-			if (is_subclass_of($class, 'VMS\ActiveRecord')) {
+			if (is_subclass_of($class, 'Pair\ActiveRecord')) {
 				$mappedTables[] = $class::TABLE_NAME;
 			}
 		
@@ -159,7 +159,7 @@ class DeveloperModel extends Model {
 						$class = substr($file, 0, -4);
 						
 						// will adds just requested children
-						if (is_subclass_of($class, 'VMS\ActiveRecord')) {
+						if (is_subclass_of($class, 'Pair\ActiveRecord')) {
 							$mappedTables[] = $class::TABLE_NAME;
 						}
 	
@@ -408,7 +408,7 @@ class DeveloperModel extends Model {
  * @package	' . $this->package . '
  */
 
-use VMS\ActiveRecord;
+use Pair\ActiveRecord;
 
 class ' . $this->objectName . ' extends ActiveRecord {
 
@@ -516,8 +516,8 @@ class ' . $this->objectName . ' extends ActiveRecord {
  * @package	' . $this->package . '
  */
 
-use VMS\Form;
-use VMS\Model;
+use Pair\Form;
+use Pair\Model;
 
 class ' . ucfirst($this->moduleName) . 'Model extends Model {
 
@@ -604,9 +604,9 @@ class ' . ucfirst($this->moduleName) . 'Model extends Model {
  * @package	' . $this->package . '
  */
 
-use VMS\Controller;
-use VMS\Input;
-use VMS\Router;
+use Pair\Controller;
+use Pair\Input;
+use Pair\Router;
  		
 class ' . ucfirst($this->moduleName) . 'Controller extends Controller {
 
@@ -783,7 +783,7 @@ EDIT_' . strtoupper($this->objectName) . ' = "' . $tran->translate('EDIT_OBJECT'
  * @package	' . $this->package . '
  */
 
-use VMS\View;
+use Pair\View;
 
 class ' . ucfirst($this->moduleName) . 'ViewDefault extends View {
 
@@ -841,7 +841,7 @@ class ' . ucfirst($this->moduleName) . 'ViewDefault extends View {
  * @package	' . $this->package . '
  */
 
-use VMS\Utilities;
+use Pair\Utilities;
 
 ?><div class="col-lg-12">
 	<div class="ibox">
@@ -905,7 +905,7 @@ if (count($this->' . $this->getCamelCase($this->tableName) . ')) {
  * @package	' . $this->package . '
  */
 
-use VMS\View;
+use Pair\View;
 
 class ' . ucfirst($this->moduleName) . 'ViewNew extends View {
 
@@ -1009,8 +1009,8 @@ class ' . ucfirst($this->moduleName) . 'ViewNew extends View {
  * @package	' . $this->package . '
  */
 
-use VMS\Router;
-use VMS\View;
+use Pair\Router;
+use Pair\View;
 
 class ' . ucfirst($this->moduleName) . 'ViewEdit extends View {
 

@@ -3,10 +3,10 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-namespace VMS;
+namespace Pair;
 
 /**
  * Singleton class that allows to trace query, API calls and custom events with partial
@@ -101,7 +101,7 @@ class Logger {
 		
 		$this->timeStart = $this->lastChrono = $this->getMicrotime();
 		
-		$this->addEvent('Starting VMS framework ' . Application::VERSION . ', base timezone is ' . BASE_TIMEZONE);
+		$this->addEvent('Starting Pair framework ' . Application::VERSION . ', base timezone is ' . BASE_TIMEZONE);
 		
 	}
 	

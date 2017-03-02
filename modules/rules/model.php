@@ -3,11 +3,11 @@
 /**
  * @version	$Id$
  * @author	Judmir Karriqi 
- * @package	VMS
+ * @package	Pair
  */
 
-use VMS\Form;
-use VMS\Model;
+use Pair\Form;
+use Pair\Model;
 
 class RulesModel extends Model {
 

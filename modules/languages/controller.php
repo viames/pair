@@ -3,14 +3,14 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-use VMS\Breadcrumb;
-use VMS\Controller;
-use VMS\Input;
-use VMS\Language;
-use VMS\Router;
+use Pair\Breadcrumb;
+use Pair\Controller;
+use Pair\Input;
+use Pair\Language;
+use Pair\Router;
 
 class LanguagesController extends Controller {
 

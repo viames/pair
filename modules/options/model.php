@@ -3,9 +3,9 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-use VMS\Model;
+use Pair\Model;
 
 class OptionsModel extends Model {}

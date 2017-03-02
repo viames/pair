@@ -1,7 +1,7 @@
 /**
  * @version $Id$
  * @author  Viames Marino
- * @package VMS
+ * @package Pair
  */
 
 #log {
@@ -18,7 +18,7 @@
 }
 
 #log .logo {
-    background: rgba(0, 0, 0, 0) url("../images/vms-logo.png") no-repeat scroll 0 0 / 93px 26px;
+    background: rgba(0, 0, 0, 0) url("../images/pair-logo.png") no-repeat scroll 0 0 / 93px 26px;
     float: left;
     height: 26px;
     margin: 3px 0 0 9px;

@@ -3,10 +3,10 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-use VMS\Utilities;
+use Pair\Utilities;
 
 ?><div class="col-lg-12">
 	<div class="ibox">

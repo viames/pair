@@ -3,12 +3,12 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-use VMS\Form;
-use VMS\Model;
-use VMS\Template;
+use Pair\Form;
+use Pair\Model;
+use Pair\Template;
 
 class TemplatesModel extends Model {
 	

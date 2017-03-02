@@ -3,14 +3,14 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-use VMS\Breadcrumb;
-use VMS\Form;
-use VMS\Options;
-use VMS\View;
-use VMS\Widget;
+use Pair\Breadcrumb;
+use Pair\Form;
+use Pair\Options;
+use Pair\View;
+use Pair\Widget;
 
 class OptionsViewDefault extends View {
 

@@ -3,10 +3,10 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-use VMS\Translator;
+use Pair\Translator;
 
 $translator = Translator::getInstance();
 

@@ -3,16 +3,16 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-use VMS\Breadcrumb;
-use VMS\Controller;
-use VMS\Input;
-use VMS\Plugin;
-use VMS\Router;
-use VMS\Template;
-use VMS\Upload;
+use Pair\Breadcrumb;
+use Pair\Controller;
+use Pair\Input;
+use Pair\Plugin;
+use Pair\Router;
+use Pair\Template;
+use Pair\Upload;
 
 class TemplatesController extends Controller {
 

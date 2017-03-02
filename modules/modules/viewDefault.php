@@ -3,12 +3,12 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-use VMS\Options;
-use VMS\View;
-use VMS\Widget;
+use Pair\Options;
+use Pair\View;
+use Pair\Widget;
 
 class ModulesViewDefault extends View {
 
@@ -30,7 +30,7 @@ class ModulesViewDefault extends View {
 		$widget = new Widget();
 		$this->app->sideMenuWidget = $widget->render('sideMenu');
 		
-		$modules = $this->model->getActiveRecordObjects('VMS\Module', 'name');
+		$modules = $this->model->getActiveRecordObjects('Pair\Module', 'name');
 
 		// if development mode is switched on, hide the delete button
 		$devMode = ($options->getValue('development') and $this->app->currentUser->admin) ? TRUE : FALSE;

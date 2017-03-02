@@ -3,10 +3,10 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-namespace VMS;
+namespace Pair;
 
 abstract class Model {
 	
@@ -156,7 +156,7 @@ abstract class Model {
 	 */
 	public function getActiveRecordObjects($class, $orderBy=NULL, $descOrder=FALSE) {
 
-		if (!class_exists($class) or !is_subclass_of($class, 'VMS\ActiveRecord')) {
+		if (!class_exists($class) or !is_subclass_of($class, 'Pair\ActiveRecord')) {
 			return array();
 		}
 		

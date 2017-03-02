@@ -3,11 +3,11 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-use VMS\Application;
-use VMS\Menu;
+use Pair\Application;
+use Pair\Menu;
 
 class BootstrapMenu extends Menu {
 

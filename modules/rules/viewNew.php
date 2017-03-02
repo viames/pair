@@ -3,12 +3,12 @@
 /**
  * @version	$Id$
  * @author	Judmir Karriqi
- * @package	VMS
+ * @package	Pair
  */
 
-use VMS\Module;
-use VMS\View;
-use VMS\Widget;
+use Pair\Module;
+use Pair\View;
+use Pair\Widget;
 
 class RulesViewNew extends View {
 

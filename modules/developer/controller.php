@@ -3,15 +3,15 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-use VMS\Breadcrumb;
-use VMS\Controller;
-use VMS\Input;
-use VMS\Module;
-use VMS\Router;
-use VMS\Translator;
+use Pair\Breadcrumb;
+use Pair\Controller;
+use Pair\Input;
+use Pair\Module;
+use Pair\Router;
+use Pair\Translator;
 
 class DeveloperController extends Controller {
 	

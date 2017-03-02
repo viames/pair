@@ -3,15 +3,15 @@
 /**
  * @version	$Id$
  * @author	Viames Marino
- * @package	VMS
+ * @package	Pair
  */
 
-use VMS\Application;
-use VMS\Language;
-use VMS\Model;
-use VMS\Module;
-use VMS\Options;
-use VMS\Translator;
+use Pair\Application;
+use Pair\Language;
+use Pair\Model;
+use Pair\Module;
+use Pair\Options;
+use Pair\Translator;
 
 class SelftestModel extends Model {
 
@@ -370,7 +370,7 @@ class SelftestModel extends Model {
 			$class = substr($file, 0, -4);
 
 			// will adds just requested children
-			if (is_subclass_of($class, 'VMS\ActiveRecord')) {
+			if (is_subclass_of($class, 'Pair\ActiveRecord')) {
 				$reflection = new ReflectionClass($class);
 				if (!$reflection->isAbstract()) {
 					$classes[] = $class;
@@ -403,7 +403,7 @@ class SelftestModel extends Model {
 						}
 						
 						// will adds just requested children
-						if (is_subclass_of($class, 'VMS\ActiveRecord')) {
+						if (is_subclass_of($class, 'Pair\ActiveRecord')) {
 							$reflection = new ReflectionClass($class);
 							if (!$reflection->isAbstract()) {
 								$classes[] = $class;
@@ -436,7 +436,7 @@ class SelftestModel extends Model {
 		
 		$ret = TRUE;
 		
-		// list of plugin types with namespace (true if VMS framework)
+		// list of plugin types with namespace (true if Pair framework)
 		$pluginTypes = array(
 				'module'	=> TRUE,
 				'template'	=> TRUE);
@@ -444,7 +444,7 @@ class SelftestModel extends Model {
 		foreach ($pluginTypes as $type => $aFramework) {
 			
 			// compute names
-			$class	= ($aFramework ? 'VMS\\' : '') . ucfirst($type);
+			$class	= ($aFramework ? 'Pair\\' : '') . ucfirst($type);
 
 			// load db records and create objects
 			$plugins = $class::getAllObjects();
