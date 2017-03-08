@@ -120,7 +120,7 @@ class DeveloperModel extends Model {
 		}
 
 		// list of class files
-		$frameworkFiles = array_diff(scandir('framework'), array('..', '.', '.DS_Store'));
+		$frameworkFiles = array_diff(scandir('vendor/pair'), array('..', '.', '.DS_Store'));
 		
 		foreach ($frameworkFiles as $file) {
 		
@@ -128,7 +128,7 @@ class DeveloperModel extends Model {
 			$class = substr($file, 0, -4);
 				
 			// needed for new classes not already included
-			include_once ('framework/' . $file);
+			include_once ('vendor/pair/' . $file);
 				
 			// will adds just requested children
 			if (is_subclass_of($class, 'Pair\ActiveRecord')) {
@@ -1083,7 +1083,7 @@ class ' . ucfirst($this->moduleName) . 'ViewEdit extends View {
 				<div class="col-sm-4 col-sm-offset-2">
 					<button type="submit" class="btn btn-primary" value="edit" name="action"><i class="fa fa-save"></i> <?php $this->_(\'CHANGE\') ?></button>
 					<a href="' . $this->moduleName . '/default" class="btn btn-default"><i class="fa fa-times"></i> <?php $this->_(\'CANCEL\') ?></a>
-					<a href="' . $this->moduleName . '/delete/<?php print $this->' . lcfirst($this->objectName) . '->' . $this->getCamelCase($this->primaryKey) . ' ?>" class="btn btn-default confirmDelete"><i class="fa fa-trash-o"></i> <?php $this->_(\'DELETE\') ?></a>
+					<a href="' . $this->moduleName . '/delete/<?php print ' . $this->getTableKeyAsCgiParams() . ' ?>" class="btn btn-default confirmDelete"><i class="fa fa-trash-o"></i> <?php $this->_(\'DELETE\') ?></a>
 				</div>
 			</div>
 		</form>

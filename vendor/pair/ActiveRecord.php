@@ -50,12 +50,6 @@ abstract class ActiveRecord {
 	private $errors = array();
 	
 	/**
-	 * Associative array that stores old table key values in case of changes.
-	 * @var array
-	 */
-	private $tableKeyChanges = array();
-
-	/**
 	 * Constructor, if param is db-row, will bind it on this object, if it’s id,
 	 * with load the object data from db, otherwise the object will be empty.
 	 * 
@@ -136,13 +130,6 @@ abstract class ActiveRecord {
 
 		try {
 			
-			// if it’s a populated table key, store its old value.
-			if (isset($this->$name) and $this->$name and $this->isTableKey($name)) {
-
-				$this->tableKeyChanges[$name] = $this->$name;
-
-			}
-
 			$type = $this->getPropertyType($name);
 				
 			if (is_null($value)) {
@@ -515,12 +502,7 @@ abstract class ActiveRecord {
 		$values = array();
 
 		foreach ($propertyNames as $name) {
-
-			// search for changed key values
-			$values[] = isset($this->tableKeyChanges[$name]) ?
-				$this->tableKeyChanges[$name] :
-				$this->{$name};
-
+			$values[] = $this->{$name};
 		}
 
 		return $values;
@@ -655,27 +637,13 @@ abstract class ActiveRecord {
 			// set the table key with values
 			foreach ($key as $k) {
 				
-				if (isset($this->tableKeyChanges[$k])) {
+				// get object property value
+				$dbKey->{$binds[$k]} = $this->$k;
 					
-					// key has changed, get old value
-					$dbKey->{$binds[$k]} = $this->tableKeyChanges[$k];
-					
-				} else {
-					
-					// get object property value
-					$dbKey->{$binds[$k]} = $this->$k;
-					
-				}
-				
 			}
-
+				
 			$res = (bool)$this->db->updateObject($class::TABLE_NAME, $dbObj, $dbKey);
 			
-			// reset key changes
-			if ($res) {
-				$this->tableKeyChanges = array();
-			}
-
 			$app->logEvent('Updated ' . $class . ' object with ' . $logParam);
 
 		// object is not populated
