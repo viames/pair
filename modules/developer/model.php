@@ -790,7 +790,7 @@ class ' . ucfirst($this->moduleName) . 'ViewDefault extends View {
 	public function render() {
 
 		$this->app->pageTitle		= $this->lang(\'' . strtoupper($this->tableName) . '\');
-		$this->app->activeMenuItem	= \'' . $this->moduleName . '/default\';
+		$this->app->activeMenuItem	= \'' . $this->moduleName . '\';
 
 		$' . $this->getCamelCase($this->tableName) . ' = $this->model->get' .  ucfirst($this->moduleName) . '();
 
@@ -912,7 +912,7 @@ class ' . ucfirst($this->moduleName) . 'ViewNew extends View {
 	public function render() {
 
 		$this->app->pageTitle = $this->lang(\'NEW_' . strtoupper($this->objectName) . '\');
-		$this->app->activeMenuItem = \'' . $this->moduleName . '/default\';
+		$this->app->activeMenuItem = \'' . $this->moduleName . '\';
 
 		$form = $this->model->get' . $this->objectName . 'Form();
 		
@@ -1017,7 +1017,7 @@ class ' . ucfirst($this->moduleName) . 'ViewEdit extends View {
 	public function render() {
 
 		$this->app->pageTitle = $this->lang(\'EDIT_' . strtoupper($this->objectName) . '\');
-		$this->app->activeMenuItem = \'' . $this->moduleName . '/default\';
+		$this->app->activeMenuItem = \'' . $this->moduleName . '\';
 
 		$route = Router::getInstance();
 ' . $params . '

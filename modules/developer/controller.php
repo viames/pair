@@ -148,7 +148,7 @@ class DeveloperController extends Controller {
 			$modPlugin->name			= $this->model->moduleName;
 			$modPlugin->version			= '1.0';
 			$modPlugin->dateReleased	= date('Y-m-d H:i:s');
-			$modPlugin->appversion		= PRODUCT_VERSION;
+			$modPlugin->appVersion		= PRODUCT_VERSION;
 			$modPlugin->installedBy		= $this->app->currentUser->id;
 			$modPlugin->dateInstalled	= date('Y-m-d H:i:s');
 			$modPlugin->create();
