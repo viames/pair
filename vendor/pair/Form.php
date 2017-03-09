@@ -720,10 +720,13 @@ class FormControlInput extends FormControl {
 	 * Set accepted file type by input field (only affects the “file” input).
 	 * 
 	 * @param	string	File type: file_extension, audio/*, video/*, image/*, media_type.
+	 * 
+	 * @return	FormControlInput
 	 */
 	public function setAccept($fileType) {
 		
 		$this->accept = $fileType;
+		return $this;
 		
 	}
 		

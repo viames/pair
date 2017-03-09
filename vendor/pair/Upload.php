@@ -76,14 +76,24 @@ class Upload {
 	/**
 	 * Constructor, sets file uploaded variables as object properties.
 	 * 
-	 * @param	array	HTTP $_FILES whole variable.
+	 * @param	array	HTTP field name.
 	 */
-	public function __construct($file) {
+	public function __construct($fieldName) {
+
+		// check on field name
+		if (!isset($_FILES[$fieldName])) {
+			$this->setError('FIELD_NAME_IS_NOT_VALID');
+		}
 		
+		// assign file content array
+		$file = $_FILES[$fieldName];
+
+		// check on the array
 		if (!is_array($file) or !isset($file['name']) or !isset($file['tmp_name'])) {
 			$this->setError('FILES_ARRAY_IS_NOT_VALID');
 		}
 		
+		// assign array values to the object properties
 		$this->filename		= $file['name'];
 		$this->filesize		= $file['size'];
 		$this->fileError	= $file['error'];

@@ -14,8 +14,6 @@ class ModulesViewNew extends View {
 
 	public function render() {
 
-		$this->layout = 'new';
-		
 		$breadcrumb = Breadcrumb::getInstance();
 		$breadcrumb->addPath('Nuovo modulo', 'modules/new');
 		
