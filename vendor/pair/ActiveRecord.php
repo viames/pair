@@ -532,6 +532,21 @@ abstract class ActiveRecord {
 	}
 	
 	/**
+	 * Store into database the current object values and return the result.
+	 * 
+	 * @return	bool
+	 */
+	final public function store() {
+		
+		if ($this->isPopulated()) {
+			return $this->update();
+		} else {
+			return $this->create();
+		}
+		
+	}
+	
+	/**
 	 * Create this object as new database record and will assign its primary key
 	 * as $id property. Null properties won’t be written in the new row.
 	 * Return TRUE if success.
@@ -603,7 +618,7 @@ abstract class ActiveRecord {
 	 * Store into db the current object properties with option to write only a subset of
 	 * declared properties.
 	 * 
-	 * @param	mixed	Array of subject properties or single property to update only.
+	 * @param	mixed	Optional array of subject properties or single property to update.
 	 * 
 	 * @return	bool
 	 */

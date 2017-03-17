@@ -122,14 +122,36 @@ class Application {
 		define('APPLICATION_PATH',	dirname(dirname(dirname(__FILE__))));
 		
 		$config = APPLICATION_PATH . '/config.php';
-		
-		// load configuration constants or start installation
+
+		// check configuration file
 		if (file_exists($config)) {
+
+			// load configuration constants
 			require $config;
-		} else {
-			require APPLICATION_PATH . '/install.php';
-		}
 		
+			// default constants
+			$defaults = array(
+				'AUTH_SOURCE'	=> 'internal',
+				'UTC_DATE'		=> TRUE,
+				'PRODUCT_NAME'	=> 'NewProduct',
+				'BASE_URI'		=> '/',
+				'DBMS'			=> 'mysql'
+			);
+	
+			// set default constants in case of missing
+			foreach ($defaults as $key=>$val) {
+				if (!defined($key)) {
+					define($key, $val);
+				}
+			}
+
+		} else {
+
+			// config file doesn’t exist, start install
+			require APPLICATION_PATH . '/install.php';
+			
+		}
+
 		// force php server date to UTC
 		if (defined('UTC_DATE') and UTC_DATE) {
 			ini_set('date.timezone', 'UTC');
@@ -698,13 +720,12 @@ class Application {
 	}
 	
 	/**
-	 * Parses template file, substitues variables and returns it.
+	 * Parse template file, replace variables and return it.
 	 *
-	 * @return	NULL|string
+	 * @throws \Exception
 	 */
 	final public function startMvc() {
 		
-		$logger	= Logger::getInstance();
 		$route	= Router::getInstance();
 		$tran	= Translator::getInstance();
 		
@@ -724,27 +745,34 @@ class Application {
 			
 			require ($controllerFile);
 			
-			// build controller and start the action
+			// build controller object
 			$controllerName = ucfirst($route->module) . 'Controller';
-			$action = $route->action ? $route->action . 'Action' : 'defaultAction';
-			$logger->addEvent('Starting controller method ' . $controllerName . '->' . $action . '()');
 			$controller = new $controllerName();
+
+			// set the action
+			$action = $route->action ? $route->action . 'Action' : 'defaultAction';
+
+			// run the action
 			$controller->$action();
 			
-			// raw calls will jumps controller->display, ob and log
+			// log the event
+			$logger	= Logger::getInstance();
+			$logger->addEvent('Called controller method ' . $controllerName . '->' . $action . '()');
+			
+			// raw calls will jump controller->display, ob and log
 			if ($route->isRaw()) {
-				return NULL;
+				return;
 			}
 			
-			// invokes the view
+			// invoke the view
 			$controller->display();
 			
-			// sets the event log
+			// set the event log
 			$this->log = $logger->getEventList();
 			
 		}
 		
-		// populates the placeholder for the content
+		// populate the placeholder for the content
 		$this->pageContent = ob_get_clean();
 		
 		// login page has no template, needs a default
@@ -774,21 +802,21 @@ class Application {
 		$this->pageStyles = '';
 		$this->pageScripts = '';
 
-		// collects stylesheets
+		// collect stylesheets
 		foreach ($this->cssList as $css) {
 				
 			$this->pageStyles .= '<link rel="stylesheet" href="' . $css . '">' . "\n";
 				
 		}
 		
-		// collects script files
+		// collect script files
 		foreach ($this->jsList as $js) {
 			
 			$this->pageScripts .= '<script src="' . htmlspecialchars($js) . '" type="text/javascript"></script>' . "\n";
 			
 		}
 
-		// collects plain text scripts
+		// collect plain text scripts
 		if (count($this->scriptList) or count($this->messages)) {
 
 			$this->pageScripts .= "<div id=\"scriptContainer\"><script>\n";
@@ -813,7 +841,7 @@ class Application {
 			// load the style page file
 			require $styleFile;
 		
-			// gets output buffer and cleans it
+			// get output buffer and cleans it
 			$page = ob_get_clean();
 		
 			print $page;

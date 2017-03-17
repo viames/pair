@@ -359,7 +359,6 @@ class User extends ActiveRecord {
 
 		$session->idSession			= session_id();
 		$session->idUser			= $this->id;
-		$session->name				= trim($name) ? $name : $this->fullName;
 		$session->startTime			= new \DateTime();
 		$session->timezoneOffset	= $offset;
 		$session->timezoneName		= $timezone;

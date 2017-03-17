@@ -298,7 +298,7 @@ class Logger {
 		$ret.= '<div class="item"><span class="icon fa fa-tachometer"></span><span class="emph">' . $this->formatChrono($sum) .'</span> total</div>';
 		
 		// memory peak
-		$ret.= '<div class="item"><span class="icon fa fa-heartbeat"></span><span class="emph">' . round(memory_get_peak_usage()/1024/1024, 1) . ' MB</span> memory</div>';
+		$ret.= '<div class="item"><span class="icon fa fa-heartbeat"></span><span class="emph">' . floor(memory_get_peak_usage()/1024/1024) . ' MB</span> memory</div>';
 
 		// warnings
 		if ($warningCount) {

@@ -23,12 +23,6 @@ class Session extends ActiveRecord {
 	protected $idUser;
 
 	/**
-	 * Property that binds db field name.
-	 * @var string
-	 */
-	protected $name;
-
-	/**
 	 * Property that binds db field start_time.
 	 * @var DateTime
 	 */
@@ -79,7 +73,6 @@ class Session extends ActiveRecord {
 		$varFields = array (
 			'idSession'			=> 'id_session',
 			'idUser'			=> 'id_user',
-			'name'				=> 'name',
 			'startTime'			=> 'start_time',
 			'timezoneOffset'	=> 'timezone_offset',
 			'timezoneName'		=> 'timezone_name');

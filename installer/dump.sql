@@ -233,7 +233,6 @@ DROP TABLE IF EXISTS `sessions`;
 CREATE TABLE `sessions` (
   `id_session` varchar(100) NOT NULL,
   `id_user` int(4) unsigned DEFAULT NULL,
-  `name` varchar(100) DEFAULT NULL,
   `start_time` datetime NOT NULL,
   `timezone_offset` decimal(2,1) DEFAULT NULL,
   `timezone_name` varchar(100) DEFAULT NULL,
@@ -241,16 +240,6 @@ CREATE TABLE `sessions` (
   KEY `user_id` (`id_user`,`start_time`)
 ) ENGINE=MEMORY DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `sessions`
---
-
-LOCK TABLES `sessions` WRITE;
-/*!40000 ALTER TABLE `sessions` DISABLE KEYS */;
-INSERT INTO `sessions` VALUES ('8j48tiuhra5ns9agcni1gfg5l6',1,'Administrator User','2017-03-01 19:47:50',0.0,'UTC');
-/*!40000 ALTER TABLE `sessions` ENABLE KEYS */;
-UNLOCK TABLES;
 
 --
 -- Table structure for table `templates`
