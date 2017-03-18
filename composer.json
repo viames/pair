@@ -1,5 +1,6 @@
 {
-    "name": "viames/pair",
+    "name": "Viames/Pair",
+	"version" : "0.9",
     "type": "library",
     "description": "a lightweight PHP framework as the air",
     "license": "MIT",
@@ -26,4 +27,8 @@
         "wiki": "https://github.com/Viames/Pair/wiki",
         "source": "https://github.com/Viames/Pair/src"
     },
+	"repositories" : [{
+		"type" : "composer",
+		"url" : "https://packagist.org/"
+	}]
 }
