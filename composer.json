@@ -25,10 +25,11 @@
     "support": {
         "issues": "https://github.com/Viames/Pair/issues",
         "wiki": "https://github.com/Viames/Pair/wiki",
-        "source": "https://github.com/Viames/Pair/src"
+        "source": "https://github.com/Viames/Pair/tree/master/src"
     },
 	"repositories" : [{
 		"type" : "composer",
 		"url" : "https://packagist.org/"
-	}]
+	}],
+	"license": "MIT"
 }
