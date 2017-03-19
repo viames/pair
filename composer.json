@@ -1,35 +1,30 @@
 {
-    "name": "viames/pair",
-	"version" : "0.9",
-    "type": "library",
-    "description": "a lightweight PHP framework as the air",
-    "license": "MIT",
-    "keywords": ["pair", "php", "multilingual", "mvc-framework", "active-record", "plugin-system", "framework", "pagination", "router", "api-server", "rest-api"],
-    "homepage": "https://github.com/Viames/Pair",
-    "authors": [
-        {
-            "name": "Viames Marino",
-            "homepage": "https://www.viames.it",
-            "role": "Developer"
-        }
-    ],
-    "require": {
-        "php": ">=5.6",
-        "ext-pdo" : "*"
-    },
-    "autoload": {
-        "classmap": [
-            "src"
-        ]
-    },
-    "support": {
-        "issues": "https://github.com/Viames/Pair/issues",
-        "wiki": "https://github.com/Viames/Pair/wiki",
-        "source": "https://github.com/Viames/Pair/tree/master/src"
-    },
-	"repositories" : [{
-		"type" : "composer",
-		"url" : "https://packagist.org/"
-	}],
-	"license": "MIT"
+  "name" : "viames/pair",
+  "description" : "a lightweight PHP framework as the air",
+  "version" : "1.0",
+  "require" : {
+    "php" : ">=5.6",
+    "ext-pdo" : "*"
+  },
+  "repositories" : [ {
+    "type" : "composer",
+    "url" : "https://packagist.org/"
+  } ],
+  "license" : "MIT",
+  "keywords" : [ "pair", "php", "multilingual", "mvc-framework", "active-record", "plugin-system", "framework", "pagination", "router", "api-server", "rest-api" ],
+  "autoload" : {
+    "classmap" : [ "src" ]
+  },
+  "type" : "library",
+  "support" : {
+    "issues" : "https://github.com/Viames/Pair/issues",
+    "wiki" : "https://github.com/Viames/Pair/wiki",
+    "source" : "https://github.com/Viames/Pair/tree/master/src"
+  },
+  "homepage" : "https://github.com/Viames/Pair",
+  "authors" : [ {
+    "name" : "Viames Marino",
+    "homepage" : "https://www.viames.it",
+    "role" : "Developer"
+  } ]
 }
