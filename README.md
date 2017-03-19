@@ -23,7 +23,7 @@ After having installed pair framework you can get singleton object `$app` and th
 use Pair\Application;
 
 // initialize the framework
-require 'vendor/pair/loader.php';
+require 'vendor/autoload.php';
 
 // declare your product version
 define ('PRODUCT_VERSION', '1.0');
