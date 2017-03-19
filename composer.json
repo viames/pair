@@ -13,7 +13,7 @@
   "license" : "MIT",
   "keywords" : [ "pair", "php", "multilingual", "mvc-framework", "active-record", "plugin-system", "framework", "pagination", "router", "api-server", "rest-api" ],
   "autoload" : {
-    "classmap" : [ "src" ]
+    "classmap" : [ "src" ],
     "psr-4": {
       "Viames\\Pair": ""
     }
