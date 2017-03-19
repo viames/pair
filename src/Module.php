@@ -8,7 +8,7 @@
 
 namespace Pair;
 
-class Module extends ActiveRecord implements pluginInterface {
+class Module extends ActiveRecord implements PluginInterface {
 
 	/**
 	 * Property that binds db field id.

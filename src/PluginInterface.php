@@ -11,7 +11,7 @@ namespace Pair;
 /**
  * Interface for installable plugins.
  */
-interface pluginInterface {
+interface PluginInterface {
 
 	/**
 	 * Returns absolute path to plugin folder.

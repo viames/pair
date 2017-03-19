@@ -8,7 +8,7 @@
 
 namespace Pair;
 
-class Template extends ActiveRecord implements pluginInterface {
+class Template extends ActiveRecord implements PluginInterface {
 
 	/**
 	 * ID as primary key.

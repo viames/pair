@@ -14,6 +14,9 @@
   "keywords" : [ "pair", "php", "multilingual", "mvc-framework", "active-record", "plugin-system", "framework", "pagination", "router", "api-server", "rest-api" ],
   "autoload" : {
     "classmap" : [ "src" ]
+    "psr-4": {
+      "Viames\\Pair": ""
+    }
   },
   "type" : "library",
   "support" : {
