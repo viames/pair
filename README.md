@@ -17,12 +17,12 @@ The framework implements [Model-View-Controller](https://en.wikipedia.org/wiki/M
 ```sh
 composer require viames/pair
 ```
-After having installed pair framework you can get singleton object `$app` and the just start MVC. You can check any session before MVC, like in the following example.
+After having installed Pair framework you can get singleton object `$app` and the just start MVC. You can check any session before MVC, like in the following example.
 
 ```php
 use Pair\Application;
 
-// composer autoload
+// initialize the framework
 require 'vendor/autoload.php';
 
 // declare your product version
@@ -44,7 +44,7 @@ If you want to test code that is in the master branch, which hasn’t been pushe
 composer require viames/pair dev-master
 ```
 
-### Don't have Composer?
+### Don’t have Composer?
 
 You can download it here: [https://getcomposer.org/](https://getcomposer.org/)
 
