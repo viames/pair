@@ -1,5 +1,5 @@
 {
-  "name" : "viames\pair",
+  "name" : "viames/pair",
   "description" : "a lightweight PHP framework as the air",
   "version" : "1.0",
   "require" : {
