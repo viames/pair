@@ -119,7 +119,7 @@ class Application {
 		ini_set('display_errors',	TRUE);
 
 		// application folder without trailing slash
-		define('APPLICATION_PATH',	dirname(dirname(dirname(dirname(__FILE__)))));
+		define('APPLICATION_PATH',	dirname(dirname(dirname(dirname(dirname(__FILE__))))));
 		
 		$config = APPLICATION_PATH . '/config.php';
 
