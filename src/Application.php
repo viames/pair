@@ -110,7 +110,7 @@ class Application {
 	private $style = 'default';
 
 	/**
-	 * Private constructor called by getInstance().
+	 * Private constructor called by getInstance(). No Logger calls here.
 	 */
 	private function __construct() {
 
@@ -169,10 +169,38 @@ class Application {
 		set_error_handler('\Pair\Utilities::customErrorHandler');
 		register_shutdown_function('\Pair\Utilities::fatalErrorHandler');
 		
-		// FIXME
 		// routing initialization
 		$route = Router::getInstance();
-		//$route->setDefaults('users', 'default');
+
+		// set the pagination page number
+		if (!is_null($route->module)) {
+		
+			$cookieName = ucfirst($route->module) . ucfirst($route->action);
+			
+			// set a persistent state about pagination
+			if (1 == $route->page) {
+				
+				$this->unsetPersistentState($cookieName);
+
+			// a page number has been called
+			} else if ($route->page > 1) {
+				
+				$this->setPersistentState($cookieName, $route->page);
+				
+			// otherwise load an old pagination state
+			} else if (is_null($route->page) and $this->getPersistentState($cookieName)) {
+			 	
+				$route->page = $this->getPersistentState($cookieName);
+				$this->unsetPersistentState($cookieName);
+				
+			// set default page 1
+			} else {
+				
+				$route->page = 1;
+				
+			}
+			
+		}
 		
 		// default page title, will be overwritten
 		$this->pageTitle = PRODUCT_NAME;
@@ -277,7 +305,7 @@ class Application {
 	 * 
 	 * @param	User	User object or inherited class object. 
 	 */
-	public function setCurrentUser($user) {
+	protected function setCurrentUser($user) {
 		
 		if (is_a($user,'Pair\User')) {
 
@@ -622,7 +650,14 @@ class Application {
 			$logger->addEvent('User session for ' . $user->fullName . ' is alive' .
 					', user time zone is ' . $this->currentUser->tzName .
 					' (' . sprintf('%+06.2f', (float)$this->currentUser->tzOffset) . ')');
-		
+
+			// set defaults in case of no module
+			if (NULL == $route->module) {
+				$landing = $user->getLanding();
+				$route->module = $landing->module;
+				$route->action = $landing->action;
+			}
+
 			$resource = $route->module . '/' . $route->action;
 		
 			// checking permission

@@ -38,13 +38,13 @@ class Router {
 	
 	/**
 	 * Module name.
-	 * @var string
+	 * @var NULL|string
 	 */
 	private $module;
 	
 	/**
 	 * Action name.
-	 * @var string
+	 * @var NULL|string
 	 */
 	private $action;
 	
@@ -62,9 +62,9 @@ class Router {
 	
 	/**
 	 * Current page number.
-	 * @var int
+	 * @var NULL|int
 	 */
-	private $page = 1;
+	private $page;
 
 	/**
 	 * Current ordering value.
@@ -223,19 +223,6 @@ class Router {
 	
 		$this->$name = $value;
 
-		/*
-		if ('url'==$name) {
-
-			// removes base path from URL
-			if ($this->baseUrl and strpos($this->url,$this->baseUrl)===0) {
-				$this->url = substr($this->url,strlen($this->baseUrl));
-			}
-			
-			$this->parseUrl();
-			
-		}
-		*/
-	
 	}
 	
 	public function setModule($module) {
@@ -292,9 +279,6 @@ class Router {
 	 */
 	private function parseUrl() {		
 		
-		// the page nr called by URL
-		$directPage = NULL;
-		
 		if ($this->url) {
 			
 			// will parse, add and removes from URL any CGI param after question mark
@@ -345,6 +329,7 @@ class Router {
 						
 						$param = urldecode($p);
 						
+						// flag to not send back log (useful for AJAX)
 						if ('noLog' == $param) {
 							$this->sendLog = FALSE;
 						// ordering
@@ -355,7 +340,6 @@ class Router {
 						} else if ('page-' == substr($param, 0, 5)) {
 							$nr = intval(substr($param, 5));
 							$this->setPage($nr);
-							$directPage = $nr > 0 ? $nr : NULL;
 						} else {
 							if (''!=$param and !is_null($param)) {
 								$this->vars[] = $param;
@@ -377,35 +361,7 @@ class Router {
 				$logger->addEvent(date('Y-m-d H:i:s') . ' AJAX call on ' . $this->module . '/' . $this->action . ' with params ' . implode(', ', $params));
 			}
 			
-		// if empty url, sets default values
-		} else {
-
-			$this->module = $this->defaults['module'];
-			$this->action = $this->defaults['action'];
-		
 		}
-
-		/* FIXME
-		$cookieName = ucfirst($this->module) . ucfirst($this->action);
-
-		// set a persistent state about pagination
-		if ($directPage) {
-			
-			if ($this->getPage() > 1) {
-				$app->setPersistentState($cookieName, $this->page);
-			} else {
-				$app->unsetPersistentState($cookieName);
-			} 
-			
-		// otherwise load an old pagination state
-		} else if ($app->getPersistentState($cookieName)) {
-			
-			$this->page = $app->getPersistentState($cookieName);
-			$app->unsetPersistentState($cookieName);
-			$app->logEvent('Page ' . $this->page . ' has been forced by Application');
-			
-		}
-		*/
 		
 	}
 
