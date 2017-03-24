@@ -15,7 +15,7 @@
   "autoload" : {
     "classmap" : [ "src" ],
     "psr-4": {
-      "Viames\\Pair": ""
+      "Viames\\Pair\\": ""
     }
   },
   "type" : "library",
