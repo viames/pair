@@ -131,11 +131,12 @@ class Application {
 		
 			// default constants
 			$defaults = array(
-				'AUTH_SOURCE'	=> 'internal',
-				'UTC_DATE'		=> TRUE,
-				'PRODUCT_NAME'	=> 'NewProduct',
-				'BASE_URI'		=> '/',
-				'DBMS'			=> 'mysql'
+				'AUTH_SOURCE'		=> 'internal',
+				'BASE_URI'			=> '/',
+				'DBMS'				=> 'mysql',
+				'PRODUCT_NAME'		=> 'NewProduct',
+				'PRODUCT_VERSION'	=> '1.0',
+				'UTC_DATE'			=> TRUE
 			);
 	
 			// set default constants in case of missing

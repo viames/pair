@@ -25,9 +25,6 @@ use Pair\Application;
 // initialize the framework
 require 'vendor/autoload.php';
 
-// declare your product version
-define ('PRODUCT_VERSION', '1.0');
-
 // intialize the Application
 $app = Application::getInstance();
 
