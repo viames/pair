@@ -27,8 +27,10 @@ class Breadcrumb {
 	 */
 	private function __construct() {
 		
-		$route = Router::getInstance();
-		$this->addPath('Home', $route->getDefaultUrl());
+		$app = Application::getInstance();
+		$landing = $app->currentUser->getLanding();
+		$resource = $landing->action . '/' . $landing->module;
+		$this->addPath('Home', $resource);
 
 	}
 	
