@@ -413,7 +413,7 @@ class Utilities {
 		$types = array('info', 'warning', 'error');
 		if (!in_array($type, $types)) $type = 'info';
 	
-		$message = '<script>$(document).ready(function(){$("#notificationArea").prependMessageBox("'.
+		$message = '<script>$(document).ready(function(){$.showMessage("'.
 				addslashes($title) .'","'.
 				addslashes($message) .'","'.
 				addslashes($type) .'");});</script>';

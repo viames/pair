@@ -905,7 +905,7 @@ class Application {
 		
 				$types = array('info', 'warning', 'error');
 				if (!in_array($m->type, $types)) $m->type = 'info';
-				$script .= '$("#notificationArea").prependMessageBox("'.
+				$script .= '$.showMessage("'.
 					addslashes($m->title) .'","' .
 					addcslashes($m->text,"\"\n\r") . '","' . // removes carriage returns and quotes
 					addslashes($m->type) ."\");\n";

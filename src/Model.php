@@ -43,6 +43,8 @@ abstract class Model {
 		$this->app	= Application::getInstance();
 		$this->db	= Database::getInstance();
 
+		$this->init();
+
 	}
 	
 	public function __get($name) {
@@ -75,6 +77,11 @@ abstract class Model {
 		}		
 
 	}
+	 
+	/**
+	 * Start function, being executed before each method. Optional.
+	 */
+	protected function init() {}
 	 
 	/**
 	 * Adds an error to error list.
