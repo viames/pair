@@ -538,13 +538,29 @@ abstract class ActiveRecord {
 	 */
 	final public function store() {
 		
+		$this->beforeStore();
+
 		if ($this->isPopulated()) {
-			return $this->update();
+			$res = $this->update();
 		} else {
-			return $this->create();
+			$res = $this->create();
 		}
+
+		$this->afterStore();
+
+		return $res;
 		
 	}
+	
+	/**
+	 * Trigger function called before store() method execution.
+	 */
+	protected function beforeStore() {}
+	
+	/**
+	 * Trigger function called after store() method execution.
+	 */
+	protected function afterStore() {}
 	
 	/**
 	 * Create this object as new database record and will assign its primary key
