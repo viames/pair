@@ -885,5 +885,27 @@ class Utilities {
 		return NULL;
 
 	}
+	
+	/**
+	 * Check if the server’s user agent contains a word about mobile devices and return TRUE if found.
+	 * 
+	 * @return	boolean
+	 */
+	public static function isUserAgentMobile() {
+		
+		$user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? strtolower($_SERVER['HTTP_USER_AGENT']) : '';
+		
+		$devices = array('phone', 'iphone', 'itouch', 'ipod', 'symbian', 'android', 'htc_', 'htc-',
+				'palmos', 'blackberry', 'opera mini', 'iemobile', 'windows ce', 'nokia', 'fennec',
+				'hiptop', 'kindle', 'mot ', 'mot-', 'webos\/', 'samsung', 'sonyericsson', '^sie-',
+				'nintendo');
+		
+		if (preg_match('/' . implode('|', $devices) . '/', $user_agent)) {
+			return TRUE;
+		} else {
+			return FALSE;
+		}
+		
+	}
 
 }
