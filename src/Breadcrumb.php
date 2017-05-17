@@ -29,7 +29,7 @@ class Breadcrumb {
 		
 		$app = Application::getInstance();
 		$landing = $app->currentUser->getLanding();
-		$resource = $landing->action . '/' . $landing->module;
+		$resource = $landing->module . '/' . $landing->action;
 		$this->addPath('Home', $resource);
 
 	}
