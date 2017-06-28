@@ -80,6 +80,19 @@ abstract class Controller {
 
 		$this->init();
 		
+		// look for extended classes
+		if (is_dir($this->modulePath . '/classes')) {
+			
+			// get all folder files
+			$filenames = Utilities::getDirectoryFilenames($this->modulePath . '/classes');
+
+			// include each class file
+			foreach ($filenames as $filename) {
+				include_once $this->modulePath . '/classes/' . $filename;
+			}
+			
+		}
+		
 	}
 	
 	/**

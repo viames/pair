@@ -152,7 +152,7 @@ class Application {
 			require APPLICATION_PATH . '/install.php';
 			
 		}
-
+		
 		// force php server date to UTC
 		if (defined('UTC_DATE') and UTC_DATE) {
 			ini_set('date.timezone', 'UTC');
@@ -162,7 +162,7 @@ class Application {
 		}
 		
 		// define full URL to web page index with trailing slash or NULL
-		$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+		$protocol = ($_SERVER['SERVER_PORT'] == 443 or (isset($_SERVER['HTTPS']) and $_SERVER['HTTPS'] !== 'off')) ? "https://" : "http://";
 		$baseHref = isset($_SERVER['HTTP_HOST']) ? $protocol . $_SERVER['HTTP_HOST'] . BASE_URI . '/' : NULL;
 		define('BASE_HREF', $baseHref);
 		
@@ -172,10 +172,10 @@ class Application {
 		
 		// routing initialization
 		$route = Router::getInstance();
-
+		
 		// set the pagination page number
 		if (!is_null($route->module)) {
-		
+			
 			$cookieName = ucfirst($route->module) . ucfirst($route->action);
 			
 			// set a persistent state about pagination
