@@ -47,6 +47,7 @@ class Pagination {
 			
 			case 'start':
 				$val = intval(($this->page - 1) * $this->perPage);
+				if ($val < 0) $val = 0;
 				break;
 				
 			case 'limit':
@@ -111,7 +112,7 @@ class Pagination {
 		
 		// left arrow for first page
 		if ($this->page > 1) {
-			$render .= '<li class="arrow"><a href="' . $route->getPageUrl(1) . '">⇤</a></li>';
+			$render .= '<li class="arrow"><a href="' . $route->getPageUrl(1) . '">«</a></li>';
 		}
 
 		// calculate page range
@@ -139,7 +140,7 @@ class Pagination {
 		
 		// right arrow for last page
 		if ($this->page < $pages) {
-			$render .= '<li class="arrow"><a href="' . $route->getPageUrl($pages) . '">⇥</a></li>';
+			$render .= '<li class="arrow"><a href="' . $route->getPageUrl($pages) . '">»</a></li>';
 		}
 		
 		// close the bar

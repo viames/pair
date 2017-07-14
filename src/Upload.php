@@ -68,6 +68,12 @@ class Upload {
 	protected $hash;
 	
 	/**
+	 * The former file name.
+	 * @var string
+	 */
+	protected $formerName;
+	
+	/**
 	 * List of all errors tracked.
 	 * @var array
 	 */
@@ -95,6 +101,7 @@ class Upload {
 		
 		// assign array values to the object properties
 		$this->filename		= $file['name'];
+		$this->formerName	= $file['name'];
 		$this->filesize		= $file['size'];
 		$this->fileError	= $file['error'];
 		$this->fileTmpname	= $file['tmp_name'];
@@ -179,7 +186,7 @@ class Upload {
 				if (move_uploaded_file($this->fileTmpname, $this->path . $this->filename)) {
 
 					// sets file permissions
-					if (!chmod ($this->path . $this->filename, 0777)) {
+					if (!chmod($this->path . $this->filename, 0777)) {
 						$this->setError('Permissions set ' . $this->path . $this->filename . ' doesn’t succeded');
 					}
 

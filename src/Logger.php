@@ -315,7 +315,7 @@ class Logger {
 		
 		// show/hide log button
 		if ($showEvents) {
-			$ret.= '<div id="logShowEvents" class="item">Hide <span class="fa fa-caret-up"></span></div>';
+			$ret.= '<div id="logShowEvents" class="item active">Hide <span class="fa fa-caret-up"></span></div>';
 		} else {
 			$ret.= '<div id="logShowEvents" class="item">Show <span class="fa fa-caret-down"></span></div>';
 		}

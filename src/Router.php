@@ -351,16 +351,6 @@ class Router {
 				
 			}
 			
-			// set log of ajax methods
-			if ($this->ajax) {
-				$logger = Logger::getInstance();
-				$params = array();
-				foreach ($this->vars as $key=>$value) {
-					$params[] = $key . '=' . Utilities::varToText($value);
-				}
-				$logger->addEvent(date('Y-m-d H:i:s') . ' AJAX call on ' . $this->module . '/' . $this->action . ' with params ' . implode(', ', $params));
-			}
-			
 		}
 		
 	}

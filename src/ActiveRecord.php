@@ -1453,7 +1453,7 @@ abstract class ActiveRecord {
 				if ('datetime' == $this->getPropertyType($property)) {
 					$inputType = strlen(Input::get($property)) > 10 ? 'datetime' : 'date';
 				} else {
-					$inputType = 'string';
+					$inputType = $this->getPropertyType($property);
 				}
 
 				$this->$property = Input::get($property, $inputType);

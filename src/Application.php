@@ -791,9 +791,24 @@ class Application {
 			// run the action
 			$controller->$action();
 			
-			// log the event
+			// log some events
 			$logger	= Logger::getInstance();
-			$logger->addEvent('Called controller method ' . $controllerName . '->' . $action . '()');
+			
+			// set log of ajax call
+			if ($route->ajax) {
+				
+				$params = array();
+				foreach ($route->vars as $key=>$value) {
+					$params[] = $key . '=' . Utilities::varToText($value);
+				}
+				$logger->addEvent(date('Y-m-d H:i:s') . ' AJAX call on ' . $this->module . '/' . $this->action . ' with params ' . implode(', ', $params));
+				
+			// log controller method call
+			} else {
+				
+				$logger->addEvent('Called controller method ' . $controllerName . '->' . $action . '()');
+				
+			}
 			
 			// raw calls will jump controller->display, ob and log
 			if ($route->isRaw()) {
