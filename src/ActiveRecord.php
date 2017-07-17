@@ -889,7 +889,7 @@ abstract class ActiveRecord {
 	 */
 	final private function getPropertyType($name) {
 		
-		return array_key_exists($name, $this->typeList) ? $this->typeList[$name] : NULL;
+		return array_key_exists($name, $this->typeList) ? $this->typeList[$name] : 'string';
 	
 	}
 	
@@ -1448,15 +1448,11 @@ abstract class ActiveRecord {
 
 		foreach ($binds as $property=>$field) {
 
+			// check that property is in the args or that args is not defined at all
 			if (!count($args) or (isset($args[0]) and in_array($property, $args[0]))) {
 
-				if ('datetime' == $this->getPropertyType($property)) {
-					$inputType = strlen(Input::get($property)) > 10 ? 'datetime' : 'date';
-				} else {
-					$inputType = $this->getPropertyType($property);
-				}
-
-				$this->$property = Input::get($property, $inputType);
+				// assign the value to this object property
+				$this->__set($property, Input::get($property));
 
 			}
 
