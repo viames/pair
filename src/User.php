@@ -448,12 +448,18 @@ class User extends ActiveRecord {
 	 * @return	bool	True if access is granted.
 	 */
 	public function canAccess($module, $action=NULL) {
+
+		// reveal module/action type
+		if (is_null($action) and FALSE !== strpos($module, '/')) {
+			list($module,$action) = explode('/', $module);
+		}
 		
 		// user module is for login and personal profile
 		if ($this->admin or 'user'==$module) {
 			return TRUE;
 		}
 		
+		// acl is cached
 		$acl = $this->getAcl();
 
 		foreach ($acl as $rule) {
@@ -468,6 +474,8 @@ class User extends ActiveRecord {
 	
 	/**
 	 * Load the rule list for this user. Cached.
+	 * 
+	 * @return	array:stdClass
 	 */
 	protected function getAcl() {
 

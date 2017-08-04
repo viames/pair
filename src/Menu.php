@@ -102,9 +102,14 @@ class Menu {
 		$ret = '';
 
 		foreach ($this->items as $item) {
-
+			
+			// check on permissions
+			if (isset($item->url) and !$app->currentUser->canAccess($item->url)) {
+				continue;
+			}
+			
 			switch ($item->type) {
-
+				
 				// single menu item rendering
 				case 'single':
 
@@ -137,6 +142,11 @@ class Menu {
 					// builds each sub-item link
 					foreach ($item->list as $i) {
 
+						// check on permissions
+						if (isset($i->url) and !$app->currentUser->canAccess($i->url)) {
+							continue;
+						}
+						
 						if ($i->url == $app->activeMenuItem) {
 							$class		= ' active';
 							$menuClass	= ' open';
@@ -153,7 +163,12 @@ class Menu {
 							'<span class="title">' . $i->title . '</span>' .
 							'</a>';
 					}
-
+					
+					// prevent empty multi-menu
+					if ('' == $links) {
+						continue;
+					}
+					
 					// assembles the multi-menu
 					$ret .= '<div class="dropDownMenu' . $menuClass . '">' .
 						'<div class="title">' . $item->title . '</div>' .

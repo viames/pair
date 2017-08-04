@@ -132,7 +132,7 @@ class Application {
 			// default constants
 			$defaults = array(
 				'AUTH_SOURCE'		=> 'internal',
-				'BASE_URI'			=> '/',
+				'BASE_URI'			=> '',
 				'DBMS'				=> 'mysql',
 				'PRODUCT_NAME'		=> 'NewProduct',
 				'PRODUCT_VERSION'	=> '1.0',
@@ -538,7 +538,10 @@ class Application {
 
 		// login and logout
 		if ('login' == $route->action or 'logout' == $route->action) {
-
+			
+			// start the PHP session
+			session_start();
+			
 			// start controller
 			$apiCtl->$action();
 
@@ -574,7 +577,13 @@ class Application {
 
 	}
 
-	public function manageSession() {
+	/**
+	 * Start the session and set the User class (Pair/User or a custom one that inherites
+	 * from Pair/User).
+	 * 
+	 * @param	string	Custom user class (optional).
+	 */
+	public function manageSession($userClass = 'Pair\User') {
 	
 		// get required singleton instances
 		$logger	 = Logger::getInstance();
@@ -582,7 +591,7 @@ class Application {
 		$route	 = Router::getInstance();
 		$tran	 = Translator::getInstance();
 		
-		// start global PHP session
+		// start session or resume session started by runApi
 		session_start();
 		
 		// session time length in minutes
@@ -625,7 +634,7 @@ class Application {
 		Session::cleanOlderThan($sessionTime);
 		
 		// sets an empty user object
-		$this->setCurrentUser(new User());
+		$this->setCurrentUser(new $userClass());
 		
 		// user is not logged in
 		if (!$session->isLoaded()) {
@@ -645,7 +654,7 @@ class Application {
 			$session->extendTimeout();
 		
 			// create User object
-			$user = new User($session->idUser);
+			$user = new $userClass($session->idUser);
 			$this->setCurrentUser($user);
 		
 			$logger->addEvent('User session for ' . $user->fullName . ' is alive' .

@@ -89,7 +89,7 @@ class Router {
 		$this->url = $_SERVER['REQUEST_URI'];
 		
 		// remove baseUrl from URL
-		if (strpos($this->url,$this->baseUrl)===0) {
+		if ($this->baseUrl and strpos($this->url,$this->baseUrl)===0) {
 			$this->url = substr($this->url,strlen($this->baseUrl));
 		}
 		

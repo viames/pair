@@ -1447,10 +1447,10 @@ abstract class ActiveRecord {
 		$properties = array();
 
 		foreach ($binds as $property=>$field) {
-
+			
 			// check that property is in the args or that args is not defined at all
 			if (!count($args) or (isset($args[0]) and in_array($property, $args[0]))) {
-
+				
 				// assign the value to this object property
 				$this->__set($property, Input::get($property));
 

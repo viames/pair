@@ -39,6 +39,12 @@ class Logger {
 	private $events = array();
 	
 	/**
+	 * Flag force log disabled.
+	 * @var bool
+	 */
+	private $disabled = FALSE;
+	
+	/**
 	 * Disabled constructor.
 	 */
 	final private function __construct() {}
@@ -60,11 +66,24 @@ class Logger {
 	}
 
 	/**
+	 * Shutdown the log.
+	 */
+	final public function disable() {
+		
+		$this->disabled = TRUE;
+		
+	}
+
+	/**
 	 * Checks that logger is enabled by options and group of connected user.
 	 * 
 	 * @return boolean
 	 */
 	final public function isEnabled() {
+		
+		if ($this->disabled) {
+			return FALSE;
+		}
 		
 		$app = Application::getInstance();
 		$route = Router::getInstance();
