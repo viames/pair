@@ -528,7 +528,8 @@ class Application {
 		define('MODULE_PATH', 'modules/' . $name . '/');
 		require ('modules/' . $name . '/controller.php');
 		
-		$sid = $route->getParam('sid');
+		// reveal SID by both GET and POST
+		$sid = Input::get('sid');
 
 		$ctlName = $name . 'Controller';
 		$apiCtl = new $ctlName();
