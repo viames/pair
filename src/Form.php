@@ -27,13 +27,13 @@ class Form {
 	 * Chainable method.
 	 * 
 	 * @param	string	Control name.
-	 * @param	array	List of properties.
+	 * @param	array	List of attributes.
 	 * 
 	 * @return	FormControlInput
 	 */
-	public function addInput($name, $properties = array()) {
+	public function addInput($name, $attributes = array()) {
 
-		$control = new FormControlInput($name, $properties);
+		$control = new FormControlInput($name, $attributes);
 		$this->addControl($control);
 		
 		return $control;
@@ -44,13 +44,13 @@ class Form {
 	 * Adds an FormControlSelect object to this Form object. Chainable method.
 	 *
 	 * @param	string	Control name.
-	 * @param	array	List of properties.
+	 * @param	array	List of attributes.
 	 *
 	 * @return	FormControlSelect
 	 */
-	public function addSelect($name, $properties = array()) {
+	public function addSelect($name, $attributes = array()) {
 	
-		$control = new FormControlSelect($name, $properties);
+		$control = new FormControlSelect($name, $attributes);
 		$this->addControl($control);
 	
 		return $control;
@@ -61,13 +61,13 @@ class Form {
 	 * Adds an FormControlTextarea object to this Form object. Chainable method.
 	 *
 	 * @param	string	Control name.
-	 * @param	array	List of properties.
+	 * @param	array	List of attributes.
 	 *
 	 * @return	FormControlTextarea
 	 */
-	public function addTextarea($name, $properties = array()) {
+	public function addTextarea($name, $attributes = array()) {
 	
-		$control = new FormControlTextarea($name, $properties);
+		$control = new FormControlTextarea($name, $attributes);
 		$this->addControl($control);
 	
 		return $control;
@@ -78,13 +78,13 @@ class Form {
 	 * Adds an FormControlButton object to this Form object. Chainable method.
 	 *
 	 * @param	string	Control name.
-	 * @param	array	List of properties.
+	 * @param	array	List of attributes.
 	 *
 	 * @return	FormControlButton
 	 */
-	public function addButton($name, $properties = array()) {
+	public function addButton($name, $attributes = array()) {
 	
-		$control = new FormControlButton($name, $properties);
+		$control = new FormControlButton($name, $attributes);
 		$this->addControl($control);
 	
 		return $control;
@@ -126,7 +126,7 @@ class Form {
 	}
 	
 	/**
-	 * Assigns all properties of passed ActiveRecord children to controls with same name.
+	 * Assigns all attributes of passed ActiveRecord children to controls with same name.
 	 * 
 	 * @param	multitype	An object inherited by ActiveRecord.
 	 */
@@ -207,16 +207,20 @@ class Form {
 	}
 	
 	/**
-	 * Adds a common CSS class to all controls of this form at render time.
+	 * Adds a common CSS class to all controls of this form at render time. Chainable.
 	 * 
 	 * @param	string	CSS Class name.
+	 * 
+	 * @return	\Pair\Form
 	 */
 	public function addControlClass($class) {
 		
 		$this->controlClasses[] = $class;
 		
+		return $this;
+		
 	}
-
+	
 	/**
 	 * Create an HTML select control starting from an object array and setting a default
 	 * value (optional).
@@ -231,9 +235,9 @@ class Form {
 	 * 
 	 * @return	string
 	 */
-	public static function buildSelect($name, $list, $valName='value', $textName='text', $value=NULL, $properties=NULL, $prependEmpty=NULL) {
+	public static function buildSelect($name, $list, $valName='value', $textName='text', $value=NULL, $attributes=NULL, $prependEmpty=NULL) {
 		
-		$control = new FormControlSelect($name, $properties);
+		$control = new FormControlSelect($name, $attributes);
 		$control->setListByObjectArray($list, $valName, $textName)->setValue($value);
 		
 		if ($prependEmpty) {
@@ -250,14 +254,14 @@ class Form {
 	 * @param	string	Select’s name.
 	 * @param	array	Associative array value=>text for options.
 	 * @param	string	Value selected in this select (default NULL).
-	 * @param	string	Extended parameters as associative array tag=>value (optional).
+	 * @param	string	Extended attributes as associative array tag=>value (optional).
 	 * @param	string	Prepend empty value (default NULL, no prepend).
 	 * 
 	 * @return	string
 	 */
-	public static function buildSelectFromArray($name, $list, $value=NULL, $properties=NULL, $prependEmpty=NULL) {
+	public static function buildSelectFromArray($name, $list, $value=NULL, $attributes=NULL, $prependEmpty=NULL) {
 
-		$control = new FormControlSelect($name, $properties);
+		$control = new FormControlSelect($name, $attributes);
 		$control->setListByAssociativeArray($list)->prependEmpty($prependEmpty)->setValue($value);
 		return $control->render();
 	
@@ -273,9 +277,9 @@ class Form {
 	 * 
 	 * @return	string
 	 */
-	public static function buildInput($name, $value=NULL, $type='text', $properties=array()) {
+	public static function buildInput($name, $value=NULL, $type='text', $attributes=array()) {
 
-		$control = new FormControlInput($name, $properties);
+		$control = new FormControlInput($name, $attributes);
 		$control->setType($type)->setValue($value);
 		return $control->render();
 		
@@ -292,9 +296,9 @@ class Form {
 	 *
 	 * @return string
 	 */
-	public static function buildTextarea($name, $rows, $cols, $value=NULL, $properties=array()) {
+	public static function buildTextarea($name, $rows, $cols, $value=NULL, $attributes=array()) {
 
-		$control = new FormControlTextarea($name, $properties);
+		$control = new FormControlTextarea($name, $attributes);
 		$control->setRows($rows)->setCols($cols)->setValue($value);
 		return $control->render();
 
@@ -311,9 +315,9 @@ class Form {
 	 * 
 	 * @return	string
 	 */
-	public static function buildButton($value,  $type='submit', $name=NULL, $properties=array(), $faIcon=NULL) {
+	public static function buildButton($value,  $type='submit', $name=NULL, $attributes=array(), $faIcon=NULL) {
 
-		$control = new FormControlButton($name, $properties);
+		$control = new FormControlButton($name, $attributes);
 		$control->setValue($value)->setType($type)->setFaIcon($faIcon);
 		return $control->render();
 
@@ -337,7 +341,7 @@ abstract class FormControl {
 	
 	/**
 	 * Current value for this control object.
-	 * @var unknown
+	 * @var mixed
 	 */
 	private $value;
 	
@@ -384,10 +388,10 @@ abstract class FormControl {
 	private $maxLength;
 	
 	/**
-	 * List of optional properties as associative array.
+	 * List of optional attributes as associative array.
 	 * @var array:string
 	 */
-	private $properties = array();
+	private $attributes = array();
 	
 	/**
 	 * Container for all control CSS classes.
@@ -396,18 +400,12 @@ abstract class FormControl {
 	private $class = array();
 	
 	/**
-	 * Builds control with HTML name tag and optional properties.
+	 * Build control with HTML name tag and optional attributes.
 	 * 
 	 * @param	string	Control name.
-	 * @param	array	Optional properties (tag=>value).
+	 * @param	array	Optional attributes (tag=>value).
 	 */
-	public function __construct($name, $properties = array()) {
-		
-		// legacy
-		if (is_array($properties) and array_key_exists('class', $properties)) {
-			$this->addClass($properties['class']);
-			unset($properties['class']);
-		}
+	public function __construct($name, $attributes = array()) {
 		
 		// remove [] from array and set TRUE to arrayName property
 		if (substr($name, -2) == '[]') {
@@ -416,12 +414,12 @@ abstract class FormControl {
 		}
 		
 		$this->name			= $name;
-		$this->properties	= (array)$properties;
+		$this->attributes	= (array)$attributes;
 		
 	}
 	
 	/**
-	 * Will returns property’s value if set. Throw an exception and returns NULL if not set.
+	 * Return property’s value if set. Throw an exception and returns NULL if not set.
 	 *
 	 * @param	string	Property’s name.
 	 * @throws	Exception
@@ -483,7 +481,8 @@ abstract class FormControl {
 			$value->setTimezone($app->currentUser->getDateTimeZone());
 
 			// can be datetime or just date
-			$this->value = $value->format('datetime' == $this->type ? 'Y-m-d H:i' : 'Y-m-d');
+			$format = (isset($this->type) and 'date'==$this->type) ? $this->dateFormat : $this->datetimeFormat;
+			$this->value = $value->format($format);
 
 		} else {
 
@@ -623,7 +622,7 @@ abstract class FormControl {
 	}
 	
 	/**
-	 * Process and return the common control properties.
+	 * Process and return the common control attributes.
 	 * 
 	 * @return string
 	 */
@@ -652,9 +651,9 @@ abstract class FormControl {
 			$ret .= ' class="' . implode(' ', $this->class) . '"';
 		}
 		
-		// misc tag properties
-		foreach ($this->properties as $prop=>$val) {
-			$ret .= ' ' . $prop . '="' . addslashes($val) . '"';
+		// misc tag attributes
+		foreach ($this->attributes as $attr=>$val) {
+			$ret .= ' ' . $attr . '="' . addslashes($val) . '"';
 		}
 		
 		return $ret;
@@ -688,16 +687,36 @@ class FormControlInput extends FormControl {
 	protected $accept;
 	
 	/**
+	 * Default date format.
+	 * @var string
+	 */
+	protected $dateFormat = 'Y-m-d';
+	
+	/**
+	 * Default datetime format
+	 * @var string
+	 */
+	protected $datetimeFormat = 'Y-m-d H:i';
+	
+	/**
 	 * Extends parent constructor in order to sets default type to text.
 	 * 
 	 * @param	string	Control name.
-	 * @param	array	Additional properties (for instance, tag=>value).
+	 * @param	array	Additional attributes (tag=>value).
 	 */
-	public function __construct($name, $properties = array()) {
+	public function __construct($name, $attributes = array()) {
 		
-		parent::__construct($name, $properties);
+		parent::__construct($name, $attributes);
 		
 		$this->setType('text');
+		
+		if (defined('PAIR_FORM_DATE_FORMAT')) {
+			$this->setDateFormat(PAIR_FORM_DATE_FORMAT);
+		}
+		
+		if (defined('PAIR_FORM_DATETIME_FORMAT')) {
+			$this->setDatetimeFormat(PAIR_FORM_DATETIME_FORMAT);
+		}
 		
 	}
 	
@@ -729,7 +748,35 @@ class FormControlInput extends FormControl {
 		return $this;
 		
 	}
+	
+	/**
+	 * Set date format.
+	 *
+	 * @param	string	Date format.
+	 *
+	 * @return	FormControlInput
+	 */
+	public function setDateFormat($format) {
+
+		$this->dateFormat = $format;
+		return $this;
 		
+	}
+	
+	/**
+	 * Set datetime format.
+	 *
+	 * @param	string	Datetime format.
+	 *
+	 * @return	FormControlInput
+	 */
+	public function setDatetimeFormat($format) {
+		
+		$this->datetimeFormat = $format;
+		return $this;
+		
+	}
+	
 	/**
 	 * Renders and returns an HTML input form control.
 	 *
@@ -882,7 +929,7 @@ class FormControlInput extends FormControl {
 class FormControlSelect extends FormControl {
 
 	/**
-	 * Items list of stdClass objs with value and text properties.
+	 * Items list of stdClass objs with value and text attributes.
 	 * @var array
 	 */
 	private $list = array();
@@ -921,18 +968,18 @@ class FormControlSelect extends FormControl {
 	 * for value and text. It's a chainable method.
 	 * 
 	 * @param	array:stdClass	Object with value and text properties.
-	 * @param	string			Name of value property.
-	 * @param	string			Name of text property.
+	 * @param	string			Name of property’s value.
+	 * @param	string			Name of property’s text.
 	 * 
 	 * @return	FormControlSelect
 	 */
-	public function setListByObjectArray($list, $valueProperty, $textProperty) {
+	public function setListByObjectArray($list, $propertyValue, $propertyText) {
 
 		foreach ($list as $opt) {
 
 			$option			= new \stdClass();
-			$option->value	= $opt->$valueProperty;
-			$option->text	= $opt->$textProperty;
+			$option->value	= $opt->$propertyValue;
+			$option->text	= $opt->$propertyText;
 				
 			$this->list[]	= $option;
 

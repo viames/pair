@@ -295,7 +295,7 @@ abstract class ActiveRecord {
 				case 'DateTime':
 					if (is_a($this->$prop, 'DateTime')) {
 						$dt = clone($this->$prop);
-					$dt->setTimezone(new \DateTimeZone(BASE_TIMEZONE));
+						$dt->setTimezone(new \DateTimeZone(BASE_TIMEZONE));
 						$ret = $dt->format('Y-m-d H:i:s');
 					} else {
 						$ret = NULL;
@@ -928,7 +928,12 @@ abstract class ActiveRecord {
 			}  else {
 
 				// acquired as current user timezone
-				$this->$propertyName = new \DateTime($value, $dtz);
+				try {
+					$this->$propertyName = new \DateTime($value, $dtz);
+				} catch (\Exception $e) {
+					$this->$propertyName = NULL;
+					$this->addError($e->getMessage());
+				}
 				
 			}
 			

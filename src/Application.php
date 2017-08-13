@@ -523,6 +523,9 @@ class Application {
 		if (!trim($name) or $name != $route->module or !file_exists('modules/' . $name . '/controller.php')) {
 			return;
 		}
+		
+		$logger = Logger::getInstance();
+		$logger->disable();
 
 		// define module constant and require controller file
 		define('MODULE_PATH', 'modules/' . $name . '/');

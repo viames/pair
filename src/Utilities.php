@@ -81,13 +81,13 @@ class Utilities {
 			if ('cli' == php_sapi_name()) {
 				
 				print date(DATE_RFC2822) . "\nFatal error (" . $error['type'] . ') on file ' .
-					$error['file'] . ' line ' . $error['file'] . ': ' . $error['message'] . "\n";
+					$error['file'] . ' line ' . $error['line'] . ': ' . $error['message'] . "\n";
 
 			// format for an HTML web print
 			} else {
 
 				print '<div style="background-color:#f1f1f1;border:2px solid red;margin:10px 0;padding:12px 16px">A fatal error has been detected (' . $error['type'] . ') on file ' .
-					$error['file'] . ' line ' . $error['file'] . ': ' . $error['message'] . '</div>';
+					$error['file'] . ' line ' . $error['line'] . ': ' . $error['message'] . '</div>';
 
 			}
 		
