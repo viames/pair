@@ -1112,6 +1112,7 @@ abstract class ActiveRecord {
 		
 		$order		= '';
 		$orderClause= array();
+		$orderBy	= (array)$orderBy;
 		
 		if (is_array($filters)) {
 			
@@ -1143,7 +1144,7 @@ abstract class ActiveRecord {
 
 		}
 		
-		if (is_array($orderBy)) {
+		if (count($orderBy)) {
 			
 			foreach ($orderBy as $property => $direction) {
 				
@@ -1259,6 +1260,64 @@ abstract class ActiveRecord {
 	}
 	
 	/**
+	 * Get objects of inherited class as result of the query run.
+	 *
+	 * @param	string	Query to run.
+	 * @param	array	Optional bind parameters for query.
+	 *
+	 * @return	array:mixed
+	 */
+	final public static function getObjectsByQuery($query, $params=[]) {
+		
+		$app	= Application::getInstance();
+		$db		= Database::getInstance();
+		$class	= get_called_class();
+
+		// run query
+		$db->setQuery($query);
+		$list = $db->loadObjectList($params);
+		
+		// array to be returned
+		$objects = array();
+		
+		if (is_array($list) and isset($list[0])) {
+			
+			$binds = $class::getBinds();
+			
+			// get object properties from query
+			$fields  = get_object_vars($list[0]);
+			$customBinds = [];
+
+			// search for custom field names
+			foreach ($fields as $field=>$value) {
+				if (!array_search($field, $binds)) {
+					$customBinds[Utilities::getCamelCase($field)] = $field;
+				}
+			}
+
+			// build each object
+			foreach ($list as $row) {
+				
+				$object = new $class($row);
+
+				// populate custom properties
+				foreach ($customBinds as $customProp=>$customField) {
+					$object->$customProp = $row->$customField;
+				}
+				
+				$objects[] = $object;
+				
+			}
+			
+		}
+		
+		$app->logEvent('Loaded ' . count($objects) . ' ' . $class . ' objects with custom fields ' . implode(',', $customBinds));
+		
+		return $objects;
+		
+	}
+	
+	/**
 	 * Return TRUE if db record with passed primary or compound key exists. Faster method.
 	 * 
 	 * @param	mixed	Primary or compound key for this object table.
@@ -1270,7 +1329,7 @@ abstract class ActiveRecord {
 		// initialize some vars
 		$db			= Database::getInstance();
 		$class		= get_called_class();
-		$tableKey	= $class::TABLE_KEY;
+		$tableKey	= (array)$class::TABLE_KEY;
 		$conds		= array();
 
 		foreach ($tableKey as $field) {
@@ -1281,7 +1340,7 @@ abstract class ActiveRecord {
 		$db->setQuery('SELECT COUNT(1) FROM ' . $class::TABLE_NAME . ' WHERE ' . implode(' AND ', $conds));
 		
 		// execute and return value
-		return (bool)$db->loadCount($key);
+		return (bool)$db->loadCount((array)$key);
 		
 	}
 	

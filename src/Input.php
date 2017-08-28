@@ -144,8 +144,12 @@ class Input {
 			case 'date':
 			case 'datetime':
 				if ($val) {
-					$format = 'datetime'==$type ? '!Y-m-d H:i' : '!Y-m-d';
-					$val = \DateTime::createFromFormat($format, $val, $app->currentUser->getDateTimeZone());
+					if ('date' == $type) {
+						$format = defined('PAIR_FORM_DATE_FORMAT') ? PAIR_FORM_DATE_FORMAT : 'Y-m-d H:i';
+					} else {
+						$format = defined('PAIR_FORM_DATETIME_FORMAT') ? PAIR_FORM_DATETIME_FORMAT : 'Y-m-d';
+					}
+					$val = \DateTime::createFromFormat('!' . $format, $val, $app->currentUser->getDateTimeZone());
 					// not valid DateTime is FALSE
 					if (FALSE === $val) $val = NULL;
 				} else {

@@ -458,8 +458,14 @@ class Utilities {
 			
 			// if is set a locale date format, use it
 			if ($tran->stringExists('LC_DATETIME_FORMAT')) {
-			
-				$localeTimestamp = $dateTime->getTimestamp() + $dateTime->getOffset();
+
+				$localeTimestamp = $dateTime->getTimestamp();
+				
+				// add offset in case of UTC_DATE use
+				if (defined('UTC_DATE') and UTC_DATE) {
+					$localeTimestamp += $dateTime->getOffset();
+				}
+				
 				$humanDate = strftime($tran->translate('LC_DATETIME_FORMAT'), $localeTimestamp);
 			
 			// otherwise choose another format
@@ -905,6 +911,26 @@ class Utilities {
 		} else {
 			return FALSE;
 		}
+		
+	}
+	
+	/**
+	 * Convert a snake case variable name into camel case.
+	 *  
+	 * @param	string	Snake case variable name.
+	 * @param	bool	Optional to have first letter capital case.
+	 * 
+	 * @return	string
+	 */
+	public static function getCamelCase($varName, $capFirst=FALSE) {
+		
+		$camelCase = str_replace(' ', '', ucwords(str_replace('_', ' ', $varName)));
+		
+		if (!$capFirst and strlen($camelCase)>0) {
+			$camelCase[0] = lcfirst($camelCase[0]);
+		}
+		
+		return $camelCase;
 		
 	}
 
