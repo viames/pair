@@ -634,6 +634,7 @@ class Utilities {
 	 *
 	 * @param	string	Original file name needed for taking extension, fake name accepted.
 	 * @param	string	Path to file, with or without trailing slash.
+	 * 
 	 * @return	string
 	 */
 	public static function randomFilename($filename, $path) {

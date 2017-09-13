@@ -56,22 +56,22 @@ class Application {
 	private $pageContent = '';
 
 	/**
-	 * Contains a list of plain text javascript to add.
+	 * Contains a list of plain text script to add.
 	 * @var array:string
 	 */
-	private $scriptList = array();
+	private $scriptContent = array();
 
 	/**
-	 * Contains all JS files to load.
-	 * @var array:string
+	 * Contains all external script files to load.
+	 * @var array:stdClass
 	 */
-	private $jsList = array();
+	private $scriptFiles = array();
 
 	/**
 	 * Contains all CSS files to load.
 	 * @var array:string
 	 */
-	private $cssList = array();
+	private $cssFiles = array();
 
 	/**
 	 * Message list.
@@ -158,7 +158,8 @@ class Application {
 			ini_set('date.timezone', 'UTC');
 			define('BASE_TIMEZONE', 'UTC');
 		} else {
-			define('BASE_TIMEZONE', ini_get('date.timezone'));
+			$tz = date_default_timezone_get();
+			define('BASE_TIMEZONE', ($tz ? $tz : 'UTC'));
 		}
 		
 		// define full URL to web page index with trailing slash or NULL
@@ -382,29 +383,75 @@ class Application {
 	
 	public function addScript($script) {
 		
-		$this->scriptList[] = $script;
-		
-	}
-	
-	/**
-	 * Adds a Javascript file or library to the page head.
-	 * 
-	 * @param	string	Path to script, absolute or relative with no trailing slash.
-	 */
-	public function loadJs($file) {
-		
-		$this->jsList[] = $file;
+		$this->scriptContent[] = $script;
 		
 	}
 
 	/**
-	 * Adds a CSS file or library to the page head.
+	 * Legacy method to add a script.
+	 *
+	 * @param	string	Path to script, absolute or relative with no trailing slash.
+	 * 
+	 * @deprecated
+	 */
+	public function loadJs($src) {
+		
+		$this->loadScript($src);
+		
+	}
+	
+	/**
+	 * Set esternal script file load with optional attributes.
+	 * 
+	 * @param	string	Path to script, absolute or relative with no trailing slash.
+	 * @param	bool	Defer attribute (default FALSE).
+	 * @param	bool	Async attribute (default FALSE).
+	 * @param	array	Optional attribute list (type, integrity, crossorigin, charset).
+	 */
+	public function loadScript($src, $defer = FALSE, $async = FALSE, $attribs=[]) {
+		
+		// force casting to array
+		$attribs = (array)$attribs;
+		
+		// the script object
+		$script = new \stdClass();
+		
+		$script->src = $src;
+		
+		if ($defer)	$script->defer = TRUE;
+		if ($async) $script->async = TRUE;
+
+		// list of valid type attributes
+		$validTypes = ['text/javascript','text/ecmascript','application/javascript','application/ecmascript'];
+		
+		if (isset($attribs['type']) and in_array($attribs['type'], $validTypes)) {
+			$script->type = $attribs['type'];
+		}
+
+		if (isset($attribs['integrity']) and strlen(trim($attribs['integrity']))) {
+			$script->integrity = $attribs['integrity'];
+		}
+		
+		if (isset($attribs['crossorigin']) and strlen(trim($attribs['crossorigin']))) {
+			$script->crossorigin = $attribs['crossorigin'];
+		}
+		
+		if (isset($attribs['charset']) and strlen(trim($attribs['charset']))) {
+			$script->charset = $attribs['charset'];
+		}
+		
+		$this->scriptFiles[] = $script;
+		
+	}
+
+	/**
+	 * Useful to collect CSS file list and render tags into page head.
 	 * 
 	 * @param	string	Path to stylesheet, absolute or relative with no trailing slash.
 	 */
-	public function loadCss($file) {
+	public function loadCss($href) {
 	
-		$this->cssList[] = $file;
+		$this->cssFiles[] = $href;
 	
 	}
 	
@@ -862,31 +909,40 @@ class Application {
 
 		}
 				
-		// initialize CSS and JS
+		// initialize CSS and scripts
 		$this->pageStyles = '';
 		$this->pageScripts = '';
 
 		// collect stylesheets
-		foreach ($this->cssList as $css) {
+		foreach ($this->cssFiles as $href) {
 				
-			$this->pageStyles .= '<link rel="stylesheet" href="' . $css . '">' . "\n";
+			$this->pageStyles .= '<link rel="stylesheet" href="' . $href . '">' . "\n";
 				
 		}
 		
 		// collect script files
-		foreach ($this->jsList as $js) {
+		foreach ($this->scriptFiles as $script) {
 			
-			$this->pageScripts .= '<script src="' . htmlspecialchars($js) . '" type="text/javascript"></script>' . "\n";
+			// initialize attributes render
+			$attribsRender = '';
+
+			// render each attribute based on its variable type (string or boolean)
+			foreach ($script as $tag => $value) {
+				$attribsRender .= ' ' . (is_bool($value) ? $tag : $tag . '="' . htmlspecialchars($value) . '"');
+			}
+			
+			// add each script
+			$this->pageScripts .= '<script' . $attribsRender . '></script>' . "\n";
 			
 		}
 
 		// collect plain text scripts
-		if (count($this->scriptList) or count($this->messages)) {
+		if (count($this->scriptContent) or count($this->messages)) {
 
 			$this->pageScripts .= "<div id=\"scriptContainer\"><script>\n";
 			$this->pageScripts .= "$(document).ready(function(){\n";
 			
-			foreach ($this->scriptList as $s) {
+			foreach ($this->scriptContent as $s) {
 				$this->pageScripts .= $s ."\n";
 			}
 			
