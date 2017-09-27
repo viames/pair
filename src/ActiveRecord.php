@@ -1277,8 +1277,9 @@ abstract class ActiveRecord {
 		$db->setQuery($query);
 		$list = $db->loadObjectList($params);
 		
-		// array to be returned
-		$objects = array();
+		// array that returns and custom binds
+		$objects = [];
+		$customBinds = [];
 		
 		if (is_array($list) and isset($list[0])) {
 			
@@ -1286,7 +1287,6 @@ abstract class ActiveRecord {
 			
 			// get object properties from query
 			$fields  = get_object_vars($list[0]);
-			$customBinds = [];
 
 			// search for custom field names
 			foreach ($fields as $field=>$value) {

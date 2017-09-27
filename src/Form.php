@@ -244,6 +244,11 @@ class Form {
 			$control->prependEmpty($prependEmpty);
 		}
 		
+		if (isset($attributes['class'])) {
+			$control->addClass($attributes['class']);
+			unset($attributes['class']);
+		}
+		
 		return $control->render();
 
 	}
@@ -263,6 +268,12 @@ class Form {
 
 		$control = new FormControlSelect($name, $attributes);
 		$control->setListByAssociativeArray($list)->prependEmpty($prependEmpty)->setValue($value);
+		
+		if (isset($attributes['class'])) {
+			$control->addClass($attributes['class']);
+			unset($attributes['class']);
+		}
+		
 		return $control->render();
 	
 	}
@@ -281,6 +292,12 @@ class Form {
 
 		$control = new FormControlInput($name, $attributes);
 		$control->setType($type)->setValue($value);
+		
+		if (isset($attributes['class'])) {
+			$control->addClass($attributes['class']);
+			unset($attributes['class']);
+		}
+		
 		return $control->render();
 		
 	}
@@ -300,6 +317,12 @@ class Form {
 
 		$control = new FormControlTextarea($name, $attributes);
 		$control->setRows($rows)->setCols($cols)->setValue($value);
+		
+		if (isset($attributes['class'])) {
+			$control->addClass($attributes['class']);
+			unset($attributes['class']);
+		}
+		
 		return $control->render();
 
 	}
@@ -319,6 +342,12 @@ class Form {
 
 		$control = new FormControlButton($name, $attributes);
 		$control->setValue($value)->setType($type)->setFaIcon($faIcon);
+		
+		if (isset($attributes['class'])) {
+			$control->addClass($attributes['class']);
+			unset($attributes['class']);
+		}
+		
 		return $control->render();
 
 	}

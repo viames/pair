@@ -149,7 +149,7 @@ abstract class View {
 			// load files as script and add timestamp to ignore browser caching
 			foreach ($files as $file) {
 				$fullPath = $this->moduleUrl . '/js/' . $file;
-				$this->app->loadScript($fullPath . '?' . filemtime($fullPath), ['defer']);
+				$this->app->loadScript($fullPath . '?' . filemtime($fullPath), TRUE);
 			}
 				
 		}

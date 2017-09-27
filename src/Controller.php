@@ -309,7 +309,7 @@ abstract class Controller {
 			$view->display();
 		} else {
 			$this->enqueueError($this->translator->translate('RESOURCE_NOT_FOUND', $this->route->module . '/' . $this->route->action));
-			$this->redirect($this->route->module . '/default');
+			$this->redirect($this->route->module);
 		}
 		
 	}

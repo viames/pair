@@ -44,6 +44,12 @@ class Application {
 	private $state = array();
 
 	/**
+	 * List of temporary variables, stored also in the browser cookie.
+	 * @var array:mixed
+	 */
+	private $persistentState = array();
+	
+	/**
 	 * Web page title, in plain text.
 	 * @var string
 	 */
@@ -749,6 +755,8 @@ class Application {
 	public function setPersistentState($name, $value) {
 		
 		$name = $this->getCookiePrefix() . ucfirst($name);
+		
+		$this->persistentState[$name] = $value;
 				
 		setcookie($name, json_encode($value), NULL, '/');
 		
@@ -765,7 +773,9 @@ class Application {
 	
 		$name = $this->getCookiePrefix() . ucfirst($name);
 		
-		if (isset($_COOKIE[$name])) {
+		if (array_key_exists($name, $this->persistentState)) {
+			return $this->persistentState[$name];
+		} else if (isset($_COOKIE[$name])) {
 			return json_decode($_COOKIE[$name]);
 		} else {
 			return NULL;
@@ -781,6 +791,8 @@ class Application {
 	public function unsetPersistentState($name) {
 		
 		$name = $this->getCookiePrefix() . ucfirst($name);
+		
+		unset($this->persistentState[$name]);
 		
 		if (isset($_COOKIE[$name])) {
 			unset($_COOKIE[$name]);

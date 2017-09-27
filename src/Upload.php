@@ -87,33 +87,39 @@ class Upload {
 	public function __construct($fieldName) {
 
 		// check on field name
-		if (!isset($_FILES[$fieldName])) {
+		if (isset($_FILES[$fieldName])) {
+			
+			// assign file content array
+			$file = $_FILES[$fieldName];
+	
+			try {
+				// assign array values to the object properties
+				$this->filename		= $file['name'];
+				$this->formerName	= $file['name'];
+				$this->filesize		= $file['size'];
+				$this->fileError	= $file['error'];
+				$this->fileTmpname	= $file['tmp_name'];
+				$this->ext			= strtolower(substr($this->filename,strrpos($this->filename,'.')+1));
+				
+				// Sets MIME and type
+				$info = $this->getMime($file['tmp_name']);
+				$this->mime = $info->mime;
+				$this->type = $info->type;
+				
+				// sets file hash
+				$this->hash	= md5_file($file['tmp_name']);
+				
+			} catch (\Exception $e) {
+				
+				$this->setError('Unexpected $_FILES[\'' . $fieldName . '\' struct raised an error: ' . $e->getMessage());
+				
+			}
+			
+		} else {
+		
 			$this->setError('FIELD_NAME_IS_NOT_VALID');
+			
 		}
-		
-		// assign file content array
-		$file = $_FILES[$fieldName];
-
-		// check on the array
-		if (!is_array($file) or !isset($file['name']) or !isset($file['tmp_name'])) {
-			$this->setError('FILES_ARRAY_IS_NOT_VALID');
-		}
-		
-		// assign array values to the object properties
-		$this->filename		= $file['name'];
-		$this->formerName	= $file['name'];
-		$this->filesize		= $file['size'];
-		$this->fileError	= $file['error'];
-		$this->fileTmpname	= $file['tmp_name'];
-		$this->ext			= strtolower(substr($this->filename,strrpos($this->filename,'.')+1));
-		
-		// Sets MIME and type
-		$info = $this->getMime($file['tmp_name']);
-		$this->mime = $info->mime;
-		$this->type = $info->type;
-		
-		// sets file hash
-		$this->hash	= md5_file($file['tmp_name']);
 		
 	}
 	
