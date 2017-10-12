@@ -165,11 +165,12 @@ class Options {
 					
 					list ($val,$text)	= explode(',', $listEntry);
 					
-					$listItem			= new \stdClass(); 
-					$listItem->value	= $val;
-					$listItem->text 	= $text;
+					$listItem = new \stdClass();
 					
-					$o->listItems[]		= $listItem;
+					$listItem->value = $val;
+					$listItem->text  = $text;
+					
+					$o->listItems[] = $listItem;
 					
 				}
 				
@@ -197,7 +198,8 @@ class Options {
 		switch ($type) {
 	
 			default:
-			case 'text':	$value = (string)$value;	break;
+			case 'text':
+			case 'textarea':$value = (string)$value;	break;
 			case 'int':		$value = (int)$value;		break;
 			case 'bool':	$value = (bool)$value;		break;
 			case 'custom':	break;
