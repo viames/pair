@@ -538,15 +538,12 @@ abstract class ActiveRecord {
 	 */
 	final public function store() {
 		
-		$this->beforeStore();
-
+		// FIXME tries to update not-existing records in case of compound key
 		if ($this->isPopulated()) {
 			$res = $this->update();
 		} else {
 			$res = $this->create();
 		}
-
-		$this->afterStore();
 
 		return $res;
 		
@@ -573,9 +570,10 @@ abstract class ActiveRecord {
 		
 		$app = Application::getInstance();
 		
-		// trigger for tasks to be executed before creation
+		// hook for tasks to be executed before creation
 		$this->beforeCreate();
-
+		$this->beforeStore();
+		
 		// get list of class property names
 		$class = get_called_class();
 		$list = array_keys($class::getBinds());
@@ -613,7 +611,8 @@ abstract class ActiveRecord {
 			
 		$app->logEvent('Created a new ' . $class . ' object with ' . implode(', ' , $keyParts));
 		
-		// trigger for tasks to be executed before creation
+		// hook for tasks to be executed after creation
+		$this->afterStore();
 		$this->afterCreate();
 		
 		return (bool)$res;
@@ -640,7 +639,9 @@ abstract class ActiveRecord {
 	 */
 	final public function update($properties=NULL) {
 		
+		// hook for tasks to be executed before creation
 		$this->beforeUpdate();
+		$this->beforeStore();
 		
 		$app	= Application::getInstance();
 		$class	= get_called_class();
@@ -684,7 +685,9 @@ abstract class ActiveRecord {
 			$app->logError('The ' . $class . ' object with ' . $logParam . ' cannot be updated');
 
 		}
-
+		
+		// hook for tasks to be executed after creation
+		$this->afterStore();
 		$this->afterUpdate();
 		
 		return $res;
