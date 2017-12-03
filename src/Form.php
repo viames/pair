@@ -115,26 +115,13 @@ class Form {
 			$name = substr($name, 0, -2);
 		}
 		
-		if ($this->controlExists($name)) {
+		if (array_key_exists($name, $this->controls)) {
 			return $this->controls[$name];
 		} else {
 			$log = Logger::getInstance();
 			$log->addError('Field control “' . $name . '” has not been defined in Form object'); 
 			return NULL;
 		}
-		
-	}
-	
-	/**
-	 * Check whether the control exists.
-	 * 
-	 * @param	string	Control name.
-	 * 
-	 * @return	boolean
-	 */
-	public function controlExists($name) {
-		
-		return array_key_exists($name, $this->controls);
 		
 	}
 	
@@ -738,7 +725,7 @@ class FormControlInput extends FormControl {
 	 * Default datetime format
 	 * @var string
 	 */
-	protected $datetimeFormat = 'Y-m-d H:i:s';
+	protected $datetimeFormat = 'Y-m-d H:i';
 	
 	/**
 	 * Extends parent constructor in order to sets default type to text.
@@ -752,11 +739,11 @@ class FormControlInput extends FormControl {
 		
 		$this->setType('text');
 		
-		if (Input::usingCustomDatepicker() and defined('PAIR_FORM_DATE_FORMAT')) {
+		if (defined('PAIR_FORM_DATE_FORMAT')) {
 			$this->setDateFormat(PAIR_FORM_DATE_FORMAT);
 		}
 		
-		if (Input::usingCustomDatetimepicker() and defined('PAIR_FORM_DATETIME_FORMAT')) {
+		if (defined('PAIR_FORM_DATETIME_FORMAT')) {
 			$this->setDatetimeFormat(PAIR_FORM_DATETIME_FORMAT);
 		}
 		
@@ -829,29 +816,31 @@ class FormControlInput extends FormControl {
 		$ret = '<input ' . $this->getNameProperty();
 	
 		switch ($this->type) {
-
-            default:
-            case 'text':
-            case 'email':
-            case 'tel':
-            case 'url':
-            case 'color':
-            case 'password':
-            case 'number':
-                $ret .= ' type="' . htmlspecialchars($this->type) . '" value="' . htmlspecialchars($this->value) . '"';
-                break;
-
-            case 'bool':
-                $ret .= ' type="checkbox" value="1"';
-                if ($this->value) $ret .= ' checked="checked"';
-                break;
-                
-            case 'date':
-                $ret .= ' type="date" value="' . htmlspecialchars($this->value) . '"';
+				
+			default:
+			case 'text':
+			case 'email':
+			case 'tel':
+			case 'url':
+			case 'color':
+			case 'password':
+			case 'number':
+				$ret .= ' type="' . htmlspecialchars($this->type) . '" value="'. htmlspecialchars($this->value) .'"';
+				break;
+	
+			case 'bool':
+				$ret .= ' type="checkbox" value="1"';
+				if ($this->value) $ret .= ' checked="checked"';
+				break;
+	
+			case 'date':
+				$ret .= ' type="date" value="' . htmlspecialchars($this->value) . '"';
+				$this->addClass('datepicker');
 				break;
 
 			case 'datetime':
-				$ret .= ' type="datetime" value="' . htmlspecialchars($this->value) . '"';
+				$ret .= ' type="datetime-local" value="' . htmlspecialchars($this->value) . '"';
+				$this->addClass('datetimepicker');
 				break;
 				
 			case 'file':

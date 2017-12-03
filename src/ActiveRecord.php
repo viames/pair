@@ -924,7 +924,7 @@ abstract class ActiveRecord {
 		// data generic string datetime or date
 		} else if (is_string($value)) {
 			
-			if (in_array($value, ['0000-00-00 00:00:00','0000-00-00',''])) {
+			if ('0000-00-00 00:00:00'==$value or '0000-00-00'==$value) {
 
 				$this->$propertyName = NULL;
 
@@ -1518,10 +1518,8 @@ abstract class ActiveRecord {
 			// check that property is in the args or that args is not defined at all
 			if (!count($args) or (isset($args[0]) and in_array($property, $args[0]))) {
 				
-				if (Input::isSent($property)) {
-					// assign the value to this object property
-					$this->__set($property, Input::get($property));
-				}
+				// assign the value to this object property
+				$this->__set($property, Input::get($property));
 
 			}
 

@@ -14,10 +14,10 @@ namespace Pair;
 class Input {
 	
 	/**
-	 * Get data by POST or GET array returning the specified type or default value. In case
+	 * Gets data by POST or GET array returning the specified type or default value. In case
 	 * of not found, return default value. Manage array inputs.
 	 * 
-	 * @param	string	HTTP parameter name.
+	 * @param	string	Name of POST or GET parameter.
 	 * @param	string	Type string -default-, int, bool, date or datetime will be casted.
 	 * @param	string	Default value to return, in case of null or empty.
 	 * 
@@ -36,11 +36,6 @@ class Input {
 			case 'POST':
 				$request = &$_POST;
 				break;
-			
-			default:
-				$request = &$_REQUEST;
-				break;
-				
 		}
 					
 		// remove [] from array
@@ -73,85 +68,6 @@ class Input {
 			return self::castTo($default, $type);
 
 		}
-		
-	}
-	
-	/**
-	 * Check wheter a field was submitted in the REQUEST array.
-	 * 
-	 * @param	string	Field name.
-	 * 
-	 * @return	boolean
-	 */
-	public function isSent($name) {
-	
-		// remove [] from array
-		if (substr($name, -2) == '[]') {
-			$name = substr($name, 0, -2);
-		}
-		
-		// seeking a possible name
-		return (array_key_exists($name, $_REQUEST));
-			
-	}
-	
-	/**
-	 * Get data by POST or GET array returning an integer. In case
-	 * of not found, return default value. Manage array inputs.
-	 *
-	 * @param	string	HTTP parameter name.
-	 * @param	string	Default value to return, in case of null or empty.
-	 *
-	 * @return	int
-	 */
-	public static function getInt($name, $default=NULL) {
-		
-		return self::get($name, 'int', $default);
-		
-	}
-	
-	/**
-	 * Get data by POST or GET array returning an boolean. In case
-	 * of not found, return default value. Manage array inputs.
-	 *
-	 * @param	string	HTTP parameter name.
-	 * @param	string	Default value to return, in case of null or empty.
-	 *
-	 * @return	int
-	 */
-	public static function getBool($name, $default=NULL) {
-		
-		return self::get($name, 'bool', $default);
-		
-	}
-	
-	/**
-	 * Get data by POST or GET array returning a DateTime object or NULL. In case
-	 * of not found, return default value. Manage array inputs.
-	 *
-	 * @param	string	HTTP parameter name.
-	 * @param	string	Default value to return, in case of null or empty.
-	 *
-	 * @return	int
-	 */
-	public static function getDate($name, $default=NULL) {
-		
-		return self::get($name, 'date', $default);
-		
-	}
-	
-	/**
-	 * Get data by POST or GET array returning a DateTime object or NULL. In case
-	 * of not found, return default value. Manage array inputs.
-	 *
-	 * @param	string	HTTP parameter name.
-	 * @param	string	Default value to return, in case of null or empty.
-	 *
-	 * @return	int
-	 */
-	public static function getDatetime($name, $default=NULL) {
-		
-		return self::get($name, 'datetime', $default);
 		
 	}
 	
@@ -224,54 +140,27 @@ class Input {
 				$val = (bool)$val;
 				break;
 				
-			// creates a DateTime object from datepicker
+			// creates a DateTime object from datetimepicker
 			case 'date':
+			case 'datetime':
 				if ($val) {
-                    if ((defined('PAIR_FORM_DATE_FORMAT') and self::usingCustomDatepicker())) {
-                        $format = PAIR_FORM_DATE_FORMAT;
-                    } else {
-                        $format = 'Y-m-d';
-                    }
+					if ('date' == $type) {
+						$format = defined('PAIR_FORM_DATE_FORMAT') ? PAIR_FORM_DATE_FORMAT : 'Y-m-d H:i';
+					} else {
+						$format = defined('PAIR_FORM_DATETIME_FORMAT') ? PAIR_FORM_DATETIME_FORMAT : 'Y-m-d';
+					}
 					$val = \DateTime::createFromFormat('!' . $format, $val, $app->currentUser->getDateTimeZone());
-                    // DateTime is not set
+					// not valid DateTime is FALSE
 					if (FALSE === $val) $val = NULL;
 				} else {
 					$val = NULL;
 				}
 				break;
 
-            // creates a DateTime object from datetimepicker
-            case 'datetime':
-                if ($val) {
-                    if ((defined('PAIR_FORM_DATETIME_FORMAT') and self::usingCustomDatetimepicker())) {
-                        $format = PAIR_FORM_DATETIME_FORMAT;
-                    } else {
-                        $format = 'Y-m-d H:i:s';
-                    }
-                    $val = \DateTime::createFromFormat('!' . $format, $val, $app->currentUser->getDateTimeZone());
-                    // DateTime is not set
-                    if (FALSE === $val) $val = NULL;
-                } else {
-                    $val = NULL;
-                }
-                break;
-
 		}
 		
 		return $val;
 		
 	}
-
-	public static function usingCustomDatepicker() {
-
-	    return !(isset($_COOKIE['InputTypesDate']) and $_COOKIE['InputTypesDate']);
-
-	}
-
-    public static function usingCustomDatetimepicker() {
-
-        return !(isset($_COOKIE['InputTypesDatetime']) and $_COOKIE['InputTypesDatetime']);
-
-    }
-
+	
 }

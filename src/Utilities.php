@@ -632,26 +632,24 @@ class Utilities {
 	/**
 	 * Creates a random file name and checks it doesn’t exists.
 	 *
-	 * @param	string	File extension or the whole filename.
+	 * @param	string	Original file name needed for taking extension, fake name accepted.
 	 * @param	string	Path to file, with or without trailing slash.
 	 * 
 	 * @return	string
 	 */
-	public static function randomFilename($extension, $path) {
+	public static function randomFilename($filename, $path) {
 
 		// fixes path if not containing trailing slash
 		self::fixTrailingSlash($path);
 
-		$pathParts = pathinfo($extension);
-		$ext = isset($pathParts['extension']) ? $pathParts['extension'] : $extension;
-		
+		$ext		= substr($filename,strrpos($filename,'.'));
 		$newName	= substr(md5(microtime(TRUE)),0,10);
-		$filename	= $newName . '.' . $ext;
+		$filename	= $newName . $ext;
 
 		// in case exists, create a new name
 		while (file_exists($path . $filename)) {
 			$newName = substr(md5(microtime(TRUE)),0,10);
-			$filename = $newName . '.' . $ext;
+			$filename = $newName . $ext;
 		}
 
 		return $filename;
@@ -809,12 +807,12 @@ class Utilities {
 
 		if ('image' == $type) {
 			
-			$ret->tag	= 'class="popup-image"';
+			$ret->tag	= 'class="popupImage"';
 			$ret->class	= 'fa-file-image-o';
 
 		} else if ('video' == $type) {
 
-			$ret->tag	= 'class="popup-video"';
+			$ret->tag	= 'class="popupVideo"';
 			$ret->class	= 'fa-video-camera';
 			
 		} else if ('text' == $type) {
@@ -934,76 +932,6 @@ class Utilities {
 		}
 		
 		return $camelCase;
-		
-	}
-	
-	/**
-	 * Check if passed file is an Adobe PDF document.
-	 *
-	 * @param	string	Path to file.
-	 *
-	 * @return	NULL|bool
-	 */
-	public static function isPdf($file) {
-
-		return self::checkFileMime($file, ['application/pdf']);
-		
-	}
-
-	/**
-	 * Check if passed file is an image.
-	 *
-	 * @param	string	Path to file.
-	 *
-	 * @return	NULL|bool
-	 */
-	public static function isImage($file) {
-		
-		$validMime = [
-			'image/png',
-			'image/jpeg',
-			'image/gif',
-			'image/bmp',
-			'image/vnd.microsoft.icon',
-			'image/tiff',
-			'image/svg+xml'];
-		
-		return self::checkFileMime($file, $validMime);
-			
-	}
-
-	/**
-	 * Check if passed file is one of passed MIME Content Type. NULL in case of MIME extension
-	 * not installed.
-	 * 
-	 * @param	string	Path to file.
-	 * @param	string	Expected MIME Content Type.
-	 * 
-	 * @return	NULL|bool
-	 */
-	private static function checkFileMime($file, $validMime) {
-		
-		if (!function_exists('mime_content_type')) {
-			$app = Application::getInstance();
-			$app->enqueueError('The PHP extention mime_content_type is not installed');
-			return NULL;
-		}
-		
-		$pathParts = pathinfo($file);
-		$extension = $pathParts['extension'];
-		
-		// force to array
-		$validMime = (array)$validMime;
-
-		foreach ($validMime as $item) {
-		
-			if ($item == mime_content_type($file)) {
-				return TRUE;
-			}
-			
-		}
-		
-		return FALSE;
 		
 	}
 
