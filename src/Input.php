@@ -83,7 +83,7 @@ class Input {
 	 * 
 	 * @return	boolean
 	 */
-	public function isSent($name) {
+	public static function isSent($name) {
 	
 		// remove [] from array
 		if (substr($name, -2) == '[]') {

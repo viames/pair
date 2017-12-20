@@ -305,7 +305,7 @@ class Logger {
 		$ret.= '<div class="head">';
 		
 		// log date
-		$ret.= '<div class="item"><span class="icon fa fa-clock-o"></span><span class="emph">' . $timeStart->format('Y-m-d H:i:s') . '</span></div>';
+		$ret.= '<div class="item"><span class="icon fa fa-clock"></span><span class="emph">' . $timeStart->format('Y-m-d H:i:s') . '</span></div>';
 
 		// external api
 		$ret.= $apiChrono ? '<div class="item"><span class="icon fa fa-exchange"></span><span class="emph">API ' . $this->formatChrono($apiChrono) . '</span></div>' : '';

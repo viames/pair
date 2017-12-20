@@ -810,7 +810,7 @@ class Utilities {
 		if ('image' == $type) {
 			
 			$ret->tag	= 'class="popup-image"';
-			$ret->class	= 'fa-file-image-o';
+			$ret->class	= 'fa-file-image';
 
 		} else if ('video' == $type) {
 
@@ -820,7 +820,7 @@ class Utilities {
 		} else if ('text' == $type) {
 
 			$ret->tag	= 'target="_attach"';
-			$ret->class	= 'fa-file-text-o';
+			$ret->class	= 'fa-file';
 
 		} else if ('application' == $type) {
 
@@ -828,24 +828,24 @@ class Utilities {
 
 				case 'pdf':
 					$ret->tag	= 'target="_attach"';
-					$ret->class	= 'fa-file-pdf-o';
+					$ret->class	= 'fa-file-pdf';
 					break;
 
 				case 'msword':
 				case 'vnd.oasis.opendocument.text':
 				case 'vnd.openxmlformats-officedocument.wordprocessingml.document':
 					$ret->tag	= 'target="_attach"';
-					$ret->class	= 'fa-file-word-o';
+					$ret->class	= 'fa-file-word';
 					break;
 
 				case 'vnd.ms-excel':
 					$ret->tag	= 'target="_attach"';
-					$ret->class	= 'fa-file-excel-o';
+					$ret->class	= 'fa-file-excel';
 					break;
 
 				case 'zip':
 					$ret->tag	= '';
-					$ret->class	= 'fa-file-zip-o';
+					$ret->class	= 'fa-file-zip';
 					break;
 
 			}

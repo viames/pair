@@ -576,18 +576,13 @@ abstract class ActiveRecord {
 		
 		// get list of class property names
 		$class = get_called_class();
-		$list = array_keys($class::getBinds());
+		$props = array_keys($class::getBinds());
 		
-		$properties = array();
-		
-		// assemble list of not null properties
-		foreach ($list as $prop) {
-			if (!is_null($this->$prop)) $properties[] = $prop;
-		}
-		
-		$dbObj = $this->prepareData($properties);
+		// insert the object as db record
+		$dbObj = $this->prepareData($props);
 		$res = $this->db->insertObject($class::TABLE_NAME, $dbObj);
 
+		// get last insert id if not compound key
 		if (!static::hasCompoundKey()) {
 
 			$lastInsertId = $this->db->getLastInsertId();
@@ -608,7 +603,8 @@ abstract class ActiveRecord {
 		foreach ($this->keyProperty as $prop) {
 			$keyParts[] = $prop . '=' . $this->{$prop};
 		}
-			
+		
+		// log as application event
 		$app->logEvent('Created a new ' . $class . ' object with ' . implode(', ' , $keyParts));
 		
 		// hook for tasks to be executed after creation
