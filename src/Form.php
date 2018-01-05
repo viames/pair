@@ -741,6 +741,11 @@ class FormControlInput extends FormControl {
 	protected $datetimeFormat = 'Y-m-d H:i:s';
 	
 	/**
+	 * Step value for number input controls.
+	 */
+	protected $step;
+	
+	/**
 	 * Extends parent constructor in order to sets default type to text.
 	 * 
 	 * @param	string	Control name.
@@ -778,7 +783,7 @@ class FormControlInput extends FormControl {
 	}
 
 	/**
-	 * Set accepted file type by input field (only affects the “file” input).
+	 * Set accepted file type by input field (only affects the “file” input). Chainable method.
 	 * 
 	 * @param	string	File type: file_extension, audio/*, video/*, image/*, media_type.
 	 * 
@@ -792,7 +797,7 @@ class FormControlInput extends FormControl {
 	}
 	
 	/**
-	 * Set date format.
+	 * Set date format. Chainable method.
 	 *
 	 * @param	string	Date format.
 	 *
@@ -806,7 +811,7 @@ class FormControlInput extends FormControl {
 	}
 	
 	/**
-	 * Set datetime format.
+	 * Set datetime format. Chainable method.
 	 *
 	 * @param	string	Datetime format.
 	 *
@@ -815,6 +820,20 @@ class FormControlInput extends FormControl {
 	public function setDatetimeFormat($format) {
 		
 		$this->datetimeFormat = $format;
+		return $this;
+		
+	}
+	
+	/**
+	 * Set step value for input field of number type. Chainable method.
+	 *
+	 * @param	string	Integer or decimal value for this control.
+	 *
+	 * @return	FormControlInput
+	 */
+	public function setStep($value) {
+		
+		$this->step = $value;
 		return $this;
 		
 	}
@@ -882,6 +901,11 @@ class FormControlInput extends FormControl {
 		// set accept attribute
 		if ($this->accept) {
 			$ret .= ' accept="' . $this->accept . '"';
+		}
+		
+		// set step attribute
+		if ($this->step) {
+			$ret .= ' step="' . $this->step . '"';
 		}
 		
 		$ret .= $this->processProperties() . ' />';
@@ -1005,22 +1029,31 @@ class FormControlSelect extends FormControl {
 	
 	/**
 	 * Populates select control with an object array. Each object must have properties
-	 * for value and text. It's a chainable method.
+	 * for value and text. If property text includes a couple of round parenthesys, will
+	 * invoke a function without parameters. It’s a chainable method.
 	 * 
 	 * @param	array:stdClass	Object with value and text properties.
 	 * @param	string			Name of property’s value.
-	 * @param	string			Name of property’s text.
+	 * @param	string			Name of property’s text or an existent object function.
 	 * 
 	 * @return	FormControlSelect
 	 */
 	public function setListByObjectArray($list, $propertyValue, $propertyText) {
 
+		// for each list object, add an option
 		foreach ($list as $opt) {
-
+			
 			$option			= new \stdClass();
 			$option->value	= $opt->$propertyValue;
-			$option->text	= $opt->$propertyText;
-				
+
+			// check wheter the propertyText is a function call
+			if (FALSE !== strpos($propertyText,'()') and strpos($propertyText,'()')+2 == strlen($propertyText)) {
+				$functionName = substr($propertyText, 0, strrpos($propertyText,'()'));
+				$option->text = $opt->$functionName();
+			} else {
+				$option->text = $opt->$propertyText;
+			}
+			
 			$this->list[]	= $option;
 
 		}

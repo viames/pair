@@ -109,11 +109,11 @@ class Template extends ActiveRecord implements PluginInterface {
 			'name'			=> 'name',
 			'version'		=> 'version',
 			'dateReleased'	=> 'date_released',
-				'appVersion'	=> 'app_version',
+			'appVersion'	=> 'app_version',
 			'default'		=> 'is_default',
 			'installedBy'	=> 'installed_by',
 			'dateInstalled'	=> 'date_installed',
-				'derived'		=> 'derived',
+			'derived'		=> 'derived',
 			'palette'		=> 'palette');
 		
 		return $varFields;

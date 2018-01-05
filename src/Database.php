@@ -97,45 +97,43 @@ class Database {
 	private function openConnection($persistent=FALSE) {
 
 		// continue only if not already connected
-		if (!is_a($this->handler, 'PDO')) {
-		
-			try {
+		if (is_a($this->handler, 'PDO')) {
+			return;
+		}
 				
-				switch (DBMS) {
+		switch (DBMS) {
 					
-					default:
-					case 'mysql':
-						
-						$options = array(
-							\PDO::ATTR_PERSISTENT			=> (bool)$persistent,
-							\PDO::MYSQL_ATTR_INIT_COMMAND	=> "SET NAMES utf8",
-							\PDO::MYSQL_ATTR_FOUND_ROWS		=> TRUE);
-						
-						$dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME;
-						$this->handler = new \PDO($dsn, DB_USER, DB_PASS, $options);
-						break;
+			default:
+			case 'mysql':
+				$dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME;
+				$options = array(
+					\PDO::ATTR_PERSISTENT			=> (bool)$persistent,
+					\PDO::MYSQL_ATTR_INIT_COMMAND	=> "SET NAMES utf8",
+					\PDO::MYSQL_ATTR_FOUND_ROWS		=> TRUE);
+				break;
 	
-					case 'mssql':
-						
-						$dsn = 'dblib:host=' . DB_HOST . ';dbname=' . DB_NAME;
-						$this->handler = new \PDO($dsn, DB_USER, DB_PASS);
-						break;
+			case 'mssql':
+				$dsn = 'dblib:host=' . DB_HOST . ';dbname=' . DB_NAME;
+				$options = [];
+				break;
 				
-				}
+		}
 				
-				if (is_a($this->handler, 'PDO')) {
-					$logger = Logger::getInstance();
-					$logger->addEvent('Database is' . ($persistent ? ' persistently' : '') . ' connected');
-					$this->handler->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-				} else {
-					throw new \PDOException('Db handler is not valid, connection failed');
-				}
+		try {
 				
-			} catch (\PDOException $e) {
+			$this->handler = new \PDO($dsn, DB_USER, DB_PASS, $options);
 				
-				exit('Connection to database has failed: '. $e->getMessage());
-				
+			if (is_a($this->handler, 'PDO')) {
+				$logger = Logger::getInstance();
+				$logger->addEvent('Database is' . ($persistent ? ' persistently' : '') . ' connected');
+				$this->handler->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+			} else {
+				throw new \PDOException('Db handler is not valid, connection failed');
 			}
+				
+		} catch (\Exception $e) {
+
+			exit();
 
 		}
 		
@@ -455,10 +453,10 @@ class Database {
 		// converts all object properties in vars SQL ready
 		foreach (get_object_vars($object) as $k => $v) {
 			if (is_string($v) or is_numeric($v)) {
-				$fields[] = $k;
+				$fields[] = '`' . $k . '`';
 				$values[] = $this->quote($v);
 			} else if (is_null($v)) {
-				$fields[] = $k;
+				$fields[] = '`' . $k . '`';
 				$values[] = 'NULL';
 			}
 		}
@@ -496,7 +494,7 @@ class Database {
 			foreach (get_object_vars($object) as $k => $v) {
 				
 				if (!count($records))	{
-					$fields[] = $k;
+					$fields[] = '`' . $k . '`';
 				}
 				
 				$values[] = is_null($v) ? 'NULL' : $this->quote($v);
@@ -599,7 +597,7 @@ class Database {
 			} else if (is_null($v)) {
 				$values[] = 'NULL';
 			}
-			$fields[] = $k;
+			$fields[] = '`' . $k . '`';
 			$updates[] = $v!==NULL ? $k.'='.$this->quote($v) : $k.'=NULL';
 		}
 	
