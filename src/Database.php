@@ -668,6 +668,12 @@ class Database {
 	
 		$this->exec('SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci');
 	
+		$this->exec('SET character_set_client = "utf8",  character_set_connection = "utf8",' . 
+					' character_set_database = "utf8mb4", character_set_filesystem = "binary",' .
+					' character_set_results = "utf8", character_set_server = "utf8mb4",' .
+					' collation_connection = "utf8_general_ci", ' .
+					' collation_database = "utf8mb4_unicode_ci", collation_server = "utf8mb4_unicode_ci"');
+		
 	}
 
 	/**

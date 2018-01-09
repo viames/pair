@@ -29,7 +29,7 @@ class Widget {
 		
 		$logger = Logger::getInstance();
 		
-		$logger->addEvent('Rendering widget ' . $name);
+		$logger->addEvent('Rendering ' . $name . ' widget');
 		
 		$file = $this->scriptPath . $name .'.php';
 

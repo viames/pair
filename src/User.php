@@ -68,8 +68,8 @@ class User extends ActiveRecord {
 	protected $email;
 	
 	/**
-	 * If equals 1, this user is admin.
-	 * @var int
+	 * If TRUE, this user is admin.
+	 * @var bool
 	 */
 	protected $admin;
 	
@@ -178,11 +178,11 @@ class User extends ActiveRecord {
 			'languageId'=> 'language_id',
 			'ldapUser'	=> 'ldap_user',
 			'username'	=> 'username',
+			'hash'		=> 'hash',
 			'name'		=> 'name',
 			'surname'	=> 'surname',
 			'email'		=> 'email',
 			'admin'		=> 'admin',
-			'hash'		=> 'hash',
 			'enabled'	=> 'enabled',
 			'lastLogin'	=> 'last_login',
 			'faults'	=> 'faults');
@@ -463,7 +463,7 @@ class User extends ActiveRecord {
 		$acl = $this->getAcl();
 
 		foreach ($acl as $rule) {
-			if ($rule->module_name == $module and (!$action or 'default'==$action or !$rule->action or ($rule->action and $rule->action == $action))) {
+			if ($rule->module_name == $module and (!$rule->action or ($rule->action and $rule->action == $action))) {
 				return TRUE;
 			}
 		}

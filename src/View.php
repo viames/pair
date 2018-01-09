@@ -111,7 +111,7 @@ abstract class View {
 		$this->translator->module = $this->name;
 		
 		// sets the default menu item -- can be overwritten if needed
-		$this->app->activeMenuItem = $route->module . '/' . $route->action;
+		$this->app->activeMenuItem = $route->module;
 		
 	}
 	
