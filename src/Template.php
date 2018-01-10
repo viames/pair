@@ -29,12 +29,6 @@ class Template extends ActiveRecord implements PluginInterface {
 	protected $version;
 
 	/**
-	 * Flag for default template only.
-	 * @var int
-	 */
-	protected $default;
-	
-	/**
 	 * Publication date, properly converted when inserted into db.
 	 * @var DateTime
 	 */
@@ -45,6 +39,12 @@ class Template extends ActiveRecord implements PluginInterface {
 	 * @var string
 	 */
 	protected $appVersion;
+	
+	/**
+	 * Flag for default template only.
+	 * @var bool
+	 */
+	protected $default;	
 	
 	/**
 	 * User ID of installer.
@@ -87,13 +87,13 @@ class Template extends ActiveRecord implements PluginInterface {
 	 */
 	protected function init() {
 	
-		$this->bindAsDatetime('dateReleased', 'dateInstalled');
-		
 		$this->bindAsBoolean('default', 'derived');
-		
-		$this->bindAsInteger('id', 'installedBy');
 	
 		$this->bindAsCsv('palette');
+		
+		$this->bindAsDatetime('dateReleased', 'dateInstalled');
+		
+		$this->bindAsInteger('id', 'installedBy');
 	
 	}
 
@@ -109,11 +109,11 @@ class Template extends ActiveRecord implements PluginInterface {
 			'name'			=> 'name',
 			'version'		=> 'version',
 			'dateReleased'	=> 'date_released',
-			'appVersion'	=> 'app_version',
+				'appVersion'	=> 'app_version',
 			'default'		=> 'is_default',
 			'installedBy'	=> 'installed_by',
 			'dateInstalled'	=> 'date_installed',
-			'derived'		=> 'derived',
+				'derived'		=> 'derived',
 			'palette'		=> 'palette');
 		
 		return $varFields;
@@ -166,6 +166,7 @@ class Template extends ActiveRecord implements PluginInterface {
 	 * Checks if Template is already installed in this application.
 	 *
 	 * @param	string	Name of Template to search.
+	 * 
 	 * @return	boolean
 	 */
 	public static function pluginExists($name) {

@@ -30,7 +30,7 @@ class Session extends ActiveRecord {
 
 	/**
 	 * Property that binds db field timezone_offset.
-	 * @var string
+	 * @var float
 	 */
 	protected $timezoneOffset;
 
@@ -59,6 +59,8 @@ class Session extends ActiveRecord {
 			
 		$this->bindAsDatetime('startTime');
 		
+		$this->bindAsFloat('timezoneOffset');
+
 		$this->bindAsInteger('idUser');
 			
 	}

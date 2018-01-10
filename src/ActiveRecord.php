@@ -882,13 +882,21 @@ abstract class ActiveRecord {
 	}
 	
 	/**
-	 * Return the property PHP type (bool, int, DateTime, float or string).
+	 * Return the property PHP type (bool, DateTime, float, int or string).
 	 * 
 	 * @return string|NULL
 	 */
-	final private function getPropertyType($name) {
-		
-		return array_key_exists($name, $this->typeList) ? $this->typeList[$name] : 'string';
+	final public function getPropertyType($name) {
+
+		if (in_array($name, ['db', 'loadedFromDb', 'typeList', 'errors'])) {
+			$type = NULL;
+		} else if (array_key_exists($name, $this->typeList)) {
+			$type = $this->typeList[$name];
+		} else {
+			$type = 'string';
+		}
+
+		return $type;
 	
 	}
 	

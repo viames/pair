@@ -157,12 +157,12 @@ class User extends ActiveRecord {
 	 */
 	protected function init() {
 	
+		$this->bindAsBoolean('admin', 'enabled');
+		
 		$this->bindAsDatetime('lastLogin');
 		
 		$this->bindAsInteger('id', 'groupId', 'languageId', 'faults');
 		
-		$this->bindAsBoolean('admin', 'enabled');
-	
 	}
 	
 	/**

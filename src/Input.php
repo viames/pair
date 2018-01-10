@@ -211,7 +211,7 @@ class Input {
 				
 			case 'string':
 			case 'text':
-				$val = (string)trim($val);
+				$val = (string)$val;
 				break;
 		
 			case 'int':
