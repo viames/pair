@@ -63,7 +63,6 @@ abstract class ActiveRecord {
 		// initialize class name and property binds
 		$class = get_called_class();
 		$binds = $class::getBinds();
-
 		
 		$tableKey = (array)$class::TABLE_KEY;
 		

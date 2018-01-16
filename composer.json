@@ -1,7 +1,7 @@
 {
 	"name" : "viames/pair",
 	"description" : "a lightweight PHP framework as the air",
-	"version" : "1.0.0",
+	"version" : "1.1.0",
 	"require" : {
 		"php" : ">=5.6",
 		"ext-pdo" : "*"
