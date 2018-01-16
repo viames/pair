@@ -51,7 +51,7 @@ class Session extends ActiveRecord {
 	 * @var string
 	 */
 	const TABLE_KEY = 'id_session';
-		
+	
 	/**
 	 * Method called by constructor just after having populated the object.
 	 */

@@ -156,7 +156,7 @@ class User extends ActiveRecord {
 	 * Set for converts from string to Datetime, integer or boolean object in two ways.
 	 */
 	protected function init() {
-	
+		
 		$this->bindAsBoolean('admin', 'enabled');
 		
 		$this->bindAsDatetime('lastLogin');

@@ -1006,5 +1006,75 @@ class Utilities {
 		return FALSE;
 		
 	}
+	
+	/**
+	 * Scan the whole system searching for ActiveRecord classes. These will be include_once.
+	 *
+	 * @return	array[class][file,folder,tableName,constructor,getInstance]
+	 */
+	public static function getActiveRecordClasses() {
+		
+		$classes = array();
+		
+		// lambda method that check a folder and add each ActiveRecord class found
+		$checkFolder = function ($folder) use(&$classes) {
+			
+			if (!is_dir($folder)) return;
+			
+			$files = array_diff(scandir($folder), array('..', '.', '.DS_Store'));
+			
+			foreach ($files as $file) {
+				
+				// only .php files are included
+				if ('.php' != substr($file,-4)) continue;
+				
+				// include the file code
+				include_once ($folder . '/' . $file);
+				
+				// cut .php from file name
+				$class = substr($file, 0, -4);
+				
+				// Pair classes must prefix with namespace
+				if (PAIR_FOLDER == $folder) {
+					$class = 'Pair\\' . $class;
+				}
+				
+				// check on class exists
+				if (!class_exists($class)) continue;
+				
+				$reflection = new \ReflectionClass($class);
+				
+				// check on right parent and no abstraction
+				if (is_subclass_of($class, 'Pair\ActiveRecord') and !$reflection->isAbstract()) {
+					
+					$constructMethod = new \ReflectionMethod($class, '__construct');
+					$constructor = $constructMethod->isPublic() ? TRUE : FALSE;
+
+					$getInstance = method_exists($class, 'getInstance');
+					
+					$classes[$class] = ['file'=>$file, 'folder'=>$folder, 'tableName'=>$class::TABLE_NAME,
+							'constructor' => $constructor, 'getInstance' => $getInstance];
+					
+				}
+				
+			}
+			
+		};
+		
+		// Pair framework
+		$checkFolder(PAIR_FOLDER);
+		
+		// custom classes
+		$checkFolder('classes');
+		
+		// modules classes
+		$modules = array_diff(scandir('modules'), array('..', '.', '.DS_Store'));
+		foreach ($modules as $module) {
+			$checkFolder('modules/' . $module . '/classes');
+		}
+		
+		return $classes;
+		
+	}
 
 }

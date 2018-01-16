@@ -49,6 +49,12 @@ class Database {
 	private function __construct() {}
 		
 	/**
+	 * List of temporary table structures (describe, foreignKeys, inverseForeignKeys). 
+	 * @var array
+	 */
+	private $definitions = [];
+	
+	/**
 	 * Connects to db just the first time, returns singleton object everytime.
 	 * 
 	 * @return	Database
@@ -100,25 +106,25 @@ class Database {
 		if (is_a($this->handler, 'PDO')) {
 			return;
 		}
-				
+		
 		switch (DBMS) {
-					
+			
 			default:
 			case 'mysql':
-				$dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4';
+				$dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME;
 				$options = array(
 					\PDO::ATTR_PERSISTENT			=> (bool)$persistent,
 					\PDO::MYSQL_ATTR_INIT_COMMAND	=> "SET NAMES utf8",
 					\PDO::MYSQL_ATTR_FOUND_ROWS		=> TRUE);
 				break;
-	
+
 			case 'mssql':
 				$dsn = 'dblib:host=' . DB_HOST . ';dbname=' . DB_NAME;
 				$options = [];
 				break;
-				
+		
 		}
-				
+		
 		try {
 				
 			$this->handler = new \PDO($dsn, DB_USER, DB_PASS, $options);
@@ -130,11 +136,11 @@ class Database {
 			} else {
 				throw new \PDOException('Db handler is not valid, connection failed');
 			}
-				
+			
 		} catch (\Exception $e) {
 
 			exit();
-
+			
 		}
 		
 	}
@@ -543,9 +549,9 @@ class Database {
 		foreach (get_object_vars($object) as $field => $value) {
 				
 			if (is_null($value)) {
-				$sets[] = $field . ' = NULL';
+				$sets[] = '`' . $field . '` = NULL';
 			} else {
-				$sets[] = $field . ' = ?';
+				$sets[] = '`' . $field . '` = ?';
 				$fieldVal[] = $value;
 			}
 
@@ -612,27 +618,131 @@ class Database {
 	}
 	
 	/**
-	 * Returns the list of records that constraints the DB table of this object.
-	 * 
+	 * Returns the list of columns that are restricting a passed DB-table, an fk list.
+	 * Require grant on “references” permissions of connected db-user.
+	 *
 	 * @param	string	Name of table to check.
-	 * 
-	 * @return array:stdClass
+	 *
+	 * @return	stdClass[]
 	 */
-	public function getTableReferences($tableName) {
-	
-		$query =
-			'SELECT TABLE_NAME, COLUMN_NAME, REFERENCED_COLUMN_NAME' .
-			' FROM information_schema.KEY_COLUMN_USAGE' .
-			' WHERE REFERENCED_TABLE_NAME = ?' .
-			' AND TABLE_SCHEMA = ?';
-	
-		$this->setQuery($query);
-		$list = $this->loadObjectList([$tableName, DB_NAME]);
-	
-		return $list;
-	
-	}
+	public function getForeignKeys($tableName) {
 
+		if (!isset($this->definitions[$tableName]['foreignKeys'])) {
+			
+			// old-style join because of speedness
+			$query =
+				'SELECT k.CONSTRAINT_NAME, k.COLUMN_NAME, k.REFERENCED_TABLE_NAME,' .
+				' k.REFERENCED_COLUMN_NAME, r.UPDATE_RULE, r.DELETE_RULE' .
+				' FROM information_schema.KEY_COLUMN_USAGE AS k' .
+				' JOIN information_schema.REFERENTIAL_CONSTRAINTS AS r' .
+				' WHERE k.CONSTRAINT_NAME != "PRIMARY"' .
+				' AND k.TABLE_SCHEMA = ? AND k.TABLE_NAME = ?' .
+				' AND r.CONSTRAINT_SCHEMA = ? AND r.TABLE_NAME = ?' .
+				' AND k.CONSTRAINT_NAME = r.CONSTRAINT_NAME';
+			
+			$this->setQuery($query);
+			$this->definitions[$tableName]['foreignKeys'] = $this->loadObjectList([DB_NAME, $tableName, DB_NAME, $tableName]);
+
+		}
+		
+		return $this->definitions[$tableName]['foreignKeys'];
+		
+	}
+	
+	/**
+	 * Load and return the list of columns that are restricted by a passed DB-table, the inverse fk list.
+	 * Require grant on “references” permissions of connected db-user. Memory cached.
+	 * 
+	 * @param	string	Name of external table to check.
+	 * 
+	 * @return	stdClass[]
+	 */
+	public function getInverseForeignKeys($tableName) {
+		
+		if (!isset($this->definitions[$tableName]['inverseForeignKeys'])) {
+			
+			// old-style join because of speedness
+			$query =
+				'SELECT k.CONSTRAINT_NAME, k.REFERENCED_COLUMN_NAME, k.TABLE_NAME, ' .
+				' k.COLUMN_NAME, r.UPDATE_RULE, r.DELETE_RULE' .
+				' FROM information_schema.KEY_COLUMN_USAGE AS k' .
+				' JOIN information_schema.REFERENTIAL_CONSTRAINTS AS r' .
+				' WHERE k.CONSTRAINT_NAME != "PRIMARY"' .
+				' AND k.TABLE_SCHEMA = ? AND k.REFERENCED_TABLE_NAME = ?' .
+				' AND r.CONSTRAINT_SCHEMA = ? AND r.REFERENCED_TABLE_NAME = ?' .
+				' AND k.CONSTRAINT_NAME = r.CONSTRAINT_NAME';
+
+			$this->setQuery($query);
+			$this->definitions[$tableName]['inverseForeignKeys'] = $this->loadObjectList([DB_NAME, $tableName, DB_NAME, $tableName]);
+			
+		}
+		
+		return $this->definitions[$tableName]['inverseForeignKeys'];
+
+	}
+	
+	/**
+	 * Return data about table scheme. Memory cached.
+	 * 
+	 * @param	string	Name of table to describe.
+	 * 
+	 * @return	stdClass[]
+	 */
+	public function describeTable($tableName): array {
+	
+		if (!isset($this->definitions[$tableName]['describe'])) {
+			
+			$this->setQuery('DESCRIBE `' . $tableName . '`');
+			$res = $this->loadObjectList();
+			$this->definitions[$tableName]['describe'] = is_null($res) ? [] : $res;
+			
+		}
+		
+		return $this->definitions[$tableName]['describe'];
+		
+	}
+	
+	/**
+	 * Return data about a column scheme trying to load table description records by object cache.
+	 * FALSE in case of unvalid column name.
+	 *
+	 * @param	string	Name of table to describe.
+	 * @param	string	Column name.
+	 *
+	 * @return	stdClass|NULL
+	 */
+	public function describeColumn($tableName, $column) {
+		
+		// search in cached table structure
+		if (isset($this->definitions[$tableName]['describe'])) {
+			foreach ($this->definitions[$tableName]['describe'] as $d) {
+				if ($column == $d->Field) {
+					return $d;
+				}
+			}
+		}
+		
+		$this->setQuery('DESCRIBE `' . $tableName . '` `' . $column . '`' );
+		$res = $this->loadObject();
+		
+		return ($res ? $res : NULL);
+		
+	}
+	
+	/**
+	 * Check wheter a table exists by its name.
+	 *
+	 * @param	string	Table name.
+	 *
+	 * @return	boolean
+	 */
+	public function tableExists(string $tableName): bool {
+		
+		$this->setQuery('SHOW TABLES LIKE ?');
+		return (bool)$this->loadResult($tableName);
+		
+	}
+	
 	/**
 	 * Returns last inserted ID, if any.
 	 * 
@@ -722,7 +832,7 @@ class Database {
 	 */
 	private function logParamQuery($query, $result, $params) {
 		
-		$params  = (array)$params;
+		$params = (array)$params;
 
 		// indexed is binding with "?" 
 		$indexed = $params==array_values($params);

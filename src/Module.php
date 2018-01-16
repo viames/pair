@@ -58,7 +58,7 @@ class Module extends ActiveRecord implements PluginInterface {
 	 * @var string
 	 */
 	const TABLE_KEY = 'id';
-		
+	
 	/**
 	 * Method called by constructor just after having populated the object.
 	 */

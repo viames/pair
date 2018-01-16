@@ -127,6 +127,9 @@ class Application {
 		// application folder without trailing slash
 		define('APPLICATION_PATH',	dirname(dirname(dirname(dirname(dirname(__FILE__))))));
 		
+		// Pair folder
+		define('PAIR_FOLDER', substr(dirname(__FILE__), strlen(APPLICATION_PATH)+1));
+		
 		$config = APPLICATION_PATH . '/config.php';
 
 		// check configuration file
@@ -856,7 +859,7 @@ class Application {
 			// build controller object
 			$controllerName = ucfirst($route->module) . 'Controller';
 			$controller = new $controllerName();
-
+			
 			// set the action
 			$action = $route->action ? $route->action . 'Action' : 'defaultAction';
 

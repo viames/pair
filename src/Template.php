@@ -39,7 +39,7 @@ class Template extends ActiveRecord implements PluginInterface {
 	 * @var string
 	 */
 	protected $appVersion;
-	
+
 	/**
 	 * Flag for default template only.
 	 * @var bool
@@ -81,7 +81,7 @@ class Template extends ActiveRecord implements PluginInterface {
 	 * @var string
 	 */
 	const TABLE_KEY = 'id';
-
+	
 	/**
 	 * Converts from string to Datetime object in two ways.
 	 */
@@ -109,11 +109,11 @@ class Template extends ActiveRecord implements PluginInterface {
 			'name'			=> 'name',
 			'version'		=> 'version',
 			'dateReleased'	=> 'date_released',
-				'appVersion'	=> 'app_version',
+			'appVersion'	=> 'app_version',
 			'default'		=> 'is_default',
 			'installedBy'	=> 'installed_by',
 			'dateInstalled'	=> 'date_installed',
-				'derived'		=> 'derived',
+			'derived'		=> 'derived',
 			'palette'		=> 'palette');
 		
 		return $varFields;
@@ -182,7 +182,7 @@ class Template extends ActiveRecord implements PluginInterface {
 	/**
 	 * Creates and returns the Plugin object of this Template object.
 	 *
-	 * @return Plugin
+	 * @return	Plugin
 	 */
 	public function getPlugin() {
 	
@@ -213,7 +213,7 @@ class Template extends ActiveRecord implements PluginInterface {
 	/**
 	 * Returns list of all registered templates.
 	 * 
-	 * @return array:Template
+	 * @return	array:Template
 	 */
 	public static function getAllTemplates() {
 	
@@ -235,7 +235,7 @@ class Template extends ActiveRecord implements PluginInterface {
 	/**
 	 * Creates a list of colors boxes for this template.
 	 * 
-	 * @return string
+	 * @return	string
 	 */
 	public function getPaletteSamples() {
 		

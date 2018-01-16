@@ -71,6 +71,7 @@ class Plugin {
 	 * @param	string	Official plugin name.
 	 * @param	string	Version number.
 	 * @param	string	Date of public release in format Y-m-d.
+	 * @param	string	Application compatible version.
 	 * @param	string	Absolute path to plugin folder, without trailing slash.
 	 * @param	array	List of option fields (optional, specific to each plugin type).
 	 */

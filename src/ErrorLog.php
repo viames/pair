@@ -80,7 +80,7 @@ class ErrorLog extends ActiveRecord {
 	 * @var string
 	 */
 	const TABLE_KEY = 'id';
-		
+	
 	/**
 	 * Method called by constructor just after having populated the object.
 	 */

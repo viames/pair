@@ -64,6 +64,7 @@ abstract class ActiveRecord {
 		$class = get_called_class();
 		$binds = $class::getBinds();
 
+		
 		$tableKey = (array)$class::TABLE_KEY;
 		
 		// initialize property name
@@ -274,21 +275,21 @@ abstract class ActiveRecord {
 		// trigger before preparing data
 		$this->beforePrepareData();
 		
-		// force to array
-		$properties	= (array)$properties;
-		
-		$class = get_called_class();
-		$binds = $class::getBinds();
-		
 		// properly cast a property of this object and return it
 		$cast = function($prop) {
+			
+			$field = static::getMappedField($prop);
 
 			switch ($this->getPropertyType($prop)) {
 				
 				// integer or bool will cast to integer
 				case 'int':
 				case 'bool':
-					$ret = is_null($this->$prop) ? NULL : (int)$this->$prop;
+					if (is_null($this->$prop) and static::isNullable($field)) {
+						$ret = NULL;
+					} else {
+						$ret = (int)$this->$prop;
+					}
 					break;
 				
 				// should be DateTime, maybe null
@@ -297,8 +298,11 @@ abstract class ActiveRecord {
 						$dt = clone($this->$prop);
 						$dt->setTimezone(new \DateTimeZone(BASE_TIMEZONE));
 						$ret = $dt->format('Y-m-d H:i:s');
-					} else {
+					} else if (static::isNullable($field)) {
 						$ret = NULL;
+					} else {
+						$field = static::getColumnType($field);
+						$ret = 'date' == $field->type ? '0000-00-00' :'0000-00-00 00:00:00';
 					}
 					break;
 						
@@ -306,10 +310,24 @@ abstract class ActiveRecord {
 				case 'csv':
 					$ret = implode(',', array_filter($this->$prop));
 					break;
+					
+				case 'float':
+					if (is_null($this->$prop) and static::isNullable($field)) {
+						$ret = NULL;
+					} else {
+						setlocale(LC_NUMERIC, 'en_US');
+						$ret = (string)$this->$prop;
+					}
+					break;
 
 				// assign with no convertion
 				default:
-					$ret = $this->$prop;
+					if ((is_null($this->$prop) or (''==$this->$prop and !static::isEmptiable($field)))
+							and static::isNullable($field)) {
+						$ret = NULL;
+					} else {
+						$ret = $this->$prop;
+					}
 					break;
 					
 			}
@@ -317,6 +335,12 @@ abstract class ActiveRecord {
 			return $ret;
 			
 		};
+		
+		// force to array
+		$properties	= (array)$properties;
+
+		$class = get_called_class();
+		$binds = $class::getBinds();
 		
 		// create the return object
 		$dbObj = new \stdClass();
@@ -786,7 +810,7 @@ abstract class ActiveRecord {
 		$exists = FALSE;
 		
 		// get list of references to check
-		$references = $this->db->getTableReferences(static::TABLE_NAME);
+		$references = $this->db->getTableReferenced(static::TABLE_NAME);
 		
 		foreach ($references as $r) {
 			
@@ -880,6 +904,140 @@ abstract class ActiveRecord {
 		}
 	
 	}
+	
+	/**
+	 * Create an object for a table column configuration within an object or NULL if column
+	 * doesn’t exist.
+	 * 
+	 * @param	string	Field name.
+	 * 
+	 * @return	NULL|stdClass
+	 */
+	final private static function getColumnType($fieldName) {
+		
+		$db = Database::getInstance();
+		$column = $db->describeColumn(static::TABLE_NAME, $fieldName);
+		
+		if (is_null($column)) {
+			return NULL;
+		}
+		
+		// split the column Type to recognize field type and length
+		preg_match('#^([\w]+)(\([^\)]+\))? ?(unsigned)?#i', $column->Field, $matches);
+		
+		$field = new \stdClass();
+		
+		$field->name	= $fieldName;
+		$field->type	= $matches[1];
+		$field->unsigned= (isset($matches[3]));
+		$field->nullable= 'YES' == $column->Null ? TRUE : FALSE;
+		$field->key		= $column->Key;
+		$field->default	= $column->Default;
+		$field->extra	= $column->Extra;
+
+		if (isset($matches[2])) {
+			if (in_array($field->type, ['enum','set'])) {
+				$field->length = explode("','", substr($matches[2], 2, -2));
+			} else {
+				$field->length = explode(",", substr($matches[2], 1, -1));
+			}
+		} else {
+			$field->length = NULL;
+		}
+		
+		return $field;
+		
+	}
+	
+	/**
+	 * Check whether the DB-table-field is capable to store null values.
+	 * 
+	 * @param	string	DB-table-field name.
+	 * 
+	 * @return	bool|NULL
+	 */
+	final public static function isNullable($fieldName) {
+		
+		$db = Database::getInstance();
+		$column = $db->describeColumn(static::TABLE_NAME, $fieldName);
+		
+		if (is_null($column)) {
+			return NULL;
+		}
+		
+		return ('YES'==$column->Null ? TRUE : FALSE);
+		
+	}
+	
+	/**
+	 * Check whether the DB-table-field is capable to store empty strings.
+	 *
+	 * @param	string	DB-table-field name.
+	 *
+	 * @return	bool|NULL
+	 */
+	final public static function isEmptiable($fieldName) {
+		
+		$column = static::getColumnType($fieldName);
+		
+		if (is_null($column)) {
+			return NULL;
+		}
+		
+		$emptiables = ['CHAR','VARCHAR','TINYTEXT','TEXT','MEDIUMTEXT','BIGTEXT'];
+		
+		if (in_array($column->type, $emptiables) or ('ENUM' == $column->type and in_array('', $column->length))) {
+			return TRUE;
+		} else {
+			return FALSE;
+		}
+		
+		
+	}
+
+	/**
+	 * Check whether record of this object is deletable based on inverse foreign-key list.
+	 *
+	 * @return	bool
+	 */
+	public function isDeletable() {
+		
+		$inverseForeignKeys = $this->db->getInverseForeignKeys(static::TABLE_NAME);
+		
+		return TRUE;
+		
+		foreach ($inverseForeignKeys as $r) {
+			
+			// only if restrict it could be not deletable
+			if ('RESTRICT' != $r->DELETE_RULE) continue;
+			
+			// get the property name
+			$propertyName = $this->getMappedProperty($r->REFERENCED_COLUMN_NAME);
+			
+			return $this->checkForeignKey($r->TABLE_NAME, $r->COLUMN_NAME, $this->$propertyName);
+			
+		}
+		
+		// nothing found, is deletable
+		return TRUE;
+		
+	}
+	
+	/**
+	 * Check if a record with column=value exists.
+	 *
+	 * @return	bool
+	 */
+	private function checkRecordExists($table, $column, $value) {
+		
+		// buids the query
+		$this->db->setQuery('SELECT COUNT(1) FROM ' . $table . ' WHERE ' . $column . ' = ?');
+		
+		// search the record into the db
+		return (bool)$this->db->loadCount($value);
+		
+	}
+	
 	
 	/**
 	 * Return the property PHP type (bool, DateTime, float, int or string).
@@ -1001,59 +1159,6 @@ abstract class ActiveRecord {
 		
 		return (bool)$this->db->loadCount($this->getId());
 	
-	}
-	
-	/**
-	 * Class to self-test its children on properties-dbfields couples. Returns error count.
-	 * 
-	 * @return int
-	 */
-	final public function selfTest() {
-		
-		$app = Application::getInstance();
-		
-		$class = get_called_class();
-		
-		// count nr of errors found on each class
-		$errorCount = 0;
-		
-		// all binds
-		$binds = $class::getBinds();
-		
-		// all properties
-		$properties = get_object_vars($this);
-		
-		// all db fields
-		$this->db->setQuery('SHOW COLUMNS FROM ' . $this->db->escape($class::TABLE_NAME));
-		$dbFields = $this->db->loadResultList();
-		
-		foreach ($binds as $property=>$field) {
-			
-			// looks for object declared property and db bind field
-			if (!array_key_exists($property, $properties)) {
-				$errorCount++;
-				$app->logError('Class ' . $class . ' is missing property “' . $property . '”');
-			}
-			
-			if (!in_array($field, $dbFields)) {
-				$errorCount++;
-				$app->logError('Class ' . $class . ' is managing unexistent field “' . $field . '”');
-			}
-			
-		}
-		
-		// second scan for binding added db fields
-		foreach ($dbFields as $field) {
-				
-			if (!in_array($field, $binds)) {
-				$errorCount++;
-				$app->logError('Class ' . get_called_class() . ' is not binding “' . $field . '” in method getBinds()');
-			}
-				
-		}
-
-		return $errorCount;
-		
 	}
 	
 	/**
@@ -1500,6 +1605,34 @@ abstract class ActiveRecord {
 		return $properties;
 		
 	}
+	
+	/**
+	 * Get the name of class property mapped by db field. NULL if not found.
+	 * 
+	 * @param	string	Field name.
+	 * 
+	 * @return	NULL|string
+	 */
+	final static public function getMappedProperty($fieldName) {
+		
+		$binds = static::getBinds();
+		return in_array($fieldName, $binds) ? array_search($fieldName, $binds) : NULL;
+		
+	}
+	
+	/**
+	 * Get the name of db field mapped by a class property. NULL if not found.
+	 *
+	 * @param	string	Property name.
+	 *
+	 * @return	NULL|string
+	 */
+	final static public function getMappedField($propertyName) {
+		
+		$binds = static::getBinds();
+		return isset($binds[$propertyName]) ? $binds[$propertyName] : NULL;
+		
+	}
 
 	/**
 	 * Populates the inherited object with input vars with same name as properties.
@@ -1517,14 +1650,17 @@ abstract class ActiveRecord {
 
 		$properties = array();
 
-		foreach ($binds as $property=>$field) {
+		foreach ($binds as $property => $field) {
 			
 			// check that property is in the args or that args is not defined at all
 			if (!count($args) or (isset($args[0]) and in_array($property, $args[0]))) {
 				
-				if (Input::isSent($property)) {
+				$type = $this->getPropertyType($property);
+				
+				if (Input::isSent($property) or 'bool' == $type) {
+					
 					// assign the value to this object property
-					$this->__set($property, Input::get($property));
+					$this->__set($property, Input::get($property, $type));
 				}
 
 			}

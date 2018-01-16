@@ -45,7 +45,7 @@ class Rule extends ActiveRecord {
 	 * @var string
 	 */
 	const TABLE_KEY = 'id';
-
+	
 	/**
 	 * Set for converts from string to Datetime, integer or boolean object in two ways.
 	 */

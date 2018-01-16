@@ -856,9 +856,13 @@ class FormControlInput extends FormControl {
             case 'url':
             case 'color':
             case 'password':
-            case 'number':
                 $ret .= ' type="' . htmlspecialchars($this->type) . '" value="' . htmlspecialchars($this->value) . '"';
                 break;
+                
+            case 'number':
+            	setlocale(LC_NUMERIC, 'en_US');
+            	$ret .= ' type="number" value="' . htmlspecialchars($this->value) . '"';
+            	break;
 
             case 'bool':
                 $ret .= ' type="checkbox" value="1"';
@@ -1042,7 +1046,7 @@ class FormControlSelect extends FormControl {
 
 		// for each list object, add an option
 		foreach ($list as $opt) {
-			
+
 			$option			= new \stdClass();
 			$option->value	= $opt->$propertyValue;
 
@@ -1053,8 +1057,8 @@ class FormControlSelect extends FormControl {
 			} else {
 				$option->text = $opt->$propertyText;
 			}
-			
-			$this->list[]	= $option;
+				
+			$this->list[] = $option;
 
 		}
 
