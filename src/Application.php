@@ -108,6 +108,12 @@ class Application {
 	 * @var NULL|Template
 	 */
 	private $template;
+	
+	/**
+	 * Keep the name of a base template in case of derived one.
+	 * @var NULL|Template
+	 */
+	private $baseTemplate;
 
 	/**
 	 * Template-style’s file name (without extension).
@@ -255,13 +261,15 @@ class Application {
 			
 				// for login page we need a default template
 				$this->checkTemplate();
-				return 'templates/' . $this->template->name . '/';
+				$templateName = $this->template->derived ? $this->baseTemplate->name : $this->template->name;
+				$value = 'templates/' . $templateName . '/';
 				break;
 				
 			// useful in html tag to set language code
 			case 'langCode':
+				
 				$language = new Language($this->currentUser->languageId);
-				return $language->code;
+				$value = $language->code;
 				break;
 				
 			default:
@@ -269,23 +277,25 @@ class Application {
 				// search into variable assigned to the template as first
 				if (array_key_exists($name, $this->vars)) {
 			
-					return $this->vars[$name];
+					$value = $this->vars[$name];
 				
 				// then search in properties
 				} else if (property_exists($this, $name)) {
 					
-					return $this->$name;
+					$value = $this->$name;
 				
 				// then return NULL
 				} else {
 					
 					$this->logError('Property “'. $name .'” doesn’t exist for this object '. get_called_class());
-					return NULL;
+					$value = NULL;
 					
 				}
 				break;
 				
 		}
+		
+		return $value;
 	
 	}
 	
@@ -909,18 +919,17 @@ class Application {
 		// by default load template style
 		$styleFile = $templatesPath . $this->template->name . '/' . $this->style . '.php';
 
-		// in case of derived template, try to load style from default template
+		// in case of derived template, should load the base template
 		if ($this->template->derived) {
-
-			// if no template style, load default template style 
-			if (!file_exists($styleFile)) {
-				$defaultTemplate = Template::getDefault();
-				$styleFile = $templatesPath . $defaultTemplate->name . '/' . $this->style . '.php';
-			}
 
 			// try to load derived extend file
 			$derivedFile = $templatesPath . $this->template->name . '/derived.php';
 			if (file_exists($derivedFile)) require $derivedFile;
+
+			// if no template style, load default template style 
+			if (!file_exists($styleFile) and is_a($this->baseTemplate, 'Pair\Template')) {
+				$styleFile = $templatesPath . $this->baseTemplate->name . '/' . $this->style . '.php';
+			}
 
 		}
 				
@@ -1016,6 +1025,20 @@ class Application {
 		
 	}
 	
+	/**
+	 * Set the name of base template in case of derived one in use.
+	 * 
+	 * @param	string	Template name.
+	 */
+	final public function setBaseTemplate($templateName) {
+		
+		$this->baseTemplate = Template::getTemplateByName($templateName);
+		
+	}
+	
+	/**
+	 * If current selected template is not valid, replace it with the default one.
+	 */
 	final private function checkTemplate() {
 
 		if (!$this->template or !$this->template->isPopulated()) {

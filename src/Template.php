@@ -125,11 +125,6 @@ class Template extends ActiveRecord implements PluginInterface {
 	 */
 	protected function beforeDelete() {
 		
-		$default = Template::getDefault();
-		
-		$query = 'UPDATE instances SET template_id = ? WHERE template_id = ?';
-		$res = $this->db->exec($query, array($default->id, $this->id));
-		
 		// deletes template plugin folder
 		$plugin = $this->getPlugin();
 		$res = Utilities::deleteFolder($plugin->baseFolder);
@@ -203,11 +198,27 @@ class Template extends ActiveRecord implements PluginInterface {
 	 */
 	public static function getDefault() {
 	
-		$db  = Database::getInstance();
+		$db = Database::getInstance();
 		$db->setQuery('SELECT * FROM templates WHERE is_default=1');
 		$template = new Template($db->loadObject());
 		return $template;
 	
+	}
+	
+	/**
+	 * Load and return a Template object by its name.
+	 *
+	 * @param	string	Template name.
+	 *
+	 * @return	Template|NULL
+	 */
+	public static function getTemplateByName($name) {
+
+		$db = Database::getInstance();
+		$db->setQuery('SELECT * FROM templates WHERE name=?');
+		$obj = $db->loadObject($name);
+		return (is_a($obj, 'stdClass') ? new Template($obj) : NULL);
+		
 	}
 	
 	/**
