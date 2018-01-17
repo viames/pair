@@ -11,10 +11,10 @@ namespace Pair;
 class Session extends ActiveRecord {
 
 	/**
-	 * Property that binds db field id_session.
+	 * Property that binds db field id.
 	 * @var string
 	 */
-	protected $idSession;
+	protected $id;
 
 	/**
 	 * Property that binds db field id_user.
@@ -50,7 +50,7 @@ class Session extends ActiveRecord {
 	 * Name of primary key db field.
 	 * @var string
 	 */
-	const TABLE_KEY = 'id_session';
+	const TABLE_KEY = 'id';
 	
 	/**
 	 * Method called by constructor just after having populated the object.
@@ -73,7 +73,7 @@ class Session extends ActiveRecord {
 	protected static function getBinds() {
 		
 		$varFields = array (
-			'idSession'			=> 'id_session',
+			'id'				=> 'id',
 			'idUser'			=> 'id_user',
 			'startTime'			=> 'start_time',
 			'timezoneOffset'	=> 'timezone_offset',
@@ -103,7 +103,7 @@ class Session extends ActiveRecord {
 		$dateTime  = new \DateTime();
 		$startTime = Utilities::convertToDbDatetime($dateTime);
 		
-		$this->db->exec('UPDATE sessions SET start_time = ? WHERE id_session = ?', array($startTime, $this->idSession));
+		$this->db->exec('UPDATE sessions SET start_time = ? WHERE id = ?', array($startTime, $this->id));
 		
 	}
 	

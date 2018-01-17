@@ -32,7 +32,7 @@ class Language extends ActiveRecord {
 	 * Language name in english.
 	 * @var string
 	 */
-	protected $languageName;
+	protected $englishName;
 	
 	/**
 	 * Flag to set this language as default.
@@ -74,7 +74,7 @@ class Language extends ActiveRecord {
 			'id'			=> 'id',
 			'code'			=> 'code',
 			'representation'=> 'representation',
-			'languageName'	=> 'language_name',
+			'englishName'	=> 'english_name',
 			'default'		=> 'is_default');
 		
 		return $varFields;
@@ -202,7 +202,7 @@ class Language extends ActiveRecord {
 		}
 		
 		// second file line
-		$head .= "; " . $this->languageName . " language\n\n";
+		$head .= "; " . $this->englishName . " language\n\n";
 		
 		$lines = array();
 		

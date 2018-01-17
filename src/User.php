@@ -357,7 +357,7 @@ class User extends ActiveRecord {
 		// creates session
 		$session = new Session();
 
-		$session->idSession			= session_id();
+		$session->id				= session_id();
 		$session->idUser			= $this->id;
 		$session->startTime			= new \DateTime();
 		$session->timezoneOffset	= $offset;
@@ -389,7 +389,7 @@ class User extends ActiveRecord {
 		$db  = Database::getInstance();
 
 		// delete session
-		$res = $db->exec('DELETE FROM sessions WHERE id_session = ?', $sid);
+		$res = $db->exec('DELETE FROM sessions WHERE id = ?', $sid);
 
 		// unset all persistent states
 		$prefix = PRODUCT_NAME . '_';
