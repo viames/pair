@@ -672,7 +672,7 @@ abstract class FormControl {
 
 		$ret = '';
 
-		if ($this->required) {
+		if ($this->required and (!isset($this->type) or (isset($this->type) and 'bool' != $this->type))) {
 			$ret .= ' required';
 		}
 

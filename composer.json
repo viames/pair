@@ -1,7 +1,6 @@
 {
 	"name" : "viames/pair",
 	"description" : "lightweight PHP framework as the air",
-	"type" : "library",
 	"minimum-stability": "dev",
 	"require" : {
 		"php" : ">=5.6",
@@ -10,7 +9,7 @@
 	"repositories" : [
 		{
 			"type" : "composer",
-			"url" : "https://packagist.org/"
+			"url" : "https://packagist.org/packages/viames/pair"
 		},{
 			"type": "vcs",
 			"url": "https://github.com/Viames/Pair"
@@ -42,7 +41,8 @@
 		"source" : "https://github.com/Viames/Pair/tree/master/src"
 	},
 	"homepage" : "https://github.com/Viames/Pair",
-	"authors" : [{
+	"authors" : [
+		{
 			"name" : "Viames Marino",
 			"homepage" : "https://www.viames.it",
 			"role" : "Developer"

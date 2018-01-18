@@ -20,10 +20,10 @@ abstract class ActiveRecord {
 	protected $db;
 	
 	/**
-	 * ID name or name list for inherit object.
-	 * @var int|string|array
+	 * List of properties that maps db primary keys.
+	 * @var string[]
 	 */
-	protected $keyProperty;
+	protected $keyProperties;
 	
 	/**
 	 * TRUE if object has been loaded from database.
@@ -67,11 +67,11 @@ abstract class ActiveRecord {
 		$tableKey = (array)$class::TABLE_KEY;
 		
 		// initialize property name
-		$this->keyProperty = array();
+		$this->keyProperties = array();
 		
 		// find and assign each field of compound key as array item
 		foreach ($tableKey as $field) {
-			$this->keyProperty[] = array_search($field, $binds);
+			$this->keyProperties[] = array_search($field, $binds);
 		}
 		
 		$this->init();
@@ -83,7 +83,7 @@ abstract class ActiveRecord {
 			
 		// primary or compound key, loads the whole object from db
 		} else if (is_int($initParam) or (is_string($initParam) and strlen($initParam)>0)
-				or (static::hasCompoundKey() and count($this->keyProperty) == count($initParam))) {
+				or (static::hasCompoundKey() and count($this->keyProperties) == count($initParam))) {
 			
 			$this->loadFromDb($initParam);
 			
@@ -411,10 +411,10 @@ abstract class ActiveRecord {
 		$class = get_called_class();
 		
 		// properties to not reset
-		$propertiesToSave = array('keyProperty', 'db', 'loadedFromDb', 'typeList', 'cache', 'errors');
+		$propertiesToSave = array('keyProperties', 'db', 'loadedFromDb', 'typeList', 'cache', 'errors');
 		
 		// save key from being unset
-		$propertiesToSave = array_merge($propertiesToSave, $this->keyProperty);
+		$propertiesToSave = array_merge($propertiesToSave, $this->keyProperties);
 
 		// unset all the other properties
 		foreach ($this as $key => $value) {
@@ -479,15 +479,15 @@ abstract class ActiveRecord {
 	}
 	
 	/**
-	 * Check if key name is set as table key or is into compound key array for this object.
+	 * Check if a property is mapped to a table primary or compound key field for this object.
 	 * 
-	 * @param	string|int	Single key name.
+	 * @param	string	Single key name.
 	 * 
-	 * @return	boolean
+	 * @return	bool
 	 */
-	final private function isTableKey($keyName) {
+	final private function isKeyProperty($propertyName) {
 		
-		return (in_array($keyName, $this->keyProperty));
+		return (in_array($propertyName, $this->keyProperties));
 
 	}
 
@@ -519,7 +519,7 @@ abstract class ActiveRecord {
 	final private function getSqlKeyValues() {
 		
 		// force to array
-		$propertyNames = (array)$this->keyProperty;
+		$propertyNames = (array)$this->keyProperties;
 
 		// list to return
 		$values = array();
@@ -542,7 +542,7 @@ abstract class ActiveRecord {
 		$class = get_called_class();
 
 		// force to array
-		$properties = (array)$this->keyProperty;
+		$properties = (array)$this->keyProperties;
 
 		$keyParts = array();
 
@@ -610,7 +610,7 @@ abstract class ActiveRecord {
 
 			$lastInsertId = $this->db->getLastInsertId();
 		
-			$key = $this->keyProperty[0];
+			$key = $this->keyProperties[0];
 			
 			if ('int' == $this->getPropertyType($key)) {
 				$this->{$key} = (int)$lastInsertId;
@@ -623,7 +623,7 @@ abstract class ActiveRecord {
 		// set logs
 		$keyParts = array();
 			
-		foreach ($this->keyProperty as $prop) {
+		foreach ($this->keyProperties as $prop) {
 			$keyParts[] = $prop . '=' . $this->{$prop};
 		}
 		
@@ -681,7 +681,7 @@ abstract class ActiveRecord {
 			$dbObj = $this->prepareData($properties);
 
 			// force to array
-			$key = (array)$this->keyProperty;
+			$key = (array)$this->keyProperties;
 
 			$dbKey = new \stdClass();
 
@@ -922,7 +922,7 @@ abstract class ActiveRecord {
 		}
 		
 		// split the column Type to recognize field type and length
-		preg_match('#^([\w]+)(\([^\)]+\))? ?(unsigned)?#i', $column->Field, $matches);
+		preg_match('#^([\w]+)(\([^\)]+\))? ?(unsigned)?#i', $column->Type, $matches);
 		
 		$field = new \stdClass();
 		
@@ -1130,7 +1130,7 @@ abstract class ActiveRecord {
 		$varFields = $class::getBinds();
 
 		// create a new similar object that populates properly
-		$newObj = new $class($this->{$this->keyProperty});
+		$newObj = new $class($this->{$this->keyProperties});
 		
 		if (!$newObj) return TRUE;
 		
@@ -1669,58 +1669,104 @@ abstract class ActiveRecord {
 	}
 
 	/**
-	 * Generate a Form object with all controls populated and type based on variable.
+	 * Generate a Form object with proper controls type already populated with object properties.
 	 * 
 	 * @return	Form
 	 */
 	public function getForm() {
 
-		$props = $this->getAllProperties();
-
 		$form = new Form();
+		
+		// build a select control
+		$getSelectControl = function ($property, $field, $values) use ($form) {
+			
+			$control = $form->addSelect($property)->setListByAssociativeArray($values, $values);
+			
+			if (static::isNullable($field) or static::isEmptiable($field)) {
+				$control->prependEmpty();
+			}
+			
+			return $control;
+			
+		};
 
-		foreach ($props as $varName => $value) {
+		$properties = $this->getAllProperties();
+
+		// these db column types will go into a textarea
+		$textAreaTypes = ['tinytext', 'text', 'mediumtext', 'longtext'];
+
+		foreach ($properties as $propName => $value) {
+
+			$field = static::getMappedField($propName);
 
 			// primary key
-			if ($this->keyProperty == $varName) {
+			if ($this->isKeyProperty($propName)) {
 
-				$control = $form->addInput($varName)->setType('hidden');
+				$control = $form->addInput($propName)->setType('hidden');
 
 			} else {
+				
+				$column = static::getColumnType($field);
+				
+				switch ($this->getPropertyType($propName)) {
 
-				switch ($this->getPropertyType($varName)) {
-
-					// bool
+					// checkbox
 					case 'bool':
-						$control = $form->addInput($varName)->setType('bool');
+						$control = $form->addInput($propName)->setType('bool');
+						break;
+					
+					// date or datetime
+					case 'DateTime':
+						$type = 'date' == $column->type ? 'date' : 'datetime'; 
+						$control = $form->addInput($propName)->setType($type);
 						break;
 
-					// datatime
-					case 'DateTime':
-						$control = $form->addInput($varName)->setType('datetime');
+					// number with two decimals
+					case 'float':
+						$control = $form->addInput($propName)->setType('number')->setStep('0.01');
 						break;
 
 					// integer
 					case 'int':
-						$control = $form->addInput($varName)->setType('number');
+						$control = $form->addInput($propName)->setType('number');
 						break;
 
-					// TODO
+					// multiple select
 					case 'csv':
+						$control = $getSelectControl($propName, $field, $column->length);
+						$control->setMultiple();
+						break;
+					
+					// select, textarea or text
 					default:
-						$control = $form->addInput($varName);
+						if ('enum' == $column->type) {
+							$control = $getSelectControl($propName, $field, $column->length);
+						} else if ('set' == $column->type) {
+							$control = $getSelectControl($propName, $field, $column->length);
+							$control->setMultiple();
+						} else if (in_array($column->type, $textAreaTypes)) {
+							$control = $form->addTextarea($propName);
+						} else {
+							$control = $form->addInput($propName);
+						}
 						break;
 
 				}
 
 			}
+			
+			// check if is required
+			if (!static::isNullable($field) and !static::isEmptiable($field)) {
+				$control->setRequired();
+			}
 
+			// set the object value
 			$control->setValue($value);
 
 		}
 
 		return $form;
-
+		
 	}
 	
 	/**
@@ -1732,7 +1778,7 @@ abstract class ActiveRecord {
 		
 		$ids = array();
 			
-		foreach ($this->keyProperty as $propertyName) {
+		foreach ($this->keyProperties as $propertyName) {
 			$ids[] = $this->{$propertyName};
 		}
 		
