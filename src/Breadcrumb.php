@@ -28,9 +28,13 @@ class Breadcrumb {
 	private function __construct() {
 		
 		$app = Application::getInstance();
-		$landing = $app->currentUser->getLanding();
-		$resource = $landing->module . '/' . $landing->action;
-		$this->addPath('Home', $resource);
+		
+		// add user-landing path if user is available
+		if (is_a($app->currentUser, 'Pair\User')) {
+			$landing = $app->currentUser->getLanding();
+			$resource = $landing->module . '/' . $landing->action;
+			$this->addPath('Home', $resource);
+		}
 
 	}
 	

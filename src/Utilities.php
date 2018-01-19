@@ -1010,7 +1010,7 @@ class Utilities {
 	/**
 	 * Scan the whole system searching for ActiveRecord classes. These will be include_once.
 	 *
-	 * @return	array[class][file,folder,tableName,constructor,getInstance]
+	 * @return	array[class][file,folder,tableName,constructor,getInstance,pair]
 	 */
 	public static function getActiveRecordClasses() {
 		
@@ -1037,6 +1037,9 @@ class Utilities {
 				// Pair classes must prefix with namespace
 				if (PAIR_FOLDER == $folder) {
 					$class = 'Pair\\' . $class;
+					$pair = TRUE;
+				} else {
+					$pair = FALSE;
 				}
 				
 				// check on class exists
@@ -1053,7 +1056,7 @@ class Utilities {
 					$getInstance = method_exists($class, 'getInstance');
 					
 					$classes[$class] = ['file'=>$file, 'folder'=>$folder, 'tableName'=>$class::TABLE_NAME,
-							'constructor' => $constructor, 'getInstance' => $getInstance];
+							'constructor' => $constructor, 'getInstance' => $getInstance, 'pair' => $pair];
 					
 				}
 				

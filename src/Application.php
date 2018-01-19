@@ -122,6 +122,12 @@ class Application {
 	private $style = 'default';
 
 	/**
+	 * List of modules that can run with no authentication required.
+	 * @var string[]
+	 */
+	private $guestModules = [];
+	
+	/**
 	 * Private constructor called by getInstance(). No Logger calls here.
 	 */
 	private function __construct() {
@@ -646,6 +652,19 @@ class Application {
 		exit();
 
 	}
+	
+	/**
+	 * Add the name of a module to the list of guest modules, for which authorization is not required.
+	 * 
+	 * @param	string	Module name.
+	 */
+	public function setGuestModule($moduleName) {
+		
+		if (!in_array($moduleName, $this->guestModules)) {
+			$this->guestModules[] = $moduleName;
+		}
+		
+	}
 
 	/**
 	 * Start the session and set the User class (Pair/User or a custom one that inherites
@@ -666,6 +685,10 @@ class Application {
 		
 		// session time length in minutes
 		$sessionTime = $options->getValue('session_time');
+		
+		if (in_array($route->module, $this->guestModules)) {
+			return;
+		}
 		
 		// get existing previous session
 		$session = new Session(session_id());
