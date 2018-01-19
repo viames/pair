@@ -2,6 +2,7 @@
 light weight and versatile PHP framework
 
 [![Latest Stable Version](https://poser.pugx.org/viames/pair/v/stable)](https://packagist.org/packages/viames/pair)
+[![Total Downloads](https://poser.pugx.org/viames/pair/downloads)](https://packagist.org/packages/viames/pair)
 [![Latest Unstable Version](https://poser.pugx.org/viames/pair/v/unstable)](https://packagist.org/packages/viames/pair)
 [![License](https://poser.pugx.org/viames/pair/license)](https://packagist.org/packages/viames/pair)
 [![composer.lock](https://poser.pugx.org/viames/pair/composerlock)](https://packagist.org/packages/viames/pair)
