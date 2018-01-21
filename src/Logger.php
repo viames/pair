@@ -314,7 +314,7 @@ class Logger {
 		$ret.= '<div class="item database multi' . ($showQueries ? ' active' : '') . '"><div class="icon fa fa-database"></div><div class="desc"><span class="emph">' . $queryCount .'</span> queries <div class="sub">(' . $this->formatChrono($queryChrono) .')</div></div></div>';
 		
 		// total time
-		$ret.= '<div class="item"><span class="icon fa fa-tachometer"></span><span class="emph">' . $this->formatChrono($sum) .'</span> total</div>';
+		$ret.= '<div class="item"><span class="icon fa fa-tachometer-alt"></span><span class="emph">' . $this->formatChrono($sum) .'</span> total</div>';
 		
 		// memory peak
 		$ret.= '<div class="item"><span class="icon fa fa-heartbeat"></span><span class="emph">' . floor(memory_get_peak_usage()/1024/1024) . ' MB</span> memory</div>';
