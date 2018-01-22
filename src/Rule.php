@@ -87,16 +87,38 @@ class Rule extends ActiveRecord {
 	}
 	
 	/**
-	 * Returns the current Rule object, NULL otherwise.
-	 *
-	 * @return	Rule|NULL
+	 * Return related Module object. Cached.
+	 * 
+	 * @return	Module
 	 */
-	public static function getRuleModuleName($module_id,$action, $adminOnly) {
+	public function getModule() {
+		
+		$class	= 'Module';
+		$id		= $this->moduleId;
+		
+		if (!$this->issetCache($class)) {
+			$this->setCache($class, new Module($id));
+		}
+		
+		return $this->getCache($class);
+		
+	}
+	
+	/**
+	 * Returns the db-record of the current Rule object, NULL otherwise.
+	 * 
+	 * @param	int		Module ID.
+	 * @param	string	Action name.
+	 * @param	bool	Flag to get admin-only rules.
+	 *
+	 * @return	stdClass|NULL
+	 */
+	public static function getRuleModuleName($module_id, $action, $adminOnly) {
 
 		$db = Database::getInstance();
 
 		$query =
-			' SELECT m.name as moduleName,r.action as ruleAction, r.admin_only '.
+			' SELECT m.name as moduleName, r.action as ruleAction, r.admin_only '.
 			' FROM rules as r '.
 			' INNER JOIN modules as m ON m.id = r.module_id '.
 			' WHERE m.id = ? and r.action = ? and r.admin_only = ?';
