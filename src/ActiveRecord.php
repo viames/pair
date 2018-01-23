@@ -1003,8 +1003,6 @@ abstract class ActiveRecord {
 		
 		$inverseForeignKeys = $this->db->getInverseForeignKeys(static::TABLE_NAME);
 		
-		return TRUE;
-		
 		foreach ($inverseForeignKeys as $r) {
 			
 			// only if restrict it could be not deletable
@@ -1013,7 +1011,7 @@ abstract class ActiveRecord {
 			// get the property name
 			$propertyName = $this->getMappedProperty($r->REFERENCED_COLUMN_NAME);
 			
-			return $this->checkForeignKey($r->TABLE_NAME, $r->COLUMN_NAME, $this->$propertyName);
+			return !$this->checkRecordExists($r->TABLE_NAME, $r->COLUMN_NAME, $this->$propertyName);
 			
 		}
 		
