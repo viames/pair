@@ -43,7 +43,7 @@ composer require viames/pair dev-master
 
 ### Don’t have Composer?
 
-You can download it here: [https://getcomposer.org/](https://getcomposer.org/)
+You can download it here: https://getcomposer.org/download/
 
 ## Examples
 
