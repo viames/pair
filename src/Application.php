@@ -16,18 +16,21 @@ class Application {
 	/**
 	 * Framework version.
 	 * @var string
+	 * @deprecated
 	 */
 	const VERSION = '1.0';
 
 	/**
 	 * Framework build.
 	 * @var string
+	 * @deprecated
 	 */
 	const BUILD = '1557';
 
 	/**
 	 * Framework date of last change.
 	 * @var string
+	 * @deprecated
 	 */
 	const DATE = '2016-11-30 09:33:01Z';
 
@@ -143,35 +146,31 @@ class Application {
 		define('PAIR_FOLDER', substr(dirname(__FILE__), strlen(APPLICATION_PATH)+1));
 		
 		$config = APPLICATION_PATH . '/config.php';
-
-		// check configuration file
-		if (file_exists($config)) {
-
-			// load configuration constants
-			require $config;
 		
-			// default constants
-			$defaults = array(
-				'AUTH_SOURCE'		=> 'internal',
-				'BASE_URI'			=> '',
-				'DBMS'				=> 'mysql',
-				'PRODUCT_NAME'		=> 'NewProduct',
-				'PRODUCT_VERSION'	=> '1.0',
-				'UTC_DATE'			=> TRUE
-			);
-	
-			// set default constants in case of missing
-			foreach ($defaults as $key=>$val) {
-				if (!defined($key)) {
-					define($key, $val);
-				}
+		// check config file or start installation
+		if (!file_exists($config)) {
+			include 'installer/start.php';
+			exit();
+		}
+		
+		// load configuration constants
+		require $config;
+		
+		// default constants
+		$defaults = array(
+			'AUTH_SOURCE'		=> 'internal',
+			'BASE_URI'			=> '',
+			'DBMS'				=> 'mysql',
+			'PRODUCT_NAME'		=> 'NewProduct',
+			'PRODUCT_VERSION'	=> '1.0',
+			'UTC_DATE'			=> TRUE
+		);
+		
+		// set default constants in case of missing
+		foreach ($defaults as $key=>$val) {
+			if (!defined($key)) {
+				define($key, $val);
 			}
-
-		} else {
-
-			// config file doesn’t exist, start install
-			require APPLICATION_PATH . '/install.php';
-			
 		}
 		
 		// force php server date to UTC
@@ -225,7 +224,13 @@ class Application {
 			
 		}
 		
-		// default page title, will be overwritten
+		// force utf8mb4
+		if (defined('DB_UTF8') and DB_UTF8) {
+			$db = Database::getInstance();
+			$db->setUtf8unicode();
+		}
+		
+		// default page title, maybe overwritten
 		$this->pageTitle = PRODUCT_NAME;
 
 		// raw calls will jump templates inclusion, so turn-out output buffer
@@ -412,19 +417,6 @@ class Application {
 		
 	}
 
-	/**
-	 * Legacy method to add a script.
-	 *
-	 * @param	string	Path to script, absolute or relative with no trailing slash.
-	 * 
-	 * @deprecated
-	 */
-	public function loadJs($src) {
-		
-		$this->loadScript($src);
-		
-	}
-	
 	/**
 	 * Set esternal script file load with optional attributes.
 	 * 
