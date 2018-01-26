@@ -120,7 +120,7 @@ class Logger {
 		
 		$this->timeStart = $this->lastChrono = $this->getMicrotime();
 		
-		$this->addEvent('Starting Pair framework ' . Application::VERSION . ', base timezone is ' . BASE_TIMEZONE);
+		$this->addEvent('Starting Pair framework with base timezone ' . BASE_TIMEZONE);
 		
 	}
 	
@@ -321,7 +321,7 @@ class Logger {
 
 		// warnings
 		if ($warningCount) {
-			$ret.= '<a href="' . $route->getUrl() . '#logFirstWarning" class="item warning"><span class="icon fa fa-warning"></span><span class="emph">' . $warningCount . '</span> ' . ($warningCount>1 ? 'warnings' : 'warning') . '</a>';
+			$ret.= '<a href="' . $route->getUrl() . '#logFirstWarning" class="item warning"><span class="icon fa fa-exclamation-triangle"></span><span class="emph">' . $warningCount . '</span> ' . ($warningCount>1 ? 'warnings' : 'warning') . '</a>';
 		}
 		
 		// errors

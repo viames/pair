@@ -130,8 +130,6 @@ class Database {
 			$this->handler = new \PDO($dsn, DB_USER, DB_PASS, $options);
 				
 			if (is_a($this->handler, 'PDO')) {
-				$logger = Logger::getInstance();
-				$logger->addEvent('Database is' . ($persistent ? ' persistently' : '') . ' connected');
 				$this->handler->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
 			} else {
 				throw new \PDOException('Db handler is not valid, connection failed');
@@ -776,12 +774,24 @@ class Database {
 	 */
 	public function setUtf8unicode() {
 	
-		$this->exec('SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci');
+		$this->openConnection();
+		
+		try {
+			
+			$this->handler->exec('SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci');
 	
-		$this->exec('SET character_set_client = "utf8mb4", character_set_connection = "utf8mb4",' . 
-					' character_set_database = "utf8mb4", character_set_results = "utf8mb4",' .
-					' character_set_server = "utf8mb4", collation_connection = "utf8mb4_unicode_ci",' .
-					' collation_database = "utf8mb4_unicode_ci", collation_server = "utf8mb4_unicode_ci"');
+			$this->handler->exec(
+				'SET character_set_client = "utf8mb4", character_set_connection = "utf8mb4",' . 
+				' character_set_database = "utf8mb4", character_set_results = "utf8mb4",' .
+				' character_set_server = "utf8mb4", collation_connection = "utf8mb4_unicode_ci",' .
+				' collation_database = "utf8mb4_unicode_ci", collation_server = "utf8mb4_unicode_ci"');
+		
+		} catch (\Exception $e) {
+			
+			// cannot log right now
+			
+		}
+			
 		
 	}
 

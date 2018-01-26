@@ -14,27 +14,6 @@ namespace Pair;
 class Application {
 
 	/**
-	 * Framework version.
-	 * @var string
-	 * @deprecated
-	 */
-	const VERSION = '1.0';
-
-	/**
-	 * Framework build.
-	 * @var string
-	 * @deprecated
-	 */
-	const BUILD = '1557';
-
-	/**
-	 * Framework date of last change.
-	 * @var string
-	 * @deprecated
-	 */
-	const DATE = '2016-11-30 09:33:01Z';
-
-	/**
 	 * Singleton property.
 	 * @var Application|NULL
 	 */
