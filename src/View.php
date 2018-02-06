@@ -107,9 +107,6 @@ abstract class View {
 
 		$this->model->pagination = $this->pagination;
 		
-		// sets language subfolder’s name
-		$this->translator->module = $this->name;
-		
 		// sets the default menu item -- can be overwritten if needed
 		$this->app->activeMenuItem = $route->module;
 		
@@ -270,7 +267,8 @@ abstract class View {
 	 */
 	public function logEvent($description, $type='notice', $subtext=NULL) {
 		
-		$this->app->logEvent($description, $type, $subtext);
+		$logger = Logger::getInstance();
+		$logger->addEvent($description, $type, $subtext);
 		
 	}
 	
@@ -281,7 +279,8 @@ abstract class View {
 	 */
 	public function logWarning($description) {
 	
-		$this->app->logWarning($description);
+		$logger = Logger::getInstance();
+		$logger->addWarning($description);
 	
 	}
 	
@@ -292,7 +291,8 @@ abstract class View {
 	 */
 	public function logError($description) {
 	
-		$this->app->logError($description);
+		$logger = Logger::getInstance();
+		$logger->addError($description);
 	
 	}
 	

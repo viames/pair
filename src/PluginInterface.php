@@ -36,4 +36,13 @@ interface PluginInterface {
 	 */
 	public function getPlugin();
 	
+	/**
+	 * Store an object loaded by a Plugin.
+	 *
+	 * @param	SimpleXMLElement	List of options.
+	 *
+	 * @return	bool
+	 */
+	public function storeByPlugin(\SimpleXMLElement $options);
+	
 }

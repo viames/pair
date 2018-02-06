@@ -17,7 +17,7 @@ class Application {
 	 * Singleton property.
 	 * @var Application|NULL
 	 */
-	static private $instance;
+	static protected $instance;
 
 	/**
 	 * List of temporary variables.
@@ -91,12 +91,6 @@ class Application {
 	 */
 	private $template;
 	
-	/**
-	 * Keep the name of a base template in case of derived one.
-	 * @var NULL|Template
-	 */
-	private $baseTemplate;
-
 	/**
 	 * Template-style’s file name (without extension).
 	 * @var string
@@ -244,25 +238,28 @@ class Application {
 	 * @return	multitype
 	 */
 	public function __get($name) {
-	
+		
 		switch ($name) {
-			
+
+			/**
+			 * for login page we need a default template
+			 * @deprecated
+			 */
 			case 'templatePath':
 			
-				// for login page we need a default template
-				$this->checkTemplate();
-				$templateName = $this->template->derived ? $this->baseTemplate->name : $this->template->name;
-				$value = 'templates/' . $templateName . '/';
+				$value = $this->getTemplate()->getPath();
 				break;
 				
 			// useful in html tag to set language code
 			case 'langCode':
 				
-				$language = new Language($this->currentUser->languageId);
-				$value = $language->code;
+				$translator = Translator::getInstance();
+				$value = $translator->getCurrentLanguage()->code;
 				break;
 				
 			default:
+				
+				$allowedProperties = ['activeMenuItem', 'currentUser', 'pageTitle', 'pageContent', 'template'];
 				
 				// search into variable assigned to the template as first
 				if (array_key_exists($name, $this->vars)) {
@@ -270,7 +267,7 @@ class Application {
 					$value = $this->vars[$name];
 				
 				// then search in properties
-				} else if (property_exists($this, $name)) {
+				} else if (property_exists($this, $name) and in_array($name, $allowedProperties)) {
 					
 					$value = $this->$name;
 				
@@ -321,11 +318,10 @@ class Application {
 		if (is_a($user,'Pair\User')) {
 
 			$this->currentUser = $user;
-			$this->checkTemplate();
 			
 			// sets user language
 			$tran = Translator::getInstance();
-			$lang = new Language($user->languageId);
+			$lang = $user->languageId ? $user->getRelated('languageId') : Language::getDefault();
 			$tran->setLanguage($lang);
 				
 		}
@@ -905,28 +901,6 @@ class Application {
 		// populate the placeholder for the content
 		$this->pageContent = ob_get_clean();
 		
-		// login page has no template, needs a default
-		$this->checkTemplate();
-		
-		$templatesPath = APPLICATION_PATH . '/templates/' ;
-
-		// by default load template style
-		$styleFile = $templatesPath . $this->template->name . '/' . $this->style . '.php';
-
-		// in case of derived template, should load the base template
-		if ($this->template->derived) {
-
-			// try to load derived extend file
-			$derivedFile = $templatesPath . $this->template->name . '/derived.php';
-			if (file_exists($derivedFile)) require $derivedFile;
-
-			// if no template style, load default template style 
-			if (!file_exists($styleFile) and is_a($this->baseTemplate, 'Pair\Template')) {
-				$styleFile = $templatesPath . $this->baseTemplate->name . '/' . $this->style . '.php';
-			}
-
-		}
-				
 		// initialize CSS and scripts
 		$this->pageStyles = '';
 		$this->pageScripts = '';
@@ -971,25 +945,16 @@ class Application {
 		}
 		
 		try {
-	
-			if (!file_exists($styleFile)) {
-				throw new \Exception('Template style file ' . $styleFile . ' was not found');
-			}
-			
-			// load the style page file
-			require $styleFile;
-		
-			// get output buffer and cleans it
-			$page = ob_get_clean();
-		
-			print $page;
-	
+			$this->getTemplate()->loadStyle($this->style);
 		} catch (\Exception $e) {
-				
 			print $e->getMessage();
-				
 		}
 	
+		// get output buffer and cleans it
+		$page = ob_get_clean();
+	
+		print $page;
+
 	}
 	
 	/**
@@ -1007,10 +972,11 @@ class Application {
 		
 				$types = array('info', 'warning', 'error');
 				if (!in_array($m->type, $types)) $m->type = 'info';
-				$script .= '$.showMessage("'.
-					addslashes($m->title) .'","' .
+				$script .= '$.showMessage("' .
+					addslashes($m->title) . '","' .
 					addcslashes($m->text,"\"\n\r") . '","' . // removes carriage returns and quotes
-					addslashes($m->type) ."\");\n";
+					addslashes($m->type) . "\");\n";
+				
 			}
 			
 		}
@@ -1020,24 +986,24 @@ class Application {
 	}
 	
 	/**
-	 * Set the name of base template in case of derived one in use.
+	 * If current selected template is not valid, replace it with the default one. It’s private to avoid
+	 * loops on derived templates load.
 	 * 
-	 * @param	string	Template name.
+	 * @return	Pair\Template
 	 */
-	final public function setBaseTemplate($templateName) {
+	final private function getTemplate() {
 		
-		$this->baseTemplate = Template::getTemplateByName($templateName);
-		
-	}
-	
-	/**
-	 * If current selected template is not valid, replace it with the default one.
-	 */
-	final private function checkTemplate() {
-
 		if (!$this->template or !$this->template->isPopulated()) {
 			$this->template = Template::getDefault();
 		}
+		
+		// if this is derived template, load derived.php file
+		if ($this->template->derived) {
+			$derivedFile = $this->template->getBaseFolder() . '/'  . strtolower($this->template->name) . '/derived.php';
+			if (file_exists($derivedFile)) require $derivedFile;
+		}
+		
+		return $this->template;
 
 	}
 

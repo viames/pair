@@ -143,14 +143,18 @@ class Plugin {
 		
 		// TODO managing all ZIP errors (ZipArchive::ER_EXISTS, ZipArchive::ER_INCONS, etc.)
 		
+		static::checkTemporaryFolder();
+		
 		if (TRUE !== $zipOpened) {
-				
 			trigger_error('ERROR_EXTRACTING_ZIP_CONTENT');
 			return FALSE;
-			
 		}
 		
-		$zip->extractTo(self::TEMP_FOLDER);
+		// make a random temporary folder
+		$tempFolder = static::TEMP_FOLDER . '/' . substr(md5(time()),0,6);
+		
+		// extract all zip contents
+		$zip->extractTo($tempFolder);
 		
 		// checks if all contents are in a subfolder
 		$stat = $zip->statIndex(0);
@@ -158,79 +162,57 @@ class Plugin {
 		
 		// locates manifest file
 		$manifestIndex = $zip->locateName('manifest.xml', \ZipArchive::FL_NOCASE|\ZipArchive::FL_NODIR);
-		
-		// gets installation info by manifest file
-		$manifest = simplexml_load_string($zip->getFromIndex($manifestIndex));
-		
-		// plugin tree
-		$mPlugin = $manifest->plugin;
-		
-		$mAttributes = $mPlugin->attributes();
-		
-		// TODO management of unvalid packages
-		
-		// gets class name for this plugin (Module, Template, other)
-		$pluginClass = ucfirst($mAttributes->type);
-		
-		if (in_array($pluginClass, array('Module', 'Template'))) {
-			$pluginClass = 'Pair\\' . $pluginClass;
+
+		try {
+			// get XML content of manifest from ZIP
+			$manifest = simplexml_load_string($zip->getFromIndex($manifestIndex));
+		} catch (Exception $e) {
+			$app->enqueueError('Manifest content is not valid: ' . $e->getMessage());
+			return FALSE;
 		}
 
-		// checks if plugin is already installed
-		if ($pluginClass::pluginExists($mPlugin->name)) {
-				
-			// TODO manage plugin update in case of new version
-		
-			$app->enqueueError('PLUGIN_IS_ALREADY_INSTALLED');
-			return;
-		
+		// check if manifest is valid
+		if (!is_a($manifest, '\SimpleXMLElement')) {
+			$app->enqueueError('Manifest file is not valid');
+			return FALSE;
 		}
-			
-		// creates plugin object
-		$plugin					= new $pluginClass();
-		$plugin->name			= (string)$mPlugin->name;
-		$plugin->version		= (string)$mPlugin->version;
-		$plugin->dateReleased	= date('Y-m-d H:i:s', strtotime((string)$mPlugin->dateReleased));
-		$plugin->appVersion		= (string)$mPlugin->appVersion;
-		$plugin->installedBy	= $app->currentUser->id;
-		$plugin->dateInstalled	= time();
 		
+		// get installation info by manifest file
+		$plugin = static::createPluginByManifest($manifest);
+		
+		// error check
+		if (is_null($plugin)) {
+			$zip->close();
+			Utilities::deleteFolder($package);
+			return FALSE;
+		}
+		
+		// set the plugin-type common folder
 		$this->baseFolder = $plugin->getBaseFolder();
-		
-		// calls specific plugin subclass function
-		$functionName	= 'install' . ucfirst($mAttributes->type) . 'Package';
-		if (method_exists(get_called_class(), $functionName)) {
-			$this->$functionName($plugin, $manifest);
-		}
-		
-		// saves plugin object to db
-		if (!$plugin->create()) {
-			$ret = FALSE;
-		}
 			
 		// the temporary directory where extracted files reside
-		$sourceFolder = APPLICATION_PATH . '/' . self::TEMP_FOLDER . '/' . $mPlugin->folder;
+		$sourceFolder = APPLICATION_PATH . '/' . $tempFolder;
 		
 		// this is destination path for copy plugin files
-		$pluginFolder = $this->baseFolder . '/' . $mPlugin->folder;
-		
+		$pluginFolder = $this->baseFolder . '/' . strtolower($manifest->plugin->folder);
+
 		// creates final plugin folder
 		$old = umask(0);
 		if (!mkdir($pluginFolder, 0777, TRUE)) {
-			$ret = FALSE;
 			trigger_error('Directory creation on ' . $pluginFolder . ' failed');
+			$ret = FALSE;
 		}
 		umask($old);
 
 		// sets full permissions on final folder
 		if (!chmod($pluginFolder, 0777)) {
-			$ret = FALSE;
 			trigger_error('Set permissions on directory ' . $pluginFolder . ' failed');
+			$ret = FALSE;
 		}
 		
 		// TODO must notify all lost files when copying
 		
-		$files = $mPlugin->files->children();
+		$files = $manifest->plugin->files->children();
 		
 		// copy all plugin files
 		foreach ($files as $file) {
@@ -267,6 +249,79 @@ class Plugin {
 	}
 	
 	/**
+	 * 
+	 * @param unknown $file
+	 * @return string
+	 */
+	public static function getManifestByFile($file) {
+
+		$app = Application::getInstance();
+		
+		if (!file_exists($file)) {
+			$app->enqueueError('Manifest file ' . $file . ' doens’t exist');
+			return NULL;
+		}
+		
+		$contents = file_get_contents($file);
+		
+		try {
+			$xml = simplexml_load_string($contents);
+		} catch (Exception $e) {
+			$app->enqueueError('Manifest content is not valid: ' . $e->getMessage());
+			return NULL;
+		}
+
+		return $xml;
+		
+	}
+	
+	/**
+	 * Insert a new db record for the plugin in manifest. Return an object of the plugin type.
+	 *
+	 * @param	SimpleXMLElement	Manifest file XML content.
+	 *
+	 * @return	mixed
+	 */
+	public static function createPluginByManifest(\SimpleXMLElement $manifest) {
+		
+		$app = Application::getInstance();
+		
+		// plugin tree
+		$mPlugin = $manifest->plugin;
+		
+		$mAttributes = $mPlugin->attributes();
+		
+		// get class name for this plugin (Module, Template, other)
+		$class = ucfirst($mAttributes->type);
+		
+		// add namespace for Pair classes
+		if (in_array($class, array('Module', 'Template'))) {
+			$class = 'Pair\\' . $class;
+		}
+		
+		// check if plugin is already installed
+		if ($class::pluginExists($mPlugin->name)) {
+			$app->enqueueError('PLUGIN_IS_ALREADY_INSTALLED');
+			return NULL;
+		}
+		
+		// creates plugin object
+		$plugin					= new $class();
+		$plugin->name			= (string)$mPlugin->name;
+		$plugin->version		= (string)$mPlugin->version;
+		$plugin->dateReleased	= date('Y-m-d H:i:s', strtotime((string)$mPlugin->dateReleased));
+		$plugin->appVersion		= (string)$mPlugin->appVersion;
+		$plugin->installedBy	= $app->currentUser->id;
+		$plugin->dateInstalled	= time();
+		
+		// saves plugin object to db
+		$plugin->storeByPlugin($mPlugin->options);
+		
+		return $plugin;
+		
+	}
+	
+	/**
 	 * Updates the manifest file, zips plugin’s folder and lets user download it.
 	 */
 	public function downloadPackage() {
@@ -280,7 +335,7 @@ class Plugin {
 		$this->createManifestFile();
 		
 		// removes old archives
-		self::removeOldFiles();
+		static::removeOldFiles();
 		
 		// useful paths
 		$pathInfos	= pathInfo($this->baseFolder);
@@ -361,6 +416,34 @@ class Plugin {
 	}
 	
 	/**
+	 * Check temporary folder or create it.
+	 */
+	public static function checkTemporaryFolder() {
+		
+		if (!file_exists(static::TEMP_FOLDER) or !is_dir(static::TEMP_FOLDER)) {
+			
+			// remove any file named as wanted temporary folder
+			@unlink(static::TEMP_FOLDER);
+
+			// create the folder
+			$old = umask(0);
+			if (!mkdir(static::TEMP_FOLDER, 0777, TRUE)) {
+				trigger_error('Directory creation on ' . static::TEMP_FOLDER . ' failed');
+				$ret = FALSE;
+			}
+			umask($old);
+			
+			// sets full permissions
+			if (!chmod($pluginFolder, 0777)) {
+				trigger_error('Set permissions on directory ' . $pluginFolder . ' failed');
+				$ret = FALSE;
+			}
+			
+		}
+		
+	}
+	
+	/**
 	 * Deletes file with created date older than EXPIRE_TIME const.
 	 */
 	public static function removeOldFiles() {
@@ -368,25 +451,25 @@ class Plugin {
 		$app = Application::getInstance();
 		$counter = 0;
 
-		$files = Utilities::getDirectoryFilenames(self::TEMP_FOLDER);
-		
+		$files = Utilities::getDirectoryFilenames(static::TEMP_FOLDER);
+
 		foreach ($files as $file) {
-			
-			$pathFile	= self::TEMP_FOLDER . '/' . $file;
+
+			$pathFile	= APPLICATION_PATH . '/' .static::TEMP_FOLDER . '/' . $file;
 			$fileLife	= time() - filemtime($pathFile);
-			$maxLife	= self::FILE_EXPIRE * 60;
+			$maxLife	= static::FILE_EXPIRE * 60;
 			
 			if ($fileLife > $maxLife) {
 				$counter++;
 				unlink($pathFile);
 			}
-			
+
 		}
 		
 		if ($counter) {
-			$app->logEvent($counter . ' files has been deleted from ' . self::TEMP_FOLDER);
+			$app->logEvent($counter . ' files has been deleted from ' . static::TEMP_FOLDER);
 		} else {
-			$app->logEvent('No old files deleted from ' . self::TEMP_FOLDER);
+			$app->logEvent('No old files deleted from ' . static::TEMP_FOLDER);
 		}
 		
 	}
@@ -397,8 +480,27 @@ class Plugin {
 	 * @return	bool
 	 */
 	public function createManifestFile() {
-	
+		
 		$app = Application::getInstance();
+		
+		// lambda method to add an array to the XML
+		$addChildArray = function ($element, $list) use ($app, &$addChildArray) {
+			
+			foreach ($list as $name => $value) {
+				
+				// if array, run again recursive
+				if (is_array($value)) {
+					$listChild = $element->addChild($name);
+					$addChildArray($listChild, $value);
+				} else if (is_int($value) or is_string($value)) {
+					$element->addChild($name, (string)$value);
+				} else {
+					$app->logError('Option item ' . $name . ' is not valid');
+				}
+			
+			}
+			
+		};
 		
 		// prevent missing folders
 		if (!is_dir($this->baseFolder)) {
@@ -423,11 +525,8 @@ class Plugin {
 		// custom options
 		$optionsChild = $plugin->addChild('options');
 		
-		// calls specific plugin subclass function
-		$functionName	= 'create' . ucfirst($this->type) . 'Manifest';
-		if (method_exists(get_called_class(), $functionName)) {
-			$this->$functionName($manifest);
-		}
+		// recursively add options elements
+		$addChildArray($optionsChild, $this->options);
 		
 		// will contains all found files
 		$filesChild = $plugin->addChild('files');
@@ -442,112 +541,15 @@ class Plugin {
 	
 		$filename = $this->baseFolder . '/manifest.xml';
 		
-		// TODO manage unwritable folder
+		try {
+			$res = $manifest->asXML($filename);
+			$app->logEvent('Created manifest file ' . $filename . ' for ' . $this->type . ' plugin');
+		} catch (\Exception $e) {
+			$res = FALSE;
+			$app->logError('Manifest file ' . $filename . ' creation failed for ' . $this->type . ' plugin: ' . $e->getMessage());
+		}
 		
-		$res = $manifest->asXML($filename);
-		
-		$app->logEvent('Created manifest file ' . $filename . ' for ' . $this->type . ' plugin');
-	
 		return $res;
-	
-	}
-	
-	/**
-	 * Insert a new db record for the plugin in manifest.
-	 *
-	 * @param	string	Manifest file XML content.
-	 */
-	public static function createPluginByManifest($manifestContent) {
-	
-		$app = Application::getInstance();
-	
-		// gets installation info by manifest file
-		$manifest = simplexml_load_string($manifestContent);
-	
-		// plugin tree
-		$mPlugin = $manifest->plugin;
-	
-		$mAttributes = $mPlugin->attributes();
-	
-		// gets class name for this plugin (Module, Template or other)
-		$pluginClass = ucfirst($mAttributes->type);
-		
-		// checks if class name is in Pair framework namespace
-		$class = class_exists('Pair\\' . $pluginClass) ? 'Pair\\' . $pluginClass : '\\' . $pluginClass;
-	
-		// creates plugin object
-		$plugin					= new $class();
-		$plugin->name			= (string)$mPlugin->name;
-		$plugin->version		= (string)$mPlugin->version;
-		$plugin->dateReleased	= date('Y-m-d H:i:s', strtotime((string)$mPlugin->dateReleased));
-		$plugin->installedBy	= $app->currentUser->id;
-		$plugin->dateInstalled	= date('Y-m-d H:i:s');
-		$plugin->appVersion		= (string)$mPlugin->appVersion;
-
-		// calls specific plugin subclass function
-		$functionName	= 'install' . ucfirst($mAttributes->type) . 'Package';
-		if (method_exists(get_called_class(), $functionName)) {
-			self::$functionName($plugin, $manifest);
-		}
-		
-		// saves plugin object to db
-		$plugin->create();
-	
-	}
-	
-	/**
-	 * This method is automatically called by installPackage() when a template type
-	 * being installs.
-	 *
-	 * @param	Template			Plugin subclass object.
-	 * @param	SimpleXMLElement	Manifest file.
-	 */
-	protected static function installTemplatePackage($plugin, $manifest) {
-	
-		// get options
-		$options = $manifest->plugin->options->children();
-	
-		$plugin->derived = (bool)$options->derived;
-		
-		// temp variable
-		$palette = array();
-	
-		// the needed cast to string for each property
-		foreach ($options->palette->children() as $color) {
-			$palette[] = (string)$color;
-		}
-	
-		// assigns to Template palette property
-		$plugin->palette = $palette;
-	
-	}
-	
-	/**
-	 * This method is automatically called by createManifestFile() when type equals template.
-	 *
-	 * @param	SimpleXMLElement	Manifest file.
-	 */
-	protected function createTemplateManifest($manifest) {
-	
-		foreach ($this->options as $optionName=>$optionValue) {
-	
-			switch ($optionName) {
-	
-				case 'derived':
-					$derivedChild = $manifest->plugin->options->addChild('derived', (string)intval($optionValue));
-					break;
-				
-				// if the options has name palette, will split for each color
-				case 'palette':
-					$paletteChild = $manifest->plugin->options->addChild('palette');
-					foreach ($optionValue as $color) {
-						$paletteChild->addChild('color', $color);
-					}
-					break;
-						
-			}
-				
-		}
 	
 	}
 	

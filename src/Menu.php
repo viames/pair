@@ -104,7 +104,7 @@ class Menu {
 		foreach ($this->items as $item) {
 			
 			// check on permissions
-			if (isset($item->url) and !$app->currentUser->canAccess($item->url)) {
+			if (isset($item->url) and !(is_a($app->currentUser, 'Pair\User') and !$app->currentUser->canAccess($item->url))) {
 				continue;
 			}
 			
@@ -143,7 +143,7 @@ class Menu {
 					foreach ($item->list as $i) {
 
 						// check on permissions
-						if (isset($i->url) and !$app->currentUser->canAccess($i->url)) {
+						if (isset($i->url) and !(is_a($app->currentUser, 'Pair\User') and !$app->currentUser->canAccess($i->url))) {
 							continue;
 						}
 						

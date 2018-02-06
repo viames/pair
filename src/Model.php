@@ -125,7 +125,8 @@ abstract class Model {
 	 */
 	public function logEvent($description, $type='notice', $subtext=NULL) {
 		
-		$this->app->logEvent($description, $type, $subtext);
+		$logger = Logger::getInstance();
+		$logger->addEvent($description, $type, $subtext);
 		
 	}
 	
@@ -136,7 +137,8 @@ abstract class Model {
 	 */
 	public function logWarning($description) {
 	
-		$this->app->logWarning($description);
+		$logger = Logger::getInstance();
+		$logger->addWarning($description);
 	
 	}
 	
@@ -147,7 +149,8 @@ abstract class Model {
 	 */
 	public function logError($description) {
 	
-		$this->app->logError($description);
+		$logger = Logger::getInstance();
+		$logger->addError($description);
 	
 	}
 	

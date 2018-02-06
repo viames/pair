@@ -11,22 +11,22 @@ namespace Pair;
 class Module extends ActiveRecord implements PluginInterface {
 
 	/**
-	 * Property that binds db field id.
+	 * ID as primary key.
 	 * @var int
 	 */
 	protected $id;
 	/**
-	 * Property that binds db field name.
+	 * Unique name with no space.
 	 * @var string
 	 */
 	protected $name;
 	/**
-	 * Property that binds db field version.
+	 * Release version.
 	 * @var string
 	 */
 	protected $version;
 	/**
-	 * Property that binds db field date_released.
+	 * Publication date, properly converted when inserted into db.
 	 * @var DateTime
 	 */
 	protected $dateReleased;
@@ -37,12 +37,12 @@ class Module extends ActiveRecord implements PluginInterface {
 	protected $appVersion;
 	
 	/**
-	 * Property that binds db field installed_by.
+	 * User ID of installer.
 	 * @var int
 	 */
 	protected $installedBy;
 	/**
-	 * Property that binds db field date_installed.
+	 * Installation date, properly converted when inserted into db.
 	 * @var DateTime
 	 */
 	protected $dateInstalled;
@@ -95,6 +95,7 @@ class Module extends ActiveRecord implements PluginInterface {
 	 */
 	protected function beforeDelete() {
 	
+		// delete plugin folder
 		$plugin = $this->getPlugin();
 		$res = Utilities::deleteFolder($plugin->baseFolder);
 	
@@ -124,7 +125,9 @@ class Module extends ActiveRecord implements PluginInterface {
 	/**
 	 * Returns absolute path to plugin folder.
 	 *
-	 *  @return	string
+	 * @return	string
+	 *  
+	 * @see		PluginInterface::getBaseFolder()
 	 */
 	public function getBaseFolder() {
 	
@@ -136,32 +139,49 @@ class Module extends ActiveRecord implements PluginInterface {
 	 * Checks if Module is already installed in this application.
 	 *
 	 * @param	string	Name of Module to search.
+	 * 
 	 * @return	boolean
+	 * 
+	 * @see		PluginInterface::pluginExists()
 	 */
 	public static function pluginExists($name) {
 	
 		$db = Database::getInstance();
-		$db->setQuery('SELECT COUNT(*) FROM modules WHERE name = ?');
-		$res = $db->loadCount($name);
-	
-		return $res ? TRUE : FALSE;
+		$db->setQuery('SELECT COUNT(1) FROM modules WHERE name = ?');
+		return (bool)$db->loadCount($name);
 	
 	}
 	
 	/**
 	 * Creates and returns the Plugin object of this Module object.
 	 *
-	 * @return Plugin
+	 * @return	Plugin
+	 * 
+	 * @see		PluginInterface::getPlugin()
 	 */
 	public function getPlugin() {
 		
-		$folder			= APPLICATION_PATH . '/modules/' . strtolower(str_replace(array(' ', '_'), '', $this->name));
-		$dateReleased	= $this->dateReleased->format('Y-m-d');
+		$folder = $this->getBaseFolder() . '/' . strtolower(str_replace(array(' ', '_'), '', $this->name));
+		$dateReleased = $this->dateReleased->format('Y-m-d');
 	
-		$plugin = new Plugin('module', $this->name, $this->version, $dateReleased, $this->appVersion, $folder);
+		$plugin = new Plugin('Module', $this->name, $this->version, $dateReleased, $this->appVersion, $folder);
 	
 		return $plugin;
 	
 	}
 	
+	/**
+	 * Get option parameters and store this object loaded by a Plugin.
+	 *
+	 * @param	SimpleXMLElement	List of options.
+	 * 
+	 * @return	bool
+	 *
+	 * @see		PluginInterface::storeByPlugin()
+	 */
+	public function storeByPlugin(\SimpleXMLElement $options) {
+		
+		return $this->store();
+		
+	}
 }

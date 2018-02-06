@@ -69,6 +69,12 @@ class Template extends ActiveRecord implements PluginInterface {
 	 * @var array
 	 */
 	protected $palette;
+	
+	/**
+	 * Template from which it derives. It’s NULL if standard Template.
+	 * @var Template|NULL
+	 */
+	protected $base;
 
 	/**
 	 * Name of related db table.
@@ -83,7 +89,48 @@ class Template extends ActiveRecord implements PluginInterface {
 	const TABLE_KEY = 'id';
 	
 	/**
-	 * Converts from string to Datetime object in two ways.
+	 * Legacy method to get working the old templates.
+	 *
+	 * @param	string	Requested property’s name.
+	 * 
+	 * @return	multitype
+	 * 
+	 * @deprecated
+	 */
+	public function __get($name) {
+
+		$app = Application::getInstance();
+		
+		// patch for Widget variables
+		if ('Widget' == substr($name, -6)) {
+			return $app->$name;
+		}
+		
+		switch ($name) {
+			
+			case 'templatePath':
+				return $this->getPath();
+				break;
+				
+			case 'langCode':
+			case 'log':
+			case 'pageTitle':
+			case 'pageStyles':
+			case 'pageContent':
+			case 'pageScripts':
+				return $app->$name;
+				break;
+
+			default:
+				return $this->$name;
+				break;
+		
+		}
+		
+	}
+	
+	/**
+	 * Method called by constructor just after having populated the object.
 	 */
 	protected function init() {
 	
@@ -94,13 +141,13 @@ class Template extends ActiveRecord implements PluginInterface {
 		$this->bindAsDatetime('dateReleased', 'dateInstalled');
 		
 		$this->bindAsInteger('id', 'installedBy');
-	
+		
 	}
 
 	/**
 	 * Returns array with matching object property name on related db fields.
 	 *
-	 * @return array
+	 * @return	array
 	 */
 	protected static function getBinds() {
 
@@ -121,11 +168,11 @@ class Template extends ActiveRecord implements PluginInterface {
 	}
 	
 	/**
-	 * Changes instances that use this template to default template.
+	 * Removes files of this Module object before its deletion.
 	 */
 	protected function beforeDelete() {
 		
-		// deletes template plugin folder
+		// delete plugin folder
 		$plugin = $this->getPlugin();
 		$res = Utilities::deleteFolder($plugin->baseFolder);
 		
@@ -149,7 +196,9 @@ class Template extends ActiveRecord implements PluginInterface {
 	/**
 	 * Returns absolute path to plugin folder.
 	 *
-	 *  @return	string
+	 * @return	string
+	 *  
+	 * @see		PluginInterface::getBaseFolder()
 	 */
 	public function getBaseFolder() {
 	
@@ -163,14 +212,14 @@ class Template extends ActiveRecord implements PluginInterface {
 	 * @param	string	Name of Template to search.
 	 * 
 	 * @return	boolean
+	 * 
+	 * @see		PluginInterface::pluginExists()
 	 */
 	public static function pluginExists($name) {
 	
 		$db = Database::getInstance();
-		$db->setQuery('SELECT COUNT(*) FROM templates WHERE name = ?');
-		$res = $db->loadResult($name);
-	
-		return $res ? TRUE : FALSE;
+		$db->setQuery('SELECT COUNT(1) FROM templates WHERE name = ?');
+		return (bool)$db->loadCount($name);
 	
 	}
 	
@@ -178,17 +227,49 @@ class Template extends ActiveRecord implements PluginInterface {
 	 * Creates and returns the Plugin object of this Template object.
 	 *
 	 * @return	Plugin
+	 * 
+	 * @see		PluginInterface::getPlugin()
 	 */
 	public function getPlugin() {
 	
-		$folder			= APPLICATION_PATH . '/templates/' . strtolower(str_replace(array(' ', '_'), '', $this->name));
-		$dateReleased	= $this->dateReleased->format('Y-m-d');
-		$options		= array('derived' => $this->derived, 'palette' => $this->palette);
-	
-		$plugin = new Plugin('template', $this->name, $this->version, $dateReleased, $this->appVersion, $folder, $options);
+		$folder = $this->getBaseFolder() . '/' . strtolower(str_replace(array(' ', '_'), '', $this->name));
+		$dateReleased = $this->dateReleased->format('Y-m-d');
+		
+		// special parameters for Template plugin
+		$options = [
+			'derived' => (string)\intval($this->derived),
+			'palette' => implode(',', $this->palette)
+		];
+		
+		$plugin = new Plugin('Template', $this->name, $this->version, $dateReleased, $this->appVersion, $folder, $options);
 	
 		return $plugin;
 	
+	}
+	
+	/**
+	 * Get option parameters and store this object loaded by a Plugin.
+	 *
+	 * @param	SimpleXMLElement	List of options.
+	 * 
+	 * @return	bool
+	 *
+	 * @see		PluginInterface::storeByPlugin()
+	 */
+	public function storeByPlugin(\SimpleXMLElement $options) {
+		
+		// get options
+		$children = $options->children();
+		
+		$this->derived = (bool)$children->derived;
+		
+		// the needed cast to string for each property
+		foreach ($children->palette->children() as $color) {
+			$this->palette[] = (string)$color;
+		}
+		
+		return $this->store();
+		
 	}
 	
 	/**
@@ -200,8 +281,7 @@ class Template extends ActiveRecord implements PluginInterface {
 	
 		$db = Database::getInstance();
 		$db->setQuery('SELECT * FROM templates WHERE is_default=1');
-		$template = new Template($db->loadObject());
-		return $template;
+		return new Template($db->loadObject());
 	
 	}
 	
@@ -212,7 +292,7 @@ class Template extends ActiveRecord implements PluginInterface {
 	 *
 	 * @return	Template|NULL
 	 */
-	public static function getTemplateByName($name) {
+	public static function getPluginByName($name) {
 
 		$db = Database::getInstance();
 		$db->setQuery('SELECT * FROM templates WHERE name=?');
@@ -222,42 +302,44 @@ class Template extends ActiveRecord implements PluginInterface {
 	}
 	
 	/**
-	 * Returns list of all registered templates.
+	 * Set a standard Template object as the base for a derived Template.
 	 * 
-	 * @return	array:Template
+	 * @param	string	Template name.
 	 */
-	public static function getAllTemplates() {
-	
-		$db = Database::getInstance();
-		$db->setQuery('SELECT * FROM templates');
-		$list = $db->loadObjectList();
+	public function setBase($templateName) {
 
-		$templates = array();
-		
-		foreach ($list as $item) {
-			$calledClass = get_called_class();
-			$templates[] = new $calledClass($item);
-		}
-		
-		return $templates;
+		$this->base = static::getPluginByName($templateName);
 		
 	}
 	
-	/**
-	 * Creates a list of colors boxes for this template.
-	 * 
-	 * @return	string
-	 */
-	public function getPaletteSamples() {
+	public function loadStyle($styleName) {
 		
-		$ret = '';
-
-		foreach ($this->palette as $color) {
-			$ret .= '<div class="colorSample" style="background-color:' . $color . '" title="' . $color . '"></div>';
+		// by default load template style
+		$styleFile = $this->getBaseFolder() . '/' . strtolower($this->name) . '/' . $styleName . '.php';
+		
+		// if this is derived template, try to load the file from its folder
+		if (!file_exists($styleFile) and $this->derived and is_a($this->base, 'Pair\Template')) {
+			$styleFile = $this->getBaseFolder() . '/' . strtolower($this->base->name) . '/' . $styleName . '.php';
 		}
-		
-		return $ret;
+
+		if (!file_exists($styleFile)) {
+			
+			throw new \Exception('Template style file ' . $styleFile . ' was not found');
+			
+		} else {
+			
+			// load the style page file
+			require $styleFile;
+			
+		}
 		
 	}
 	
+	public function getPath() {
+		
+		$templateName = $this->derived ? $this->base->name : $this->name;
+		return 'templates/' . strtolower($templateName) . '/';
+		
+	}
+
 }

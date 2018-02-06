@@ -14,128 +14,141 @@ class Translator {
 	 * Singleton object.
 	 * @var object|NULL
 	 */
-	protected static $instance = NULL;
+	protected static $instance;
 	
 	/**
-	 * The default language 2 alpha code.
-	 * @var string
+	 * The default Language object.
+	 * @var	Language
 	 */
-	private $default = 'en';
+	private $default;
 	
 	/**
-	 * The current language 2 alpha code.
-	 * @var string
+	 * The current Language object.
+	 * @var Language
 	 */
-	private $current = NULL;
+	private $current;
 	
 	/**
-	 * Current module in where look for language files.
+	 * Current module in where to look for language files.
 	 * @var	string
 	 */
-	private $module	 = NULL;
+	private $module;
 	
 	/**
 	 * Translation strings, as loaded from ini language file.
 	 * @var NULL|array
 	 */
-	private $strings = NULL;
+	private $strings;
 
 	/**
 	 * Default language strings, loaded if needed and stored for next use.
 	 * @var NULL|array
 	 */
-	private $defaultStrings = NULL;
+	private $defaultStrings;
 
 	/**
-	 * Sets current language reading the favorite browser language variable.
+	 * Set current language reading the favorite browser language variable.
 	 */
 	private function __construct() {
 
 		// config module for language
-		$route = Router::getInstance();
-		$this->module = $route->module;
-		$this->default = Language::getDefault()->code;
+		$this->default = Language::getDefault();
 		
 	}
-
-	/**
-	 * Will returns property’s value if set. Throw an exception and returns NULL if not set.
-	 *
-	 * @param	string	Property’s name.
-	 * @throws	Exception
-	 * @return	mixed|NULL
-	 */
-	public function __get($name) {
-	
-		try {
-	
-			if (!isset($this->$name)) {
-				throw new \Exception('Property “'. $name .'” doesn’t exist for object '. get_class());
-			}
-	
-			return $this->$name;
-	
-		} catch (\Exception $e) {
-	
-			return NULL;
-	
-		}
-	
-	}
 	
 	/**
-	 * Magic method to set an object property value.
-	 *
-	 * @param	string	Property’s name.
-	 * @param	mixed	Property’s value.
-	 */
-	public function __set($name, $value) {
-	
-		try {
-			$this->$name = $value;
-		} catch (\Exception $e) {
-			print $e->getMessage();
-		}
-	
-	}
-	
-	/**
-	 * Returns singleton object.
+	 * Return the singleton object.
 	 *
 	 * @return object
 	 */
 	public static function getInstance() {
 	
-		if (is_null(self::$instance)) {
-			self::$instance = new self();
+		if (is_null(static::$instance)) {
+			static::$instance = new static();
 		}
 	
-		return self::$instance;
+		return static::$instance;
 	
+	}
+
+	/**
+	 * Return the current Language object.
+	 * 
+	 * @return	Language
+	 */
+	public function getCurrentLanguage() {
+		
+		$this->checkLanguageSet();
+		
+		return $this->current;
+		
 	}
 	
 	/**
-	 * Set a new current language.
+	 * Return the default Language object, cached.
+	 *
+	 * @return	Language
+	 */
+	public function getDefaultLanguage() {
+		
+		$this->checkLanguageSet();
+		
+		return $this->default;
+		
+	}
+	
+	/**
+	 * Set a new current language by preparing language strings and locale.
 	 * 
 	 * @param	Language	Language object to set.
 	 */
-	public function setLanguage(Language $lang) {
+	public function setLanguage(Language $newLang) {
 		
-		$this->current = $lang->code;
+		// apply some changes only if new Language really differs
+		if (!$this->current or ($this->current and $newLang->code != $this->current->code)) {
+			
+			$this->current = $newLang;
+				
+			// if new language code equals the default one, move lang-strings
+			if ($this->default and $newLang->code == $this->default->code) {
 
-		setlocale(LC_ALL, $lang->representation);
+				$this->strings = $this->defaultStrings;
+				$this->defaultStrings = NULL;
+				
+			// otherwise reload current strings
+			} else {
+			
+				$this->strings = NULL;
+				$this->loadStrings();
+				
+			}
+			
+		}
+		
+		setlocale(LC_ALL, $newLang->representation);
 		
 	}
 	
 	/**
-	 * Checks that both default and current languages are set.
+	 * Set a module name.
+	 * 
+	 * @param	string	Module name.
+	 */
+	public function setModule($moduleName) {
+		
+		$this->module = $moduleName;
+		
+	}
+	
+	/**
+	 * Check that both default and current languages are set.
 	 */
 	private function checkLanguageSet() {
 		
 		if (!$this->default) {
 			
 			$lang = Language::getDefault();
-			$this->default = $lang->code;
+			$this->default = $lang;
 			
 			// server variable
 			setlocale(LC_ALL, $lang->representation);
@@ -155,17 +168,13 @@ class Translator {
 						$_SERVER['HTTP_ACCEPT_LANGUAGE'], $matches, PREG_SET_ORDER);
 			
 				// if browser’s lang matches and it’s different by current, will set as current
-				if (array_key_exists(0, $matches) and array_key_exists(1, $matches[0]) and $this->current!=$matches[0][1]) {
+				if (isset($matches[0][1]) and $this->current->code != $matches[0][1]) {
 			
 					$lang = Language::getLanguageByCode($matches[0][1]);
 			
 					if ($lang) {
-							
-						// overwrites current
-						$this->current = $lang->code;
-			
-						// sets server variable
-						setlocale(LC_ALL, $lang->representation);
+						
+						$this->setLanguage($lang);
 							
 					}
 			
@@ -178,11 +187,12 @@ class Translator {
 	}
 	
 	/**
-	 * Returns the translated string from expected lang file, if there, else
-	 * from default, else returns the key string.
+	 * Return the translated string from expected lang file, if there, else
+	 * from default, else return the key string.
 	 * 
 	 * @param	string		The language key.
 	 * @param	array|NULL	List of parameters to bind on string (optional).
+	 * 
 	 * @return	string
 	 */
 	public function translate($key, $vars=NULL) {
@@ -190,7 +200,7 @@ class Translator {
 		$app = Application::getInstance();
 		
 		// load translation strings
-			$this->loadStrings();
+		$this->loadStrings();
 		
 		// searches into strings
 		if (array_key_exists($key, $this->strings) and $this->strings[$key]) {
@@ -200,7 +210,7 @@ class Translator {
 		// searches into strings of default language
 		} else if (is_array($this->defaultStrings) and array_key_exists($key, $this->defaultStrings) and $this->defaultStrings[$key]) {
 			
-			$app->logWarning('Language string ' . $key . ' is untranslated for current language [' . $this->current . ']');
+			$app->logWarning('Language string ' . $key . ' is untranslated for current language [' . $this->current->code . ']');
 			$string = $this->defaultStrings[$key];
 
 		// will returns the string constant, as debug info
@@ -228,7 +238,7 @@ class Translator {
 	}
 	
 	/**
-	 * Returns TRUE if passed language is available for translation.
+	 * Return TRUE if passed language is available for translation.
 	 * 
 	 * @param	string	Language key.
 	 * 
@@ -248,7 +258,7 @@ class Translator {
 	}
 	
 	/**
-	 * Loads translation strings from current and default (if different) language ini file.
+	 * Load translation strings from current and default (if different) language ini file.
 	 */
 	private function loadStrings() {
 
@@ -260,11 +270,18 @@ class Translator {
 		// avoid failures
 		$this->strings = array();
 
+		// useful for landing page
+		if (!$this->module) {
+			$app = Application::getInstance();
+			$route = Router::getInstance();
+			$this->module = $route->module ? $route->module : $app->currentUser->getLanding()->module;
+		}
+
 		// checks that languages are set
 		$this->checkLanguageSet();
 
 		// common strings in current language
-		$common = 'languages/' . $this->current . '.ini';
+		$common = 'languages/' . $this->current->code . '.ini';
 		if (file_exists($common)) {
 			try {
 				$this->strings = @parse_ini_file($common);
@@ -278,9 +295,9 @@ class Translator {
 		
 		// if module is not set, won’t find language file
 		if ($this->module) {
-		
+			
 			// module strings in current language
-			$file1 = 'modules/' . strtolower($this->module) . '/languages/' . $this->current . '.ini';
+			$file1 = 'modules/' . strtolower($this->module) . '/languages/' . $this->current->code . '.ini';
 			if (file_exists($file1)) {
 				try {
 					$moduleStrings = @parse_ini_file($file1);
@@ -295,11 +312,11 @@ class Translator {
 		
 		}
 		
-		// if current language is different by default, will load also...
-		if ($this->current!=$this->default) {
+		// if current language is different by default, will load also
+		if ($this->current->code != $this->default->code) {
 			
 			// common strings in default language
-			$common = 'languages/' . $this->default . '.ini';
+			$common = 'languages/' . $this->default->code . '.ini';
 			if (file_exists($common)) {
 				try {
 					$this->defaultStrings = @parse_ini_file($common);
@@ -312,7 +329,7 @@ class Translator {
 			if ($this->module) {
 		
 				// module strings in default language
-				$file2 = 'modules/' . strtolower($this->module) . '/languages/' . $this->default. '.ini';
+				$file2 = 'modules/' . strtolower($this->module) . '/languages/' . $this->default->code . '.ini';
 				if (file_exists($file2)) {
 					try {
 						$moduleStrings = @parse_ini_file($file2);
@@ -329,7 +346,7 @@ class Translator {
 	}
 
 	/**
-	 * Translates the text in an array of select-options strings if uppercase.
+	 * Translate the text in an array of select-options strings if uppercase.
 	 * 
 	 * @param	array	List of (value=>text)s to translate.
 	 * @return	array

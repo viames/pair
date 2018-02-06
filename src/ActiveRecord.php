@@ -150,7 +150,11 @@ abstract class ActiveRecord {
 						break;
 						
 					case 'int':
-						$this->$name = (int)$value;
+						if ('' === $value and $this->isNullable($this->getMappedField($name))) {
+							$this->$name = NULL;
+						} else {
+							$this->$name = (int)$value;
+						}
 						break;
 
 					case 'DateTime':
@@ -216,11 +220,24 @@ abstract class ActiveRecord {
 	/**
 	 * Returns array with matching object property name on related db fields.
 	 *
-	 * @return array
+	 * @return	array
 	 */
 	protected static function getBinds() {
+
+		$db = Database::getInstance();
+		$columns = $db->describeTable(static::TABLE_NAME);
 		
-		return array();
+		$maps = [];
+
+		foreach ($columns as $col) {
+			
+			// get a camelCase name, with first low case
+			$property = lcfirst(str_replace(' ', '', ucwords(str_replace(['_','\\'], ' ', $col->Field))));
+			$maps[$property] = $col->Field;
+			
+		}
+
+		return $maps;
 		
 	}
 	
@@ -307,7 +324,7 @@ abstract class ActiveRecord {
 						
 				// join array strings in CSV format 
 				case 'csv':
-					$ret = implode(',', array_filter($this->$prop));
+					$ret = implode(',', array_filter((array)$this->$prop));
 					break;
 					
 				case 'float':
@@ -904,6 +921,115 @@ abstract class ActiveRecord {
 	
 	}
 	
+	/**
+	 * Return the Pair\ActiveRecord inherited object related to this by a ForeignKey in DB-table.
+	 * 
+	 * @param	string	Related property name.
+	 * 
+	 * @return	multitype|NULL
+	 */
+	final public function getRelated($relatedProperty) {
+		
+		$cacheName = $relatedProperty . 'RelatedObject';
+		
+		// object exists in cache, return it
+		if ($this->issetCache($cacheName)) {
+			return $this->getCache($cacheName);
+		}
+		
+		// get table foreign-keys
+		$foreignKeys = $this->db->getForeignKeys(static::TABLE_NAME);
+		
+		// get field name by mapped property
+		$relatedField = $this->getMappedField($relatedProperty);
+		
+		// the table referenced by fk
+		$referencedTable = NULL;
+			
+		// search the fk-table
+		foreach ($foreignKeys as $fk) {
+			if ($fk->COLUMN_NAME == $relatedField) {
+				$referencedTable  = $fk->REFERENCED_TABLE_NAME;
+				$referencedColumn = $fk->REFERENCED_COLUMN_NAME;
+				break;
+			}
+		}
+		
+		// if not table is referenced, raise an error
+		if (!$referencedTable) {
+			$this->addError('Property ' . $relatedProperty . ' has not a foreign-key mapped into DB');
+			return NULL;
+		}
+		
+		// class that maps the referenced table
+		$relatedClass = NULL;
+		$loadedClasses = \get_declared_classes();
+		
+		// search in loaded classes
+		foreach ($loadedClasses as $c) {
+			if (is_subclass_of($c, 'Pair\ActiveRecord') and $c::TABLE_NAME == $referencedTable) {
+				$relatedClass = $c;
+				break;
+			}
+		}
+			
+		// class cannot be found
+		if (!$relatedClass) {
+			
+			// if not found, search in the whole application (FIXME encapsulation violated here...)
+			$classes = Utilities::getActiveRecordClasses();
+			
+			// search for required one
+			foreach ($classes as $class => $opts) {
+				if ($opts['tableName'] == $referencedTable) {
+					include_once($opts['folder'] . '/' . $opts['file']);
+					$relatedClass = $class;
+					break;
+				}
+			}
+			
+		}
+		
+		// class cannot be found
+		if (!$relatedClass) {
+			$this->addError('Table ' . $referencedTable . ' has not any Pair-class mapping');
+			return NULL;
+		}
+		
+		// create the new wanted Pair object
+		$obj = new $relatedClass($this->$relatedProperty);
+		
+		// if loaded, return it otherwise NULL
+		$ret = ($obj->isLoaded() ? $obj : NULL);
+		
+		// related object is being registered in cache of this object
+		$this->setCache($cacheName, $ret);
+		
+		return $ret;
+		
+	}
+
+	/**
+	 * Extended method to return a property value of the Pair\ActiveRecord inherited object related to
+	 * this by a ForeignKey in DB-table.
+	 *
+	 * @param	string	Related property name.
+	 * @param	string	Wanted property name. 
+	 *
+	 * @return	multitype|NULL
+	 */
+	final public function getRelatedProperty($relatedProperty, $wantedProperty) {
+		
+		$obj = $this->getRelated($relatedProperty);
+		
+		if ($obj) {
+			return $obj->$wantedProperty;
+		} else {
+			return NULL;
+		}
+		
+	}
+		
 	/**
 	 * Create an object for a table column configuration within an object or NULL if column
 	 * doesn’t exist.
@@ -1639,16 +1765,13 @@ abstract class ActiveRecord {
 	 */
 	final public function populateByRequest() {
 
-		$args  = func_get_args();
-		$class = get_called_class();
+		$args = func_get_args();
 
 		// all subclass binds
-		$binds = $class::getBinds();
-
-		$properties = array();
+		$binds = static::getBinds();
 
 		foreach ($binds as $property => $field) {
-			
+
 			// check that property is in the args or that args is not defined at all
 			if (!count($args) or (isset($args[0]) and in_array($property, $args[0]))) {
 				
@@ -1657,7 +1780,8 @@ abstract class ActiveRecord {
 				if (Input::isSent($property) or 'bool' == $type) {
 					
 					// assign the value to this object property
-					$this->__set($property, Input::get($property, $type));
+					$this->__set($property, Input::get($property));
+					
 				}
 
 			}

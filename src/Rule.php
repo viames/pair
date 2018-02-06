@@ -118,10 +118,10 @@ class Rule extends ActiveRecord {
 		$db = Database::getInstance();
 
 		$query =
-			' SELECT m.name as moduleName, r.action as ruleAction, r.admin_only '.
-			' FROM rules as r '.
-			' INNER JOIN modules as m ON m.id = r.module_id '.
-			' WHERE m.id = ? and r.action = ? and r.admin_only = ?';
+			' SELECT m.name AS moduleName,r.action AS ruleAction, r.admin_only '.
+			' FROM rules AS r '.
+			' INNER JOIN modules AS m ON m.id = r.module_id '.
+			' WHERE m.id = ? AND r.action = ? AND r.admin_only = ?';
 
 		$db->setQuery($query);
 		$module = $db->loadObject(array($module_id, $action, $adminOnly));

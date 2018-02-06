@@ -73,7 +73,7 @@ abstract class Controller {
 		$this->model = new $modelName();
 		
 		// sets language subfolder’s name
-		$this->translator->module = $this->name;
+		$this->translator->setModule($this->name);
 		
 		// sets same view as the controller action
 		$this->view = $this->route->action ? $this->route->action : 'default';
@@ -209,7 +209,8 @@ abstract class Controller {
 	 */
 	final public function logEvent($description, $type='notice', $subtext=NULL) {
 		
-		$this->app->logEvent($description, $type, $subtext);
+		$logger = Logger::getInstance();
+		$logger->addEvent($description, $type, $subtext);
 		
 	}
 
@@ -220,7 +221,8 @@ abstract class Controller {
 	 */
 	final public function logWarning($description) {
 	
-		$this->app->logWarning($description);
+		$logger = Logger::getInstance();
+		$logger->addWarning($description);
 	
 	}
 	
@@ -231,7 +233,8 @@ abstract class Controller {
 	 */
 	final public function logError($description) {
 	
-		$this->app->logError($description);
+		$logger = Logger::getInstance();
+		$logger->addError($description);
 	
 	}
 	

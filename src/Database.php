@@ -688,6 +688,7 @@ class Database {
 	 */
 	public function describeTable($tableName): array {
 	
+		// check if was set in the object cache property
 		if (!isset($this->definitions[$tableName]['describe'])) {
 			
 			$this->setQuery('DESCRIBE `' . $tableName . '`');
