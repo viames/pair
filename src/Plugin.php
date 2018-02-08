@@ -166,7 +166,7 @@ class Plugin {
 		try {
 			// get XML content of manifest from ZIP
 			$manifest = simplexml_load_string($zip->getFromIndex($manifestIndex));
-		} catch (Exception $e) {
+		} catch (\Exception $e) {
 			$app->enqueueError('Manifest content is not valid: ' . $e->getMessage());
 			return FALSE;
 		}
@@ -266,7 +266,7 @@ class Plugin {
 		
 		try {
 			$xml = simplexml_load_string($contents);
-		} catch (Exception $e) {
+		} catch (\Exception $e) {
 			$app->enqueueError('Manifest content is not valid: ' . $e->getMessage());
 			return NULL;
 		}
@@ -434,8 +434,8 @@ class Plugin {
 			umask($old);
 			
 			// sets full permissions
-			if (!chmod($pluginFolder, 0777)) {
-				trigger_error('Set permissions on directory ' . $pluginFolder . ' failed');
+			if (!chmod(static::TEMP_FOLDER, 0777)) {
+				trigger_error('Set permissions on directory ' . static::TEMP_FOLDER . ' failed');
 				$ret = FALSE;
 			}
 			

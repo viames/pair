@@ -274,7 +274,11 @@ class Translator {
 		if (!$this->module) {
 			$app = Application::getInstance();
 			$route = Router::getInstance();
-			$this->module = $route->module ? $route->module : $app->currentUser->getLanding()->module;
+			if ($route->module) {
+				$this->module = $route->module;
+			} else if (is_a($app->currentUser, 'Pair\User')) {
+				$this->module = $app->currentUser->getLanding()->module;
+			}
 		}
 
 		// checks that languages are set

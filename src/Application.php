@@ -840,6 +840,9 @@ class Application {
 		$route	= Router::getInstance();
 		$tran	= Translator::getInstance();
 		
+		// make sure to have a template set
+		$template = $this->getTemplate();
+		
 		$controllerFile = 'modules/' . $route->module . '/controller.php';
 		
 		// check controller file existence
@@ -945,7 +948,7 @@ class Application {
 		}
 		
 		try {
-			$this->getTemplate()->loadStyle($this->style);
+			$template->loadStyle($this->style);
 		} catch (\Exception $e) {
 			print $e->getMessage();
 		}

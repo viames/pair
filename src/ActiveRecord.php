@@ -967,7 +967,7 @@ abstract class ActiveRecord {
 		
 		// search in loaded classes
 		foreach ($loadedClasses as $c) {
-			if (is_subclass_of($c, 'Pair\ActiveRecord') and $c::TABLE_NAME == $referencedTable) {
+			if (is_subclass_of($c, 'Pair\ActiveRecord') and property_exists($c, 'TABLE_NAME') and $c::TABLE_NAME == $referencedTable) {
 				$relatedClass = $c;
 				break;
 			}

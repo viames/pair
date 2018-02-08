@@ -112,6 +112,7 @@ class Template extends ActiveRecord implements PluginInterface {
 				return $this->getPath();
 				break;
 				
+			case 'currentUser':
 			case 'langCode':
 			case 'log':
 			case 'pageTitle':
