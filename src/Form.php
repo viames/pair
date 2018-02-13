@@ -518,9 +518,11 @@ abstract class FormControl {
 		// special behavior for DateTime
 		if (is_a($value, 'DateTime') and is_a($this, 'Pair\FormControlInput')) {
 
-			// sets user timezone
-			$app = Application::getInstance();
-			$value->setTimezone($app->currentUser->getDateTimeZone());
+			// if UTC date, set user timezone
+			if (defined('UTC_DATE') and UTC_DATE) {
+				$app = Application::getInstance();
+				$value->setTimezone($app->currentUser->getDateTimeZone());
+			}
 
 			// can be datetime or just date
 			$format = (isset($this->type) and 'date'==$this->type) ? $this->dateFormat : $this->datetimeFormat;
