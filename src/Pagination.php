@@ -108,11 +108,11 @@ class Pagination {
 		}
 		
 		// start main pagination DOM object
-		$render = '<div class="pagination"><ul class="pagination">';
+		$render = '<div class="pagination"><nav aria-label="Page navigation"><ul class="pagination">';
 		
 		// left arrow for first page
 		if ($this->page > 1) {
-			$render .= '<li class="arrow"><a href="' . $route->getPageUrl(1) . '">«</a></li>';
+			$render .= '<li class="page-item arrow"><a class="page-link" href="' . $route->getPageUrl(1) . '">«</a></li>';
 		}
 
 		// calculate page range
@@ -131,20 +131,20 @@ class Pagination {
 		for ($i=$min; $i <= $max; $i++) {
 			
 			if ($i==$this->page) {
-				$render .= '<li class="current active"><a href="' . $route->getPageUrl($i) . '">' . $i . '</a></li>';
+				$render .= '<li class="page-item current active"><a class="page-link" href="' . $route->getPageUrl($i) . '">' . $i . '</a></li>';
 			} else {
-				$render .= '<li><a href="' . $route->getPageUrl($i) . '">' . $i . '</a></li>';
+				$render .= '<li class="page-item"><a class="page-link" href="' . $route->getPageUrl($i) . '">' . $i . '</a></li>';
 			}
 			
 		}
 		
 		// right arrow for last page
 		if ($this->page < $pages) {
-			$render .= '<li class="arrow"><a href="' . $route->getPageUrl($pages) . '">»</a></li>';
+			$render .= '<li class="page-item arrow"><a class="page-link" href="' . $route->getPageUrl($pages) . '">»</a></li>';
 		}
 		
 		// close the bar
-		$render .= '</ul></div>';
+		$render .= '</ul></nav></div>';
 		
 		return $render;
 		

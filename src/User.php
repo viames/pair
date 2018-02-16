@@ -557,4 +557,15 @@ class User extends ActiveRecord {
 	
 	}
 	
+	/**
+	 * Join the user’s name and surname and return it
+	 * 
+	 * @return	string
+	 */
+	public function getFullName() {
+		
+		return $this->name . ' ' . $this->surname;
+		
+	}
+	
 }

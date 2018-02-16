@@ -1013,8 +1013,8 @@ abstract class ActiveRecord {
 	 * Extended method to return a property value of the Pair\ActiveRecord inherited object related to
 	 * this by a ForeignKey in DB-table.
 	 *
-	 * @param	string	Related property name.
-	 * @param	string	Wanted property name. 
+	 * @param	string	Related property name, belongs to this object.
+	 * @param	string	Wanted property name, belongs to related object.
 	 *
 	 * @return	multitype|NULL
 	 */
