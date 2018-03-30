@@ -516,7 +516,8 @@ class Application {
 	}
 	
 	/**
-	 * Redirect HTTP on the URL param. Relative path as default.
+	 * Redirect HTTP on the URL param. Relative path as default. Queued messages
+	 * get a persistent storage in a cookie in order to being retrieved later.
 	 *
 	 * @param	string	Location URL.
 	 * @param	bool	If TRUE, will avoids to add base url (default FALSE).
@@ -524,7 +525,7 @@ class Application {
 	public function redirect($url, $externalUrl=FALSE) {
 	
 		// stores enqueued messages for next retrievement
-		$this->setPersistentState('EnqueuedMessages', $this->messages);
+		$this->makeQueuedMessagesPersistent();
 		
 		if (!$url) return;
 		
@@ -547,6 +548,15 @@ class Application {
 	
 		exit();
 
+	}
+
+	/**
+	 * Store enqueued messages for next retrievement.
+	 */
+	public function makeQueuedMessagesPersistent() {
+		
+		$this->setPersistentState('EnqueuedMessages', $this->messages);
+		
 	}
 
 	/**

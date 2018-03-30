@@ -137,7 +137,7 @@ class Database {
 			
 		} catch (\Exception $e) {
 
-			exit();
+			exit($e->getMessage());
 			
 		}
 		
