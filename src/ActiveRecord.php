@@ -1327,6 +1327,35 @@ abstract class ActiveRecord {
 	}
 	
 	/**
+	 * Return last insert record object for single, auto-increment primary key.
+	 *
+	 * @return	NULL|Mixed
+	 */
+	public static function getLast() {
+		
+		$class = get_called_class();
+
+		if ($class::hasCompoundKey()) {
+			return NULL;
+		}
+		
+		// cast to string
+		$tableKey = (is_array($class) and isset($class::TABLE_KEY[0])) ? $class::TABLE_KEY[0] : $class::TABLE_KEY;
+
+		// check if auto-increment key
+		$db = Database::getInstance();
+		if (!$db->isAutoIncrement($class::TABLE_NAME)) {
+			return NULL;
+		}
+		
+		$db->setQuery('SELECT * FROM `' . $class::TABLE_NAME . '` ORDER BY `' . $class::TABLE_KEY . '` DESC LIMIT 1');
+		$obj = $db->loadObject();
+
+		return (is_a($obj, 'stdClass') ? new $class($obj) : NULL);
+		
+	}
+	
+	/**
 	 * Gets all objects of the inherited class with where conditions and order clause.
 	 * 
 	 * @param	array	Optional array of query filters, array(property-name => value). 

@@ -302,7 +302,7 @@ abstract class Controller {
 	
 	/**
 	 * Include the file for View formatting. Display an error message and
-	 * redirect to default view as fallback in case of view not found.
+	 * redirect to default view as fallback in case of view not found for non-ajax requests.
 	 */
 	public function display() {
 		
@@ -311,7 +311,9 @@ abstract class Controller {
 		if (is_subclass_of($view, 'Pair\View')) {
 			$view->display();
 		} else {
-			$this->enqueueError($this->translator->translate('RESOURCE_NOT_FOUND', $this->route->module . '/' . $this->route->action));
+			if (!$this->route->isRaw()) {
+				$this->enqueueError($this->translator->translate('RESOURCE_NOT_FOUND', $this->route->module . '/' . $this->route->action));
+			}
 			$this->redirect($this->route->module);
 		}
 		

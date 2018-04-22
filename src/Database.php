@@ -729,6 +729,50 @@ class Database {
 	}
 	
 	/**
+	 * Return an array of table-key names by using cached methods.
+	 *
+	 * @param	string	Name of table to which get the keys.
+	 *
+	 * @return	string[]
+	 */
+	public function getTableKeys($tableName) {
+		
+		$keys = array();
+		
+		$fields = $this->describeTable($tableName);
+		
+		foreach ($fields as $field) {
+			if ('PRI' == $field->Key) {
+				$keys[] = $field->Field;
+			}
+		}
+		
+		return $keys;
+		
+	}
+	
+	/**
+	 * Check if parameter table has auto-increment primary key by using cached method.
+	 *
+	 * @param	string	Name of table to check auto-increment flag.
+	 *
+	 * @return	bool
+	 */
+	public function isAutoIncrement($tableName) {
+
+		$fields = $this->describeTable($tableName);
+		
+		foreach ($fields as $field) {
+			if ('auto_increment' == $field->Extra) {
+				return TRUE;
+			}
+		}
+		
+		return FALSE;
+		
+	}
+	
+	/**
 	 * Check wheter a table exists by its name.
 	 *
 	 * @param	string	Table name.
