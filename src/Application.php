@@ -321,7 +321,7 @@ class Application {
 			
 			// sets user language
 			$tran = Translator::getInstance();
-			$lang = $user->languageId ? $user->getRelated('languageId') : Language::getDefault();
+			$lang = $user->languageId ? new Language($user->languageId) : Language::getDefault();
 			$tran->setLanguage($lang);
 				
 		}
