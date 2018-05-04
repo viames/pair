@@ -578,15 +578,14 @@ abstract class ActiveRecord {
 	 */
 	final public function store() {
 		
-		// FIXME tries to update not-existing records in case of compound key
-		if ($this->isPopulated()) {
-			$res = $this->update();
+		$class = get_called_class();
+		
+		if (!$this->isPopulated() or !$this->db->isAutoIncrement($class::TABLE_NAME)) {
+			return $this->create();
 		} else {
-			$res = $this->create();
+			return $this->update();
 		}
 
-		return $res;
-		
 	}
 	
 	/**
@@ -1335,20 +1334,21 @@ abstract class ActiveRecord {
 		
 		$class = get_called_class();
 
+		// last is for auto-increment only
 		if ($class::hasCompoundKey()) {
 			return NULL;
 		}
 		
-		// cast to string
-		$tableKey = (is_array($class) and isset($class::TABLE_KEY[0])) ? $class::TABLE_KEY[0] : $class::TABLE_KEY;
-
 		// check if auto-increment key
 		$db = Database::getInstance();
 		if (!$db->isAutoIncrement($class::TABLE_NAME)) {
 			return NULL;
 		}
 		
-		$db->setQuery('SELECT * FROM `' . $class::TABLE_NAME . '` ORDER BY `' . $class::TABLE_KEY . '` DESC LIMIT 1');
+		// cast to string
+		$tableKey = (is_array($class::TABLE_KEY) and isset($class::TABLE_KEY[0])) ? $class::TABLE_KEY[0] : $class::TABLE_KEY;
+
+		$db->setQuery('SELECT * FROM `' . $class::TABLE_NAME . '` ORDER BY `' . $tableKey . '` DESC LIMIT 1');
 		$obj = $db->loadObject();
 
 		return (is_a($obj, 'stdClass') ? new $class($obj) : NULL);
@@ -1433,7 +1433,7 @@ abstract class ActiveRecord {
 					
 				} else {
 					
-					trigger_error('In method ' . $class . '::getAllObject() unexistent property “' . $property . '” can’t be used as filter');
+					trigger_error('In method ' . $class . '::getAllObjects() unexistent property “' . $property . '” can’t be used as filter');
 					
 				}
 
@@ -1524,7 +1524,57 @@ abstract class ActiveRecord {
 	}
 	
 	/**
-	 * Get objects of inherited class as result of the query run.
+	 * Get one object of inherited class as result of the query run.
+	 *
+	 * @param	string	Query to run.
+	 * @param	array	Optional bind parameters for query.
+	 *
+	 * @return	mixed|NULL
+	 */
+	final public static function getObjectByQuery($query, $params=[]) {
+		
+		$app	= Application::getInstance();
+		$db		= Database::getInstance();
+		$class	= get_called_class();
+		
+		// run query
+		$db->setQuery($query);
+		$row = $db->loadObject($params);
+		
+		// initialize custom binds
+		$customBinds = [];
+		
+		if (is_a($row, 'stdClass')) {
+			
+			$binds = $class::getBinds();
+			
+			// get object properties from query
+			$fields  = get_object_vars($row);
+			
+			// search for custom field names
+			foreach ($fields as $field=>$value) {
+				if (!array_search($field, $binds)) {
+					$customBinds[Utilities::getCamelCase($field)] = $field;
+				}
+			}
+			
+			$object = new $class($row);
+			
+			// populate custom properties
+			foreach ($customBinds as $customProp=>$customField) {
+				$object->$customProp = $row->$customField;
+			}
+			
+		}
+		
+		$app->logEvent('Loaded a ' . $class . ' object' . (count($customBinds) ? ' with custom fields ' . implode(',', $customBinds) : ''));
+		
+		return $object;
+		
+	}
+	
+	/**
+	 * Get all objects of inherited class as result of the query run.
 	 *
 	 * @param	string	Query to run.
 	 * @param	array	Optional bind parameters for query.

@@ -509,7 +509,7 @@ abstract class FormControl {
 	/**
 	 * Sets value for this control subclass.
 	 * 
-	 * @param	string	Value for this control.
+	 * @param	mixed		Value for this control.
 	 * 
 	 * @return	FormControl
 	 */

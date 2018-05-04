@@ -508,7 +508,7 @@ class Plugin {
 			return FALSE;
 		}
 	
-		$manifest = new \SimpleXMLElement("<manifest></manifest>");
+		$manifest = new \SimpleXMLElement('<!DOCTYPE xml><manifest></manifest>');
 	
 		$plugin = $manifest->addChild('plugin');
 

@@ -1,4 +1,5 @@
 # Pair
+
 light weight and versatile PHP framework
 
 [![Latest Stable Version](https://poser.pugx.org/viames/pair/v/stable)](https://packagist.org/packages/viames/pair)
@@ -8,7 +9,28 @@ light weight and versatile PHP framework
 [![composer.lock](https://poser.pugx.org/viames/pair/composerlock)](https://packagist.org/packages/viames/pair)
 
 ## Features
-The framework implements [Model-View-Controller](https://en.wikipedia.org/wiki/Model-View-Controller) pattern, the [Active Record](https://en.wikipedia.org/wiki/Active_record_pattern) pattern and a search friendly route logic.
+
+Pair is simple and fast, few frills, maybe none. It was written with simplicity in mind, while trying to achieve the most frequent needs of web applications. It implements [Model-View-Controller](https://en.wikipedia.org/wiki/Model-View-Controller) pattern and a search friendly route logic.
+
+#### ActiveRecord
+
+Pair connects to MySQL DBMS with an ORM based on [Active Record](https://en.wikipedia.org/wiki/Active_record_pattern) pattern. It does not require the configuration of XML files. Objects retrieved from the DB are cast in both directions to the required type (int, bool, DateTime, float, csv).
+
+In addition, each class inherited from ActiveRecord supports many convenient methods including those for managing the internal cache for saving data that saves queries.
+
+The Pair base tables are InnoDB utf-8mb4.
+
+#### Plugins
+
+Pair supports modules and templates as installable plugins, but can easily be extended to other types of custom plugins. The Pair’s Plugin class allows you to create the manifest file, the ZIP package with the contents of the plugin and the installation of the plugin of your Pair’s application.
+
+#### Time zone
+
+The automatic time zone management allows to store the data on UTC and to obtain it already converted according to the connected user’s time zone automatically.
+
+#### Log bar
+
+A nice log bar shows all the details of the loaded objects, the system memory load, the time taken for each step and for the queries, the SQL code of the executed queries and the backtrace of the detected errors. Custom messages can be added for each step of the code.
 
 ## Installation
 
@@ -40,14 +62,15 @@ If you want to test code that is in the master branch, which hasn’t been pushe
 ```
 composer require viames/pair dev-master
 ```
+If you don’t have Composer, you can download it [here] (https://getcomposer.org/download/).
 
-### Don’t have Composer?
+## Requirements
 
-You can download it here: https://getcomposer.org/download/
+Pair requires Apache 2.x, PHP v5.6 or above and MySQL v5.6.
 
 ## Examples
 
-An example project that uses Pair PHP framework can be found [here](https://github.com/viames/Pair_example).
+An example project that uses Pair PHP framework can be found [here](https://github.com/viames/Pair_example). A nice installer will create your first web-project with Pair in a breeze.
 
 ## Contributing
 
