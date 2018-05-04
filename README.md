@@ -66,11 +66,11 @@ If you don’t have Composer, you can download it [here] (https://getcomposer.or
 
 ## Requirements
 
-Pair requires Apache 2.x, PHP v5.6 or above and MySQL v5.6.
+Pair minimum requirements are Apache 2.x, PHP v5.6 and MySQL v5.6. Newer versions are fully compatible and preferred.
 
 ## Examples
 
-An example project that uses Pair PHP framework can be found [here](https://github.com/viames/Pair_example). A nice installer will create your first web-project with Pair in a breeze.
+The [Pair_example] (https://github.com/viames/Pair_example) is a good starting point to build your new web project in a breeze with Pair PHP framework using the installer wizard.
 
 ## Contributing
 
