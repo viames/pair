@@ -64,6 +64,10 @@ composer require viames/pair dev-master
 ```
 If you don’t have Composer, you can [download it](https://getcomposer.org/download/).
 
+## Documentation
+
+Please check the project [Wiki](https://github.com/Viames/Pair/wiki)
+
 ## Requirements
 
 | Software | Recommended | Minimum | Configuration          |
