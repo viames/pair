@@ -62,15 +62,19 @@ If you want to test code that is in the master branch, which hasn’t been pushe
 ```
 composer require viames/pair dev-master
 ```
-If you don’t have Composer, you can download it [here] (https://getcomposer.org/download/).
+If you don’t have Composer, you can [download it](https://getcomposer.org/download/).
 
 ## Requirements
 
-Pair minimum requirements are Apache 2.x, PHP v5.6 and MySQL v5.6. Newer versions are fully compatible and preferred.
+| Software | Recommended | Minimum | Configuration          |
+| ---      |    :---:    |  :---:  | ---                    |
+| Apache   | 2.4+        | 2.2     | `modules:` mod_rewrite |
+| MySQL    | 5.7+        | 5.6     | `character_set:` utf8mb4 <br> `collation:` utf8mb4\_unicode_ci <br> `storage_engine:` InnoDB |
+| PHP      | 7+          | 5.6     | `extensions:` curl, fileinfo, gd, json, mcrypt, openssl, pcre, PDO, pdo_mysql, Reflection |
 
 ## Examples
 
-The [Pair_example] (https://github.com/viames/Pair_example) is a good starting point to build your new web project in a breeze with Pair PHP framework using the installer wizard.
+The [Pair_example](https://github.com/viames/Pair_example) is a good starting point to build your new web project in a breeze with Pair PHP framework using the installer wizard.
 
 ## Contributing
 
