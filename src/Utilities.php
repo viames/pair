@@ -1080,4 +1080,41 @@ class Utilities {
 		
 	}
 
+	/**
+	 * Return public URL of a document by its path in the file system.
+	 *
+	 * @param	string		Full path into the file system.
+	 * @param	bool		If TRUE, add timestamp of the last file edit. Default FALSE.
+	 *
+	 * @return	string
+	 * 
+	 * @throws	\Exception
+	 */
+	public function getFileUrl($filePath, $addTimestamp = FALSE) {
+
+		if (!file_exists($filePath)) {
+			throw new \Exception('File not found at path ' . $filePath);
+		}
+		
+		// check if valid path
+		if (FALSE === strpos($filePath, APPLICATION_PATH)) {
+			throw new \Exception('File path doesn’t match the application root folder ' . APPLICATION_PATH);
+		}
+		
+		// BASE_HREF has trailing slash
+		$url = BASE_HREF . substr($filePath, strlen(APPLICATION_PATH)+1);
+			
+		if ($addTimestamp) {
+			$timestamp = filemtime($filePath);
+			// check if valid timestamp
+			if (FALSE == $timestamp) {
+				throw new \Exception('File last change timestamp failed for ' . $filePath);
+			}
+			$url .= '?' . $timestamp;
+		}
+		
+		return $url;
+
+	}
+
 }
