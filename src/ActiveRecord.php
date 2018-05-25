@@ -1725,7 +1725,15 @@ abstract class ActiveRecord {
 		}
 
 		$app = Application::getInstance();
-		$this->$prop->setTimeZone($app->currentUser->getDateTimeZone());
+		
+		// for guests, use default TimeZone
+		if (is_a($app->currentUser, 'User')) {
+			$dtz = $app->currentUser->getDateTimeZone();
+		} else {
+			$dtz = new \DateTimeZone(BASE_TIMEZONE);
+		}
+		
+		$this->$prop->setTimeZone($dtz);
 
 		// check if format is specified
 		if (!$format) {
@@ -1766,7 +1774,17 @@ abstract class ActiveRecord {
 			return NULL;
 		}
 		
+		$app  = Application::getInstance();
 		$tran = Translator::getInstance();
+		
+		// for guests, use default TimeZone
+		if (is_a($app->currentUser, 'User')) {
+			$dtz = $app->currentUser->getDateTimeZone();
+		} else {
+			$dtz = new \DateTimeZone(BASE_TIMEZONE);
+		}
+		
+		$this->$prop->setTimeZone($dtz);
 
 		// if is set a locale date format, use it
 		if ($tran->stringExists('LC_DATE_FORMAT')) {
@@ -1778,7 +1796,7 @@ abstract class ActiveRecord {
 
 			$format = $tran->stringExists('DATE_FORMAT') ?
 					$tran->translate('DATE_FORMAT') :
-					'Y-m-d H:i:s';
+					'Y-m-d';
 
 			return $this->formatDateTime($prop, $format);
 
