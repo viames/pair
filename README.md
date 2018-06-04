@@ -14,9 +14,9 @@ Pair is simple and fast, few frills, maybe none. It was written with simplicity 
 
 #### ActiveRecord
 
-Pair connects to MySQL DBMS with an ORM based on [Active Record](https://en.wikipedia.org/wiki/Active_record_pattern) pattern. It does not require the configuration of XML files. Objects retrieved from the DB are cast in both directions to the required type (int, bool, DateTime, float, csv).
+Pair allows the creation of objects related to each respective database table using the [ActiveRecord class](https://github.com/Viames/Pair/wiki/ActiveRecord). Objects retrieved from the DB are cast in both directions to the required type (int, bool, DateTime, float, csv). See [Automatic properties cast](https://github.com/Viames/Pair/wiki/ActiveRecord#automatic-properties-cast) page in the wiki.
 
-In addition, each class inherited from ActiveRecord supports many convenient methods including those for managing the internal cache for saving data that saves queries.
+In addition, each class inherited from ActiveRecord supports many convenient methods including those for caching data that save queries.
 
 The Pair base tables are InnoDB utf-8mb4.
 
