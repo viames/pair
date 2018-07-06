@@ -66,7 +66,14 @@ If you don’t have Composer, you can [download it](https://getcomposer.org/down
 
 ## Documentation
 
-Please check the project [Wiki](https://github.com/Viames/Pair/wiki)
+Please consult the [Wiki](https://github.com/Viames/Pair/wiki) of this project. Below are its most interesting pages that illustrate some features of Pair.
+
+* [ActiveRecord](https://github.com/Viames/Pair/wiki/ActiveRecord)
+* [Controller](https://github.com/Viames/Pair/wiki/Controller)
+* [index.php](https://github.com/Viames/Pair/wiki/index)
+* [.htaccess](https://github.com/Viames/Pair/wiki/htaccess)
+* [config.php](https://github.com/Viames/Pair/wiki/Configuration-file)
+* [classes](https://github.com/Viames/Pair/wiki/Classes-folder)
 
 ## Requirements
 
