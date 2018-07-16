@@ -386,6 +386,11 @@ class Application {
 		
 	}
 	
+	/**
+	 * Add script content that will be loaded by jQuery into the #scriptContainer DOM element.
+	 * 
+	 * @param	string	Javascript content.
+	 */
 	public function addScript($script) {
 		
 		$this->scriptContent[] = $script;

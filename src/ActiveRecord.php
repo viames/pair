@@ -1967,6 +1967,9 @@ abstract class ActiveRecord {
 							$control = $form->addTextarea($propName);
 						} else {
 							$control = $form->addInput($propName);
+							if (isset($column->length[0])) {
+								$control->setMaxLength($column->length[0]);
+							}
 						}
 						break;
 
