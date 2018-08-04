@@ -1090,7 +1090,7 @@ class Utilities {
 	 * 
 	 * @throws	\Exception
 	 */
-	public function getFileUrl($filePath, $addTimestamp = FALSE) {
+	public static function getFileUrl($filePath, $addTimestamp = FALSE) {
 
 		if (!file_exists($filePath)) {
 			throw new \Exception('File not found at path ' . $filePath);

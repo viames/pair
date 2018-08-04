@@ -617,7 +617,7 @@ class Database {
 	
 	/**
 	 * Returns the list of columns that are restricting a passed DB-table, an fk list.
-	 * Require grant on “references” permissions of connected db-user.
+	 * Require grant on “references” permissions of connected db-user. Memory cached.
 	 *
 	 * @param	string	Name of table to check.
 	 *

@@ -825,7 +825,7 @@ abstract class ActiveRecord {
 		$exists = FALSE;
 		
 		// get list of references to check
-		$references = $this->db->getTableReferenced(static::TABLE_NAME);
+		$references = $this->db->getInverseForeignKeys(static::TABLE_NAME);
 		
 		foreach ($references as $r) {
 			
