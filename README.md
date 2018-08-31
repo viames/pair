@@ -70,6 +70,7 @@ Please consult the [Wiki](https://github.com/Viames/Pair/wiki) of this project. 
 
 * [ActiveRecord](https://github.com/Viames/Pair/wiki/ActiveRecord)
 * [Controller](https://github.com/Viames/Pair/wiki/Controller)
+* [Router](https://github.com/Viames/Pair/wiki/Router)
 * [index.php](https://github.com/Viames/Pair/wiki/index)
 * [.htaccess](https://github.com/Viames/Pair/wiki/htaccess)
 * [config.php](https://github.com/Viames/Pair/wiki/Configuration-file)
