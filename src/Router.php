@@ -73,6 +73,12 @@ class Router {
 	private $order;
 	
 	/**
+	 * List of custom routing paths.
+	 * @var array
+	 */
+	private $routes = array();
+	
+	/**
 	 * Flag for show log informations on AJAX calls.
 	 * @var bool
 	 */
@@ -141,6 +147,18 @@ class Router {
 	
 		}
 	
+	}
+	
+	/**
+	 * Set a property of this object.
+	 * 
+	 * @param	string	Property’s name.
+	 * @param	mixed
+	 */
+	public function __set($name, $value) {
+		
+		$this->$name = $value;
+		
 	}
 	
 	/**
@@ -219,12 +237,6 @@ class Router {
 	
 	}
 	
-	public function __set($name, $value) {
-	
-		$this->$name = $value;
-
-	}
-	
 	public function setModule($module) {
 	
 		$this->module = $module;
@@ -271,6 +283,41 @@ class Router {
 		return $this->defaults['module'] . '/' . $this->defaults['action'];
 		
 	}
+
+	/**
+	 * Set page to be viewed with no template, useful for ajax requests and API.
+	 */
+	public static function setRaw() {
+		
+		try {
+			self::$instance->raw = TRUE;
+		} catch(\Exception $e) {
+			die('Router instance has not been created yet');
+		}
+		
+	}
+		
+	/**
+	 * Add a new route path.
+	 *
+	 * @param	string		Path with optional variable placeholders.
+	 * @param	string		Action.
+	 * @param	string|NULL	Optional module name.
+	 */
+	public static function addRoute($path, $action, $module=NULL) {
+		
+		$route = new \stdClass();
+		$route->path	 = $path;
+		$route->action	 = $action;
+		$route->module	 = $module;
+
+		try {
+			self::$instance->routes[] = $route;
+		} catch(\Exception $e) {
+			die('Router instance has not been created yet');
+		}		
+		
+	}
 		
 	/**
 	 * Parses an URL and will store parameter values.
@@ -302,51 +349,143 @@ class Router {
  						array_shift($params);
 						break;
 					
-					case 'api':
-						$this->raw = TRUE;
+					default:
+						
+						// recognize module
+						$this->module = urldecode($params[0]);
+						
+						// define module constant
+						define('MODULE_PATH', 'modules/' . $this->module . '/');
+												
 						break;
 						
 				}
 
 			}
+			
+			// trigger for route processed
+			$routeProcessed = FALSE;
+			
+			// search for custom routes
+			$routesFile = MODULE_PATH . 'routes.php';
 
-			// set module, action and page nr by parameters
-			foreach ($params as $id=>$p) {
+			// check if controller file exists 
+			if (file_exists($routesFile)) {
 				
-				switch ($id) {
+				// read the custom routes by php file
+				require $routesFile;
+				
+				// search for the first route that matches in inverse order
+				foreach (array_reverse(self::$instance->routes) as $r) {
 					
-					case 0:
-						
-						$this->module = urldecode($p);
-						break;
-						
-					case 1:
-						
-						$this->action = urldecode($p);
-						break;
-						
-					default:
-						
-						$param = urldecode($p);
-						
-						// flag to not send back log (useful for AJAX)
-						if ('noLog' == $param) {
-							$this->sendLog = FALSE;
-						// ordering
-						} else if ('order-' == substr($param, 0, 6)) {
-							$nr = intval(substr($param, 6));
-							if ($nr) $this->order = $nr;
-						// pagination
-						} else if ('page-' == substr($param, 0, 5)) {
-							$nr = intval(substr($param, 5));
-							$this->setPage($nr);
-						} else {
-							if (''!=$param and !is_null($param)) {
-								$this->vars[] = $param;
-							}
+					// replace any regex after param name in path
+					$pathRegex = preg_replace('|/:[^/(]+\(([^)]+)\)|', '/($1)', $r->path);
+
+					// then replace simple param name in path
+					$pathRegex = preg_replace('|/(:[^/]+)|', '/([^/]+)', $pathRegex);
+					
+					// compare current URL to regex
+					if (preg_match('|^' . $this->module . $pathRegex . '$|', $this->url)) {
+
+						// assign action
+						$this->action = $r->action;
+
+						// assign even module
+						if (is_null($this->module)) {
+							$this->module = $r->module;
 						}
+						
+						// split the route path
+						$parts = explode('/', $r->path);
+						
+						// initialize array of temporary variables
+						$variables = array();
+						
+						// store the variables found with name and position
+						foreach ($parts as $pos => $part) {
+
+							// remove the braces that surround the variable name
+							if (substr($part,0,1) == ':') {
+								
+								$regexPos = strpos($part, '(');
+								
+								// remove any regex after param name
+								$variables[$pos] = FALSE === $regexPos ?
+									substr($part,1) :
+									substr($part,1,$regexPos-1);
+								
+							}
+							
+						}
+						
+						// assign params to vars array
+						foreach ($params as $pos => $value) {
+
+							if (isset($variables[$pos])) {
+								
+								// create a var with parsed name 
+								$this->vars[$variables[$pos]] = $value;
+								
+							} else {
+								
+								// otherwise assign the param by its index position
+								$this->vars[$pos] = $value;
+								
+							}
+							
+						}
+						
+						$routeProcessed = TRUE;
+						
 						break;
+						
+					}
+					
+				}
+				
+			}
+
+			// if still not processed, go to conventional way
+			if (!$routeProcessed) {
+				
+				// set module, action and page nr by parameters
+				foreach ($params as $pos => $value) {
+					
+					switch ($pos) {
 	
+						case 0:
+							// module is already detected
+							break;
+						
+						case 1:
+							
+							$this->action = urldecode($value);
+							break;
+							
+						default:
+							
+							$param = urldecode($value);
+							
+							// flag to not send back log (useful for AJAX)
+							if ('noLog' == $param) {
+								$this->sendLog = FALSE;
+							// ordering
+							} else if ('order-' == substr($param, 0, 6)) {
+								$nr = intval(substr($param, 6));
+								if ($nr) $this->order = $nr;
+							// pagination
+							} else if ('page-' == substr($param, 0, 5)) {
+								$nr = intval(substr($param, 5));
+								$this->setPage($nr);
+							} else {
+								if (''!=$param and !is_null($param)) {
+									$this->vars[] = $param;
+								}
+							}
+							break;
+		
+					}
+					
 				}
 				
 			}

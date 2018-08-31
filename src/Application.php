@@ -574,16 +574,18 @@ class Application {
 		$route = Router::getInstance();
 
 		// check if API has been called
-		if (!trim($name) or $name != $route->module or !file_exists('modules/' . $name . '/controller.php')) {
+		if (!trim($name) or $name != $route->module or !file_exists(MODULE_PATH . 'controller.php')) {
 			return;
 		}
+		
+		// set as raw request
+		Router::setRaw();
 		
 		$logger = Logger::getInstance();
 		$logger->disable();
 
-		// define module constant and require controller file
-		define('MODULE_PATH', 'modules/' . $name . '/');
-		require ('modules/' . $name . '/controller.php');
+		// require controller file
+		require (MODULE_PATH . 'controller.php');
 		
 		// reveal SID by both GET and POST
 		$sid = Input::get('sid');
@@ -869,9 +871,6 @@ class Application {
 			
 		} else {
 		
-			// path to the required form
-			define('MODULE_PATH', 'modules/'. $route->module .'/');
-			
 			require ($controllerFile);
 			
 			// build controller object
