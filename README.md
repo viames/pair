@@ -1,6 +1,4 @@
-# Pair
-
-light weight and versatile PHP framework
+<img src="https://github.com/viames/Pair/wiki/files/pair-logo.png" width="240">
 
 [![Latest Stable Version](https://poser.pugx.org/viames/pair/v/stable)](https://packagist.org/packages/viames/pair)
 [![Total Downloads](https://poser.pugx.org/viames/pair/downloads)](https://packagist.org/packages/viames/pair)
@@ -10,7 +8,7 @@ light weight and versatile PHP framework
 
 ## Features
 
-Pair is simple and fast, few frills, maybe none. It was written with simplicity in mind, while trying to achieve the most frequent needs of web applications. It implements [Model-View-Controller](https://en.wikipedia.org/wiki/Model-View-Controller) pattern and a search friendly route logic.
+Pair is simple and fast, few frills, maybe none. It was written with simplicity in mind, while trying to achieve the most frequent needs of web applications. It implements [Model-View-Controller](https://en.wikipedia.org/wiki/Model-View-Controller) pattern and a search friendly [route logic](https://github.com/Viames/Pair/wiki/Router) by default.
 
 #### ActiveRecord
 
