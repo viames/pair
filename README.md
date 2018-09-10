@@ -10,6 +10,10 @@
 
 Pair is simple and fast, few frills, maybe none. It was written with simplicity in mind, while trying to achieve the most frequent needs of web applications. It implements [Model-View-Controller](https://en.wikipedia.org/wiki/Model-View-Controller) pattern and a search friendly [route logic](https://github.com/Viames/Pair/wiki/Router) by default.
 
+Everyone knows that you do not need a truck to go shopping. You do not even need the car to go and buy the newspaper at the nearby newsstand. You need the right medium for everything.
+
+If you’re already tired of starting a new web project due to the complexity of the famous frameworks used around, you should take a look at Pair. For a small or medium web project, it fits really well.
+
 #### ActiveRecord
 
 Pair allows the creation of objects related to each respective database table using the [ActiveRecord class](https://github.com/Viames/Pair/wiki/ActiveRecord). Objects retrieved from the DB are cast in both directions to the required type (int, bool, DateTime, float, csv). See [Automatic properties cast](https://github.com/Viames/Pair/wiki/ActiveRecord#automatic-properties-cast) page in the wiki.
