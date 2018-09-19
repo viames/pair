@@ -85,7 +85,7 @@ Please consult the [Wiki](https://github.com/Viames/Pair/wiki) of this project. 
 | ---      |    :---:    |  :---:  | ---                    |
 | Apache   | 2.4+        | 2.2     | `modules:` mod_rewrite |
 | MySQL    | 5.7+        | 5.6     | `character_set:` utf8mb4 <br> `collation:` utf8mb4\_unicode_ci <br> `storage_engine:` InnoDB |
-| PHP      | 7+          | 5.6     | `extensions:` curl, fileinfo, gd, json, openssl, pcre, PDO, pdo_mysql, Reflection |
+| PHP      | 7+          | 5.6     | `extensions:` fileinfo, json, pcre, PDO, pdo_mysql, Reflection |
 
 ## Examples
 
