@@ -1,11 +1,5 @@
 <?php
 
-/**
- * @version	$Id$
- * @author	Viames Marino
- * @package	Pair
- */
-
 namespace Pair;
 
 class Translator {
@@ -17,16 +11,16 @@ class Translator {
 	protected static $instance;
 	
 	/**
-	 * The default Language object.
-	 * @var	Language
+	 * The default Locale object.
+	 * @var	Locale
 	 */
-	private $default;
+	private $defaultLocale;
 	
 	/**
-	 * The current Language object.
-	 * @var Language
+	 * The current user’s Locale object.
+	 * @var Locale
 	 */
-	private $current;
+	private $currentLocale;
 	
 	/**
 	 * Current module in where to look for language files.
@@ -51,8 +45,8 @@ class Translator {
 	 */
 	private function __construct() {
 
-		// config module for language
-		$this->default = Language::getDefault();
+		// config module for locale
+		$this->defaultLocale = Locale::getDefault();
 		
 	}
 	
@@ -72,45 +66,45 @@ class Translator {
 	}
 
 	/**
-	 * Return the current Language object.
+	 * Return the current Locale object.
 	 * 
-	 * @return	Language
+	 * @return	Locale
 	 */
-	public function getCurrentLanguage() {
+	public function getCurrentLocale() {
 		
-		$this->checkLanguageSet();
+		$this->checkLocaleSet();
 		
-		return $this->current;
+		return $this->currentLocale;
 		
 	}
 	
 	/**
-	 * Return the default Language object, cached.
+	 * Return the default Locale object, cached.
 	 *
-	 * @return	Language
+	 * @return	Locale
 	 */
-	public function getDefaultLanguage() {
+	public function getDefaultLocale() {
 		
-		$this->checkLanguageSet();
+		$this->checkLocaleSet();
 		
-		return $this->default;
+		return $this->defaultLocale;
 		
 	}
 	
 	/**
-	 * Set a new current language by preparing language strings and locale.
+	 * Set a new current locale by preparing its language strings.
 	 * 
-	 * @param	Language	Language object to set.
+	 * @param	Locale	Locale object to set.
 	 */
-	public function setLanguage(Language $newLang) {
+	public function setLocale(Locale $newLocale) {
 		
-		// apply some changes only if new Language really differs
-		if (!$this->current or ($this->current and $newLang->code != $this->current->code)) {
+		// apply some changes only if new Locale really differs
+		if (!$this->currentLocale or ($this->currentLocale and $newLocale->id != $this->currentLocale->id)) {
 			
-			$this->current = $newLang;
+			$this->currentLocale = $newLocale;
 				
 			// if new language code equals the default one, move lang-strings
-			if ($this->default and $newLang->code == $this->default->code) {
+			if ($this->defaultLocale and $newLocale->id == $this->defaultLocale->id) {
 
 				$this->strings = $this->defaultStrings;
 				$this->defaultStrings = NULL;
@@ -125,63 +119,62 @@ class Translator {
 			
 		}
 		
-		setlocale(LC_ALL, $newLang->representation);
+		setlocale(LC_ALL, $newLocale->getRepresentation());
 		
 	}
 	
 	/**
-	 * Set a module name.
+	 * Set the current module name for this object.
 	 * 
 	 * @param	string	Module name.
 	 */
-	public function setModule($moduleName) {
+	public function setModuleName($moduleName) {
 		
 		$this->module = $moduleName;
 		
 	}
 	
 	/**
-	 * Check that both default and current languages are set.
+	 * Check that both default and current locales are set.
 	 */
-	private function checkLanguageSet() {
+	private function checkLocaleSet() {
 		
-		if (!$this->default) {
+		if (!$this->defaultLocale) {
 			
-			$lang = Language::getDefault();
-			$this->default = $lang;
+			$locale = Locale::getDefault();
+			$this->defaultLocale = $locale;
 			
 			// server variable
-			setlocale(LC_ALL, $lang->representation);
+			setlocale(LC_ALL, $locale->getRepresentation());
 			
 		}
 		
-		if (!$this->current) {
+		if (!$this->currentLocale) {
 			
-			// temporary sets default language as current
-			$this->current = $this->default;
+			// temporary sets default locale as current
+			$this->currentLocale = $this->defaultLocale;
 			
+			// gets favorite language from browser settings
 			if (isset($_SERVER['HTTP_ACCEPT_LANGUAGE'])) {
 			
-				// gets favorite language from browser settings
 				preg_match_all('/([[:alpha:]]{1,8})(-([[:alpha:]|-]{1,8}))?' .
 						'(\s*;\s*q\s*=\s*(1\.0{0,3}|0\.\d{0,3}))?\s*(,|$)/i',
 						$_SERVER['HTTP_ACCEPT_LANGUAGE'], $matches, PREG_SET_ORDER);
 			
 				// if browser’s lang matches and it’s different by current, will set as current
-				if (isset($matches[0][1]) and $this->current->code != $matches[0][1]) {
-			
-					$lang = Language::getLanguageByCode($matches[0][1]);
-			
-					if ($lang) {
-						
-						$this->setLanguage($lang);
-							
-					}
-			
+				if (!isset($matches[0][1]) or $this->currentLocale->getLanguage()->code == $matches[0][1]) {
+					return;
 				}
+				
+				$locale = Locale::getDefaultByLanguage($matches[0][1]);
+				if (!$locale) {
+					return;
+				}
+				
+				$this->setLocale($locale);
 					
 			}
-			
+
 		}
 		
 	}
@@ -195,7 +188,7 @@ class Translator {
 	 * 
 	 * @return	string
 	 */
-	public function translate($key, $vars=NULL) {
+	public function get($key, $vars=NULL) {
 
 		$app = Application::getInstance();
 		
@@ -210,7 +203,7 @@ class Translator {
 		// searches into strings of default language
 		} else if (is_array($this->defaultStrings) and array_key_exists($key, $this->defaultStrings) and $this->defaultStrings[$key]) {
 			
-			$app->logWarning('Language string ' . $key . ' is untranslated for current language [' . $this->current->code . ']');
+			$app->logWarning('Language string ' . $key . ' is untranslated for current language [' . $this->currentLocale->code . ']');
 			$string = $this->defaultStrings[$key];
 
 		// will returns the string constant, as debug info
@@ -236,6 +229,22 @@ class Translator {
 		return $string;
 		
 	}
+	
+	/**
+	 * Proxy to get() method.
+	 *
+	 * @param	string		The language key.
+	 * @param	array|NULL	List of parameters to bind on string (optional).
+	 *
+	 * @return	string
+	 * 
+	 * @deprecated
+	 */
+	 public function translate($key, $vars=NULL) {
+	 	
+	 	return $this->get($key, $vars);
+	 	
+	 }
 	
 	/**
 	 * Return TRUE if passed language is available for translation.
@@ -273,19 +282,19 @@ class Translator {
 		// useful for landing page
 		if (!$this->module) {
 			$app = Application::getInstance();
-			$route = Router::getInstance();
-			if ($route->module) {
-				$this->module = $route->module;
+			$router = Router::getInstance();
+			if ($router->module) {
+				$this->module = $router->module;
 			} else if (is_a($app->currentUser, 'Pair\User')) {
 				$this->module = $app->currentUser->getLanding()->module;
 			}
 		}
 
 		// checks that languages are set
-		$this->checkLanguageSet();
+		$this->checkLocaleSet();
 
 		// common strings in current language
-		$common = 'languages/' . $this->current->code . '.ini';
+		$common = 'translations/' . $this->currentLocale->getRepresentation() . '.ini';
 		if (file_exists($common)) {
 			try {
 				$this->strings = @parse_ini_file($common);
@@ -301,7 +310,7 @@ class Translator {
 		if ($this->module) {
 			
 			// module strings in current language
-			$file1 = 'modules/' . strtolower($this->module) . '/languages/' . $this->current->code . '.ini';
+			$file1 = 'modules/' . strtolower($this->module) . '/translations/' . $this->currentLocale->getRepresentation() . '.ini';
 			if (file_exists($file1)) {
 				try {
 					$moduleStrings = @parse_ini_file($file1);
@@ -317,10 +326,10 @@ class Translator {
 		}
 		
 		// if current language is different by default, will load also
-		if ($this->current->code != $this->default->code) {
+		if ($this->currentLocale->getRepresentation() != $this->defaultLocale->getRepresentation()) {
 			
 			// common strings in default language
-			$common = 'languages/' . $this->default->code . '.ini';
+			$common = 'translations/' . $this->defaultLocale->getRepresentation() . '.ini';
 			if (file_exists($common)) {
 				try {
 					$this->defaultStrings = @parse_ini_file($common);
@@ -333,7 +342,7 @@ class Translator {
 			if ($this->module) {
 		
 				// module strings in default language
-				$file2 = 'modules/' . strtolower($this->module) . '/languages/' . $this->default->code . '.ini';
+				$file2 = 'modules/' . strtolower($this->module) . '/translations/' . $this->defaultLocale->getRepresentation() . '.ini';
 				if (file_exists($file2)) {
 					try {
 						$moduleStrings = @parse_ini_file($file2);
@@ -364,7 +373,7 @@ class Translator {
 			
 			// tricks to leave untranslated english-only options
 			if (strtoupper($text) == $text and strlen($text) > 3) {
-				$optSelect[$value] = $this->translate($text);
+				$optSelect[$value] = $this->get($text);
 			}
 			
 		}
@@ -372,5 +381,15 @@ class Translator {
 		return $optSelect;
 	
 	}
-
+	
+	public static function getDefaultFileName() {
+		
+		try {
+			return self::$instance->getDefaultLocale()->getRepresentation() . '.ini';
+		} catch(\Exception $e) {
+			die('Translator instance has not been created yet');
+		}
+		
+	}
+	
 }

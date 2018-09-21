@@ -1,11 +1,5 @@
 <?php
 
-/**
- * @version	$Id$
- * @author	Viames Marino
- * @package	Pair
- */
-
 namespace Pair;
 
 /**
@@ -112,6 +106,11 @@ class Application {
 		ini_set('error_reporting',	E_ALL);
 		ini_set('display_errors',	TRUE);
 
+		// prevent loop error for recursive __construct
+		if (defined('APPLICATION_PATH')) {
+			return;
+		}
+		
 		// application folder without trailing slash
 		define('APPLICATION_PATH',	dirname(dirname(dirname(dirname(dirname(__FILE__))))));
 		
@@ -122,7 +121,11 @@ class Application {
 		
 		// check config file or start installation
 		if (!file_exists($config)) {
-			include 'installer/start.php';
+			if (file_exists('installer/start.php')) {
+				include 'installer/start.php';
+			} else {
+				die ('Configuration file is missing.');
+			}
 			exit();
 		}
 		
@@ -165,37 +168,8 @@ class Application {
 		register_shutdown_function('\Pair\Utilities::fatalErrorHandler');
 		
 		// routing initialization
-		$route = Router::getInstance();
-		
-		// set the pagination page number
-		if (!is_null($route->module)) {
-			
-			$cookieName = ucfirst($route->module) . ucfirst($route->action);
-			
-			// set a persistent state about pagination
-			if (1 == $route->page) {
-				
-				$this->unsetPersistentState($cookieName);
-
-			// a page number has been called
-			} else if ($route->page > 1) {
-				
-				$this->setPersistentState($cookieName, $route->page);
-				
-			// otherwise load an old pagination state
-			} else if (is_null($route->page) and $this->getPersistentState($cookieName)) {
-			 	
-				$route->page = $this->getPersistentState($cookieName);
-				$this->unsetPersistentState($cookieName);
-				
-			// set default page 1
-			} else {
-				
-				$route->page = 1;
-				
-			}
-			
-		}
+		$router = Router::getInstance();
+		$router->parseRoutes();
 		
 		// force utf8mb4
 		if (defined('DB_UTF8') and DB_UTF8) {
@@ -207,7 +181,7 @@ class Application {
 		$this->pageTitle = PRODUCT_NAME;
 
 		// raw calls will jump templates inclusion, so turn-out output buffer
-		if (!$route->isRaw()) {
+		if (!$router->isRaw()) {
 			
 			$debug = (defined('DEBUG') and DEBUG);
 			$gzip  = (isset($_SERVER['HTTP_ACCEPT_ENCODING']) and substr_count($_SERVER['HTTP_ACCEPT_ENCODING'], 'gzip'));
@@ -254,7 +228,7 @@ class Application {
 			case 'langCode':
 				
 				$translator = Translator::getInstance();
-				$value = $translator->getCurrentLanguage()->code;
+				$value = $translator->getCurrentLocale()->getRepresentation();
 				break;
 				
 			default:
@@ -309,7 +283,7 @@ class Application {
 	}
 	
 	/**
-	 * Sets current user, default template and translation language.
+	 * Sets current user, default template and translation locale.
 	 * 
 	 * @param	User	User object or inherited class object. 
 	 */
@@ -321,8 +295,7 @@ class Application {
 			
 			// sets user language
 			$tran = Translator::getInstance();
-			$lang = $user->languageId ? new Language($user->languageId) : Language::getDefault();
-			$tran->setLanguage($lang);
+			$tran->setLocale($user->getLocale());
 				
 		}
 
@@ -540,8 +513,8 @@ class Application {
 			
 		} else {
 			
-			$route = Router::getInstance();
-			$page  = $route->getPage();
+			$router = Router::getInstance();
+			$page  = $router->getPage();
 			if ($page > 1) {
 				if ('/'==$url{0}) $url = substr($url,1); // removes slashes
 				header('Location: ' . BASE_HREF . $url . '/page-' . $page);
@@ -571,10 +544,10 @@ class Application {
 	 */
 	public function runApi($name) {
 
-		$route = Router::getInstance();
+		$router = Router::getInstance();
 
 		// check if API has been called
-		if (!trim($name) or $name != $route->module or !file_exists(MODULE_PATH . 'controller.php')) {
+		if (!trim($name) or $name != $router->module or !file_exists(MODULE_PATH . 'controller.php')) {
 			return;
 		}
 		
@@ -594,10 +567,10 @@ class Application {
 		$apiCtl = new $ctlName();
 
 		// set the action function
-		$action = $route->action ? $route->action . 'Action' : 'defaultAction';
+		$action = $router->action ? $router->action . 'Action' : 'defaultAction';
 
 		// login and logout
-		if ('login' == $route->action or 'logout' == $route->action) {
+		if ('login' == $router->action or 'logout' == $router->action) {
 			
 			// start the PHP session
 			session_start();
@@ -661,7 +634,7 @@ class Application {
 		// get required singleton instances
 		$logger	 = Logger::getInstance();
 		$options = Options::getInstance();
-		$route	 = Router::getInstance();
+		$router	 = Router::getInstance();
 		$tran	 = Translator::getInstance();
 		
 		// start session or resume session started by runApi
@@ -670,7 +643,7 @@ class Application {
 		// session time length in minutes
 		$sessionTime = $options->getValue('session_time');
 		
-		if (in_array($route->module, $this->guestModules)) {
+		if (in_array($router->module, $this->guestModules)) {
 			return;
 		}
 		
@@ -680,10 +653,10 @@ class Application {
 		// session exists but expired
 		if ($session->isLoaded() and $session->isExpired($sessionTime)) {
 		
-			$comment = $tran->translate('USER_SESSION_EXPIRED');
+			$comment = $tran->get('USER_SESSION_EXPIRED');
 		
 			// sends js message about session expired
-			if ($route->isRaw()) {
+			if ($router->isRaw()) {
 		
 				Utilities::printJsonError($comment);
 				exit();
@@ -721,7 +694,7 @@ class Application {
 			}
 		
 			// redirect to login page
-			if (!('user'==$route->module and 'login'==$route->action)) {
+			if (!('user'==$router->module and 'login'==$router->action)) {
 				$this->redirect('user/login');
 			}
 		
@@ -739,16 +712,16 @@ class Application {
 					' (' . sprintf('%+06.2f', (float)$this->currentUser->tzOffset) . ')');
 
 			// set defaults in case of no module
-			if (NULL == $route->module) {
+			if (NULL == $router->module) {
 				$landing = $user->getLanding();
-				$route->module = $landing->module;
-				$route->action = $landing->action;
+				$router->module = $landing->module;
+				$router->action = $landing->action;
 			}
 
-			$resource = $route->module . '/' . $route->action;
+			$resource = $router->module . '/' . $router->action;
 		
 			// checking permission
-			if ($this->currentUser->canAccess($route->module, $route->action)) {
+			if ($this->currentUser->canAccess($router->module, $router->action)) {
 		
 				// access granted
 				$logger->addEvent('Access granted on resource ' . $resource);
@@ -756,8 +729,8 @@ class Application {
 			} else {
 		
 				// access denied
-				$this->enqueueError($tran->translate('ACCESS_FORBIDDEN', $resource));
-				$this->redirect($route->defaults['module'] . '/' . $route->defaults['action']);
+				$this->enqueueError($tran->get('ACCESS_FORBIDDEN', $resource));
+				$this->redirect($router->defaults['module'] . '/' . $router->defaults['action']);
 		
 			}
 		
@@ -774,7 +747,7 @@ class Application {
 	 */
 	public function setPersistentState($name, $value) {
 		
-		$name = $this->getCookiePrefix() . ucfirst($name);
+		$name = static::getCookiePrefix() . ucfirst($name);
 		
 		$this->persistentState[$name] = $value;
 				
@@ -791,7 +764,7 @@ class Application {
 	 */
 	public function getPersistentState($name) {
 	
-		$name = $this->getCookiePrefix() . ucfirst($name);
+		$name = static::getCookiePrefix() . ucfirst($name);
 		
 		if (array_key_exists($name, $this->persistentState)) {
 			return $this->persistentState[$name];
@@ -810,7 +783,7 @@ class Application {
 	 */
 	public function unsetPersistentState($name) {
 		
-		$name = $this->getCookiePrefix() . ucfirst($name);
+		$name = static::getCookiePrefix() . ucfirst($name);
 		
 		unset($this->persistentState[$name]);
 		
@@ -826,7 +799,7 @@ class Application {
 	 */
 	public function unsetAllPersistentStates() {
 	
-		$prefix = $this->getCookiePrefix();
+		$prefix = static::getCookiePrefix();
 
 		foreach ($_COOKIE as $name=>$content) {
 			if (0 == strpos($name, $prefix)) {
@@ -841,7 +814,7 @@ class Application {
 	 * 
 	 * @return	string
 	 */
-	public function getCookiePrefix() {
+	public static function getCookiePrefix() {
 		
 		return str_replace(' ', '', ucwords(str_replace('_', ' ', PRODUCT_NAME)));
 		
@@ -854,18 +827,18 @@ class Application {
 	 */
 	final public function startMvc() {
 		
-		$route	= Router::getInstance();
+		$router	= Router::getInstance();
 		$tran	= Translator::getInstance();
 		
 		// make sure to have a template set
 		$template = $this->getTemplate();
 		
-		$controllerFile = 'modules/' . $route->module . '/controller.php';
+		$controllerFile = 'modules/' . $router->module . '/controller.php';
 		
 		// check controller file existence
-		if (!file_exists($controllerFile) or '404' == $route->url) {
+		if (!file_exists($controllerFile) or '404' == $router->url) {
 			
-			$this->enqueueError($tran->translate('RESOURCE_NOT_FOUND', $route->url));
+			$this->enqueueError($tran->get('RESOURCE_NOT_FOUND', $router->url));
 			$this->style = '404';
 			$this->pageTitle = 'HTTP 404 error';
 			
@@ -874,11 +847,11 @@ class Application {
 			require ($controllerFile);
 			
 			// build controller object
-			$controllerName = ucfirst($route->module) . 'Controller';
+			$controllerName = ucfirst($router->module) . 'Controller';
 			$controller = new $controllerName();
 			
 			// set the action
-			$action = $route->action ? $route->action . 'Action' : 'defaultAction';
+			$action = $router->action ? $router->action . 'Action' : 'defaultAction';
 
 			// run the action
 			$controller->$action();
@@ -887,10 +860,10 @@ class Application {
 			$logger	= Logger::getInstance();
 			
 			// set log of ajax call
-			if ($route->ajax) {
+			if ($router->ajax) {
 				
 				$params = array();
-				foreach ($route->vars as $key=>$value) {
+				foreach ($router->vars as $key=>$value) {
 					$params[] = $key . '=' . Utilities::varToText($value);
 				}
 				$logger->addEvent(date('Y-m-d H:i:s') . ' AJAX call on ' . $this->module . '/' . $this->action . ' with params ' . implode(', ', $params));
@@ -903,7 +876,7 @@ class Application {
 			}
 			
 			// raw calls will jump controller->display, ob and log
-			if ($route->isRaw()) {
+			if ($router->isRaw()) {
 				return;
 			}
 			

@@ -1,11 +1,5 @@
 <?php
 
-/**
- * @version	$Id$
- * @author	Viames Marino
- * @package	Pair
- */
-
 namespace Pair;
 
 class Template extends ActiveRecord implements PluginInterface {

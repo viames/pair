@@ -1,11 +1,5 @@
 <?php
 		
-/**
- * @version	$Id$
- * @author	Viames Marino 
- * @package	Pair
- */
-
 namespace Pair;
 
 class Module extends ActiveRecord implements PluginInterface {
@@ -184,4 +178,20 @@ class Module extends ActiveRecord implements PluginInterface {
 		return $this->store();
 		
 	}
+	
+	/**
+	 * Return an installed Module of this application.
+	 *
+	 * @param	string	Name of Module to search.
+	 *
+	 * @return	Module
+	 */
+	public static function getByName($name) {
+		
+		$db = Database::getInstance();
+		$db->setQuery('SELECT * FROM modules WHERE name = ?');
+		return $db->loadObject($name);
+		
+	}
+	
 }

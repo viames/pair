@@ -1,11 +1,5 @@
 <?php
 
-/**
- * @version	$Id$
- * @author	Viames Marino
- * @package	Pair
- */
-
 namespace Pair;
 
 /**
@@ -79,7 +73,7 @@ abstract class View {
 
 		// singleton objects
 		$this->app		= Application::getInstance();
-		$route			= Router::getInstance();
+		$router			= Router::getInstance();
 		$options		= Options::getInstance();
 		$this->translator = Translator::getInstance();
 		
@@ -98,7 +92,7 @@ abstract class View {
 		// pagination
 		$this->pagination			= new Pagination();
 		$this->pagination->perPage	= $options->getValue('pagination_pages');
-		$this->pagination->page		= $route->page;
+		$this->pagination->page		= $router->getPage();
 		
 		// includes and instance default model
 		include_once ($this->modulePath .'/model.php');
@@ -108,7 +102,7 @@ abstract class View {
 		$this->model->pagination = $this->pagination;
 		
 		// sets the default menu item -- can be overwritten if needed
-		$this->app->activeMenuItem = $route->module;
+		$this->app->activeMenuItem = $router->module;
 		
 	}
 	
@@ -304,7 +298,7 @@ abstract class View {
 	 */
 	public function lang($key, $vars=NULL) {
 		
-		return $this->translator->translate($key, $vars);
+		return $this->translator->get($key, $vars);
 		
 	}
 	
@@ -316,7 +310,7 @@ abstract class View {
 	 */
 	public function _($key, $vars=NULL) {
 	
-		print $this->translator->translate($key, $vars);
+		print $this->translator->get($key, $vars);
 	
 	}
 	
@@ -339,6 +333,30 @@ abstract class View {
 		}
 		
 		return $this->pagination->render();
+		
+	}
+	
+	/**
+	 * Return an A-Z list with link for build an alpha filter.
+	 * 
+	 * @param	string	Current selected list item, if any.
+	 * 
+	 * @return	Generator
+	 */
+	public function getAlphaFilter($selected=NULL) {
+		
+		$router = Router::getInstance();
+		
+		foreach (range('A', 'Z') as $a) {
+			
+			$filter = new \stdClass();
+			$filter->href	= $router->module . '/' . $router->action . '/' . strtolower($a) . '/page-1';
+			$filter->text	= $a;
+			$filter->active	= ($a == $selected);
+			
+			yield $filter;
+			
+		}
 		
 	}
 	

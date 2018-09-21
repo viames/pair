@@ -1,11 +1,5 @@
 <?php
 
-/**
- * @version	$Id$
- * @author	Viames Marino
- * @package	Pair
- */
-
 namespace Pair;
 
 /**
@@ -314,7 +308,7 @@ class Utilities {
 		$date = new \DateTime($dbDate);
 		$dateFormat = $removeHours ? 'DATE_FORMAT' : 'DATETIME_FORMAT';
 
-		return $date->format($t->translate($dateFormat));
+		return $date->format($t->get($dateFormat));
 
 	}
 	
@@ -466,14 +460,12 @@ class Utilities {
 					$localeTimestamp += $dateTime->getOffset();
 				}
 				
-				$humanDate = strftime($tran->translate('LC_DATETIME_FORMAT'), $localeTimestamp);
+				$humanDate = strftime($tran->get('LC_DATETIME_FORMAT'), $localeTimestamp);
 			
 			// otherwise choose another format
 			} else {
 					
-				$format = $tran->stringExists('DATETIME_FORMAT') ?
-					$tran->translate('DATETIME_FORMAT') :
-					'Y-m-d H:i:s';
+				$format = $tran->stringExists('DATETIME_FORMAT') ? $tran->get('DATETIME_FORMAT') : 'Y-m-d H:i:s';
 				$humanDate = $dateTime->format($format);
 					
 			}
@@ -483,7 +475,7 @@ class Utilities {
 		// otherwise return n.a. date
 		} else {
 
-			return '<span class="timeago">' . $tran->translate('NOT_AVAILABLE') . '</span>';
+			return '<span class="timeago">' . $tran->get('NOT_AVAILABLE') . '</span>';
 
 		}
 
@@ -501,11 +493,11 @@ class Utilities {
 	 */
 	public static function prependNullOption(&$list,$idField=NULL,$nameField=NULL,$text=NULL) {
 	
-		$lang = Translator::getInstance();
+		$tran = Translator::getInstance();
 		
 		$idField	= $idField	? $idField	: 'id';
 		$nameField	= $nameField? $nameField: 'name';
-		$text		= $text		? $text		: $lang->translate('SELECT_NULL_VALUE');
+		$text		= $text		? $text		: $tran->get('SELECT_NULL_VALUE');
 	
 		$nullItem = new \stdClass();
 	
@@ -546,8 +538,8 @@ class Utilities {
 	 */
 	public static function printNoDataMessageBox($customMessage=NULL) {
 		
-		$lang = Translator::getInstance();
-		?><div class="messageNodata"><?php print ($customMessage ? $customMessage : $lang->translate('NOTHING_TO_SHOW')) ?></div><?php
+		$tran = Translator::getInstance();
+		?><div class="messageNodata"><?php print ($customMessage ? $customMessage : $tran->get('NOTHING_TO_SHOW')) ?></div><?php
 		
 	}
 

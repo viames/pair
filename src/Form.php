@@ -1,11 +1,5 @@
 <?php
 
-/**
- * @version	$Id$
- * @author	Viames Marino
- * @package	Pair
- */
-
 namespace Pair;
 
 class Form {
@@ -1081,7 +1075,7 @@ class FormControlSelect extends FormControl {
 		
 		$option			= new \stdClass();
 		$option->value	= '';
-		$option->text	= is_null($text) ? $t->translate('SELECT_NULL_VALUE') : $text;
+		$option->text	= is_null($text) ? $t->get('SELECT_NULL_VALUE') : $text;
 
 		$this->list = array_merge(array($option), $this->list);
 		

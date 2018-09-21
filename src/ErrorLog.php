@@ -1,11 +1,5 @@
 <?php
 		
-/**
- * @version	$Id$
- * @author	Viames Marino 
- * @package	Pair
- */
-
 namespace Pair;
 
 class ErrorLog extends ActiveRecord {
@@ -124,14 +118,14 @@ class ErrorLog extends ActiveRecord {
 	public static function keepSnapshot($description) {
 		
 		$app = Application::getInstance();
-		$route = Router::getInstance();
+		$router = Router::getInstance();
 		
 		$snap = new self();
 		
 		$snap->createdTime	= new \DateTime();
 		$snap->userId		= $app->currentUser->id;
-		$snap->module		= $route->module;
-		$snap->action		= $route->action;
+		$snap->module		= $router->module;
+		$snap->action		= $router->action;
 		$snap->getData		= serialize($_GET);
 		$snap->postData		= serialize($_POST);
 		$snap->cookieData	= serialize($_COOKIE);

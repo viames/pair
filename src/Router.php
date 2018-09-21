@@ -1,11 +1,5 @@
 <?php
 
-/**
- * @version	$Id$
- * @author	Viames Marino
- * @package	Pair
- */
-
 namespace Pair;
 
 class Router {
@@ -88,7 +82,8 @@ class Router {
 	 * Private constructor, called by getInstance() method.
 	 */
 	private function __construct() {
-
+		
+		// get the BASE_URI constant defined in config.php file
 		$this->baseUrl = BASE_URI;
 
 		// request URL
@@ -99,11 +94,278 @@ class Router {
 			$this->url = substr($this->url,strlen($this->baseUrl));
 		}
 		
-		// remove trail slash, if any
-		if ('/'==$this->url{0}) $this->url = substr($this->url,1);
+		// force initial slash
+		if ('/' != $this->url{0}) $this->url = '/' . $this->url;
+		
+	}
+	
+	public function parseRoutes() {
+		
+		// parse, add and remove from URL any CGI param after question mark
+		$this->parseCgiParameters();
+		
+		// remove special prefixes and return parameters
+		$params = $this->getParameters();
+		
+		// search for routes.php file in the application root
+		$custom = $this->parseCustomRoute($params, APPLICATION_PATH . '/routes.php');
+		
+		if (!$custom and isset($params[0])) {
 			
-		$this->parseUrl();
+			// set module and define the MODULE_PATH constant
+			$this->setModule(urldecode($params[0]));
+			
+			// search for module specifics custom routes
+			$custom = $this->parseCustomRoute($params, APPLICATION_PATH . '/' . MODULE_PATH . 'routes.php');
 
+		}
+		
+		// if custom routes don't match, go for standard
+		if (!$custom) {
+			$this->parseStandardRoute($params);
+		}
+			
+	}
+	
+	/**
+	 * Checks if there are any GET vars in the URL, adds these to object
+	 * vars and removes from URL.
+	 */
+	private function parseCgiParameters() {
+		
+		if (FALSE===strpos($this->url, '?')) {
+			return;
+		}
+			
+		$temp = explode('?', $this->url);
+		$this->url = $temp[0];
+		
+		if (!array_key_exists(1, $temp)) {
+			return;
+		}
+			
+		// adds to $this->params
+		$couples = explode('&', $temp[1]);
+		
+		foreach ($couples as $c) {
+			
+			$var = explode('=', $c);
+			
+			if (array_key_exists(1, $var)) {
+				list ($key, $value) = $var;
+				$this->setParam($key, $value);
+			}
+			
+		}
+		
+	}
+
+	/**
+	 * remove special prefixes and return parameters.
+	 * 
+	 * @return	array()
+	 */
+	private function getParameters() {
+		
+		$url = '/' == $this->url{0} ? substr($this->url,1) : $this->url;
+		
+		// split parameters by slash
+		$params = explode('/', $url);
+		
+		// reveal ajax calls and raw requests and cuts special prefix from URL
+		if (array_key_exists(0, $params)) {
+			
+			switch ($params[0]) {
+				
+				case 'ajax':
+					$this->ajax = $this->raw = TRUE;
+					array_shift($params);
+					break;
+					
+				case 'raw':
+					$this->raw = TRUE;
+					array_shift($params);
+					break;
+					
+			}
+			
+		}
+		
+		return $params;
+		
+	}
+	
+	/**
+	 * Parse an URL searching for a custom route that matches and store parameter values.
+	 *
+	 * @param	array:string	List of URL parameters.
+	 *
+	 * @return	bool
+	 */
+	private function parseCustomRoute($params, $routesFile) {
+		
+		$this->routes = array();
+		
+		// trigger for route processed
+		$routeMatches = FALSE;
+			
+		// check if controller file exists
+		if (file_exists($routesFile)) {
+			
+			// read the custom routes by php file
+			require $routesFile;
+			
+			// check about the third parameter $module in the custom-routes available as of now
+			foreach ($this->routes as $r) {
+				
+				// force initial slash
+				if (!$r->path) {
+					$r->path = '/';
+				} else if ('/' != $r->path{0}) {
+					$r->path = '/' . $r->path;
+				}
+				
+				// replace any regex after param name in path
+				$pathRegex = preg_replace('|/:[^/(]+\(([^)]+)\)|', '/($1)', $r->path);
+				
+				// then replace simple param name in path
+				$pathRegex = preg_replace('|/(:[^/]+)|', '/([^/]+)', $pathRegex);
+				
+				// compare current URL to regex
+				if (preg_match('|^' . $this->module . $pathRegex . '$|', $this->url)) {
+
+					// assign action
+					$this->action = $r->action;
+					
+					// assign even module
+					if (!$this->module) {
+						if ($r->module) {
+							$this->setModule($r->module);
+						} else if (isset($params[0])) {
+							$this->setModule($params[0]);
+						}
+					}
+					
+					// split the route path
+					$parts = explode('/', $r->path);
+					
+					// initialize array of temporary variables
+					$variables = array();
+					
+					// store the variables found with name and position
+					foreach ($parts as $pos => $part) {
+						
+						// search for the colon symbol that precedes the variable name
+						if (substr($part,0,1) == ':') {
+							
+							// search for a possible regular expression
+							$regexPos = strpos($part, '(');
+							
+							// remove the colon and any regex after variable name
+							$variables[$pos] = FALSE === $regexPos ?
+								substr($part,1) :
+								substr($part,1,$regexPos-1);
+								
+						}
+						
+					}
+					
+					// assign params to vars array and set page, order and log
+					foreach ($params as $pos => $value) {
+						
+						if ('noLog' == $value) {
+							
+							// flag to not send back log (useful for AJAX)
+							$this->sendLog = FALSE;
+							
+						} else if ('order-' == substr($value, 0, 6)) {
+							
+							// ordering
+							$nr = intval(substr($value, 6));
+							if ($nr) $this->order = $nr;
+
+						} else if ('page-' == substr($value, 0, 5)) {
+							
+							// pagination
+							$nr = intval(substr($value, 5));
+							$this->setPage($nr);
+							
+						} else if (isset($variables[$pos])) {
+							
+							// create a var with parsed name
+							$this->vars[$variables[$pos]] = $value;
+							
+						} else {
+							
+							// otherwise assign the param by its index position
+							$this->vars[$pos] = $value;
+							
+						}
+												
+					}
+					
+					$routeMatches = TRUE;
+					
+					break;
+					
+				}
+				
+			}
+			
+		}
+		
+		return $routeMatches;
+		
+	}
+	
+	/**
+	 * Populates router variables by standard parameter login.
+	 *
+	 * @param	array:string	List of URL parameters.
+	 */
+	private function parseStandardRoute($params) {
+		
+		// set module, action and page nr by parameters
+		foreach ($params as $pos => $value) {
+			
+			switch ($pos) {
+				
+				case 0:
+
+					// module name, nothing to do here
+					break;
+					
+				case 1:
+					
+					$this->action = urldecode($value);
+					break;
+					
+				default:
+					
+					$param = urldecode($value);
+					
+					// flag to not send back log (useful for AJAX)
+					if ('noLog' == $param) {
+						$this->sendLog = FALSE;
+						// ordering
+					} else if ('order-' == substr($param, 0, 6)) {
+						$nr = intval(substr($param, 6));
+						if ($nr) $this->order = $nr;
+						// pagination
+					} else if ('page-' == substr($param, 0, 5)) {
+						$nr = intval(substr($param, 5));
+						$this->setPage($nr);
+					} else {
+						if (''!=$param and !is_null($param)) {
+							$this->vars[] = $param;
+						}
+					}
+					break;
+					
+			}
+				
+		}
+		
 	}
 	
 	/**
@@ -162,6 +424,32 @@ class Router {
 	}
 	
 	/**
+	 * Return an URL parameter, if exists. Exclude routing base params (module and action).
+	 *
+	 * @param	mixed	Parameter position (zero based) or Key name.
+	 * @param	bool	Flag to decode a previously encoded value as char-only.
+	 *
+	 * @return	string|NULL
+	 */
+	public static function get($paramIdx, $decode=FALSE) {
+		
+		$self = static::$instance;
+		
+		if (!$self) return NULL;
+		
+		if (array_key_exists($paramIdx, $self->vars) and ''!=$self->vars[$paramIdx]) {
+			$value = $self->vars[$paramIdx];
+			if ($decode) {
+				$value = json_decode(gzinflate(base64_decode(strtr($value, '-_', '+/'))));
+			}
+			return $value;
+		} else {
+			return NULL;
+		}
+		
+	}
+	
+	/**
 	 * Return an URL parameter, if exists. It escludes routing base params (module and action).
 	 * 
 	 * @param	mixed	Parameter position (zero based) or Key name.
@@ -205,41 +493,90 @@ class Router {
 	}
 	
 	/**
-	 * Will deletes all parameters.
+	 * Delete all parameters.
 	 */
 	public function resetParams() {
-	
+		
 		$this->vars = array();
-	
+		
 	}
 	
 	/**
-	 * Returns pagination page number.
+	 * Return the current list page number.
 	 * 
-	 * @return int
+	 * @return	int
 	 */
 	public function getPage() {
 		
-		return ((int)$this->page > 0 ? $this->page : 1);
+		$cookieName = Application::getCookiePrefix() . ucfirst($this->module) . ucfirst($this->action);
+		
+		if (!is_null($this->page)) {
+			
+			return ((int)$this->page > 1 ? $this->page : 1);
+			
+		} else if (isset($_COOKIE[$cookieName]) and (int)$_COOKIE[$cookieName] > 0) {
+			
+			return (int)$_COOKIE[$cookieName];
+			
+		} else {
+			
+			return 1;
+			
+		}
 		
 	}
-
+	
 	/**
-	 * Sets page number.
+	 * Set a persistent state as current pagination index.
 	 * 
 	 * @param	int		Page number.
 	 */
-	public function setPage($num) {
-	
-		if (intval($num) > 0) {
-			$this->page = (int)$num;
-		}
-	
+	public function setPage($number) {
+
+		$number = (int)$number;
+		
+		$this->page = $number;
+
+		// the cookie about persistent state
+		$cookieName = Application::getCookiePrefix() . ucfirst($this->module) . ucfirst($this->action);
+		
+		// set the persistent state
+		setcookie($cookieName, $number, NULL, '/');
+		
 	}
 	
-	public function setModule($module) {
+	/**
+	 * Reset page number to 1.
+	 */
+	public function resetPage() {
+		
+		$this->page = 1;
+
+		// the cookie about persistent state
+		$cookieName = Application::getCookiePrefix() . ucfirst($this->module) . ucfirst($this->action);
+		
+		// unset the persistent state
+		if (isset($_COOKIE[$cookieName])) {
+			unset($_COOKIE[$cookieName]);
+			setcookie($cookieName, '', -1, '/');
+		}
+		
+	}
 	
-		$this->module = $module;
+	/**
+	 * Set the current module name and define the MODULE_PATH constant.
+	 * 
+	 * @param	string	Module name.
+	 */
+	public function setModule($moduleName) {
+	
+		if (!defined('MODULE_PATH')) {
+			
+			$this->module = $moduleName;
+		
+			define('MODULE_PATH', 'modules/' . $this->module . '/');
+			
+		}
 	
 	}
 	
@@ -318,181 +655,6 @@ class Router {
 		}		
 		
 	}
-		
-	/**
-	 * Parses an URL and will store parameter values.
-	 * 
-	 * @return	void
-	 */
-	private function parseUrl() {		
-		
-		if ($this->url) {
-			
-			// will parse, add and removes from URL any CGI param after question mark
-			$this->parseCgiParameters();
-		
-			// parsing SEF parameters
-			$params = explode('/',$this->url);
-			
-			// reveal AJAX calls or other raw requests and cuts special word from URL
-			if (array_key_exists(0,$params)) {
-				
-				switch ($params[0]) {
-					
-					case 'ajax':
-						$this->ajax = $this->raw = TRUE;
- 						array_shift($params);
-						break;
-						
-					case 'raw':
-						$this->raw = TRUE;
- 						array_shift($params);
-						break;
-					
-					default:
-						
-						// recognize module
-						$this->module = urldecode($params[0]);
-						
-						// define module constant
-						define('MODULE_PATH', 'modules/' . $this->module . '/');
-												
-						break;
-						
-				}
-
-			}
-			
-			// trigger for route processed
-			$routeProcessed = FALSE;
-			
-			// search for custom routes
-			$routesFile = MODULE_PATH . 'routes.php';
-
-			// check if controller file exists 
-			if (file_exists($routesFile)) {
-				
-				// read the custom routes by php file
-				require $routesFile;
-				
-				// search for the first route that matches in inverse order
-				foreach (array_reverse(self::$instance->routes) as $r) {
-					
-					// replace any regex after param name in path
-					$pathRegex = preg_replace('|/:[^/(]+\(([^)]+)\)|', '/($1)', $r->path);
-
-					// then replace simple param name in path
-					$pathRegex = preg_replace('|/(:[^/]+)|', '/([^/]+)', $pathRegex);
-					
-					// compare current URL to regex
-					if (preg_match('|^' . $this->module . $pathRegex . '$|', $this->url)) {
-
-						// assign action
-						$this->action = $r->action;
-
-						// assign even module
-						if (is_null($this->module)) {
-							$this->module = $r->module;
-						}
-						
-						// split the route path
-						$parts = explode('/', $r->path);
-						
-						// initialize array of temporary variables
-						$variables = array();
-						
-						// store the variables found with name and position
-						foreach ($parts as $pos => $part) {
-
-							// remove the braces that surround the variable name
-							if (substr($part,0,1) == ':') {
-								
-								$regexPos = strpos($part, '(');
-								
-								// remove any regex after param name
-								$variables[$pos] = FALSE === $regexPos ?
-									substr($part,1) :
-									substr($part,1,$regexPos-1);
-								
-							}
-							
-						}
-						
-						// assign params to vars array
-						foreach ($params as $pos => $value) {
-
-							if (isset($variables[$pos])) {
-								
-								// create a var with parsed name 
-								$this->vars[$variables[$pos]] = $value;
-								
-							} else {
-								
-								// otherwise assign the param by its index position
-								$this->vars[$pos] = $value;
-								
-							}
-							
-						}
-						
-						$routeProcessed = TRUE;
-						
-						break;
-						
-					}
-					
-				}
-				
-			}
-
-			// if still not processed, go to conventional way
-			if (!$routeProcessed) {
-				
-				// set module, action and page nr by parameters
-				foreach ($params as $pos => $value) {
-					
-					switch ($pos) {
-	
-						case 0:
-							// module is already detected
-							break;
-						
-						case 1:
-							
-							$this->action = urldecode($value);
-							break;
-							
-						default:
-							
-							$param = urldecode($value);
-							
-							// flag to not send back log (useful for AJAX)
-							if ('noLog' == $param) {
-								$this->sendLog = FALSE;
-							// ordering
-							} else if ('order-' == substr($param, 0, 6)) {
-								$nr = intval(substr($param, 6));
-								if ($nr) $this->order = $nr;
-							// pagination
-							} else if ('page-' == substr($param, 0, 5)) {
-								$nr = intval(substr($param, 5));
-								$this->setPage($nr);
-							} else {
-								if (''!=$param and !is_null($param)) {
-									$this->vars[] = $param;
-								}
-							}
-							break;
-		
-					}
-					
-				}
-				
-			}
-			
-		}
-		
-	}
 
 	/**
 	 * Returns current URL, with order and optional pagination.
@@ -562,7 +724,7 @@ class Router {
 	}
 	
 	/**
-	 * Proxy method to get the current URL with a different page number. If NULL param, will
+	 * Special method to get the current URL with a different page number. If NULL param, will
 	 * reset pagination.
 	 *
 	 * @param	int		Optional page number to build the URL with.
@@ -575,7 +737,7 @@ class Router {
 		$tmp = $this->page;
 	
 		// build url with order value in param
-		$this->page = $page;
+		$this->page = (int)$page;
 		$url = $this->getUrl();
 		$this->page = $tmp;
 	
@@ -620,34 +782,4 @@ class Router {
 	
 	}
 
-	/**
-	 * Checks if there are any GET vars in the URL, adds these to object
-	 * vars and removes from URL.
-	 */ 
-	private function parseCgiParameters() {
-		
-		if (FALSE!=strpos($this->url, '?')) {
-			
-			$temp = explode('?', $this->url);
-			$this->url = $temp[0];
-			
-			if (array_key_exists(1, $temp)) {
-				
-				// adds to $this->params
-				$couples = explode('&', $temp[1]);
-				
-				foreach ($couples as $c) {
-					$var = explode('=', $c);
-					if (array_key_exists(1, $var)) {
-						list ($key, $value) = $var;
-						$this->setParam($key, $value);
-					}
-				}
-				
-			}
-			
-		}
-		
-	}
-	
 }

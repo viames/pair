@@ -1,11 +1,5 @@
 <?php
 
-/**
- * @version	$Id$
- * @author	Viames Marino
- * @package	Pair
- */
-
 namespace Pair;
 
 /**
@@ -271,6 +265,79 @@ class Database {
 	}
 	
 	/**
+	 * Return data in various formats by third string parameter. Default is objectlist parameters as array. Support PDO parameters bind.
+	 *
+	 * @param	string	SQL query.
+	 * @param	array	List of parameters to bind on sql query. 
+	 * @param	string	Returned type (objectlist|object|resultlist|result|count): "objectlist" is default.
+	 * 
+	 * @return	array
+	 */
+	public static function load($query, $params=array(), $option=NULL) {
+		
+		$self = static::getInstance();
+		
+		$self->openConnection();
+		
+		$ret = NULL;
+		
+		try {
+
+			// prepare query
+			$stat = $self->handler->prepare($query);
+			
+			// bind parameters
+			$stat->execute((array)$params);
+
+			switch ($option) {
+
+				// list of stdClass objects
+				default:
+				case 'objectlist':
+					$res = $stat->fetchAll(\PDO::FETCH_OBJ);
+					$self->logParamQuery($query, count($ret), $params);
+					break;
+				
+				// first row as stdClass object
+				case 'object':
+					$res = $stat->fetch(\PDO::FETCH_OBJ);
+					$self->logParamQuery($query, (bool)$res, $params);
+					break;
+
+				// array of first column results
+				case 'resultlist':
+					$res = $stat->fetchAll(\PDO::FETCH_COLUMN);
+					$self->logParamQuery($query, count($res), $params);
+					break;
+			
+				// first column of first row
+				case 'result':
+					$count = $self->handler->query('SELECT FOUND_ROWS()')->fetchColumn();
+					$res = $stat->fetch(\PDO::FETCH_COLUMN);
+					$self->logParamQuery($query, $count, $params);
+
+				// result count as integer
+				case 'count':
+					$res = (int)$stat->fetch(\PDO::FETCH_COLUMN);
+					$self->logParamQuery($query, $res, $params);
+					break;
+						
+			}
+			
+			
+		} catch (\PDOException $e) {
+			
+			$self->handleException($e, $params);
+			
+		}
+		
+		$stat->closeCursor();
+		
+		return $res;
+		
+	}
+	
+	/**
 	 * Gets the first returned record from a previously setQuery(), otherwise NULL if record
 	 * doesn’t exist.
 	 * 
@@ -424,9 +491,9 @@ class Database {
 		
 			$stat = $this->handler->prepare($this->query);
 			$stat->execute((array)$params);
+			$res = (int)$stat->fetch(\PDO::FETCH_COLUMN);
 
 			// logger
-			$res = (int)$stat->fetch(\PDO::FETCH_COLUMN);
 			$this->logParamQuery($this->query, $res, $params);
 		
 		} catch (\PDOException $e) {

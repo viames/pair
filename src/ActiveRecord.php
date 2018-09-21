@@ -1,11 +1,5 @@
 <?php
 
-/**
- * @version	$Id$
- * @author	Viames Marino
- * @package	Pair
- */
-
 namespace Pair;
 
 /**
@@ -921,7 +915,7 @@ abstract class ActiveRecord {
 	}
 	
 	/**
-	 * Return the Pair\ActiveRecord inherited object related to this by a ForeignKey in DB-table.
+	 * Return the Pair\ActiveRecord inherited object related to this by a ForeignKey in DB-table. Cached method.
 	 * 
 	 * @param	string	Related property name.
 	 * 
@@ -1010,7 +1004,7 @@ abstract class ActiveRecord {
 
 	/**
 	 * Extended method to return a property value of the Pair\ActiveRecord inherited object related to
-	 * this by a ForeignKey in DB-table.
+	 * this by a ForeignKey in DB-table. Cached method.
 	 *
 	 * @param	string	Related property name, belongs to this object.
 	 * @param	string	Wanted property name, belongs to related object.
@@ -1743,14 +1737,12 @@ abstract class ActiveRecord {
 			// if is set a locale date format, use it
 			if ($tran->stringExists('LC_DATETIME_FORMAT')) {
 
-				return strftime($tran->translate('LC_DATETIME_FORMAT'), $this->$prop->getTimestamp());
+				return strftime($tran->get('LC_DATETIME_FORMAT'), $this->$prop->getTimestamp());
 
 			// otherwise choose another format
 			} else {
 				
-				$format = $tran->stringExists('DATETIME_FORMAT') ?
-						$tran->translate('DATETIME_FORMAT') :
-						'Y-m-d H:i:s';
+				$format = $tran->stringExists('DATETIME_FORMAT') ? $tran->get('DATETIME_FORMAT') : 'Y-m-d H:i:s';
 				
 			}
 			
@@ -1789,14 +1781,12 @@ abstract class ActiveRecord {
 		// if is set a locale date format, use it
 		if ($tran->stringExists('LC_DATE_FORMAT')) {
 
-			return strftime($tran->translate('LC_DATE_FORMAT'), $this->$prop->getTimestamp());
+			return strftime($tran->get('LC_DATE_FORMAT'), $this->$prop->getTimestamp());
 
 		// otherwise choose another format
 		} else {
 
-			$format = $tran->stringExists('DATE_FORMAT') ?
-					$tran->translate('DATE_FORMAT') :
-					'Y-m-d';
+			$format = $tran->stringExists('DATE_FORMAT') ? $tran->get('DATE_FORMAT') : 'Y-m-d';
 
 			return $this->formatDateTime($prop, $format);
 

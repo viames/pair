@@ -1,11 +1,5 @@
 <?php
 
-/**
- * @version	$Id$
- * @author	Viames Marino
- * @package	Pair
- */
-
 namespace Pair;
 
 class Plugin {
@@ -447,6 +441,10 @@ class Plugin {
 	 * Deletes file with created date older than EXPIRE_TIME const.
 	 */
 	public static function removeOldFiles() {
+		
+		if (!is_dir(static::TEMP_FOLDER)) {
+			return;
+		}
 		
 		$app = Application::getInstance();
 		$counter = 0;

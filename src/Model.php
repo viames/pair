@@ -1,11 +1,5 @@
 <?php
 
-/**
- * @version	$Id$
- * @author	Viames Marino
- * @package	Pair
- */
-
 namespace Pair;
 
 abstract class Model {
@@ -213,14 +207,14 @@ abstract class Model {
 	 */
 	protected function getOrderLimitSql() {
 
-		$route = Router::getInstance();
+		$router = Router::getInstance();
 		
 		$ret = '';
 		
-		if ($route->order) {
+		if ($router->order) {
 			$orderOptions = $this->getOrderOptions();
-			if (isset($orderOptions[$route->order])) { 
-				$ret = ' ORDER BY ' . $orderOptions[$route->order];
+			if (isset($orderOptions[$router->order])) { 
+				$ret = ' ORDER BY ' . $orderOptions[$router->order];
 			}
 		}
 

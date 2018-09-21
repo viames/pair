@@ -1,11 +1,5 @@
 <?php
 
-/**
- * @version	$Id$
- * @author	Viames Marino
- * @package	Pair
- */
-
 namespace Pair;
 
 abstract class Controller {
@@ -20,7 +14,7 @@ abstract class Controller {
 	 * Router object.
 	 * @var	Router
 	 */
-	protected $route;
+	protected $router;
 	
 	/**
 	 * Model for this MVC stack.
@@ -54,9 +48,9 @@ abstract class Controller {
 	
 	final public function __construct() {
 		
-		// singleton useful objects
+		// useful singleton objects
 		$this->app = Application::getInstance();
-		$this->route = Router::getInstance();
+		$this->router = Router::getInstance();
 		$this->translator = Translator::getInstance();
 		
 		// set controller’s name
@@ -73,10 +67,10 @@ abstract class Controller {
 		$this->model = new $modelName();
 		
 		// sets language subfolder’s name
-		$this->translator->setModule($this->name);
+		$this->translator->setModuleName($this->name);
 		
 		// sets same view as the controller action
-		$this->view = $this->route->action ? $this->route->action : 'default';
+		$this->view = $this->router->action ? $this->router->action : 'default';
 
 		$this->init();
 		
@@ -311,26 +305,11 @@ abstract class Controller {
 		if (is_subclass_of($view, 'Pair\View')) {
 			$view->display();
 		} else {
-			if (!$this->route->isRaw()) {
-				$this->enqueueError($this->translator->translate('RESOURCE_NOT_FOUND', $this->route->module . '/' . $this->route->action));
+			if (!$this->router->isRaw()) {
+				$this->enqueueError($this->translator->get('RESOURCE_NOT_FOUND', $this->router->module . '/' . $this->router->action));
 			}
-			$this->redirect($this->route->module);
+			$this->redirect($this->router->module);
 		}
-		
-	}
-	
-	/**
-	 * Proxy to return an URL parameter, if exists. It escludes routing base params (module and action).
-	 *
-	 * @param	mixed	Parameter position (zero based) or Key name.
-	 * @param	bool	Flag to decode a previously encoded value as char-only.
-	 * 
-	 * @return	string
-	 */
-	public function getRouterParam($paramIdx, $decode=FALSE) {
-		
-		$route = Router::getInstance();
-		return $route->getParam($paramIdx, $decode);
 		
 	}
 
@@ -342,7 +321,7 @@ abstract class Controller {
 	 */
 	public function lang($key, $vars=NULL) {
 		
-		return $this->translator->translate($key, $vars);
+		return $this->translator->get($key, $vars);
 		
 	}
 	
@@ -355,8 +334,7 @@ abstract class Controller {
 	protected function getObjectRequestedById($class) {
 	
 		// reads from url requested item id
-		$route		= Router::getInstance();
-		$itemId		= $route->getParam(0);
+		$itemId		= Router::get(0);
 		
 		if (!$itemId) {
 			$this->enqueueError($this->lang('NO_ID_OF_ITEM_TO_EDIT', $class));

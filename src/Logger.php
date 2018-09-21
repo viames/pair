@@ -1,11 +1,5 @@
 <?php
 
-/**
- * @version	$Id$
- * @author	Viames Marino
- * @package	Pair
- */
-
 namespace Pair;
 
 /**
@@ -86,10 +80,10 @@ class Logger {
 		}
 		
 		$app = Application::getInstance();
-		$route = Router::getInstance();
+		$router = Router::getInstance();
 		
 		// no logs on command line and web API
-		if ('cli' == php_sapi_name() or 'api' == $route->module) {
+		if ('cli' == php_sapi_name() or 'api' == $router->module) {
 			
 			return FALSE;
 			
@@ -100,7 +94,7 @@ class Logger {
 			return ($options->getValue('show_log') and $app->currentUser->admin);
 		
 		// no logs on login page
-		} else if ('user' == $route->module and 'login' == $route->action) {
+		} else if ('user' == $router->module and 'login' == $router->action) {
 				
 			return FALSE;
 					
@@ -192,7 +186,7 @@ class Logger {
 	final public function getEventList() {
 
 		$app = Application::getInstance();
-		$route = Router::getInstance();
+		$router = Router::getInstance();
 		
 		if (!$this->isEnabled()) {
 			return NULL;
@@ -213,13 +207,13 @@ class Logger {
 		// cookie infos
 		$showQueries	= isset($_COOKIE['LogShowQueries']) ? (bool)$_COOKIE['LogShowQueries'] : FALSE;
 		$showEvents		= isset($_COOKIE['LogShowEvents'])  ? (bool)$_COOKIE['LogShowEvents']  : FALSE;
-
+		
 		// create a date in timezone of connected user
 		$timeStart = new \DateTime('@' . (int)$this->timeStart, new \DateTimeZone(BASE_TIMEZONE));
 		if ($app->currentUser and $app->currentUser->isPopulated()) {
 			$timeStart->setTimezone($app->currentUser->getDateTimeZone());
 		}
-
+		
 		// get memory limit
 		$limit = ini_get('memory_limit');
 		
@@ -321,16 +315,13 @@ class Logger {
 
 		// warnings
 		if ($warningCount) {
-			$ret.= '<a href="' . $route->getUrl() . '#logFirstWarning" class="item warning"><span class="icon fa fa-exclamation-triangle"></span><span class="emph">' . $warningCount . '</span> ' . ($warningCount>1 ? 'warnings' : 'warning') . '</a>';
+			$ret.= '<a href="' . $router->getUrl() . '#logFirstWarning" class="item warning"><span class="icon fa fa-exclamation-triangle"></span><span class="emph">' . $warningCount . '</span> ' . ($warningCount>1 ? 'warnings' : 'warning') . '</a>';
 		}
 		
 		// errors
 		if ($errorCount) {
-			$ret.= '<a href="' . $route->getUrl() . '#logFirstError" class="item error"><span class="icon fa fa-times-circle"></span><span class="emph">' . $errorCount . '</span> ' . ($errorCount>1 ? 'errors' : 'error') . '</a>';
+			$ret.= '<a href="' . $router->getUrl() . '#logFirstError" class="item error"><span class="icon fa fa-times-circle"></span><span class="emph">' . $errorCount . '</span> ' . ($errorCount>1 ? 'errors' : 'error') . '</a>';
 		}
-		
-		// logo
-		//$ret.= '<div class="logo"></div>';
 		
 		// show/hide log button
 		if ($showEvents) {
@@ -356,10 +347,10 @@ class Logger {
 	final public function getEventListForAjax() {
 
 		$app		= Application::getInstance();
-		$route		= Router::getInstance();
+		$router		= Router::getInstance();
 		$options	= Options::getInstance();
 		
-		if (!$this->isEnabled() or !$route->sendLog()) {
+		if (!$this->isEnabled() or !$router->sendLog()) {
 			return NULL;
 		}
 		

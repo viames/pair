@@ -1,11 +1,5 @@
 <?php
 
-/**
- * @version	$Id$
- * @author	Viames Marino
- * @package	Pair
- */
-
 namespace Pair;
 
 /**
@@ -26,10 +20,10 @@ class User extends ActiveRecord {
 	protected $groupId;
 	
 	/**
-	 * Id of user language.
+	 * Id of user locale.
 	 * @var int
 	 */
-	protected $languageId;
+	protected $localeId;
 	
 	/**
 	 * Username for LDAP domain.
@@ -175,7 +169,7 @@ class User extends ActiveRecord {
 		$varFields = array (
 			'id'		=> 'id',
 			'groupId'	=> 'group_id',
-			'languageId'=> 'language_id',
+			'localeId'	=> 'locale_id',
 			'ldapUser'	=> 'ldap_user',
 			'username'	=> 'username',
 			'hash'		=> 'hash',
@@ -272,21 +266,21 @@ class User extends ActiveRecord {
 			if ($user->faults > 9) {
 			
 				$ret->error = TRUE;
-				$ret->message = $tran->translate('TOO_MANY_LOGIN_ATTEMPTS');
+				$ret->message = $tran->get('TOO_MANY_LOGIN_ATTEMPTS');
 				$user->addFault();
 					
 			// user disabled
 			} else if ('0' == $user->enabled) {
 
 				$ret->error = TRUE;
-				$ret->message = $tran->translate('USER_IS_DISABLED');
+				$ret->message = $tran->get('USER_IS_DISABLED');
 				$user->addFault();
 					
 			// user password doesn’t match
 			} else if (!User::checkPassword($password, $user->hash)) {
 
 				$ret->error = TRUE;
-				$ret->message = $tran->translate('PASSWORD_IS_NOT_VALID');
+				$ret->message = $tran->get('PASSWORD_IS_NOT_VALID');
 				$user->addFault();
 				
 			// login ok
@@ -304,7 +298,7 @@ class User extends ActiveRecord {
 		} else {
 				
 			$ret->error = TRUE;
-			$ret->message = $tran->translate('USERNAME_NOT_VALID');
+			$ret->message = $tran->get('USERNAME_NOT_VALID');
 				
 		}
 
@@ -531,7 +525,8 @@ class User extends ActiveRecord {
 			$query =
 				'SELECT l.code ' .
 				' FROM languages AS l ' .
-				' INNER JOIN users AS u ON u.language_id = l.id ' .
+				' INNER JOIN locales AS lc ON l.id = lc.language_id' .
+				' INNER JOIN users AS u ON u.locale_id = lc.id ' .
 				' WHERE u.id = ?';
 			$this->db->setQuery($query);
 			$this->setCache('lang', $this->db->loadResult($this->id));
@@ -565,6 +560,32 @@ class User extends ActiveRecord {
 	public function getFullName() {
 		
 		return $this->name . ' ' . $this->surname;
+		
+	}
+	
+	/**
+	 * Check if the localeId parameter has been set and returns TRUE if so.
+	 * 
+	 * @return boolean
+	 */
+	public function isLocaleSet() {
+		
+		return (bool)$this->localeId;
+		
+	}
+	
+	/**
+	 * Returns the Locale object for this user, if set, otherwise the default Locale.
+	 * 
+	 * @return Locale
+	 */
+	public function getLocale() {
+		
+		if ($this->isLocaleSet()) {
+			return new Locale($this->localeId);
+		} else {
+			return Locale::getDefault();
+		}
 		
 	}
 	

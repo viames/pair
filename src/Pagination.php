@@ -1,11 +1,5 @@
 <?php
 
-/**
- * @version	$Id$
- * @author	Viames Marino
- * @package	Pair
- */
-
 namespace Pair;
 
 class Pagination {
@@ -92,7 +86,7 @@ class Pagination {
 	 */
 	public function render() {
 		
-		$route = Router::getInstance();
+		$router = Router::getInstance();
 		
 		// count can’t be null
 		if (!$this->count) {
@@ -100,7 +94,7 @@ class Pagination {
 		}
 		
 		// round the page count
-		$pages = ceil((int)$this->count / $this->perPage);
+		$pages = (int)ceil((int)$this->count / $this->perPage);
 		
 		// hide bar in case of 1 page only
 		if ($pages < 2 and $this->hideEmpty) {
@@ -112,7 +106,7 @@ class Pagination {
 		
 		// left arrow for first page
 		if ($this->page > 1) {
-			$render .= '<li class="page-item arrow"><a class="page-link" href="' . $route->getPageUrl(1) . '">«</a></li>';
+			$render .= '<li class="page-item arrow"><a class="page-link" href="' . $router->getPageUrl(1) . '">«</a></li>';
 		}
 
 		// calculate page range
@@ -131,16 +125,16 @@ class Pagination {
 		for ($i=$min; $i <= $max; $i++) {
 			
 			if ($i==$this->page) {
-				$render .= '<li class="page-item current active"><a class="page-link" href="' . $route->getPageUrl($i) . '">' . $i . '</a></li>';
+				$render .= '<li class="page-item current active"><a class="page-link" href="' . $router->getPageUrl($i) . '">' . $i . '</a></li>';
 			} else {
-				$render .= '<li class="page-item"><a class="page-link" href="' . $route->getPageUrl($i) . '">' . $i . '</a></li>';
+				$render .= '<li class="page-item"><a class="page-link" href="' . $router->getPageUrl($i) . '">' . $i . '</a></li>';
 			}
 			
 		}
 		
 		// right arrow for last page
 		if ($this->page < $pages) {
-			$render .= '<li class="page-item arrow"><a class="page-link" href="' . $route->getPageUrl($pages) . '">»</a></li>';
+			$render .= '<li class="page-item arrow"><a class="page-link" href="' . $router->getPageUrl($pages) . '">»</a></li>';
 		}
 		
 		// close the bar
