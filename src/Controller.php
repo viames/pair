@@ -101,6 +101,11 @@ abstract class Controller {
 	
 	public function __get($name) {
 	
+		if ('route' == $name) {
+			$this->logWarning('$this->route is deprecated');
+			return $this->router;
+		}
+	
 		try {
 			if (!isset($this->$name)) {
 				throw new \Exception('Property “'. $name .'” doesn’t exist for this object '. get_called_class());

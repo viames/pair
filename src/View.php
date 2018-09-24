@@ -50,7 +50,7 @@ abstract class View {
 	
 	/**
 	 * Translator object.
-	 * @var object
+	 * @var Translator
 	 */
 	protected $translator;
 	
