@@ -211,6 +211,8 @@ class Group extends ActiveRecord {
 	 * Checks if this Group has users and if it’s not default, so returns TRUE.
 	 * 
 	 * @return boolean
+	 * 
+	 * @deprecated replaced by common method ActiveRecord::isDeletable()
 	 */
 	public function canBeDeleted() {
 		
@@ -252,15 +254,9 @@ class Group extends ActiveRecord {
 	 * @return Acl|NULL
 	 */
 	public function getDefaultAcl() {
-	
-		$this->db->setQuery('SELECT * FROM acl WHERE group_id = ? AND is_default = 1');
-		$row = $this->db->loadObject($this->id);
-
-		if ($row) {
-			return new Acl($row);
-		} else {
-			return NULL;
-		}
+		
+		$query = 'SELECT * FROM acl WHERE group_id = ? AND is_default = 1';
+		return Acl::getObjectByQuery($query, $this->id);
 	
 	}
 	

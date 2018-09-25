@@ -753,7 +753,7 @@ class Database {
 	 * 
 	 * @return	stdClass[]
 	 */
-	public function describeTable($tableName): array {
+	public function describeTable($tableName) {
 	
 		// check if was set in the object cache property
 		if (!isset($this->definitions[$tableName]['describe'])) {
