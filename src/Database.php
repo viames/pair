@@ -846,7 +846,7 @@ class Database {
 	 *
 	 * @return	boolean
 	 */
-	public function tableExists(string $tableName): bool {
+	public function tableExists(string $tableName) {
 		
 		$this->setQuery('SHOW TABLES LIKE ?');
 		return (bool)$this->loadResult($tableName);
