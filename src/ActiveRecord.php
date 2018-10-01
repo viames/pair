@@ -1328,7 +1328,7 @@ abstract class ActiveRecord {
 		
 		$class = get_called_class();
 
-		// last is for auto-increment only
+		// check about single primary key
 		if ($class::hasCompoundKey()) {
 			return NULL;
 		}
@@ -1340,7 +1340,7 @@ abstract class ActiveRecord {
 		}
 		
 		// cast to string
-		$tableKey = (is_array($class::TABLE_KEY) and array_key_exists($class::TABLE_KEY, 0)) ? $class::TABLE_KEY[0] : $class::TABLE_KEY;
+		$tableKey = (is_array($class::TABLE_KEY) and array_key_exists(0, $class::TABLE_KEY)) ? $class::TABLE_KEY[0] : $class::TABLE_KEY;
 
 		$db->setQuery('SELECT * FROM `' . $class::TABLE_NAME . '` ORDER BY `' . $tableKey . '` DESC LIMIT 1');
 		$obj = $db->loadObject();
