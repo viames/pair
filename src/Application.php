@@ -322,8 +322,8 @@ class Application {
 	/**
 	 * Sets a session state variable.
 	 * 
-	 * @param	string	Variable’s name.
-	 * @param	string	Variable’s value of any type as is, like strings, custom objects etc.
+	 * @param	string	Name of the state variable.
+	 * @param	string	Value of any type as is, like strings, custom objects etc.
 	 */
 	public function setState($name, $value) {
 		
@@ -334,7 +334,7 @@ class Application {
 	/**
 	 * Deletes a session state variable.
 	 *
-	 * @param	string	Variable’s name.
+	 * @param	string	Name of the state variable.
 	 */
 	public function unsetState($name) {
 	
@@ -345,7 +345,7 @@ class Application {
 	/**
 	 * Returns the requested session state variable.
 	 * 
-	 * @param	string	Variable’s name.
+	 * @param	string	State’s name.
 	 * 
 	 * @return	multitype|NULL
 	 */
@@ -356,6 +356,19 @@ class Application {
 		} else {
 			return NULL;
 		}
+		
+	}
+	
+	/**
+	 * Returns TRUE if state has been previously set, NULL value included.
+	 *
+	 * @param	string	Name of the state variable.
+	 *
+	 * @return	bool
+	 */
+	final public function issetState($name) {
+		
+		return (array_key_exists($name, $this->state));
 		
 	}
 	
