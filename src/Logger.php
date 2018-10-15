@@ -315,12 +315,12 @@ class Logger {
 
 		// warnings
 		if ($warningCount) {
-			$ret.= '<a href="' . $router->getUrl() . '#logFirstWarning" class="item warning"><span class="icon fa fa-exclamation-triangle"></span><span class="emph">' . $warningCount . '</span> ' . ($warningCount>1 ? 'warnings' : 'warning') . '</a>';
+			$ret.= '<a href="javascript:;" onclick="document.location.hash=\'logFirstWarning\';" class="item warning"><span class="icon fa fa-exclamation-triangle"></span><span class="emph">' . $warningCount . '</span> ' . ($warningCount>1 ? 'warnings' : 'warning') . '</a>';
 		}
 		
 		// errors
 		if ($errorCount) {
-			$ret.= '<a href="' . $router->getUrl() . '#logFirstError" class="item error"><span class="icon fa fa-times-circle"></span><span class="emph">' . $errorCount . '</span> ' . ($errorCount>1 ? 'errors' : 'error') . '</a>';
+			$ret.= '<a href="javascript:;" onclick="document.location.hash=\'logFirstError\';" class="item error"><span class="icon fa fa-times-circle"></span><span class="emph">' . $errorCount . '</span> ' . ($errorCount>1 ? 'errors' : 'error') . '</a>';
 		}
 		
 		// show/hide log button

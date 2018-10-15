@@ -1538,29 +1538,29 @@ abstract class ActiveRecord {
 		// initialize custom binds
 		$customBinds = [];
 		
-		if (is_a($row, 'stdClass')) {
+		if (!is_a($row, 'stdClass')) {
+			return NULL;
+		}
 			
-			$binds = $class::getBinds();
-			
-			// get object properties from query
-			$fields  = get_object_vars($row);
-			
-			// search for custom field names
-			foreach ($fields as $field=>$value) {
-				if (!array_search($field, $binds)) {
-					$customBinds[Utilities::getCamelCase($field)] = $field;
-				}
+		$binds = $class::getBinds();
+		
+		// get object properties from query
+		$fields  = get_object_vars($row);
+		
+		// search for custom field names
+		foreach ($fields as $field=>$value) {
+			if (!array_search($field, $binds)) {
+				$customBinds[Utilities::getCamelCase($field)] = $field;
 			}
-			
-			$object = new $class($row);
-			
-			// populate custom properties
-			foreach ($customBinds as $customProp=>$customField) {
-				$object->$customProp = $row->$customField;
-			}
-			
 		}
 		
+		$object = new $class($row);
+		
+		// populate custom properties
+		foreach ($customBinds as $customProp=>$customField) {
+			$object->$customProp = $row->$customField;
+		}
+			
 		$app->logEvent('Loaded a ' . $class . ' object' . (count($customBinds) ? ' with custom fields ' . implode(',', $customBinds) : ''));
 		
 		return $object;

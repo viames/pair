@@ -201,8 +201,6 @@ class Form {
 		
 		foreach ($this->controls as $control) {
 			
-			$value = Input::get($control->name);
-			
 			if (!$control->validate()) {
 				$valid = FALSE;
 			}
