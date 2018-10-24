@@ -339,7 +339,7 @@ abstract class Controller {
 	protected function getObjectRequestedById($class) {
 	
 		// reads from url requested item id
-		$itemId		= Router::get(0);
+		$itemId = Router::get(0);
 		
 		if (!$itemId) {
 			$this->enqueueError($this->lang('NO_ID_OF_ITEM_TO_EDIT', $class));

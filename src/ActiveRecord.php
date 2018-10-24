@@ -1142,18 +1142,25 @@ abstract class ActiveRecord {
 	/**
 	 * Check if a record with column=value exists.
 	 *
+	 * @param	string	Table name.
+	 * @param	string	Column name.
+	 * @param	mixed	Value to search.
+	 *
 	 * @return	bool
 	 */
 	private function checkRecordExists($table, $column, $value) {
 		
-		// buids the query
-		$this->db->setQuery('SELECT COUNT(1) FROM ' . $table . ' WHERE ' . $column . ' = ?');
+		if (!$value) {
+			return FALSE;
+		}
+		
+		// build the query
+		$query = 'SELECT COUNT(1) FROM ' . $table . ' WHERE ' . $column . ' = ?';
 		
 		// search the record into the db
-		return (bool)$this->db->loadCount($value);
+		return (bool)Database::load($query, $value, 'count');
 		
 	}
-	
 	
 	/**
 	 * Return the property PHP type (bool, DateTime, float, int or string).

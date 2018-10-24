@@ -116,7 +116,7 @@ class Router {
 			$this->setModule(urldecode($params[0]));
 			
 			// search for module specifics custom routes
-			$custom = $this->parseCustomRoute($params, APPLICATION_PATH . '/' . MODULE_PATH . 'routes.php');
+			$custom = $this->parseCustomRoute($params, APPLICATION_PATH . '/' . MODULE_PATH . 'routes.php', TRUE);
 
 		}
 		
@@ -199,10 +199,12 @@ class Router {
 	 * Parse an URL searching for a custom route that matches and store parameter values.
 	 *
 	 * @param	array:string	List of URL parameters.
+	 * @param	string			Path to routes file.
+	 * @param	bool			Flag to set as module routes.
 	 *
 	 * @return	bool
 	 */
-	private function parseCustomRoute($params, $routesFile) {
+	private function parseCustomRoute($params, $routesFile, $moduleRoute=FALSE) {
 		
 		$this->routes = array();
 		
@@ -225,6 +227,11 @@ class Router {
 					$r->path = '/' . $r->path;
 				}
 				
+				// add module prefix if not set
+				if ($moduleRoute and strpos($r->path,'/'.$this->module) !== 0) {
+					$r->path = '/' . $this->module . $r->path;
+				}
+
 				// replace any regex after param name in path
 				$pathRegex = preg_replace('|/:[^/(]+\(([^)]+)\)|', '/($1)', $r->path);
 				
@@ -232,8 +239,8 @@ class Router {
 				$pathRegex = preg_replace('|/(:[^/]+)|', '/([^/]+)', $pathRegex);
 				
 				// compare current URL to regex
-				if (preg_match('|^' . $this->module . $pathRegex . '$|', $this->url)) {
-
+				if (preg_match('|^' . $pathRegex . '$|', $this->url)) {
+					
 					// assign action
 					$this->action = $r->action;
 					
@@ -246,8 +253,8 @@ class Router {
 						}
 					}
 					
-					// split the route path
-					$parts = explode('/', $r->path);
+					// clean-up and split the route path
+					$parts = array_values(array_filter(explode('/', $r->path)));
 					
 					// initialize array of temporary variables
 					$variables = array();
@@ -265,7 +272,7 @@ class Router {
 							$variables[$pos] = FALSE === $regexPos ?
 								substr($part,1) :
 								substr($part,1,$regexPos-1);
-								
+							
 						}
 						
 					}
@@ -273,35 +280,35 @@ class Router {
 					// assign params to vars array and set page, order and log
 					foreach ($params as $pos => $value) {
 						
+						// flag to not send back log (useful for AJAX)
 						if ('noLog' == $value) {
 							
-							// flag to not send back log (useful for AJAX)
 							$this->sendLog = FALSE;
 							
+						// ordering
 						} else if ('order-' == substr($value, 0, 6)) {
 							
-							// ordering
 							$nr = intval(substr($value, 6));
 							if ($nr) $this->order = $nr;
 
+						// pagination
 						} else if ('page-' == substr($value, 0, 5)) {
 							
-							// pagination
 							$nr = intval(substr($value, 5));
 							$this->setPage($nr);
 							
-						} else if (isset($variables[$pos])) {
+						// create a var with parsed name
+						} else if (isset($variables[$pos]) and $variables[$pos]) {
 							
-							// create a var with parsed name
 							$this->vars[$variables[$pos]] = $value;
 							
+						// otherwise assign the param by its index position
 						} else {
 							
-							// otherwise assign the param by its index position
 							$this->vars[$pos] = $value;
 							
 						}
-												
+									
 					}
 					
 					$routeMatches = TRUE;

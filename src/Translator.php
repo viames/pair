@@ -383,6 +383,30 @@ class Translator {
 	
 	}
 	
+	/**
+	 * Translate a list of ActiveRecord objects by specifing a property name.
+	 *
+	 * @param	array	List of ActiveRecord objects.
+	 * @param	string	Parameter name.
+	 *
+	 * return 	ActiveRecord[]
+	 */
+	public function translateActiveRecordList($list, $propertyName) {
+		
+		if (!isset($list[0]) or !property_exists($list[0], $propertyName)) {
+			return $list;
+		}
+		
+		$translatedVar = 'translated' . ucfirst($propertyName);
+		
+		foreach ($list as $item) {
+			$item->$translatedVar = $this->get($item->$propertyName);
+		}
+		
+		return $list;
+		
+	}
+	
 	public static function getDefaultFileName() {
 		
 		try {
