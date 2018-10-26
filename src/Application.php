@@ -520,19 +520,35 @@ class Application {
 		
 		if (!$url) return;
 		
+		// external redirect
 		if ($externalUrl) {
 			
 			header('Location: ' . $url);
 			
+		// redirect to internal path
 		} else {
 			
 			$router = Router::getInstance();
 			$page  = $router->getPage();
+			
 			if ($page > 1) {
-				if ('/'==$url{0}) $url = substr($url,1); // removes slashes
+				
+				// removes a possible leading slash
+				if ('/'==$url{0}) {
+					$url = substr($url,1);
+				}
+				
+				// if url contains just module, create a fake action placeholder
+				if (FALSE == strpos($url, '/')) {
+					$url .= '/';
+				}
+				
 				header('Location: ' . BASE_HREF . $url . '/page-' . $page);
+				
 			} else {
+				
 				header('Location: ' . BASE_HREF . $url);
+				
 			}
 				
 		}

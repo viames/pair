@@ -245,7 +245,7 @@ class Router {
 					$this->action = $r->action;
 					
 					// assign even module
-					if (!$this->module) {
+					if (!$moduleRoute and !$this->module) {
 						if ($r->module) {
 							$this->setModule($r->module);
 						} else if (isset($params[0])) {
