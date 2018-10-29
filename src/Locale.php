@@ -355,4 +355,48 @@ class Locale extends ActiveRecord {
 		
 	}
 
+	/**
+	 * List all locales that have the common translation file in this application.
+	 *
+	 * @param	bool	Flag TRUE to get native language (country) names.
+	 *
+	 * @return	Locale[]
+	 */
+	public static function getExistentTranslations($nativeNames = TRUE) {
+		
+		$columnName = $nativeNames ? 'native_name' : 'english_name';
+		
+		$query =
+		'SELECT lo.*, CONCAT(la.code, "-", co.code) AS representation,' .
+		' CONCAT(la.' . $columnName . ', " (", co.' . $columnName . ', ")") AS language_country' .
+		' FROM `locales` AS lo' .
+		' INNER JOIN languages AS la ON lo.language_id = la.id' .
+		' INNER JOIN countries AS co ON lo.country_id = co.id' .
+		' ORDER BY la.' . $columnName;
+		
+		// all registered Locales with native or english language(country) name
+		$locales = Locale::getObjectsByQuery($query);
+		
+		// list all common translation files
+		$files = Utilities::getDirectoryFilenames('translations');
+		
+		$existents = array();
+		
+		foreach ($files as $file) {
+			
+			$fileRepresentation = substr($file, 0, strlen($file)-4);
+			
+			foreach ($locales as $locale) {
+				if ($locale->representation == $fileRepresentation) {
+					$existents[] = $locale;
+					continue;
+				}
+			}
+			
+		}
+		
+		return $existents;
+		
+	}
+
 }

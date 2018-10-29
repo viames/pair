@@ -589,4 +589,22 @@ class User extends ActiveRecord {
 		
 	}
 	
+	/**
+	 * Check whether record of this object is deletable based on inverse foreign-key list
+	 * and the user is not the same connected.
+	 *
+	 * @return	bool
+	 */
+	public function isDeletable() {
+		
+		$app = Application::getInstance();
+		
+		if ($this->id == $app->currentUser->id) {
+			return FALSE;
+		}
+		
+		return parent::isDeletable();
+		
+	}
+	
 }

@@ -208,26 +208,6 @@ class Group extends ActiveRecord {
 	}
 	
 	/**
-	 * Checks if this Group has users and if it’s not default, so returns TRUE.
-	 * 
-	 * @return boolean
-	 * 
-	 * @deprecated replaced by common method ActiveRecord::isDeletable()
-	 */
-	public function canBeDeleted() {
-		
-		$this->db->setQuery('SELECT COUNT(*) FROM users WHERE group_id = ?');
-		$res = $this->db->loadCount($this->id);
-
-		if (!$res and !$this->default) {
-			return TRUE;
-		} else {
-			return FALSE;
-		}
-		
-	}
-
-	/**
 	 * Get rule ID of default module with "users" name.
 	 *
 	 * @return int
