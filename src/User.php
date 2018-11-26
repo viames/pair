@@ -255,7 +255,7 @@ class User extends ActiveRecord {
 		$ret->sessionId	= NULL;
 		
 		// loads user row
-		$db->setQuery('SELECT * FROM users WHERE username = ?');
+		$db->setQuery('SELECT * FROM `users` WHERE username = ?');
 		$row = $db->loadObject($username);
 	
 		if (is_object($row)) {
@@ -526,7 +526,7 @@ class User extends ActiveRecord {
 				'SELECT l.code ' .
 				' FROM languages AS l ' .
 				' INNER JOIN locales AS lc ON l.id = lc.language_id' .
-				' INNER JOIN users AS u ON u.locale_id = lc.id ' .
+				' INNER JOIN `users` AS u ON u.locale_id = lc.id ' .
 				' WHERE u.id = ?';
 			$this->db->setQuery($query);
 			$this->setCache('lang', $this->db->loadResult($this->id));

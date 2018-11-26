@@ -1852,6 +1852,37 @@ abstract class ActiveRecord {
 	}
 
 	/**
+	 * Load all records in a table from the DB and store them in the Application cache,
+	 * then look for the required property in this list. It is very useful for repeated
+	 * searches on small tables of the DB, eg. less than 1000 records.
+	 * 
+	 * @param	string	Class name.
+	 * @param	string	Property name.
+	 * @param	mixed	Property value. If not unique property, return the first table item.
+	 * 
+	 * @return	ActiveRecord|NULL
+	 */
+	final public function getObjectByCachedList($class, $property, $value) {
+		
+		$app = Application::getInstance();
+		
+		$cacheName = $class . 'ObjectList';
+		
+		if (!$app->issetState($cacheName)) {
+			$app->setState($cacheName, $class::getAllObjects());
+		}
+		
+		foreach ($app->getState($cacheName) as $object) {
+			if ($object->$property == $value) {
+				return $object;
+			}
+		}
+		
+		return NULL;
+		
+	}
+
+	/**
 	 * Populates the inherited object with input vars with same name as properties.
 	 * 
 	 * @param	string	Optional list of properties to populate, comma separated. If no items,

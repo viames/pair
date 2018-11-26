@@ -120,7 +120,7 @@ class Group extends ActiveRecord {
 	 */
 	public function getUsers() {
 	
-		$this->db->setQuery('SELECT * FROM users WHERE group_id=?');
+		$this->db->setQuery('SELECT * FROM `users` WHERE group_id=?');
 		$list = $this->db->loadObjectList($this->id);
 	
 		$users = array();
@@ -143,7 +143,7 @@ class Group extends ActiveRecord {
 	
 		$db = Database::getInstance();
 		
-		$query = 'SELECT * FROM groups WHERE is_default = 1';
+		$query = 'SELECT * FROM `groups` WHERE is_default = 1';
 		$db->setQuery($query);
 		$row = $db->loadObject();
 		
