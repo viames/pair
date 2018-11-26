@@ -83,7 +83,7 @@ class Locale extends ActiveRecord {
 	 */
 	public static function getDefault() {
 		
-		return static::getObjectByQuery('SELECT * FROM locales WHERE `app_default` = 1');
+		return static::getObjectByQuery('SELECT * FROM `locales` WHERE `app_default` = 1');
 		
 	}
 
@@ -161,9 +161,9 @@ class Locale extends ActiveRecord {
 		
 		$query =
 			'SELECT lc.*' .
-			' FROM locales as lc' .
-			' INNER JOIN languages AS l ON lc.language_id = l.id' .
-			' INNER JOIN countries AS c ON lc.country_id = c.id' .
+			' FROM `locales` as lc' .
+			' INNER JOIN `languages` AS l ON lc.language_id = l.id' .
+			' INNER JOIN `countries` AS c ON lc.country_id = c.id' .
 			' WHERE c.code = ?' .
 			' AND l.code = ?';
 		
@@ -182,8 +182,8 @@ class Locale extends ActiveRecord {
 
 		$query =
 			'SELECT lc.*' .
-			' FROM locales as lc' .
-			' INNER JOIN languages AS l ON lc.language_id = l.id' .
+			' FROM `locales` as lc' .
+			' INNER JOIN `languages` AS l ON lc.language_id = l.id' .
 			' WHERE lc.default_country = 1' .
 			' AND l.code = ?';
 		
@@ -370,8 +370,8 @@ class Locale extends ActiveRecord {
 		'SELECT lo.*, CONCAT(la.code, "-", co.code) AS representation,' .
 		' CONCAT(la.' . $columnName . ', " (", co.' . $columnName . ', ")") AS language_country' .
 		' FROM `locales` AS lo' .
-		' INNER JOIN languages AS la ON lo.language_id = la.id' .
-		' INNER JOIN countries AS co ON lo.country_id = co.id' .
+		' INNER JOIN `languages` AS la ON lo.language_id = la.id' .
+		' INNER JOIN `countries` AS co ON lo.country_id = co.id' .
 		' ORDER BY la.' . $columnName;
 		
 		// all registered Locales with native or english language(country) name

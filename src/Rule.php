@@ -113,8 +113,8 @@ class Rule extends ActiveRecord {
 
 		$query =
 			' SELECT m.name AS moduleName,r.action AS ruleAction, r.admin_only '.
-			' FROM rules AS r '.
-			' INNER JOIN modules AS m ON m.id = r.module_id '.
+			' FROM `rules` AS r '.
+			' INNER JOIN `modules` AS m ON m.id = r.module_id '.
 			' WHERE m.id = ? AND r.action = ? AND r.admin_only = ?';
 
 		$db->setQuery($query);

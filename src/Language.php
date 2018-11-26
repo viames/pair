@@ -77,8 +77,8 @@ class Language extends ActiveRecord {
 		
 		$query =
 			'SELECT c.*' .
-			' FROM countries AS c' .
-			' INNER JOIN locales AS l ON c.id = l.country_id' .
+			' FROM `countries` AS c' .
+			' INNER JOIN `locales` AS l ON c.id = l.country_id' .
 			' WHERE l.language_id = ?' .
 			' AND l.default_country = 1';
 					

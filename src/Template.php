@@ -213,7 +213,7 @@ class Template extends ActiveRecord implements PluginInterface {
 	public static function pluginExists($name) {
 	
 		$db = Database::getInstance();
-		$db->setQuery('SELECT COUNT(1) FROM templates WHERE name = ?');
+		$db->setQuery('SELECT COUNT(1) FROM `templates` WHERE name = ?');
 		return (bool)$db->loadCount($name);
 	
 	}
@@ -275,7 +275,7 @@ class Template extends ActiveRecord implements PluginInterface {
 	public static function getDefault() {
 	
 		$db = Database::getInstance();
-		$db->setQuery('SELECT * FROM templates WHERE is_default=1');
+		$db->setQuery('SELECT * FROM `templates` WHERE is_default=1');
 		return new Template($db->loadObject());
 	
 	}
@@ -290,7 +290,7 @@ class Template extends ActiveRecord implements PluginInterface {
 	public static function getPluginByName($name) {
 
 		$db = Database::getInstance();
-		$db->setQuery('SELECT * FROM templates WHERE name=?');
+		$db->setQuery('SELECT * FROM `templates` WHERE name=?');
 		$obj = $db->loadObject($name);
 		return (is_a($obj, 'stdClass') ? new Template($obj) : NULL);
 		

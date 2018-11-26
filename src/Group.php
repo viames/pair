@@ -161,7 +161,7 @@ class Group extends ActiveRecord {
 	protected function unsetSiblingsDefaults() {
 	
 		if ($this->default) {
-			$query = 'UPDATE groups SET is_default=0 WHERE id <> ?';
+			$query = 'UPDATE `groups` SET is_default=0 WHERE id <> ?';
 			$this->db->exec($query, $this->id);
 		}
 	
@@ -187,10 +187,10 @@ class Group extends ActiveRecord {
 
 		$query =
 			'SELECT r.*, m.`name` AS module_name' .
-			' FROM rules AS r' .
-			' INNER JOIN modules AS m ON m.id = r.module_id' .
+			' FROM `rules` AS r' .
+			' INNER JOIN `modules` AS m ON m.id = r.module_id' .
 			' WHERE admin_only = 0' .
-			' AND r.id NOT IN(SELECT a.rule_id FROM acl AS a WHERE a.group_id = ?)';
+			' AND r.id NOT IN(SELECT a.rule_id FROM `acl` AS a WHERE a.group_id = ?)';
 		
 		$this->db->setQuery($query);
 		$list = $this->db->loadObjectList($this->id);
@@ -216,8 +216,8 @@ class Group extends ActiveRecord {
 
 		$query =
 			'SELECT r.id' .
-			' FROM rules as r' .
-			' INNER JOIN modules as m ON m.id = r.module_id' .
+			' FROM `rules` as r' .
+			' INNER JOIN `modules` as m ON m.id = r.module_id' .
 			' WHERE m.name = "users"'.
 			' LIMIT 1';
 
@@ -235,7 +235,7 @@ class Group extends ActiveRecord {
 	 */
 	public function getDefaultAcl() {
 		
-		$query = 'SELECT * FROM acl WHERE group_id = ? AND is_default = 1';
+		$query = 'SELECT * FROM `acl` WHERE group_id = ? AND is_default = 1';
 		return Acl::getObjectByQuery($query, $this->id);
 	
 	}
@@ -264,9 +264,9 @@ class Group extends ActiveRecord {
 		
 		$query =
 			'INSERT INTO acl (rule_id, group_id, is_default)' .
-			' SELECT id, ?, 0 FROM rules' .
+			' SELECT id, ?, 0 FROM `rules`' .
 			' WHERE admin_only = 0 AND id NOT IN(' .
-			'  SELECT rule_id FROM acl WHERE group_id = ?' .
+			'  SELECT rule_id FROM `acl` WHERE group_id = ?' .
 			' )';
 		
 		$this->db->exec($query, array($this->id, $this->id));

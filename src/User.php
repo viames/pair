@@ -191,10 +191,10 @@ class User extends ActiveRecord {
 	protected function beforeDelete() {
 
 		// deletes user sessions
-		$this->db->exec('DELETE FROM sessions WHERE id_user = ?', $this->id);
+		$this->db->exec('DELETE FROM `sessions` WHERE id_user = ?', $this->id);
 	
 		// deletes error_logs of this user
-		$this->db->exec('DELETE FROM error_logs WHERE user_id = ?', $this->id);
+		$this->db->exec('DELETE FROM `error_logs` WHERE user_id = ?', $this->id);
 		
 	}
 
@@ -383,7 +383,7 @@ class User extends ActiveRecord {
 		$db  = Database::getInstance();
 
 		// delete session
-		$res = $db->exec('DELETE FROM sessions WHERE id = ?', $sid);
+		$res = $db->exec('DELETE FROM `sessions` WHERE id = ?', $sid);
 
 		// unset all persistent states
 		$prefix = PRODUCT_NAME . '_';
@@ -423,7 +423,7 @@ class User extends ActiveRecord {
 		
 		if (!is_null($this->id) and (is_null($this->tzName) or is_null($this->tzOffset))) {
 			
-			$this->db->setQuery('SELECT timezone_name, timezone_offset FROM sessions WHERE id_user = ?');
+			$this->db->setQuery('SELECT timezone_name, timezone_offset FROM `sessions` WHERE id_user = ?');
 			$obj = $this->db->loadObject($this->id);
 			$this->tzOffset	= $obj->timezone_offset;
 			$this->tzName	= $obj->timezone_name;
@@ -477,9 +477,9 @@ class User extends ActiveRecord {
 		
 		$query =
 			'SELECT r.*, m.name AS module_name' .
-			' FROM rules AS r' .
-			' INNER JOIN acl AS a ON a.rule_id = r.id'.
-			' INNER JOIN modules AS m ON r.module_id = m.id'.
+			' FROM `rules` AS r' .
+			' INNER JOIN `acl` AS a ON a.rule_id = r.id'.
+			' INNER JOIN `modules` AS m ON r.module_id = m.id'.
 			' WHERE a.group_id = ?';
 		
 		$this->db->setQuery($query);
@@ -500,9 +500,9 @@ class User extends ActiveRecord {
 		
 		$query =
 			' SELECT m.`name` AS module, r.action' .
-			' FROM acl AS a' .
-			' INNER JOIN rules AS r ON r.id = a.rule_id' .
-			' INNER JOIN modules AS m ON m.id = r.module_id' .
+			' FROM `acl` AS a' .
+			' INNER JOIN `rules` AS r ON r.id = a.rule_id' .
+			' INNER JOIN `modules` AS m ON m.id = r.module_id' .
 			' WHERE a.is_default = 1' . 
 			' AND a.group_id = ?';
 
@@ -524,8 +524,8 @@ class User extends ActiveRecord {
 	
 			$query =
 				'SELECT l.code ' .
-				' FROM languages AS l ' .
-				' INNER JOIN locales AS lc ON l.id = lc.language_id' .
+				' FROM `languages` AS l ' .
+				' INNER JOIN `locales` AS lc ON l.id = lc.language_id' .
 				' INNER JOIN `users` AS u ON u.locale_id = lc.id ' .
 				' WHERE u.id = ?';
 			$this->db->setQuery($query);

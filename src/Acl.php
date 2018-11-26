@@ -93,8 +93,8 @@ class Acl extends ActiveRecord {
 		 
 			$query =
 				'SELECT COUNT(*)' .
-				' FROM rules AS r' .
-				' INNER JOIN acl AS a ON a.rule_id = r.id'.
+				' FROM `rules` AS r' .
+				' INNER JOIN `acl` AS a ON a.rule_id = r.id'.
 				' WHERE a.group_id = ?' .
 				' AND r.admin_only = 0' .
 				' AND ((r.module = ? AND (r.action IS NULL OR r.action=""))' .
@@ -119,8 +119,8 @@ class Acl extends ActiveRecord {
 	
 		$query =
 			' SELECT m.name' .
-			' FROM rules as r ' .
-			' INNER JOIN modules as m ON m.id = r.module_id'.
+			' FROM `rules` as r ' .
+			' INNER JOIN `modules` as m ON m.id = r.module_id'.
 			' WHERE r.id = ?';
 	
 		$this->db->setQuery($query);

@@ -165,14 +165,14 @@ abstract class Model {
 		}
 		
 		// sets pagination count
-		$this->db->setQuery('SELECT COUNT(*) FROM ' . $class::TABLE_NAME);
+		$this->db->setQuery('SELECT COUNT(*) FROM `' . $class::TABLE_NAME . '`');
 		$this->pagination->count = $this->db->loadCount();
 	
 		$orderDir = $descOrder ? 'DESC' : 'ASC';
 		
 		$query =
 			'SELECT *' .
-			' FROM ' . $class::TABLE_NAME .
+			' FROM `' . $class::TABLE_NAME . '`' .
 			($orderBy ? ' ORDER BY `' . $orderBy . '` ' . $orderDir : NULL) .
 			' LIMIT ' . $this->pagination->start . ', ' . $this->pagination->limit;
 	

@@ -395,7 +395,7 @@ abstract class ActiveRecord {
 		$where = ' WHERE ' . implode(' AND ', $this->getSqlKeyConditions());
 		
 		// load the requested record
-		$query = 'SELECT * FROM ' . $class::TABLE_NAME . $where . ' LIMIT 1';
+		$query = 'SELECT * FROM `' . $class::TABLE_NAME . '`' . $where . ' LIMIT 1';
 		$this->db->setQuery($query);
 		$obj = $this->db->loadObject($key);
 
@@ -775,7 +775,7 @@ abstract class ActiveRecord {
 		// build the SQL where line
 		$where = ' WHERE ' . implode(' AND ', $this->getSqlKeyConditions());
 		
-		$query = 'DELETE FROM ' . $class::TABLE_NAME . $where . ' LIMIT 1';
+		$query = 'DELETE FROM `' . $class::TABLE_NAME . '`' . $where . ' LIMIT 1';
 		$res = $this->db->exec($query, $this->getSqlKeyValues());
 		
 		// list properties to not remove
@@ -829,7 +829,7 @@ abstract class ActiveRecord {
 			// count for existing records that references
 			$query =
 				'SELECT COUNT(*)' .
-				' FROM ' . $this->db->escape($r->TABLE_NAME) .
+				' FROM `' . $this->db->escape($r->TABLE_NAME) . '`' .
 				' WHERE ' . $this->db->escape($r->COLUMN_NAME) . ' = ?';
 			
 			$this->db->setQuery($query);
@@ -1155,7 +1155,7 @@ abstract class ActiveRecord {
 		}
 		
 		// build the query
-		$query = 'SELECT COUNT(1) FROM ' . $table . ' WHERE ' . $column . ' = ?';
+		$query = 'SELECT COUNT(1) FROM `' . $table . '` WHERE ' . $column . ' = ?';
 		
 		// search the record into the db
 		return (bool)Database::load($query, $value, 'count');
@@ -1278,7 +1278,7 @@ abstract class ActiveRecord {
 		$class = get_called_class();
 		$conds = implode(' AND ', $this->getSqlKeyConditions());
 
-		$this->db->setQuery('SELECT COUNT(1) FROM ' . $class::TABLE_NAME . ' WHERE ' . $conds);
+		$this->db->setQuery('SELECT COUNT(1) FROM `' . $class::TABLE_NAME . '` WHERE ' . $conds);
 		
 		return (bool)$this->db->loadCount($this->getId());
 	
@@ -1446,7 +1446,7 @@ abstract class ActiveRecord {
 		}
 		
 		// runs query
-		$db->setQuery('SELECT * FROM ' . $class::TABLE_NAME . $where . $order);
+		$db->setQuery('SELECT * FROM `' . $class::TABLE_NAME . '`' . $where . $order);
 		$list = $db->loadObjectList();
 	
 		$rets = array();
@@ -1515,7 +1515,7 @@ abstract class ActiveRecord {
 		}
 
 		// runs query
-		$db->setQuery('SELECT COUNT(1) FROM ' . $class::TABLE_NAME . $where);
+		$db->setQuery('SELECT COUNT(1) FROM `' . $class::TABLE_NAME . '`' . $where);
 		$count = $db->loadCount();
 	
 		$app->logEvent('Counted ' . $count . ' ' . $class . ' objects' . $whereLog);
@@ -1652,7 +1652,7 @@ abstract class ActiveRecord {
 		}
 		
 		// run the query
-		$db->setQuery('SELECT COUNT(1) FROM ' . $class::TABLE_NAME . ' WHERE ' . implode(' AND ', $conds));
+		$db->setQuery('SELECT COUNT(1) FROM `' . $class::TABLE_NAME . '` WHERE ' . implode(' AND ', $conds));
 		
 		// execute and return value
 		return (bool)$db->loadCount((array)$key);

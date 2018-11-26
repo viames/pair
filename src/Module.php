@@ -141,7 +141,7 @@ class Module extends ActiveRecord implements PluginInterface {
 	public static function pluginExists($name) {
 	
 		$db = Database::getInstance();
-		$db->setQuery('SELECT COUNT(1) FROM modules WHERE name = ?');
+		$db->setQuery('SELECT COUNT(1) FROM `modules` WHERE name = ?');
 		return (bool)$db->loadCount($name);
 	
 	}
@@ -189,7 +189,7 @@ class Module extends ActiveRecord implements PluginInterface {
 	public static function getByName($name) {
 		
 		$db = Database::getInstance();
-		$db->setQuery('SELECT * FROM modules WHERE name = ?');
+		$db->setQuery('SELECT * FROM `modules` WHERE name = ?');
 		return $db->loadObject($name);
 		
 	}

@@ -698,8 +698,8 @@ class Database {
 			$query =
 				'SELECT k.CONSTRAINT_NAME, k.COLUMN_NAME, k.REFERENCED_TABLE_NAME,' .
 				' k.REFERENCED_COLUMN_NAME, r.UPDATE_RULE, r.DELETE_RULE' .
-				' FROM information_schema.KEY_COLUMN_USAGE AS k' .
-				' JOIN information_schema.REFERENTIAL_CONSTRAINTS AS r' .
+				' FROM information_schema.`KEY_COLUMN_USAGE` AS k' .
+				' JOIN information_schema.`REFERENTIAL_CONSTRAINTS` AS r' .
 				' WHERE k.CONSTRAINT_NAME != "PRIMARY"' .
 				' AND k.TABLE_SCHEMA = ? AND k.TABLE_NAME = ?' .
 				' AND r.CONSTRAINT_SCHEMA = ? AND r.TABLE_NAME = ?' .
@@ -730,8 +730,8 @@ class Database {
 			$query =
 				'SELECT k.CONSTRAINT_NAME, k.REFERENCED_COLUMN_NAME, k.TABLE_NAME, ' .
 				' k.COLUMN_NAME, r.UPDATE_RULE, r.DELETE_RULE' .
-				' FROM information_schema.KEY_COLUMN_USAGE AS k' .
-				' JOIN information_schema.REFERENTIAL_CONSTRAINTS AS r' .
+				' FROM information_schema.`KEY_COLUMN_USAGE` AS k' .
+				' JOIN information_schema.`REFERENTIAL_CONSTRAINTS` AS r' .
 				' WHERE k.CONSTRAINT_NAME != "PRIMARY"' .
 				' AND k.TABLE_SCHEMA = ? AND k.REFERENCED_TABLE_NAME = ?' .
 				' AND r.CONSTRAINT_SCHEMA = ? AND r.REFERENCED_TABLE_NAME = ?' .

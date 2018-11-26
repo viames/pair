@@ -143,7 +143,7 @@ class Options {
 	 */
 	private function populate() {
 	
-		$this->db->setQuery('SELECT * FROM options ORDER BY `group`');
+		$this->db->setQuery('SELECT * FROM `options` ORDER BY `group`');
 		$res = $this->db->loadObjectList();
 			
 		$this->list = array();

@@ -84,7 +84,7 @@ class Session extends ActiveRecord {
 	 */
 	public function beforeCreate() {
 
-		$this->db->exec('DELETE FROM sessions WHERE id_user = ?', $this->idUser);
+		$this->db->exec('DELETE FROM `sessions` WHERE id_user = ?', $this->idUser);
 
 	}
 	
@@ -114,7 +114,7 @@ class Session extends ActiveRecord {
 		$dateTime  = new \DateTime();
 		$startTime = $dateTime->format('Y-m-d H:i:s');
 
-		$query = 'DELETE FROM sessions WHERE start_time < DATE_SUB(?, INTERVAL '. (int)$sessionTime .' MINUTE)';
+		$query = 'DELETE FROM `sessions` WHERE start_time < DATE_SUB(?, INTERVAL '. (int)$sessionTime .' MINUTE)';
 		$db->exec($query, $startTime);
 
 	}
