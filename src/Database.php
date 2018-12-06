@@ -532,7 +532,7 @@ class Database {
 			}
 		}
 
-		$sql = 'INSERT INTO '. $table .' (%s) VALUES (%s)';
+		$sql = 'INSERT INTO `'. $table .'` (%s) VALUES (%s)';
 		$this->query = sprintf($sql, implode(', ', $fields), implode(', ', $values));
 		
 		$res = $this->exec($this->query);
@@ -576,7 +576,7 @@ class Database {
 			
 		}
 		
-		$sql = 'INSERT INTO '. $table .' (%s) VALUES %s';
+		$sql = 'INSERT INTO `'. $table .'` (%s) VALUES %s';
 
 		$this->query = sprintf($sql, implode(',', $fields), implode(',', $records));
 
@@ -629,7 +629,7 @@ class Database {
 
 			// build the SQL query
 			$query =
-				'UPDATE ' . $table .
+				'UPDATE `' . $table . '`' .
 				' SET ' . implode(', ', $sets) .
 				' WHERE ' . implode(' AND ', $where);		
 
@@ -672,7 +672,7 @@ class Database {
 			$updates[] = $v!==NULL ? $k.'='.$this->quote($v) : $k.'=NULL';
 		}
 	
-		$sql = 'INSERT INTO '. $table .' (%s) VALUES (%s) ON DUPLICATE KEY UPDATE %s';
+		$sql = 'INSERT INTO `'. $table .'` (%s) VALUES (%s) ON DUPLICATE KEY UPDATE %s';
 		
 		$this->query = sprintf($sql, implode(', ', $fields), implode(', ', $values), implode(', ', $updates));
 		
@@ -696,14 +696,14 @@ class Database {
 			
 			// old-style join because of speedness
 			$query =
-				'SELECT k.CONSTRAINT_NAME, k.COLUMN_NAME, k.REFERENCED_TABLE_NAME,' .
-				' k.REFERENCED_COLUMN_NAME, r.UPDATE_RULE, r.DELETE_RULE' .
+				'SELECT k.`CONSTRAINT_NAME`, k.`COLUMN_NAME`, k.`REFERENCED_TABLE_NAME`,' .
+				' k.`REFERENCED_COLUMN_NAME`, r.`UPDATE_RULE`, r.`DELETE_RULE`' .
 				' FROM information_schema.`KEY_COLUMN_USAGE` AS k' .
 				' JOIN information_schema.`REFERENTIAL_CONSTRAINTS` AS r' .
-				' WHERE k.CONSTRAINT_NAME != "PRIMARY"' .
-				' AND k.TABLE_SCHEMA = ? AND k.TABLE_NAME = ?' .
-				' AND r.CONSTRAINT_SCHEMA = ? AND r.TABLE_NAME = ?' .
-				' AND k.CONSTRAINT_NAME = r.CONSTRAINT_NAME';
+				' WHERE k.`CONSTRAINT_NAME` != "PRIMARY"' .
+				' AND k.`TABLE_SCHEMA` = ? AND k.`TABLE_NAME` = ?' .
+				' AND r.`CONSTRAINT_SCHEMA` = ? AND r.`TABLE_NAME` = ?' .
+				' AND k.`CONSTRAINT_NAME` = r.`CONSTRAINT_NAME`';
 			
 			$this->setQuery($query);
 			$this->definitions[$tableName]['foreignKeys'] = $this->loadObjectList([DB_NAME, $tableName, DB_NAME, $tableName]);

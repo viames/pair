@@ -143,7 +143,7 @@ class Group extends ActiveRecord {
 	
 		$db = Database::getInstance();
 		
-		$query = 'SELECT * FROM `groups` WHERE is_default = 1';
+		$query = 'SELECT * FROM `groups` WHERE `is_default` = 1';
 		$db->setQuery($query);
 		$row = $db->loadObject();
 		
@@ -161,7 +161,7 @@ class Group extends ActiveRecord {
 	protected function unsetSiblingsDefaults() {
 	
 		if ($this->default) {
-			$query = 'UPDATE `groups` SET is_default=0 WHERE id <> ?';
+			$query = 'UPDATE `groups` SET `is_default` = 0 WHERE `id` <> ?';
 			$this->db->exec($query, $this->id);
 		}
 	
@@ -235,7 +235,7 @@ class Group extends ActiveRecord {
 	 */
 	public function getDefaultAcl() {
 		
-		$query = 'SELECT * FROM `acl` WHERE group_id = ? AND is_default = 1';
+		$query = 'SELECT * FROM `acl` WHERE `group_id` = ? AND `is_default` = 1';
 		return Acl::getObjectByQuery($query, $this->id);
 	
 	}
@@ -248,11 +248,11 @@ class Group extends ActiveRecord {
 	public function setDefaultAcl($aclId) {
 	
 		// set no default to siblings
-		$query = 'UPDATE acl SET is_default = 0 WHERE group_id = ? AND id <> ?';
+		$query = 'UPDATE `acl` SET `is_default` = 0 WHERE `group_id` = ? AND `id` <> ?';
 		$this->db->exec($query, array($this->id, $aclId));
 
 		// set default to this
-		$query = 'UPDATE acl SET is_default = 1 WHERE group_id = ? AND id = ?';
+		$query = 'UPDATE `acl` SET `is_default` = 1 WHERE `group_id` = ? AND `id` = ?';
 		$this->db->exec($query, array($this->id, $aclId));
 		
 	}
@@ -263,10 +263,10 @@ class Group extends ActiveRecord {
 	public function addAllAcl() {
 		
 		$query =
-			'INSERT INTO acl (rule_id, group_id, is_default)' .
-			' SELECT id, ?, 0 FROM `rules`' .
-			' WHERE admin_only = 0 AND id NOT IN(' .
-			'  SELECT rule_id FROM `acl` WHERE group_id = ?' .
+			'INSERT INTO `acl` (`rule_id`, `group_id`, `is_default`)' .
+			' SELECT `id`, ?, 0 FROM `rules`' .
+			' WHERE `admin_only` = 0 AND `id` NOT IN(' .
+			'  SELECT `rule_id` FROM `acl` WHERE `group_id` = ?' .
 			' )';
 		
 		$this->db->exec($query, array($this->id, $this->id));

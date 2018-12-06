@@ -107,7 +107,7 @@ class Options {
 				$value = $value ? 1 : 0;
 			}
 
-			$query = 'UPDATE options SET value = ? WHERE name = ?';
+			$query = 'UPDATE `options` SET `value` = ? WHERE `name` = ?';
 
 		}
 		

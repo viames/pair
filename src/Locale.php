@@ -66,12 +66,12 @@ class Locale extends ActiveRecord {
 		
 		// only one row can be appDefault 
 		if ($this->appDefault) {
-			$this->db->exec('UPDATE ' . self::TABLE_NAME . ' SET app_default = 0');
+			$this->db->exec('UPDATE `' . self::TABLE_NAME . '` SET `app_default` = 0');
 		}
 		
 		// only one country can be default for a language
 		if ($this->defaultCountry) {
-			$this->db->exec('UPDATE ' . self::TABLE_NAME . ' SET default_country = 0 WHERE language_id = ?', [$this->languageId]);
+			$this->db->exec('UPDATE `' . self::TABLE_NAME . '` SET `default_country` = 0 WHERE `language_id` = ?', [$this->languageId]);
 		}
 		
 	}
