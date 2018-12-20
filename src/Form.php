@@ -1061,6 +1061,22 @@ class FormControlSelect extends FormControl {
 	}
 	
 	/**
+	 * Populate this control through an array in which each element is the group title and
+	 * in turn contains a list of objects with the value and text properties. Chainable.
+	 * 
+	 * @param	array:array:stdClass	Two-dimensional list.
+	 * 
+	 * @return	FormControlSelect
+	 */
+	public function setGroupedList($list) {
+		
+		$this->list = $list;
+
+		return $this;
+		
+	}
+	
+	/**
 	 * Adds a null value as first item. Chainable method.
 	 * 
 	 * @param	string	Option text for first null value.
@@ -1099,6 +1115,28 @@ class FormControlSelect extends FormControl {
 	 * @return string
 	 */
 	public function render() {
+
+		/**
+		 * Build the code of an option HTML tag.
+		 * @var		stdClass
+		 * @return	string
+		 */
+		$buildOption = function ($option) {
+			// check on required properties
+			if (!isset($option->value) or !isset($option->text)) {
+				return '';
+			}
+			// check if value is an array
+			if (is_array($this->value)) {
+				$selected = in_array($option->value, $this->value) ? ' selected="selected"' : '';
+			} else {
+				$selected = $this->value == $option->value ? ' selected="selected"' : '';
+			}
+			
+			// build the option
+			return '<option value="' . htmlspecialchars($option->value) . '"' . $selected . '>' .
+					htmlspecialchars($option->text) . "</option>\n";
+		};
 	
 		$ret = '<select ' . $this->getNameProperty();
 		
@@ -1106,23 +1144,27 @@ class FormControlSelect extends FormControl {
 			$ret .= ' multiple';
 		}
 		
-		$ret .= $this->processProperties() . '>';
+		$ret .= $this->processProperties() . ">\n";
 	
 		try {
 			
 			// build each option
-			foreach ($this->list as $option) {
+			foreach ($this->list as $item) {
 				
-				// check if value is an array
-				if (is_array($this->value)) {
-					$selected = in_array($option->value, $this->value) ? ' selected="selected"' : '';
+				// recognize optgroup
+				if (isset($item->list) and is_array($item->list) and count($item->list)) {
+					
+					$ret .= '<optgroup label="' . htmlspecialchars(isset($item->group) ? $item->group : '') . "\">\n";
+					foreach ($item->list as $option) {
+						$ret .= $buildOption($option);
+					}
+					$ret .= "</optgroup>\n";
+					
 				} else {
-					$selected = $this->value == $option->value ? ' selected="selected"' : '';
-				}
 				
-				// build the option
-				$ret .= '<option value="' . htmlspecialchars($option->value) . '"' . $selected . '>'
-						. htmlspecialchars($option->text) . '</option>';
+					$ret .= $buildOption($item);
+					
+				}
 				
 			}
 			

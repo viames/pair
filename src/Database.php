@@ -289,7 +289,7 @@ class Database {
 			// bind parameters
 			$stat->execute((array)$params);
 
-			switch ($option) {
+			switch (strtolower($option)) {
 
 				// list of stdClass objects
 				default:
