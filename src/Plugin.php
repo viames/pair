@@ -486,7 +486,7 @@ class Plugin {
 			
 			foreach ($list as $name => $value) {
 				
-				// if array, run again recursive
+				// if is an array, run again recursively
 				if (is_array($value)) {
 					$listChild = $element->addChild($name);
 					$addChildArray($listChild, $value);

@@ -30,12 +30,14 @@ class Menu {
 	 * 
 	 * @param	string	Title for this item.
 	 * @param	array	List of single-item objects
+	 * @param	string	Optional, can be an icon, a subtitle or icon placeholder.
 	 */
-	public function addMulti($title, $list) {
+	public function addMulti($title, $list, $class=NULL) {
 
 		$multi 			= new \stdClass();
 		$multi->type	= 'multi';
 		$multi->title	= $title;
+		$multi->class	= $class;
 		$multi->list	= array();
 		foreach ($list as $i) {
 			$multi->list[]	= $i;
