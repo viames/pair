@@ -120,6 +120,28 @@ class Form {
 	}
 	
 	/**
+	 * Remove a control form a Form object.
+	 * 
+	 * @param	string	Control name.
+	 * 
+	 * @return	bool
+	 */
+	public function removeControl($name) {
+		
+		if (substr($name, -2) == '[]') {
+			$name = substr($name, 0, -2);
+		}
+		
+		if (!$this->controlExists($name)) {
+			return FALSE;
+		}
+		
+		unset($this->controls[$name]);
+		return TRUE;
+		
+	}
+	
+	/**
 	 * Check whether the control exists.
 	 * 
 	 * @param	string	Control name.

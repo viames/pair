@@ -11,6 +11,12 @@ class Breadcrumb {
 	protected $paths = array();
 
 	/**
+	 * Flag to remove last URL in getPaths().
+	 * @var bool
+	 */
+	protected $lastUrlDisabled = FALSE;
+
+	/**
 	 * Singleton object.
 	 * @var Breadcrumb
 	 */
@@ -80,7 +86,13 @@ class Breadcrumb {
 	 */
 	public function getPaths() {
 		
-		return $this->paths;
+		if ($this->lastUrlDisabled) {
+			$newPaths = $this->paths;
+			end($newPaths)->url = NULL;
+			return $newPaths;
+		} else {
+			return $this->paths;
+		}
 		
 	}
 	
@@ -92,7 +104,12 @@ class Breadcrumb {
 	 */
 	public function setHome($title, $url=NULL) {
 		
-		// TODO
+		$path			= new \stdClass();
+		$path->title	= $title;
+		$path->url		= $url;
+		$path->active	= count($this->paths) > 1 ? FALSE : TRUE;
+		
+		$this->paths[0] = $path;
 		
 	}
 	
@@ -108,4 +125,20 @@ class Breadcrumb {
 		
 	}
 	
+	public function disableLastUrl() {
+		
+		$this->lastUrlDisabled = TRUE;
+		
+	}
+	
+	public function getBackPath() {
+		
+		if (count($this->paths) > 2) {
+			return $this->paths[count($this->paths)-2];
+		} else {
+			return NULL;
+		}
+		
+	}
+
 }

@@ -98,6 +98,21 @@ class Input {
 	 *
 	 * @return	int
 	 */
+	public static function getTrim($name, $default=NULL) {
+		
+		return self::get(trim($name), 'string', $default);
+		
+	}
+	
+	/**
+	 * Get data by POST or GET array returning an integer. In case
+	 * of not found, return default value. Manage array inputs.
+	 *
+	 * @param	string	HTTP parameter name.
+	 * @param	string	Default value to return, in case of null or empty.
+	 *
+	 * @return	int
+	 */
 	public static function getInt($name, $default=NULL) {
 		
 		return self::get($name, 'int', $default);

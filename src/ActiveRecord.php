@@ -1449,20 +1449,22 @@ abstract class ActiveRecord {
 		$db->setQuery('SELECT * FROM `' . $class::TABLE_NAME . '`' . $where . $order);
 		$list = $db->loadObjectList();
 	
-		$rets = array();
+		$objects = array();
 
 		if (is_array($list)) {
 
 			// builds each object
 			foreach ($list as $row) {
-				$rets[] = new $class($row);
+				$object = new $class($row);
+				$object->loadedFromDb = TRUE;
+				$objects[] = $object;
 			}
 			
 		}
 		
-		$app->logEvent('Loaded ' . count($rets) . ' ' . $class . ' objects' . $whereLog);
+		$app->logEvent('Loaded ' . count($objects) . ' ' . $class . ' objects' . $whereLog);
 		
-		return $rets;
+		return $objects;
 	
 	}
 	
@@ -1568,6 +1570,9 @@ abstract class ActiveRecord {
 			$object->$customProp = $row->$customField;
 		}
 			
+		// turn on loaded-from-db flag
+		$object->loadedFromDb = TRUE;
+			
 		$app->logEvent('Loaded a ' . $class . ' object' . (count($customBinds) ? ' with custom fields ' . implode(',', $customBinds) : ''));
 		
 		return $object;
@@ -1620,6 +1625,9 @@ abstract class ActiveRecord {
 					$object->$customProp = $row->$customField;
 				}
 				
+				// turn on loaded-from-db flag
+				$object->loadedFromDb = TRUE;
+
 				$objects[] = $object;
 				
 			}

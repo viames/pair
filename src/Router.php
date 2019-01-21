@@ -212,110 +212,110 @@ class Router {
 		$routeMatches = FALSE;
 			
 		// check if controller file exists
-		if (file_exists($routesFile)) {
+		if (!file_exists($routesFile)) {
+			return FALSE;
+		}
 			
-			// read the custom routes by php file
-			require $routesFile;
+		// read the custom routes by php file
+		require $routesFile;
+		
+		// check about the third parameter $module in the custom-routes available as of now
+		foreach ($this->routes as $r) {
 			
-			// check about the third parameter $module in the custom-routes available as of now
-			foreach ($this->routes as $r) {
-				
-				// force initial slash
-				if (!$r->path) {
-					$r->path = '/';
-				} else if ('/' != $r->path{0}) {
-					$r->path = '/' . $r->path;
-				}
-				
-				// add module prefix if not set
-				if ($moduleRoute and strpos($r->path,'/'.$this->module) !== 0) {
-					$r->path = '/' . $this->module . $r->path;
-				}
+			// force initial slash
+			if (!$r->path) {
+				$r->path = '/';
+			} else if ('/' != $r->path{0}) {
+				$r->path = '/' . $r->path;
+			}
+			
+			// add module prefix if not set
+			if ($moduleRoute and strpos($r->path,'/'.$this->module) !== 0) {
+				$r->path = '/' . $this->module . $r->path;
+			}
 
-				// replace any regex after param name in path
-				$pathRegex = preg_replace('|/:[^/(]+\(([^)]+)\)|', '/($1)', $r->path);
+			// replace any regex after param name in path
+			$pathRegex = preg_replace('|/:[^/(]+\(([^)]+)\)|', '/($1)', $r->path);
+			
+			// then replace simple param name in path
+			$pathRegex = preg_replace('|/(:[^/]+)|', '/([^/]+)', $pathRegex);
+			
+			// compare current URL to regex
+			if (preg_match('|^' . $pathRegex . '$|', $this->url)) {
 				
-				// then replace simple param name in path
-				$pathRegex = preg_replace('|/(:[^/]+)|', '/([^/]+)', $pathRegex);
+				// assign action
+				$this->action = $r->action;
 				
-				// compare current URL to regex
-				if (preg_match('|^' . $pathRegex . '$|', $this->url)) {
-					
-					// assign action
-					$this->action = $r->action;
-					
-					// assign even module
-					if (!$moduleRoute and !$this->module) {
-						if ($r->module) {
-							$this->setModule($r->module);
-						} else if (isset($params[0])) {
-							$this->setModule($params[0]);
-						}
+				// assign even module
+				if (!$moduleRoute and !$this->module) {
+					if ($r->module) {
+						$this->setModule($r->module);
+					} else if (isset($params[0])) {
+						$this->setModule($params[0]);
 					}
+				}
+				
+				// clean-up and split the route path
+				$parts = array_values(array_filter(explode('/', $r->path)));
+				
+				// initialize array of temporary variables
+				$variables = array();
+				
+				// store the variables found with name and position
+				foreach ($parts as $pos => $part) {
 					
-					// clean-up and split the route path
-					$parts = array_values(array_filter(explode('/', $r->path)));
-					
-					// initialize array of temporary variables
-					$variables = array();
-					
-					// store the variables found with name and position
-					foreach ($parts as $pos => $part) {
+					// search for the colon symbol that precedes the variable name
+					if (substr($part,0,1) == ':') {
 						
-						// search for the colon symbol that precedes the variable name
-						if (substr($part,0,1) == ':') {
-							
-							// search for a possible regular expression
-							$regexPos = strpos($part, '(');
-							
-							// remove the colon and any regex after variable name
-							$variables[$pos] = FALSE === $regexPos ?
-								substr($part,1) :
-								substr($part,1,$regexPos-1);
-							
-						}
+						// search for a possible regular expression
+						$regexPos = strpos($part, '(');
+						
+						// remove the colon and any regex after variable name
+						$variables[$pos] = FALSE === $regexPos ?
+							substr($part,1) :
+							substr($part,1,$regexPos-1);
 						
 					}
-					
-					// assign params to vars array and set page, order and log
-					foreach ($params as $pos => $value) {
-						
-						// flag to not send back log (useful for AJAX)
-						if ('noLog' == $value) {
-							
-							$this->sendLog = FALSE;
-							
-						// ordering
-						} else if ('order-' == substr($value, 0, 6)) {
-							
-							$nr = intval(substr($value, 6));
-							if ($nr) $this->order = $nr;
-
-						// pagination
-						} else if ('page-' == substr($value, 0, 5)) {
-							
-							$nr = intval(substr($value, 5));
-							$this->setPage($nr);
-							
-						// create a var with parsed name
-						} else if (isset($variables[$pos]) and $variables[$pos]) {
-							
-							$this->vars[$variables[$pos]] = $value;
-							
-						// otherwise assign the param by its index position
-						} else {
-							
-							$this->vars[$pos] = $value;
-							
-						}
-									
-					}
-					
-					$routeMatches = TRUE;
-					
-					break;
 					
 				}
+				
+				// assign params to vars array and set page, order and log
+				foreach ($params as $pos => $value) {
+					
+					// flag to not send back log (useful for AJAX)
+					if ('noLog' == $value) {
+						
+						$this->sendLog = FALSE;
+						
+					// ordering
+					} else if ('order-' == substr($value, 0, 6)) {
+						
+						$nr = intval(substr($value, 6));
+						if ($nr) $this->order = $nr;
+
+					// pagination
+					} else if ('page-' == substr($value, 0, 5)) {
+						
+						$nr = intval(substr($value, 5));
+						$this->setPage($nr);
+						
+					// create a var with parsed name
+					} else if (isset($variables[$pos]) and $variables[$pos]) {
+						
+						$this->vars[$variables[$pos]] = $value;
+						
+					// otherwise assign the param by its index position
+					} else {
+						
+						$this->vars[$pos] = $value;
+						
+					}
+								
+				}
+				
+				$routeMatches = TRUE;
+				
+				break;
 				
 			}
 			

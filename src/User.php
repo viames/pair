@@ -443,6 +443,8 @@ class User extends ActiveRecord {
 	 */
 	public function canAccess($module, $action=NULL) {
 
+		// FIXME parse custom routes
+		
 		// reveal module/action type
 		if (is_null($action) and FALSE !== strpos($module, '/')) {
 			list($module,$action) = explode('/', $module);
@@ -510,6 +512,19 @@ class User extends ActiveRecord {
 		$obj = $this->db->loadObject($this->groupId);
 
 		return $obj;
+		
+	}
+	
+	/**
+	 * Redirect user’s browser to his default landing web-page.
+	 */
+	public function redirectToDefault() {
+		
+		$app	 = Application::getInstance();
+		$router	 = Router::getInstance();
+		$landing = $this->getLanding();
+	
+		$app->redirect($landing->module . '/' . $landing->action);
 		
 	}
 	

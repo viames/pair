@@ -73,22 +73,32 @@ class Options {
 		try {
 		
 			if (array_key_exists($name, $this->list)) {
-		
 				return $this->list[$name]->value;
-		
 			} else {
-				
 				throw new \Exception('Option “'. $name .'” doesn’t exist for this object '. __CLASS__);
-				
 			}
 
-		
 		} catch(\Exception $e) {
 			
 			return NULL;
 	
 		}
 
+	}
+	
+	/**
+	 * Proxy method to return an option’s value.
+	 *
+	 * @param	string	The option’s name.
+	 * @throws	Exception
+	 * @return	mixed|NULL
+	 */
+	public static function get($name) {
+		
+		$self = static::getInstance();
+		
+		return $self->getValue($name);
+		
 	}
 	
 	/**

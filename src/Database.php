@@ -2,6 +2,12 @@
 
 namespace Pair;
 
+define ('PAIR_DB_OBJECT_LIST',	1);
+define ('PAIR_DB_OBJECT',		2);
+define ('PAIR_DB_RESULT_LIST',	3);
+define ('PAIR_DB_RESULT',		4);
+define ('PAIR_DB_COUNT',		5);
+
 /**
  * Manages a PDO DB connection using the singleton pattern.
  */
@@ -293,30 +299,35 @@ class Database {
 
 				// list of stdClass objects
 				default:
+				case 1:
 				case 'objectlist':
 					$res = $stat->fetchAll(\PDO::FETCH_OBJ);
 					$self->logParamQuery($query, count($ret), $params);
 					break;
 				
 				// first row as stdClass object
+				case 2:
 				case 'object':
 					$res = $stat->fetch(\PDO::FETCH_OBJ);
 					$self->logParamQuery($query, (bool)$res, $params);
 					break;
 
 				// array of first column results
+				case 3:
 				case 'resultlist':
 					$res = $stat->fetchAll(\PDO::FETCH_COLUMN);
 					$self->logParamQuery($query, count($res), $params);
 					break;
 			
 				// first column of first row
+				case 4:
 				case 'result':
 					$count = $self->handler->query('SELECT FOUND_ROWS()')->fetchColumn();
 					$res = $stat->fetch(\PDO::FETCH_COLUMN);
 					$self->logParamQuery($query, $count, $params);
 
 				// result count as integer
+				case 5:
 				case 'count':
 					$res = (int)$stat->fetch(\PDO::FETCH_COLUMN);
 					$self->logParamQuery($query, $res, $params);
