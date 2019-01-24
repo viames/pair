@@ -142,6 +142,17 @@ class Form {
 	}
 	
 	/**
+	 * Set all registered controls as readonly.
+	 */
+	public function setAllReadonly() {
+		
+		foreach ($this->controls as $control) {
+			$control->setReadonly();
+		}
+		
+	}
+	
+	/**
 	 * Check whether the control exists.
 	 * 
 	 * @param	string	Control name.
@@ -208,6 +219,24 @@ class Form {
 			
 			print $control->render();
 			
+		}
+		
+	}
+	
+	/**
+	 * Create an HTML text for label of a control.
+	 * 
+	 * @param	string	Control name.
+	 * 
+	 * @return	string
+	 */
+	public function printLabel($name) {
+		
+		// gets control object
+		$control = $this->getControl($name);
+		
+		if ($control) {
+			$control->printLabel();
 		}
 		
 	}
@@ -456,6 +485,12 @@ abstract class FormControl {
 	private $class = array();
 	
 	/**
+	 * Optional label for this control.
+	 * @var string|NULL
+	 */
+	private $label;
+	
+	/**
 	 * Build control with HTML name tag and optional attributes.
 	 * 
 	 * @param	string	Control name.
@@ -680,6 +715,40 @@ abstract class FormControl {
 	}
 	
 	/**
+	 * Set a label for this control as text or translation key.
+	 * 
+	 * @param	string	The text label or the uppercase translation key.
+	 */
+	public function setLabel($label) {
+		
+		$this->label = $label;
+		
+	}
+	
+	/**
+	 * Print the control’s label.
+	 */
+	public function printLabel() {
+		
+		if (!$this->label) return;
+		
+		// check if it’s a translation key, uppercase over 3 chars
+		if (strtoupper($this->label) == $this->label and strlen($this->label) > 3) {
+			$tran = Translator::getInstance();
+			$label = $tran->get($this->label);
+		} else {
+			$label = $this->label;
+		}
+		
+		if ($this->required) {
+			$label = '<span class="required-field">' . $label . '</span>';
+		}
+		
+		print $label;
+		
+	}
+	
+	/**
 	 * Process and return the common control attributes.
 	 * 
 	 * @return string
@@ -754,7 +823,7 @@ class FormControlInput extends FormControl {
 	 * Default datetime format
 	 * @var string
 	 */
-	protected $datetimeFormat = 'Y-m-d H:i:s';
+	protected $datetimeFormat = 'Y-m-d\TH:i:s';
 	
 	/**
 	 * Step value for number input controls.
@@ -890,7 +959,8 @@ class FormControlInput extends FormControl {
 				break;
 
 			case 'datetime':
-				$ret .= ' type="datetime" value="' . htmlspecialchars($this->value) . '"';
+				$type = Input::usingCustomDatetimepicker() ? 'datetime' : 'datetime-local';
+				$ret .= ' type="' . $type . '" value="' . htmlspecialchars($this->value) . '"';
 				break;
 				
 			case 'file':
