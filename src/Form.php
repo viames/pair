@@ -715,13 +715,15 @@ abstract class FormControl {
 	}
 	
 	/**
-	 * Set a label for this control as text or translation key.
+	 * Set a label for this control as text or translation key. Chainable method.
 	 * 
 	 * @param	string	The text label or the uppercase translation key.
 	 */
 	public function setLabel($label) {
 		
 		$this->label = $label;
+		
+		return $this;
 		
 	}
 	
@@ -730,16 +732,25 @@ abstract class FormControl {
 	 */
 	public function printLabel() {
 		
-		if (!$this->label) return;
+		// no label, get it by the control’s name
+		if (!$this->label) {
+			
+			$label = ucwords(preg_replace(array('/(?<=[^A-Z])([A-Z])/', '/(?<=[^0-9])([0-9])/'), ' $0', $this->name));
 		
 		// check if it’s a translation key, uppercase over 3 chars
-		if (strtoupper($this->label) == $this->label and strlen($this->label) > 3) {
+		} else if (strtoupper($this->label) == $this->label and strlen($this->label) > 3) {
+
 			$tran = Translator::getInstance();
 			$label = $tran->get($this->label);
+			
+		// simple label
 		} else {
+			
 			$label = $this->label;
+			
 		}
 		
+		// if required, add required-field css class
 		if ($this->required) {
 			$label = '<span class="required-field">' . $label . '</span>';
 		}

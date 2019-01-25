@@ -578,9 +578,9 @@ class Application {
 	/**
 	 * Manage API login, logout and custom requests.
 	 * 
-	 * @param	string	Name of module that executes API requests.
+	 * @param	string	Name of module that executes API requests. Default is “api”.
 	 */
-	public function runApi($name) {
+	public function runApi($name = 'api') {
 
 		$router = Router::getInstance();
 
@@ -598,17 +598,27 @@ class Application {
 		// require controller file
 		require (MODULE_PATH . 'controller.php');
 		
-		// reveal SID by both GET and POST
+		// get SID by both GET and POST
 		$sid = Input::get('sid');
+		
+		// get token as well
+		$token = Input::get('token');
 
 		$ctlName = $name . 'Controller';
 		$apiCtl = new $ctlName();
 
 		// set the action function
 		$action = $router->action ? $router->action . 'Action' : 'defaultAction';
-
+		
+		// check token as first
+		if ($token and Token::verify($token)) {
+			
+			// set token and start controller
+			$apiCtl->setToken($token);
+			$apiCtl->$action();
+			
 		// login and logout
-		if ('login' == $router->action or 'logout' == $router->action) {
+		} else if ('login' == $router->action or 'logout' == $router->action) {
 			
 			// start the PHP session
 			session_start();
@@ -634,7 +644,8 @@ class Application {
 			$user = new User($session->idUser);
 			$this->setCurrentUser($user);
 
-			// start controller
+			// set session and start controller
+			$apiCtl->setSession($session);
 			$apiCtl->$action();
 
 		// unauthorized request
