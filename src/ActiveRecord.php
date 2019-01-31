@@ -1810,6 +1810,40 @@ abstract class ActiveRecord {
 	}
 
 	/**
+	 * Output an object property properly formatted and escaped.
+	 * 
+	 * @param	string	Property name.
+	 */
+	final public function printHtml($prop) {
+		
+		switch ($this->getPropertyType($prop)) {
+		
+		case 'bool':
+			if ($this->$prop) {
+				// print standard ascii one or a predefined icon HTML as constant
+				print (defined('PAIR_CHECK_ICON') ? PAIR_CHECK_ICON : '<span style="color:green">√</span>'); 
+			} else {
+				print (defined('PAIR_TIMES_ICON') ? PAIR_TIMES_ICON : '<span style="color:red">×</span>');
+			}
+			break;
+			
+		case 'DateTime':
+			print $this->formatDateTime($this->$prop);
+			break;
+			
+		case 'csv':
+			print implode(', ', $this->$prop);
+			break;
+
+		default:
+			print htmlspecialchars($this->$prop);
+			break;
+			
+		}
+		
+	}
+
+	/**
 	 * Utility that works like \get_object_vars() but restricted to bound properties.
 	 *   
 	 * @return array:multitype

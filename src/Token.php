@@ -23,10 +23,10 @@ class Token extends ActiveRecord {
 	protected $description;
 
 	/**
-	 * This property maps “token” column.
+	 * This property maps “value” column.
 	 * @var string
 	 */
-	protected $token;
+	protected $value;
 
 	/**
 	 * This property maps “enabled” column.
@@ -94,6 +94,28 @@ class Token extends ActiveRecord {
 		}
 		
 		return $token;
+		
+	}
+	
+	/**
+	 * Load a Token object from DB by its code and return it.
+	 * 
+	 * @param	string	Token identifier code.
+	 * @return	Token|NULL
+	 */
+	public static function getByValue($tokenValue) {
+		
+		return self::getObjectByQuery('SELECT * FROM tokens WHERE value = ?', $tokenValue);
+		
+	}
+	
+	/**
+	 * Set to now() the lastUse object property.
+	 */
+	public function updateLastUse() {
+		
+		$this->lastUse = new \DateTime();
+		$this->update('lastUse');
 		
 	}
 

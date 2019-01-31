@@ -101,7 +101,7 @@ class Form {
 	 * 
 	 * @param	string	Control name
 	 * 
-	 * @return	array:multitype|NULL
+	 * @return	FormControl|NULL
 	 */
 	public function getControl($name) {
 		
@@ -300,11 +300,6 @@ class Form {
 			$control->prependEmpty($prependEmpty);
 		}
 		
-		if (isset($attributes['class'])) {
-			$control->addClass($attributes['class']);
-			unset($attributes['class']);
-		}
-		
 		return $control->render();
 
 	}
@@ -325,11 +320,6 @@ class Form {
 		$control = new FormControlSelect($name, $attributes);
 		$control->setListByAssociativeArray($list)->prependEmpty($prependEmpty)->setValue($value);
 		
-		if (isset($attributes['class'])) {
-			$control->addClass($attributes['class']);
-			unset($attributes['class']);
-		}
-		
 		return $control->render();
 	
 	}
@@ -339,7 +329,7 @@ class Form {
 	 * 
 	 * @param	string	HTML name for this control.
 	 * @param	string	Default value (NULL default).
-	 * @param	string	Type (text -default-, password, number, bool, date, datetime, hidden, address, file).
+	 * @param	string	Type (text -default-, email, tel, url, color, password, number, bool, date, datetime, file, address, hidden).
 	 * @param	string	More parameters as associative array tag=>value (optional).
 	 * 
 	 * @return	string
@@ -348,11 +338,6 @@ class Form {
 
 		$control = new FormControlInput($name, $attributes);
 		$control->setType($type)->setValue($value);
-		
-		if (isset($attributes['class'])) {
-			$control->addClass($attributes['class']);
-			unset($attributes['class']);
-		}
 		
 		return $control->render();
 		
@@ -374,11 +359,6 @@ class Form {
 		$control = new FormControlTextarea($name, $attributes);
 		$control->setRows($rows)->setCols($cols)->setValue($value);
 		
-		if (isset($attributes['class'])) {
-			$control->addClass($attributes['class']);
-			unset($attributes['class']);
-		}
-		
 		return $control->render();
 
 	}
@@ -398,11 +378,6 @@ class Form {
 
 		$control = new FormControlButton($name, $attributes);
 		$control->setValue($value)->setType($type)->setFaIcon($faIcon);
-		
-		if (isset($attributes['class'])) {
-			$control->addClass($attributes['class']);
-			unset($attributes['class']);
-		}
 		
 		return $control->render();
 
@@ -751,7 +726,7 @@ abstract class FormControl {
 		}
 		
 		// if required, add required-field css class
-		if ($this->required) {
+		if ($this->required and !$this->readonly and !$this->disabled) {
 			$label = '<span class="required-field">' . $label . '</span>';
 		}
 		

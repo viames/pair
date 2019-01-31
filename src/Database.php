@@ -277,7 +277,7 @@ class Database {
 	 * @param	array	List of parameters to bind on sql query. 
 	 * @param	string	Returned type (objectlist|object|resultlist|result|count): "objectlist" is default.
 	 * 
-	 * @return	array
+	 * @return	array|stdClass|int|NULL
 	 */
 	public static function load($query, $params=array(), $option=NULL) {
 		
@@ -296,38 +296,38 @@ class Database {
 			$stat->execute((array)$params);
 
 			switch (strtolower($option)) {
-
+				
 				// list of stdClass objects
 				default:
-				case 1:
+				case PAIR_DB_OBJECT_LIST:
 				case 'objectlist':
 					$res = $stat->fetchAll(\PDO::FETCH_OBJ);
 					$self->logParamQuery($query, count($ret), $params);
 					break;
 				
 				// first row as stdClass object
-				case 2:
+				case PAIR_DB_OBJECT:
 				case 'object':
 					$res = $stat->fetch(\PDO::FETCH_OBJ);
 					$self->logParamQuery($query, (bool)$res, $params);
 					break;
 
 				// array of first column results
-				case 3:
+				case PAIR_DB_RESULT_LIST:
 				case 'resultlist':
 					$res = $stat->fetchAll(\PDO::FETCH_COLUMN);
 					$self->logParamQuery($query, count($res), $params);
 					break;
 			
 				// first column of first row
-				case 4:
+				case PAIR_DB_RESULT:
 				case 'result':
 					$count = $self->handler->query('SELECT FOUND_ROWS()')->fetchColumn();
 					$res = $stat->fetch(\PDO::FETCH_COLUMN);
 					$self->logParamQuery($query, $count, $params);
 
 				// result count as integer
-				case 5:
+				case PAIR_DB_COUNT:
 				case 'count':
 					$res = (int)$stat->fetch(\PDO::FETCH_COLUMN);
 					$self->logParamQuery($query, $res, $params);
@@ -647,7 +647,7 @@ class Database {
 			// execute the SQL query
 			$res = $this->exec($query, $values);
 
-			} else {
+		} else {
 			
 			$res = 0;
 			

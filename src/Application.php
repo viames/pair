@@ -602,7 +602,7 @@ class Application {
 		$sid = Input::get('sid');
 		
 		// get token as well
-		$token = Input::get('token');
+		$tokenValue = Input::get('token');
 
 		$ctlName = $name . 'Controller';
 		$apiCtl = new $ctlName();
@@ -611,11 +611,18 @@ class Application {
 		$action = $router->action ? $router->action . 'Action' : 'defaultAction';
 		
 		// check token as first
-		if ($token and Token::verify($token)) {
+		if ($tokenValue) {
+			
+			$token = Token::getByValue($tokenValue);
 			
 			// set token and start controller
-			$apiCtl->setToken($token);
-			$apiCtl->$action();
+			if ($token) {
+				$token->updateLastUse();
+				$apiCtl->setToken($token);
+				$apiCtl->$action();
+			} else {
+				$apiCtl->sendError('Token is not valid');
+			}
 			
 		// login and logout
 		} else if ('login' == $router->action or 'logout' == $router->action) {

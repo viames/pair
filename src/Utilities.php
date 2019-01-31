@@ -240,14 +240,16 @@ class Utilities {
 	 * 
 	 * @param	string	Error message to print on user.
 	 * @param	bool	Error flag, set TRUE to notice about error (optional).
+	 * @param	bool	Error code (optional).
 	 */
-	public static function printJsonMessage($message, $error=FALSE) {
+	public static function printJsonMessage($message, $error=FALSE, $code=NULL) {
 
 		$logger = Logger::getInstance();
 		
 		$ret			= new \stdClass();
 		$ret->message	= $message;
 		$ret->error		= $error;
+		$ret->code		= $code;
 		$ret->log		= $logger->getEventListForAjax();
 		$json			= json_encode($ret);
 		header('Content-Type: application/json', TRUE);
@@ -263,8 +265,9 @@ class Utilities {
 	 * @param	object	Structured object containing data.
 	 * @param	string	Error message to print on user (optional).
 	 * @param	bool	Error flag, set TRUE to notice about error (optional).
+	 * @param	bool	Error code (optional).
 	 */
-	public static function printJsonData($data, $message='', $error=FALSE) {
+	public static function printJsonData($data, $message='', $error=FALSE, $code=NULL) {
 
 		$logger = Logger::getInstance();
 		
@@ -272,6 +275,7 @@ class Utilities {
 		$ret->data		= $data;
 		$ret->message	= $message;
 		$ret->error		= $error;
+		$ret->code		= $code;
 		$ret->log		= $logger->getEventListForAjax();
 		$json			= json_encode($ret);
 		header('Content-Type: application/json', TRUE);
