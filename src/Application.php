@@ -681,9 +681,9 @@ class Application {
 
 	/**
 	 * Start the session and set the User class (Pair/User or a custom one that inherites
-	 * from Pair/User).
+	 * from Pair/User). Must use only for command-line and web application access.
 	 * 
-	 * @param	string	Custom user class (optional).
+	 * @param	string	Custom User-inherit class (optional).
 	 */
 	public function manageSession($userClass = 'Pair\User') {
 	
@@ -720,17 +720,17 @@ class Application {
 			// redirects to login page
 			} else {
 		
-				// new empty session
-				$session = new Session();
+				// delete the expired session from DB
+				$session->delete();
 		
-				// page coming from
-				if (array_key_exists('HTTP_REFERER',$_SERVER)) {
-					$this->setState('referer', $_SERVER['HTTP_REFERER']);
-					$logger->addEvent('Referer: ' . $_SERVER['HTTP_REFERER']);
-				}
+				// set the page coming from
+				$this->setPersistentState('lastRequestedUrl', $router->getUrl());
 		
-				// message to user
+				// queue a message for the connected user
 				$this->enqueueMessage($comment);
+		
+				// goes to login page
+				$this->redirect('user/login');
 		
 			}
 		
@@ -745,15 +745,12 @@ class Application {
 		// user is not logged in
 		if (!$session->isLoaded()) {
 		
-			if (isset($_SERVER['HTTP_REFERER'])) {
-				$this->setState('referer', $_SERVER['HTTP_REFERER']);
-			}
-		
 			// redirect to login page
 			if (!('user'==$router->module and 'login'==$router->action)) {
 				$this->redirect('user/login');
 			}
 		
+		// session loaded
 		} else {
 		
 			// if session exists, extend session timeout

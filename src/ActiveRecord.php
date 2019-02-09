@@ -325,8 +325,10 @@ abstract class ActiveRecord {
 					if (is_null($this->$prop) and static::isNullable($field)) {
 						$ret = NULL;
 					} else {
+						$curr = setlocale(LC_NUMERIC, 0);
 						setlocale(LC_NUMERIC, 'en_US');
 						$ret = (string)$this->$prop;
+						setlocale(LC_NUMERIC, $curr);
 					}
 					break;
 
@@ -572,13 +574,21 @@ abstract class ActiveRecord {
 	 */
 	final public function store() {
 		
+		// hook for tasks to be executed before store
+		$this->beforeStore();
+		
 		$class = get_called_class();
 		
 		if (!$this->isPopulated() or !$this->db->isAutoIncrement($class::TABLE_NAME)) {
-			return $this->create();
+			$ret = $this->create();
 		} else {
-			return $this->update();
+			$ret = $this->update();
 		}
+
+		// hook for tasks to be executed after store
+		$this->afterStore();
+		
+		return $ret;
 
 	}
 	
@@ -605,7 +615,6 @@ abstract class ActiveRecord {
 		
 		// hook for tasks to be executed before creation
 		$this->beforeCreate();
-		$this->beforeStore();
 		
 		// get list of class property names
 		$class = get_called_class();
@@ -641,7 +650,6 @@ abstract class ActiveRecord {
 		$app->logEvent('Created a new ' . $class . ' object with ' . implode(', ' , $keyParts));
 		
 		// hook for tasks to be executed after creation
-		$this->afterStore();
 		$this->afterCreate();
 		
 		return (bool)$res;
@@ -670,7 +678,6 @@ abstract class ActiveRecord {
 		
 		// hook for tasks to be executed before creation
 		$this->beforeUpdate();
-		$this->beforeStore();
 		
 		$app	= Application::getInstance();
 		$class	= get_called_class();
@@ -716,7 +723,6 @@ abstract class ActiveRecord {
 		}
 		
 		// hook for tasks to be executed after creation
-		$this->afterStore();
 		$this->afterUpdate();
 		
 		return $res;

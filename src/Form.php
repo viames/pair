@@ -931,8 +931,10 @@ class FormControlInput extends FormControl {
                 break;
                 
             case 'number':
+            	$curr = setlocale(LC_NUMERIC, 0);
             	setlocale(LC_NUMERIC, 'en_US');
             	$ret .= ' type="number" value="' . htmlspecialchars($this->value) . '"';
+            	setlocale(LC_NUMERIC, $curr);
             	break;
 
             case 'bool':

@@ -289,7 +289,7 @@ abstract class Controller {
 			// set the error in the log
 			$this->app->logError($e->getMessage());
 			
-			// get referer and redirect
+			// get a fall-back referer or default and redirect the user
 			$url = !isset($_SERVER['REFERER']) ? $_SERVER['REFERER'] : BASE_HREF;
 			$this->redirect($url, TRUE);
 			

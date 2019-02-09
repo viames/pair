@@ -538,10 +538,10 @@ class User extends ActiveRecord {
 		if (!$this->issetCache('lang')) {
 	
 			$query =
-				'SELECT l.code ' .
-				' FROM `languages` AS l ' .
+				'SELECT l.code' .
+				' FROM `languages` AS l' .
 				' INNER JOIN `locales` AS lc ON l.id = lc.language_id' .
-				' INNER JOIN `users` AS u ON u.locale_id = lc.id ' .
+				' INNER JOIN `users` AS u ON u.locale_id = lc.id' .
 				' WHERE u.id = ?';
 			$this->db->setQuery($query);
 			$this->setCache('lang', $this->db->loadResult($this->id));
