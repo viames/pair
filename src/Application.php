@@ -723,8 +723,10 @@ class Application {
 				// delete the expired session from DB
 				$session->delete();
 		
-				// set the page coming from
-				$this->setPersistentState('lastRequestedUrl', $router->getUrl());
+				// set the page coming from avoiding post requests
+				if (isset($_SERVER['REQUEST_METHOD']) and 'POST' !== $_SERVER['REQUEST_METHOD']) {
+					$this->setPersistentState('lastRequestedUrl', $router->getUrl());
+				}
 		
 				// queue a message for the connected user
 				$this->enqueueMessage($comment);
