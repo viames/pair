@@ -263,6 +263,27 @@ class Form {
 	}
 	
 	/**
+	 * Return a list of unvalid FormControl objects.
+	 * 
+	 * @return FormControl[]
+	 */
+	public function getUnvalidControls() {
+		
+		$unvalids = array();
+		
+		foreach ($this->controls as $control) {
+			
+			if (!$control->validate()) {
+				$unvalids[] = $control;
+			}
+			
+		}
+		
+		return $unvalids;
+		
+	}
+	
+	/**
 	 * Adds a common CSS class to all controls of this form at render time. Chainable.
 	 * 
 	 * @param	string	CSS Class name.
@@ -526,6 +547,17 @@ abstract class FormControl {
 	
 	}
 	
+	/**
+	 * Return a string value for this object, matches the control’s label.
+	 * 
+	 * @return	string
+	 */
+	public function __toString() {
+		
+		$this->getLabel();
+		
+	}
+	
 	abstract public function render();
 	
 	abstract public function validate();
@@ -703,9 +735,11 @@ abstract class FormControl {
 	}
 	
 	/**
-	 * Print the control’s label.
+	 * Return the control’s label.
+	 *
+	 * @return	string
 	 */
-	public function printLabel() {
+	public function getLabel() {
 		
 		// no label, get it by the control’s name
 		if (!$this->label) {
@@ -724,6 +758,17 @@ abstract class FormControl {
 			$label = $this->label;
 			
 		}
+		
+		return $label;
+		
+	}
+	
+	/**
+	 * Print the control’s label even with required-field class.
+	 */
+	public function printLabel() {
+		
+		$label = $this->getLabel();
 		
 		// if required, add required-field css class
 		if ($this->required and !$this->readonly and !$this->disabled) {
@@ -1275,7 +1320,7 @@ class FormControlSelect extends FormControl {
 		// checks if empty and required
 		if ($this->required and !$value) {
 			
-			$app->logEvent('Control validation on field “' . $this->name . '” has failed (required)');
+			$app->logWarning('Control validation on field “' . $this->name . '” has failed (required)');
 			$valid = FALSE;
 			
 		// checks if value is in allowed list
@@ -1288,7 +1333,7 @@ class FormControlSelect extends FormControl {
 			}
 
 			if (!$valid) {
-				$app->logEvent('Control validation on field “' . $this->name . '” has failed (value “' . $value . '” is not in list)');
+				$app->logWarning('Control validation on field “' . $this->name . '” has failed (value “' . $value . '” is not in list)');
 			}
 
 		}

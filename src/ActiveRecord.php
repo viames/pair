@@ -1508,7 +1508,7 @@ abstract class ActiveRecord {
 						
 				} else {
 						
-					trigger_error('In method ' . $class . '::getAllObject() unexistent property “' . $property . '” can’t be used as filter');
+					trigger_error('In method ' . $class . '::countAllObjects() unexistent property “' . $property . '” can’t be used as filter');
 						
 				}
 					

@@ -362,4 +362,20 @@ abstract class Controller {
 	
 	}
 	
+	/**
+	 * Get error list from an ActiveRecord object and show it to the user.
+	 *
+	 * @param	ActiveRecord	The inherited object.
+	 */
+	protected function raiseError(ActiveRecord $object) {
+		
+		// get error list from the ActiveRecord object
+		$errors = $object->getErrors();
+		
+		$message = $this->lang('ERROR_ON_LAST_REQUEST') . ($errors ? ": \n" . implode(" \n", $errors) : '');
+		$this->enqueueError($message);
+		$this->view = 'default';
+		
+	}
+	
 }
