@@ -1816,37 +1816,81 @@ abstract class ActiveRecord {
 	}
 
 	/**
-	 * Output an object property properly formatted and escaped.
+	 * Output an object property or method properly formatted and escaped.
 	 * 
-	 * @param	string	Property name.
+	 * @param	string	Property or method (with or without parentheses) name.
 	 */
-	final public function printHtml($prop) {
+	final public function printHtml($name) {
 		
-		switch ($this->getPropertyType($prop)) {
-		
-		case 'bool':
-			if ($this->$prop) {
-				// print standard ascii one or a predefined icon HTML as constant
-				print (defined('PAIR_CHECK_ICON') ? PAIR_CHECK_ICON : '<span style="color:green">√</span>'); 
+		// print standard ascii one or a predefined icon HTML as constant
+		$printBoolean = function ($value) {
+			if ($value) {
+				print (defined('PAIR_CHECK_ICON') ? PAIR_CHECK_ICON : '<span style="color:green">√</span>');
 			} else {
 				print (defined('PAIR_TIMES_ICON') ? PAIR_TIMES_ICON : '<span style="color:red">×</span>');
 			}
-			break;
+		};
+		
+		// print the class property in the proper way
+		if (property_exists($this, $name)) {
+		
+			switch ($this->getPropertyType($name)) {
+				
+				case 'bool':
+					$printBoolean($this->$name);
+					break;
+					
+				case 'DateTime':
+					print $this->formatDateTime($this->$name);
+					break;
+					
+				case 'csv':
+					print implode(', ', $this->$name);
+					break;
+					
+				default:
+					print htmlspecialchars($this->$name);
+					break;
+					
+			}
 			
-		case 'DateTime':
-			print $this->formatDateTime($this->$prop);
-			break;
+		// name is a method with or without parentheses
+		} else if ('()' == substr($name, -2) or method_exists($this, $name)) {
 			
-		case 'csv':
-			print implode(', ', $this->$prop);
-			break;
+			$methodName = '()' == substr($name, -2) ? substr($name, 0, -2) : $name;
+		
+			if (!method_exists($this, $methodName)) {
+				$this->addError('The ' . $methodName . '() method to printHtml was not found in the ' . get_called_class() . ' class');
+				return;
+			}
+			
+			// run the method
+			$result = $this->$methodName();
+			
+			switch (gettype($result)) {
+				
+				case 'boolean':
+					$printBoolean($result);
+					break;
 
-		default:
-			print htmlspecialchars($this->$prop);
-			break;
+				case 'array':
+					htmlspecialchars(implode(', ', $result));
+					break;
+					
+				// integer, double, string, object, resource, NULL, unknown type
+				default:
+					print htmlspecialchars($result);
+					break;
+						
+			}
+			
+		// property not found
+		} else {
+			
+			$this->addError('You can not printHtml for the ' . $name . ' property of the class ' . get_called_class());
 			
 		}
-		
+			
 	}
 
 	/**

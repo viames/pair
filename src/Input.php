@@ -90,13 +90,13 @@ class Input {
 	}
 	
 	/**
-	 * Get data by POST or GET array returning an integer. In case
-	 * of not found, return default value. Manage array inputs.
+	 * Get data by POST or GET array returning a trimmed string. In case
+	 * of not found, return default value.
 	 *
 	 * @param	string	HTTP parameter name.
 	 * @param	string	Default value to return, in case of null or empty.
 	 *
-	 * @return	int
+	 * @return	string
 	 */
 	public static function getTrim($name, $default=NULL) {
 		
