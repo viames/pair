@@ -60,33 +60,6 @@ class Options {
 	}
 	
 	/**
-	 * Returns an option’s value.
-	 * 
-	 * @param	string	The option’s name.
-	 * @throws	Exception
-	 * @return	mixed|NULL
-	 */
-	public function getValue($name) {
-		
-		$this->checkPopulated();
-		
-		try {
-		
-			if (array_key_exists($name, $this->list)) {
-				return $this->list[$name]->value;
-			} else {
-				throw new \Exception('Option “'. $name .'” doesn’t exist for this object '. __CLASS__);
-			}
-
-		} catch(\Exception $e) {
-			
-			return NULL;
-	
-		}
-
-	}
-	
-	/**
 	 * Proxy method to return an option’s value.
 	 *
 	 * @param	string	The option’s name.
@@ -97,7 +70,90 @@ class Options {
 		
 		$self = static::getInstance();
 		
-		return $self->getValue($name);
+		$self->checkPopulated();
+		
+		try {
+			
+			if (!array_key_exists($name, $self->list)) {
+				throw new \Exception('Cannot read the value of option “'. $name .'” as it doesn’t exist.');
+			}
+
+			return $self->list[$name]->value;
+			
+		} catch(\Exception $e) {
+			
+			$app = Application::getInstance();
+			$app->logWarning($e->getMessage());
+			
+		}
+		
+	}
+	
+	/**
+	 * Proxy method to return an option’s value.
+	 *
+	 * @param	string	The option’s name.
+	 * @throws	Exception
+	 * @return	mixed|NULL
+	 */
+	public static function set($name, $value) {
+		
+		// instance of the singleton
+		$self = static::getInstance();
+		
+		// populate all the options by reading db once
+		$self->checkPopulated();
+		
+		// check if named option exists
+		try {
+			
+			if (!array_key_exists($name, $self->list)) {
+				throw new \Exception('Cannot write the value of option “'. $name .'” as it doesn’t exist.');
+			}
+				
+			switch ($self->list[$name]->type) {
+				
+				case 'bool';
+					$value = $value ? 1 : 0;
+					break;
+					
+				case 'password':
+					if ($self->isCryptAvailable()) {
+						$value = openssl_encrypt($value, 'AES128', OPTIONS_CRIPT_KEY); 
+					} else {
+						throw new \Exception('OPTIONS_CRIPT_KEY constant must be defined into config.php file.');
+					}
+					break;
+					
+			}
+
+			// update the value into db
+			Database::run('UPDATE `options` SET `value` = ? WHERE `name` = ?', [$value, $name]);
+			
+			// update value into the singleton object
+			$self->list[$name]->value = $value;
+			
+		} catch(\Exception $e) {
+			
+			$app = Application::getInstance();
+			$app->logWarning($e->getMessage());
+			
+		}
+		
+	}
+	
+	/**
+	 * Returns an option’s value.
+	 * 
+	 * @param	string	The option’s name.
+	 * @throws	Exception
+	 * @return	mixed|NULL
+	 * 
+	 * @deprecated Use static method get() instead.
+	 */
+	public function getValue($name) {
+		
+		return self::get($name);
 		
 	}
 	
@@ -106,23 +162,12 @@ class Options {
 	 * 
 	 * @param	string	Property’s name.
 	 * @param	mixed	Property’s value.
+	 * 
+	 * @deprecated Use static method set() instead.
 	 */
 	public function setValue($name, $value) {
-
-		$this->checkPopulated();
 		
-		if (array_key_exists($name, $this->list)) {
-			
-			if ('bool'==$this->list[$name]->type) {
-				$value = $value ? 1 : 0;
-			}
-
-			$query = 'UPDATE `options` SET `value` = ? WHERE `name` = ?';
-
-		}
-		
-		$this->db->exec($query, array($value, $name));
-		$this->list[$name]->value = $value;
+		return self::set($name, $value);
 		
 	}
 	
@@ -153,8 +198,7 @@ class Options {
 	 */
 	private function populate() {
 	
-		$this->db->setQuery('SELECT * FROM `options` ORDER BY `group`');
-		$res = $this->db->loadObjectList();
+		$res = Database::load('SELECT * FROM `options` ORDER BY `group`');
 			
 		$this->list = array();
 			
@@ -202,17 +246,44 @@ class Options {
 		switch ($type) {
 	
 			default:
-			case 'text':
-			case 'textarea':$value = (string)$value;	break;
-			case 'int':		$value = (int)$value;		break;
-			case 'bool':	$value = (bool)$value;		break;
-			case 'custom':	break;
-			case 'list':	break;
+				$value = (string)$value;
+				break;
+				
+			case 'int':
+				$value = (int)$value;
+				break;
+				
+			case 'bool':
+				$value = (bool)$value;
+				break;
+				
+			case 'password':
+				if ($this->isCryptAvailable()) {
+					$value = openssl_decrypt($value, 'AES128', OPTIONS_CRIPT_KEY);
+				} else {
+					$app = Application::getInstance();
+					$app->logWarning('OPTIONS_CRIPT_KEY constant should be defined into config.php file.');
+				}
+				break;
+				
+			case 'list':
+				break;
 				
 		}
 		
 		return $value;
 	
+	}
+	
+	/**
+	 * Check wheter options crypt key has been defined into config.php file.
+	 * 
+	 * @return boolean
+	 */
+	public function isCryptAvailable() {
+		
+		return (defined('OPTIONS_CRIPT_KEY') and strlen(OPTIONS_CRIPT_KEY) > 0);
+		
 	}
 	
 }
