@@ -274,7 +274,7 @@ class Database {
 	 * Return data in various formats by third string parameter. Default is objectlist parameters as array. Support PDO parameters bind.
 	 *
 	 * @param	string	SQL query.
-	 * @param	array	List of parameters to bind on sql query. 
+	 * @param	array	List of parameters to bind on the sql query. 
 	 * @param	string	Returned type (objectlist|object|resultlist|result|count): "objectlist" is default.
 	 * 
 	 * @return	array|stdClass|int|NULL
@@ -302,7 +302,7 @@ class Database {
 				case PAIR_DB_OBJECT_LIST:
 				case 'objectlist':
 					$res = $stat->fetchAll(\PDO::FETCH_OBJ);
-					$self->logParamQuery($query, count($ret), $params);
+					$self->logParamQuery($query, count($res), $params);
 					break;
 				
 				// first row as stdClass object
@@ -346,6 +346,71 @@ class Database {
 		
 		return $res;
 		
+	}
+	
+	/**
+	 * Run a query with parameters and return TRUE if success. Support PDO parameters bind.
+	 *
+	 * @param	string	SQL query to run.
+	 * @param	array	List of parameters to bind on the sql query.
+	 *
+	 * @return	int		Number of affected items.
+	 */
+	public static function run($query, $params=array()) {
+		
+		$self = static::getInstance();
+		
+		$self->openConnection();
+		
+		$ret = NULL;
+		
+		try {
+			
+			// prepare query
+			$stat = $self->handler->prepare($query);
+
+			// bind parameters
+			$stat->execute((array)$params);
+
+			// count affected rows
+			$affected = $stat->rowCount();
+			
+		} catch (\PDOException $e) {
+			
+			// logger
+			$self->logParamQuery($query, 0, $params);
+			
+			switch ($e->getCode()) {
+				
+				// integrity constraint violation
+				/*
+				 case '23000':
+					 $message = 'Database integrity constraint violation';
+					 break;
+				 */
+				default:
+					$message = $e->getMessage();
+					break;
+			}
+			
+			$self->addError($message);
+			
+			$affected = 0;
+			
+		} catch (\Exception $e) {
+			
+			// logger
+			$self->logParamQuery($query, 0, $params);
+			$self->addError($e->getMessage());
+			$affected = 0;
+			
+		}
+		
+		$stat->closeCursor();
+		$self->logParamQuery($query, $affected, $params);
+		
+		return $affected;
+			
 	}
 	
 	/**
@@ -748,8 +813,7 @@ class Database {
 				' AND r.CONSTRAINT_SCHEMA = ? AND r.REFERENCED_TABLE_NAME = ?' .
 				' AND k.CONSTRAINT_NAME = r.CONSTRAINT_NAME';
 
-			$this->setQuery($query);
-			$this->definitions[$tableName]['inverseForeignKeys'] = $this->loadObjectList([DB_NAME, $tableName, DB_NAME, $tableName]);
+			$this->definitions[$tableName]['inverseForeignKeys'] = self::load($query, [DB_NAME, $tableName, DB_NAME, $tableName], PAIR_DB_OBJECT_LIST);
 			
 		}
 		
@@ -769,8 +833,7 @@ class Database {
 		// check if was set in the object cache property
 		if (!isset($this->definitions[$tableName]['describe'])) {
 			
-			$this->setQuery('DESCRIBE `' . $tableName . '`');
-			$res = $this->loadObjectList();
+			$res = self::load('DESCRIBE `' . $tableName . '`', NULL, PAIR_DB_OBJECT_LIST);
 			$this->definitions[$tableName]['describe'] = is_null($res) ? [] : $res;
 			
 		}
@@ -799,8 +862,7 @@ class Database {
 			}
 		}
 		
-		$this->setQuery('DESCRIBE `' . $tableName . '` `' . $column . '`' );
-		$res = $this->loadObject();
+		$res = self::load('DESCRIBE `' . $tableName . '` `' . $column . '`', NULL, PAIR_DB_OBJECT);
 		
 		return ($res ? $res : NULL);
 		

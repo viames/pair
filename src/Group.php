@@ -53,9 +53,9 @@ class Group extends ActiveRecord {
 	protected static function getBinds() {
 		
 		$varFields = array (
-			'id'			=> 'id',
-			'name'			=> 'name',
-			'default' 		=> 'is_default');
+			'id'		=> 'id',
+			'name'		=> 'name',
+			'default' 	=> 'is_default');
 		
 		return $varFields;
 		
@@ -141,17 +141,7 @@ class Group extends ActiveRecord {
 	 */
 	public static function getDefault() {
 	
-		$db = Database::getInstance();
-		
-		$query = 'SELECT * FROM `groups` WHERE `is_default` = 1';
-		$db->setQuery($query);
-		$row = $db->loadObject();
-		
-		if (is_object($row) and property_exists($row, 'id')) {
-			return new self($row);
-		} else {
-			return NULL;
-		}
+		return self::getObjectByQuery('SELECT * FROM `groups` WHERE `is_default` = 1');
 	
 	}
 	
@@ -161,8 +151,7 @@ class Group extends ActiveRecord {
 	protected function unsetSiblingsDefaults() {
 	
 		if ($this->default) {
-			$query = 'UPDATE `groups` SET `is_default` = 0 WHERE `id` <> ?';
-			$this->db->exec($query, $this->id);
+			Database::run('UPDATE `groups` SET `is_default` = 0 WHERE `id` <> ?', $this->id);
 		}
 	
 	}
@@ -192,18 +181,7 @@ class Group extends ActiveRecord {
 			' WHERE admin_only = 0' .
 			' AND r.id NOT IN(SELECT a.rule_id FROM `acl` AS a WHERE a.group_id = ?)';
 		
-		$this->db->setQuery($query);
-		$list = $this->db->loadObjectList($this->id);
-		
-		$rules = array();
-		
-		foreach ($list as $row) {
-			$rule = new Rule($row);
-			$rule->moduleName = $row->module_name;
-			$rules[] = $rule;
-		}
-
-		return $rules;
+		return Rule::getObjectsByQuery($query, $this->id);
 		
 	}
 	
@@ -221,10 +199,7 @@ class Group extends ActiveRecord {
 			' WHERE m.name = "users"'.
 			' LIMIT 1';
 
-		$this->db->setQuery($query);
-		$res = $this->db->loadResult();
-
-		return $res;
+		return Database::load($query, NULL, PAIR_DB_RESULT);
 
 	}
 	
@@ -248,12 +223,10 @@ class Group extends ActiveRecord {
 	public function setDefaultAcl($aclId) {
 	
 		// set no default to siblings
-		$query = 'UPDATE `acl` SET `is_default` = 0 WHERE `group_id` = ? AND `id` <> ?';
-		$this->db->exec($query, array($this->id, $aclId));
+		Database::run('UPDATE `acl` SET `is_default` = 0 WHERE `group_id` = ? AND `id` <> ?', [$this->id, $aclId]);
 
 		// set default to this
-		$query = 'UPDATE `acl` SET `is_default` = 1 WHERE `group_id` = ? AND `id` = ?';
-		$this->db->exec($query, array($this->id, $aclId));
+		Database::run('UPDATE `acl` SET `is_default` = 1 WHERE `group_id` = ? AND `id` = ?', [$this->id, $aclId]);
 		
 	}
 
@@ -269,7 +242,7 @@ class Group extends ActiveRecord {
 			'  SELECT `rule_id` FROM `acl` WHERE `group_id` = ?' .
 			' )';
 		
-		$this->db->exec($query, array($this->id, $this->id));
+		Database::run($query, [$this->id, $this->id]);
 		
 	}
 	

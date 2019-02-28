@@ -224,11 +224,20 @@ class Form {
 	}
 	
 	/**
-	 * Create an HTML text for label of a control.
+	 * Print the HTML code of a form control by its name.
+	 *
+	 * @param	string	HTML name of the wanted control.
+	 */
+	public function printControl($name) {
+		
+		print $this->renderControl($name);
+		
+	}
+	
+	/**
+	 * Print the HTML code of a control’s label.
 	 * 
-	 * @param	string	Control name.
-	 * 
-	 * @return	string
+	 * @param	string	HTML name of the wanted control.
 	 */
 	public function printLabel($name) {
 		

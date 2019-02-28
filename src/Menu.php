@@ -162,7 +162,7 @@ class Menu {
 					
 					// prevent empty multi-menu
 					if ('' == $links) {
-						continue;
+						break;
 					}
 					
 					// assembles the multi-menu
