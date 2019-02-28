@@ -119,9 +119,9 @@ class Options {
 					
 				case 'password':
 					if ($self->isCryptAvailable()) {
-						$value = openssl_encrypt($value, 'AES128', OPTIONS_CRIPT_KEY); 
+						$value = openssl_encrypt($value, 'AES128', OPTIONS_CRYPT_KEY); 
 					} else {
-						throw new \Exception('OPTIONS_CRIPT_KEY constant must be defined into config.php file.');
+						throw new \Exception('OPTIONS_CRYPT_KEY constant must be defined into config.php file.');
 					}
 					break;
 					
@@ -259,10 +259,10 @@ class Options {
 				
 			case 'password':
 				if ($this->isCryptAvailable()) {
-					$value = openssl_decrypt($value, 'AES128', OPTIONS_CRIPT_KEY);
+					$value = openssl_decrypt($value, 'AES128', OPTIONS_CRYPT_KEY);
 				} else {
 					$app = Application::getInstance();
-					$app->logWarning('OPTIONS_CRIPT_KEY constant should be defined into config.php file.');
+					$app->logWarning('OPTIONS_CRYPT_KEY constant should be defined into config.php file.');
 				}
 				break;
 				
@@ -282,7 +282,7 @@ class Options {
 	 */
 	public function isCryptAvailable() {
 		
-		return (defined('OPTIONS_CRIPT_KEY') and strlen(OPTIONS_CRIPT_KEY) > 0);
+		return (defined('OPTIONS_CRYPT_KEY') and strlen(OPTIONS_CRYPT_KEY) > 0);
 		
 	}
 	
