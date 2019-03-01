@@ -265,7 +265,7 @@ abstract class Controller {
 				$file = $this->modulePath .'/view'. ucfirst($this->view) .'.php';
 				
 				if (!file_exists($file)) {
-					if ($this->app->currentUser->isPopulated()) {
+					if ($this->app->currentUser->areKeysPopulated()) {
 						throw new \Exception('View file '. $file .' has not been found');
 					} else {
 						die('Access denied');

@@ -1038,7 +1038,7 @@ class Application {
 	 */
 	final private function getTemplate() {
 		
-		if (!$this->template or !$this->template->isPopulated()) {
+		if (!$this->template or !$this->template->areKeysPopulated()) {
 			$this->template = Template::getDefault();
 		}
 		

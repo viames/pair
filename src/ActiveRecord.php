@@ -79,7 +79,18 @@ abstract class ActiveRecord {
 		} else if (is_int($initParam) or (is_string($initParam) and strlen($initParam)>0)
 				or (static::hasCompoundKey() and count($this->keyProperties) == count($initParam))) {
 			
-			$this->loadFromDb($initParam);
+			// try to load the object from db
+			if (!$this->loadFromDb($initParam)) {
+				
+				// force init params to array 
+				$initParam = (array)$initParam;
+				
+				// populate this object with passed key properties
+				foreach($this->keyProperties as $index => $prop) {
+					$this->$prop = isset($initParam[$index]) ? $initParam[$index] : NULL;
+				}
+				
+			}
 			
 		}
 
@@ -460,10 +471,23 @@ abstract class ActiveRecord {
 	/**
 	 * Return TRUE if the ID(s) property variable has a value.
 	 *
-	 * @return boolean
+	 * @return		boolean
+	 * 
+	 * @deprecated	Use areKeysPopulated() instead.
 	 */
 	public function isPopulated() {
 
+		return $this->areKeysPopulated();
+
+	}
+	
+	/**
+	 * Return TRUE if each key property has a value.
+	 *
+	 * @return boolean
+	 */
+	public function areKeysPopulated() {
+		
 		$populated = TRUE;
 		
 		$keys = (array)$this->getId();
@@ -473,9 +497,9 @@ abstract class ActiveRecord {
 		foreach ($keys as $k) {
 			if (!$k) $populated = FALSE;
 		}
-
+		
 		return $populated;
-
+		
 	}
 
 	/**
@@ -552,8 +576,6 @@ abstract class ActiveRecord {
 	 */
 	final private function getKeyForEventlog() {
 
-		$class = get_called_class();
-
 		// force to array
 		$properties = (array)$this->keyProperties;
 
@@ -568,7 +590,8 @@ abstract class ActiveRecord {
 	}
 	
 	/**
-	 * Store into database the current object values and return the result.
+	 * Create into database the current object values or update it if exists based on table’s
+	 * keys and auto-increment property. Return TRUE if write is completed succesfully.
 	 * 
 	 * @return	bool
 	 */
@@ -577,12 +600,11 @@ abstract class ActiveRecord {
 		// hook for tasks to be executed before store
 		$this->beforeStore();
 		
-		$class = get_called_class();
-		
-		if (!$this->isPopulated() or !$this->db->isAutoIncrement($class::TABLE_NAME)) {
-			$ret = $this->create();
-		} else {
+		// create if object’s keys are populated
+		if ($this->areKeysPopulated() and static::exists($this->getId())) {
 			$ret = $this->update();
+		} else {
+			$ret = $this->create();
 		}
 
 		// hook for tasks to be executed after store
@@ -610,19 +632,24 @@ abstract class ActiveRecord {
 	 * @return bool
 	 */
 	final public function create() {
-		
+
 		$app = Application::getInstance();
+		$class = get_called_class();
+		
+		if (!$this->areKeysPopulated() and !$this->db->isAutoIncrement(static::TABLE_NAME)) {
+			$app->logEvent('The object’s ' . implode(', ', $this->keyProperties) . ' properties must be populated in order to create a ' . $class . ' record');
+			return FALSE;
+		}
 		
 		// hook for tasks to be executed before creation
 		$this->beforeCreate();
 		
 		// get list of class property names
-		$class = get_called_class();
-		$props = array_keys($class::getBinds());
+		$props = array_keys(static::getBinds());
 		
 		// insert the object as db record
 		$dbObj = $this->prepareData($props);
-		$res = $this->db->insertObject($class::TABLE_NAME, $dbObj);
+		$res = $this->db->insertObject(static::TABLE_NAME, $dbObj);
 
 		// get last insert id if not compound key
 		if (!static::hasCompoundKey()) {
@@ -692,7 +719,7 @@ abstract class ActiveRecord {
 		$logParam = $this->getKeyForEventlog();
 
 		// require table primary key and force its assign
-		if ($this->isPopulated()) {
+		if ($this->areKeysPopulated()) {
 
 			// set an object with fields to update
 			$dbObj = $this->prepareData($properties);
@@ -1653,23 +1680,21 @@ abstract class ActiveRecord {
 	 * 
 	 * @return	bool
 	 */
-	final public static function exists($key) {
+	final public static function exists($keys): bool {
 		
 		// initialize some vars
 		$db			= Database::getInstance();
-		$class		= get_called_class();
-		$tableKey	= (array)$class::TABLE_KEY;
+		$tableKey	= (array)static::TABLE_KEY;
 		$conds		= array();
 
 		foreach ($tableKey as $field) {
 			$conds[] = $field . ' = ?';
 		}
 		
-		// run the query
-		$db->setQuery('SELECT COUNT(1) FROM `' . $class::TABLE_NAME . '` WHERE ' . implode(' AND ', $conds));
+		$query = 'SELECT COUNT(1) FROM `' . static::TABLE_NAME . '` WHERE ' . implode(' AND ', $conds);
 		
 		// execute and return value
-		return (bool)$db->loadCount((array)$key);
+		return (bool)Database::load($query, (array)$keys, PAIR_DB_COUNT);
 		
 	}
 	

@@ -210,7 +210,7 @@ class Logger {
 		
 		// create a date in timezone of connected user
 		$timeStart = new \DateTime('@' . (int)$this->timeStart, new \DateTimeZone(BASE_TIMEZONE));
-		if ($app->currentUser and $app->currentUser->isPopulated()) {
+		if ($app->currentUser and $app->currentUser->areKeysPopulated()) {
 			$timeStart->setTimezone($app->currentUser->getDateTimeZone());
 		}
 		
