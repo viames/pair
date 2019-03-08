@@ -689,7 +689,6 @@ class Application {
 	
 		// get required singleton instances
 		$logger	 = Logger::getInstance();
-		$options = Options::getInstance();
 		$router	 = Router::getInstance();
 		$tran	 = Translator::getInstance();
 		
@@ -697,7 +696,7 @@ class Application {
 		session_start();
 		
 		// session time length in minutes
-		$sessionTime = $options->getValue('session_time');
+		$sessionTime = Options::get('session_time');
 		
 		if (in_array($router->module, $this->guestModules)) {
 			return;

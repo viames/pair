@@ -32,9 +32,7 @@ class Utilities {
 		// list all errors in framework log
 		} else {
 			
-			$options = Options::getInstance();
-		
-			if ($options->getValue('show_log')) {
+			if (Options::get('show_log')) {
 
 				$logger = Logger::getInstance();
 			
@@ -64,8 +62,6 @@ class Utilities {
 	 */
 	public static function fatalErrorHandler() {
 				
-		$options = Options::getInstance();
-		
 		// get fatal error array
 		$error = error_get_last();
 
@@ -86,7 +82,7 @@ class Utilities {
 			}
 		
 			// get admin emails by options
-			$emails = array_filter(explode(',', $options->getValue('admin_emails')));
+			$emails = array_filter(explode(',', Options::get('admin_emails')));
 			
 			if (count($emails)) {
 
@@ -542,6 +538,8 @@ class Utilities {
 	 */
 	public static function printNoDataMessageBox($customMessage=NULL) {
 		
+		Router::exceedingPaginationFallback();
+		
 		$tran = Translator::getInstance();
 		?><div class="messageNodata"><?php print ($customMessage ? $customMessage : $tran->get('NOTHING_TO_SHOW')) ?></div><?php
 		
@@ -874,7 +872,6 @@ class Utilities {
 				'CUSTOM1' => 'D, j M Y H:i:s O',	// Fri, 6 Feb 2015 09:23:05 +0100
 				'CUSTOM2' => 'd M Y H:i:s O',		// 06 Nov 2015 09:23:05 +0100
 				'RSS2'    => 'D, d M Y H:i:s T');	// Tue, 10 May 2016 15:33:54 GMT
-		         // FIXME Tue, 21 Jun 2016 11:45:34 +0200 (ora legale Europa occidentale)
 		
 		// tries each date format
 		foreach ($formats as $format) {

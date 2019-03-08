@@ -664,7 +664,7 @@ class Router {
 	}
 
 	/**
-	 * Returns current URL, with order and optional pagination.
+	 * Returns current relative URL, with order and optional pagination.
 	 * 
 	 * @return	string
 	 */
@@ -787,6 +787,24 @@ class Router {
 	
 		return $this->sendLog;
 	
+	}
+	
+	/**
+	 * If the page number is greater than 1, it returns the content to the first page. To be
+	 * used when there are no data to display in the lists with pagination.
+	 */
+	public static function exceedingPaginationFallback() {
+		
+		$self = static::$instance;
+		
+		if (!$self) return NULL;
+		
+		if ($self->page > 1) {
+			$self->resetPage();
+			$app = Application::getInstance();
+			$app->redirect($self->getUrl());
+		}
+		
 	}
 
 }

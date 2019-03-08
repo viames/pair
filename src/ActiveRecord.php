@@ -77,7 +77,7 @@ abstract class ActiveRecord {
 			
 		// primary or compound key, loads the whole object from db
 		} else if (is_int($initParam) or (is_string($initParam) and strlen($initParam)>0)
-				or (static::hasCompoundKey() and count($this->keyProperties) == count($initParam))) {
+				or (static::hasCompoundKey() and is_array($initParam) and count($this->keyProperties) == count($initParam))) {
 			
 			// try to load the object from db
 			if (!$this->loadFromDb($initParam)) {
@@ -205,10 +205,8 @@ abstract class ActiveRecord {
 	 */
 	public function __call($name, $arguments) {
 	
-		$options = Options::getInstance();
-		
 		if (!method_exists($this, $name)) {
-			if ($options->getValue('development')) {
+			if (Options::get('development')) {
 				$backtrace = debug_backtrace();
 				$app = Application::getInstance();
 				$app->logError('Method '. get_called_class() . $backtrace[0]['type'] . $name .'(), which doesn’t exist, has been called by '. $backtrace[0]['file'] .' on line '. $backtrace[0]['line']);

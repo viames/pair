@@ -90,8 +90,7 @@ class Logger {
 		// user is defined, could be admin
 		} else if ($app->currentUser) {
 			
-			$options = Options::getInstance();
-			return ($options->getValue('show_log') and $app->currentUser->admin);
+			return (Options::get('show_log') and $app->currentUser->admin);
 		
 		// no logs on login page
 		} else if ('user' == $router->module and 'login' == $router->action) {
@@ -348,7 +347,6 @@ class Logger {
 
 		$app		= Application::getInstance();
 		$router		= Router::getInstance();
-		$options	= Options::getInstance();
 		
 		if (!$this->isEnabled() or !$router->sendLog()) {
 			return NULL;
@@ -357,7 +355,7 @@ class Logger {
 		$log = '';
 
 		// shows the log
-		if ($options->getValue('show_log') and $app->currentUser->admin) {
+		if (Options::get('show_log') and $app->currentUser->admin) {
 		
 			$showQueries = isset($_COOKIE['LogShowQueries']) ? $_COOKIE['LogShowQueries'] : 0;
 			

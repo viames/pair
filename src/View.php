@@ -74,7 +74,6 @@ abstract class View {
 		// singleton objects
 		$this->app		= Application::getInstance();
 		$router			= Router::getInstance();
-		$options		= Options::getInstance();
 		$this->translator = Translator::getInstance();
 		
 		// sets view name and default layout
@@ -91,7 +90,7 @@ abstract class View {
 		
 		// pagination
 		$this->pagination			= new Pagination();
-		$this->pagination->perPage	= $options->getValue('pagination_pages');
+		$this->pagination->perPage	= Options::get('pagination_pages');
 		$this->pagination->page		= $router->getPage();
 		
 		// includes and instance default model
