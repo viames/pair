@@ -867,8 +867,21 @@ class FormControlInput extends FormControl {
 	
 	/**
 	 * Step value for number input controls.
+	 * @var string
 	 */
 	protected $step;
+	
+	/**
+	 * Minimum allowed length for value.
+	 * @var string
+	 */
+	protected $min;
+	
+	/**
+	 * Maximum allowed length for value.
+	 * @var string
+	 */
+	protected $max;
 	
 	/**
 	 * Extends parent constructor in order to sets default type to text.
@@ -956,9 +969,37 @@ class FormControlInput extends FormControl {
 	 *
 	 * @return	FormControlInput
 	 */
-	public function setStep($value) {
+	public function setStep($value): FormControlInput {
 		
-		$this->step = $value;
+		$this->step = (string)$value;
+		return $this;
+		
+	}
+	
+	/**
+	 * Set the minimum value for this control. It’s a chainable method.
+	 *
+	 * @param	mixed	Minimum value.
+	 *
+	 * @return	FormControl subclass
+	 */
+	public function setMin($minValue): FormControlInput {
+		
+		$this->min = (string)$minValue;
+		return $this;
+		
+	}
+	
+	/**
+	 * Set the maximum value for this control. It’s a chainable method.
+	 *
+	 * @param	mixed		Maximum value.
+	 *
+	 * @return	FormControl subclass
+	 */
+	public function setMax($maxValue): FormControlInput {
+		
+		$this->max = (string)$maxValue;
 		return $this;
 		
 	}
@@ -1019,17 +1060,30 @@ class FormControlInput extends FormControl {
 				break;
 	
 		}
-	
+		
+		// set min and max value attribute for date and number only
+		if (in_array($this->type, ['number','date'])) {
+			
+			if ($this->min) {
+				$ret .= ' min="' . htmlspecialchars($this->min) . '"';
+			}
+			
+			if ($this->max) {
+				$ret .= ' max="' . htmlspecialchars($this->max) . '"';
+			}
+			
+		}
+		
 		// set minlength attribute
 		if ($this->minLength) {
-			$ret .= ' minlength="' . $this->minLength . '"';
+			$ret .= ' minlength="' . htmlspecialchars($this->minLength) . '"';
 		}
 		
 		// set maxlength attribute
 		if ($this->maxLength) {
-			$ret .= ' maxlength="' . $this->maxLength . '"';
+			$ret .= ' maxlength="' . htmlspecialchars($this->maxLength) . '"';
 		}
-		
+	
 		// set accept attribute
 		if ($this->accept) {
 			$ret .= ' accept="' . $this->accept . '"';
@@ -1037,7 +1091,7 @@ class FormControlInput extends FormControl {
 		
 		// set step attribute
 		if ($this->step) {
-			$ret .= ' step="' . $this->step . '"';
+			$ret .= ' step="' . htmlspecialchars($this->step) . '"';
 		}
 		
 		$ret .= $this->processProperties() . ' />';
@@ -1105,17 +1159,34 @@ class FormControlInput extends FormControl {
 			}
 			
 		}
-		
+
+		// set min and max value attribute for date and number only
+		if (in_array($this->type, ['number','date'])) {
+			
+			if ($this->min and $value < $this->min) {
+				$app->logEvent('Control validation on field “' . $this->name . '” has failed (min=' . $this->min . ')');
+				$valid = FALSE;
+			}
+			
+			if ($this->max and $value > $this->max) {
+				$app->logEvent('Control validation on field “' . $this->name . '” has failed (max=' . $this->max . ')');
+				$valid = FALSE;
+			}
+			
+		}
+
+		// check validity of minlength attribute
 		if ($this->minLength and ''!=$value and strlen($value) < $this->minLength) {
 			$app->logEvent('Control validation on field “' . $this->name . '” has failed (minLength=' . $this->minLength . ')');
 			$valid = FALSE;
 		}
 
+		// check validity of minlength attribute
 		if ($this->maxLength and strlen($value) > $this->maxLength) {
 			$app->logEvent('Control validation on field “' . $this->name . '” has failed (maxLength=' . $this->maxLength . ')');
 			$valid = FALSE;
 		}
-
+		
 		return $valid;
 
 	}

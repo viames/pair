@@ -280,7 +280,7 @@ class Database {
 	 * 
 	 * @return	array|stdClass|int|NULL
 	 */
-	public static function load(string $query, array $params=array(), $option=NULL) {
+	public static function load(string $query, ?array $params=array(), $option=NULL) {
 		
 		$self = static::getInstance();
 		
