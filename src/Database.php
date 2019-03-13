@@ -271,21 +271,22 @@ class Database {
 	}
 	
 	/**
-	 * Return data in various formats by third string parameter. Default is objectlist parameters as array. Support PDO parameters bind.
+	 * Return data in various formats by third string parameter. Default is PAIR_DB_OBJECT_LIST parameters
+	 * as array. Support PDO parameters bind.
 	 *
 	 * @param	string	SQL query.
 	 * @param	array	List of parameters to bind on the sql query. 
-	 * @param	string	Returned type (objectlist|object|resultlist|result|count): "objectlist" is default.
+	 * @param	string	Returned type (see constants PAIR_DB_*). PAIR_DB_OBJECT_LIST is default.
 	 * 
 	 * @return	array|stdClass|int|NULL
 	 */
-	public static function load($query, $params=array(), $option=NULL) {
+	public static function load(string $query, array $params=array(), $option=NULL) {
 		
 		$self = static::getInstance();
 		
 		$self->openConnection();
 		
-		$ret = NULL;
+		$res = NULL;
 		
 		try {
 
@@ -302,39 +303,40 @@ class Database {
 				case PAIR_DB_OBJECT_LIST:
 				case 'objectlist':
 					$res = $stat->fetchAll(\PDO::FETCH_OBJ);
-					$self->logParamQuery($query, count($res), $params);
+					$count = count($res);
 					break;
 				
 				// first row as stdClass object
 				case PAIR_DB_OBJECT:
 				case 'object':
 					$res = $stat->fetch(\PDO::FETCH_OBJ);
-					$self->logParamQuery($query, (bool)$res, $params);
+					$count = (bool)$res;
 					break;
 
 				// array of first column results
 				case PAIR_DB_RESULT_LIST:
 				case 'resultlist':
 					$res = $stat->fetchAll(\PDO::FETCH_COLUMN);
-					$self->logParamQuery($query, count($res), $params);
+					$count = count($res);
 					break;
 			
 				// first column of first row
 				case PAIR_DB_RESULT:
 				case 'result':
-					$count = $self->handler->query('SELECT FOUND_ROWS()')->fetchColumn();
 					$res = $stat->fetch(\PDO::FETCH_COLUMN);
-					$self->logParamQuery($query, $count, $params);
+					$count = $self->handler->query('SELECT FOUND_ROWS()')->fetchColumn();
+					break;
 
 				// result count as integer
 				case PAIR_DB_COUNT:
 				case 'count':
 					$res = (int)$stat->fetch(\PDO::FETCH_COLUMN);
-					$self->logParamQuery($query, $res, $params);
+					$count = $res;
 					break;
 						
 			}
 			
+			$self->logParamQuery($query, $count, $params);
 			
 		} catch (\PDOException $e) {
 			
