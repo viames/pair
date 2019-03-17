@@ -276,6 +276,10 @@ abstract class Controller {
 
 				$viewName = ucfirst($this->name) .'View'. ucfirst($this->view);
 				
+				if (!class_exists($viewName)) {
+					throw new \Exception('Class ' . $viewName . ' was not found in file ' . $file);
+				}
+				
 				return new $viewName();
 				
 			} else {

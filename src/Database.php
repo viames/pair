@@ -768,7 +768,7 @@ class Database {
 	 *
 	 * @return	stdClass[]
 	 */
-	public function getForeignKeys($tableName) {
+	public function getForeignKeys($tableName): array {
 
 		if (!isset($this->definitions[$tableName]['foreignKeys'])) {
 			
@@ -783,8 +783,7 @@ class Database {
 				' AND r.`CONSTRAINT_SCHEMA` = ? AND r.`TABLE_NAME` = ?' .
 				' AND k.`CONSTRAINT_NAME` = r.`CONSTRAINT_NAME`';
 			
-			$this->setQuery($query);
-			$this->definitions[$tableName]['foreignKeys'] = $this->loadObjectList([DB_NAME, $tableName, DB_NAME, $tableName]);
+			$this->definitions[$tableName]['foreignKeys'] = self::load($query, [DB_NAME, $tableName, DB_NAME, $tableName]);
 
 		}
 		
@@ -800,7 +799,7 @@ class Database {
 	 * 
 	 * @return	stdClass[]
 	 */
-	public function getInverseForeignKeys($tableName) {
+	public function getInverseForeignKeys($tableName): array {
 		
 		if (!isset($this->definitions[$tableName]['inverseForeignKeys'])) {
 			
