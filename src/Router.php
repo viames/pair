@@ -95,7 +95,7 @@ class Router {
 		}
 		
 		// force initial slash
-		if ('/' != $this->url{0}) $this->url = '/' . $this->url;
+		if ($this->url and '/' != $this->url{0}) $this->url = '/' . $this->url;
 		
 	}
 	
