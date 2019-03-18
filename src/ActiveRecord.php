@@ -1189,7 +1189,7 @@ abstract class ActiveRecord {
 		$query = 'SELECT COUNT(1) FROM `' . $table . '` WHERE ' . $column . ' = ?';
 		
 		// search the record into the db
-		return (bool)Database::load($query, $value, 'count');
+		return (bool)Database::load($query, (array) $value, 'count');
 		
 	}
 	
