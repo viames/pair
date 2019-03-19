@@ -84,8 +84,8 @@ Please consult the [Wiki](https://github.com/Viames/Pair/wiki) of this project. 
 | Software | Recommended | Minimum | Configuration          |
 | ---      |    :---:    |  :---:  | ---                    |
 | Apache   | 2.4+        | 2.2     | `modules:` mod_rewrite |
-| MySQL    | 5.7+        | 5.6     | `character_set:` utf8mb4 <br> `collation:` utf8mb4\_unicode_ci <br> `storage_engine:` InnoDB |
-| PHP      | 7+          | 5.6     | `extensions:` fileinfo, json, pcre, PDO, pdo_mysql, Reflection |
+| MySQL    | 8.0         | 5.6     | `character_set:` utf8mb4 <br> `collation:` utf8mb4\_unicode_ci <br> `storage_engine:` InnoDB |
+| PHP      | 7.3+        | 7.0     | `extensions:` fileinfo, json, pcre, PDO, pdo_mysql, Reflection |
 
 ## Examples
 
