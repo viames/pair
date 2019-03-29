@@ -5,7 +5,7 @@ namespace Pair;
 /**
  * Base class for active record pattern. Supports tables with a primary key, not suitable for compound key.
  */
-abstract class ActiveRecord implements JsonSerializable {
+abstract class ActiveRecord implements \JsonSerializable {
 	
 	/**
 	 * Db handler object.
