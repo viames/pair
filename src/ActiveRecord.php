@@ -5,7 +5,7 @@ namespace Pair;
 /**
  * Base class for active record pattern. Supports tables with a primary key, not suitable for compound key.
  */
-abstract class ActiveRecord {
+abstract class ActiveRecord implements JsonSerializable {
 	
 	/**
 	 * Db handler object.
@@ -2149,6 +2149,23 @@ abstract class ActiveRecord {
 		
 		return (static::hasCompoundKey() ? $ids : $ids[0]);
 		
+	}
+
+	/**
+	 * Function for serializing the object through json response.
+	 *
+	 * @return array
+	 */
+	public function jsonSerialize() {
+		$vars = get_object_vars($this);
+		unset($vars['keyProperties']);
+		unset($vars['db']);
+		unset($vars['loadedFromDb']);
+		unset($vars['typeList']);
+		unset($vars['cache']);
+		unset($vars['errors']);
+
+		return $vars;
 	}
 
 }
