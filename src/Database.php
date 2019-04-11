@@ -227,18 +227,27 @@ class Database {
 	/**
 	 * Starts a transaction.
 	 */
-	public function start() {
+	public static function start() {
 		
-		$this->exec('START TRANSACTION');
+		static::run('START TRANSACTION');
 		
 	}
 
 	/**
 	 * Commits a transaction.
 	 */
-	public function commit() {
+	public static function commit() {
 		
-		$this->exec('COMMIT');
+		static::run('COMMIT');
+		
+	}
+
+	/**
+	 * Does the rollback of the transaction.
+	 */
+	public static function rollback() {
+		
+		static::run('ROLLBACK');
 		
 	}
 
