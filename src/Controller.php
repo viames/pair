@@ -340,7 +340,7 @@ abstract class Controller {
 	 * @param	string	Expected object class type.
 	 * @return	object|NULL
 	 */
-	protected function getObjectRequestedById($class) {
+	protected function getObjectRequestedById(string $class) {
 	
 		// reads from url requested item id
 		$itemId = Router::get(0);
@@ -379,6 +379,18 @@ abstract class Controller {
 		$message = $this->lang('ERROR_ON_LAST_REQUEST') . ($errors ? ": \n" . implode(" \n", $errors) : '');
 		$this->enqueueError($message);
 		$this->view = 'default';
+		
+	}
+	
+	/**
+	 * Print an error message and redirect to default action.
+	 *
+	 * @param	string	Optional message to enqueue.
+	 */
+	protected function accessDenied(?string $message=NULL) {
+		
+		$this->enqueueError(($message ? $message : $this->translator->get('ACCESS_DENIED')));
+		$this->redirect(strtolower($this->name));
 		
 	}
 	

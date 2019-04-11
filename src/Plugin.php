@@ -306,7 +306,7 @@ class Plugin {
 		$plugin->dateReleased	= date('Y-m-d H:i:s', strtotime((string)$mPlugin->dateReleased));
 		$plugin->appVersion		= (string)$mPlugin->appVersion;
 		$plugin->installedBy	= $app->currentUser->id;
-		$plugin->dateInstalled	= time();
+		$plugin->dateInstalled	= new \DateTime();
 		
 		// saves plugin object to db
 		$plugin->storeByPlugin($mPlugin->options);
