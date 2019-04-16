@@ -189,6 +189,62 @@ class Translator {
 	 * 
 	 * @return	string
 	 */
+	public static function do($key, $vars=NULL) {
+		
+		$self = static::getInstance();
+		$app  = Application::getInstance();
+		
+		// load translation strings
+		$self->loadStrings();
+		
+		// search into strings
+		if (array_key_exists($key, $self->strings) and $self->strings[$key]) {
+			
+			$string = $self->strings[$key];
+			
+		// search into strings of default language
+		} else if (is_array($self->defaultStrings) and array_key_exists($key, $self->defaultStrings) and $self->defaultStrings[$key]) {
+			
+			$app->logWarning('Language string ' . $key . ' is untranslated for current language [' . $self->currentLocale->code . ']');
+			$string = $this->defaultStrings[$key];
+			
+		// return the string constant, as debug info
+		} else {
+			
+			$app->logWarning('Language string ' . $key . ' is untranslated');
+			$string = '[' . $key . ']';
+			
+		}
+		
+		// vars is optional
+		if (!is_null($vars)) {
+			
+			// force a single string to be the expected array
+			if (!is_array($vars)) {
+				$vars = array((string)$vars);
+			}
+			
+			// binds of parameters on %s placeholders
+			$string = vsprintf($string, $vars);
+			
+		}
+		
+		return $string;
+		
+	}
+	
+	
+	/**
+	 * Return the translated string from expected lang file, if there, else
+	 * from default, else return the key string.
+	 * 
+	 * @param	string		The language key.
+	 * @param	array|NULL	List of parameters to bind on string (optional).
+	 * 
+	 * @return	string
+	 * 
+	 * @deprecated Use static method Translator::do() instead.
+	 */
 	public function get($key, $vars=NULL) {
 
 		$app = Application::getInstance();

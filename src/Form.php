@@ -758,8 +758,7 @@ abstract class FormControl {
 		// check if it’s a translation key, uppercase over 3 chars
 		} else if (strtoupper($this->label) == $this->label and strlen($this->label) > 3) {
 
-			$tran = Translator::getInstance();
-			$label = $tran->get($this->label);
+			$label = Translator::do($this->label);
 			
 		// simple label
 		} else {

@@ -685,12 +685,11 @@ class Application {
 	 * 
 	 * @param	string	Custom User-inherit class (optional).
 	 */
-	public function manageSession($userClass = 'Pair\User') {
+	public function manageSession(string $userClass = 'Pair\User') {
 	
 		// get required singleton instances
-		$logger	 = Logger::getInstance();
-		$router	 = Router::getInstance();
-		$tran	 = Translator::getInstance();
+		$logger = Logger::getInstance();
+		$router = Router::getInstance();
 		
 		// start session or resume session started by runApi
 		session_start();
@@ -705,89 +704,101 @@ class Application {
 		// get existing previous session
 		$session = new Session(session_id());
 		
-		// session exists but expired
-		if ($session->isLoaded() and $session->isExpired($sessionTime)) {
-		
-			$comment = $tran->get('USER_SESSION_EXPIRED');
-		
-			// sends js message about session expired
-			if ($router->isRaw()) {
-		
-				Utilities::printJsonError($comment);
-				exit();
-		
-			// redirects to login page
-			} else {
-		
-				// delete the expired session from DB
-				$session->delete();
-		
-				// set the page coming from avoiding post requests
-				if (isset($_SERVER['REQUEST_METHOD']) and 'POST' !== $_SERVER['REQUEST_METHOD']) {
-					$this->setPersistentState('lastRequestedUrl', $router->getUrl());
-				}
-		
-				// queue a message for the connected user
-				$this->enqueueMessage($comment);
-		
-				// goes to login page
-				$this->redirect('user/login');
-		
-			}
-		
-		}
-	
 		// clean all old sessions
 		Session::cleanOlderThan($sessionTime);
 		
 		// sets an empty user object
 		$this->setCurrentUser(new $userClass());
 		
-		// user is not logged in
-		if (!$session->isLoaded()) {
+		// session exists but expired
+		if ($session->isLoaded()) {
+			
+			if ($session->isExpired($sessionTime)) {
+				
+				// check RememberMe cookie
+				if (User::loginByRememberMe()) {
+					return;
+				}
 		
-			// redirect to login page
-			if (!('user'==$router->module and 'login'==$router->action)) {
+				$comment = Translator::do('USER_SESSION_EXPIRED');
+			
+				// sends js message about session expired
+				if ($router->isRaw()) {
+			
+					Utilities::printJsonError($comment);
+					exit();
+			
+				// redirects to login page
+				} else {
+			
+					// delete the expired session from DB
+					$session->delete();
+			
+					// set the page coming from avoiding post requests
+					if (isset($_SERVER['REQUEST_METHOD']) and 'POST' !== $_SERVER['REQUEST_METHOD']) {
+						$this->setPersistentState('lastRequestedUrl', $router->getUrl());
+					}
+			
+					// queue a message for the connected user
+					$this->enqueueMessage($comment);
+			
+					// goes to login page
+					$this->redirect('user/login');
+			
+				}
+				
+			// session loaded
+			} else {
+			
+				// if session exists, extend session timeout
+				$session->extendTimeout();
+				
+				// create User object
+				$user = new $userClass($session->idUser);
+				$this->setCurrentUser($user);
+				
+				$logger->addEvent('User session for ' . $user->fullName . ' is alive' .
+						', user time zone is ' . $this->currentUser->tzName .
+						' (' . sprintf('%+06.2f', (float)$this->currentUser->tzOffset) . ')');
+				
+				// set defaults in case of no module
+				if (NULL == $router->module) {
+					$landing = $user->getLanding();
+					$router->module = $landing->module;
+					$router->action = $landing->action;
+				}
+				
+				$resource = $router->module . '/' . $router->action;
+				
+				// checking permission
+				if ($this->currentUser->canAccess($router->module, $router->action)) {
+					
+					// access granted
+					$logger->addEvent('Access granted on resource ' . $resource);
+					
+				} else {
+					
+					// access denied
+					$this->enqueueError(Translator::do('ACCESS_FORBIDDEN', $resource));
+					$this->redirect($router->defaults['module'] . '/' . $router->defaults['action']);
+					
+				}
+				
+			}
+		
+		// user is not logged in
+		} else {
+			
+			// check RememberMe cookie
+			if (User::loginByRememberMe()) {
+				return;
+			}
+			
+			// redirect to login page if action is not login or password reset
+			if (!('user'==$router->module and in_array($router->action, ['login','reset','newPassword','setNewPassword']))) {
 				$this->redirect('user/login');
 			}
-		
-		// session loaded
-		} else {
-		
-			// if session exists, extend session timeout
-			$session->extendTimeout();
-		
-			// create User object
-			$user = new $userClass($session->idUser);
-			$this->setCurrentUser($user);
-		
-			$logger->addEvent('User session for ' . $user->fullName . ' is alive' .
-					', user time zone is ' . $this->currentUser->tzName .
-					' (' . sprintf('%+06.2f', (float)$this->currentUser->tzOffset) . ')');
 
-			// set defaults in case of no module
-			if (NULL == $router->module) {
-				$landing = $user->getLanding();
-				$router->module = $landing->module;
-				$router->action = $landing->action;
-			}
-
-			$resource = $router->module . '/' . $router->action;
-		
-			// checking permission
-			if ($this->currentUser->canAccess($router->module, $router->action)) {
-		
-				// access granted
-				$logger->addEvent('Access granted on resource ' . $resource);
-		
-			} else {
-		
-				// access denied
-				$this->enqueueError($tran->get('ACCESS_FORBIDDEN', $resource));
-				$this->redirect($router->defaults['module'] . '/' . $router->defaults['action']);
-		
-			}
-		
 		}
 		
 	}
@@ -892,7 +903,7 @@ class Application {
 		// check controller file existence
 		if (!file_exists($controllerFile) or '404' == $router->url) {
 			
-			$this->enqueueError($tran->get('RESOURCE_NOT_FOUND', $router->url));
+			$this->enqueueError(Translator::do('RESOURCE_NOT_FOUND', $router->url));
 			$this->style = '404';
 			$this->pageTitle = 'HTTP 404 error';
 			

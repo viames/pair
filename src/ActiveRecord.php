@@ -1781,12 +1781,12 @@ abstract class ActiveRecord implements \JsonSerializable {
 			// if is set a locale date format, use it
 			if ($tran->stringExists('LC_DATETIME_FORMAT')) {
 
-				return strftime($tran->get('LC_DATETIME_FORMAT'), $this->$prop->getTimestamp());
+				return strftime(Translator::do('LC_DATETIME_FORMAT'), $this->$prop->getTimestamp());
 
 			// otherwise choose another format
 			} else {
 				
-				$format = $tran->stringExists('DATETIME_FORMAT') ? $tran->get('DATETIME_FORMAT') : 'Y-m-d H:i:s';
+				$format = $tran->stringExists('DATETIME_FORMAT') ? Translator::do('DATETIME_FORMAT') : 'Y-m-d H:i:s';
 				
 			}
 			
@@ -1825,12 +1825,12 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// if is set a locale date format, use it
 		if ($tran->stringExists('LC_DATE_FORMAT')) {
 
-			return strftime($tran->get('LC_DATE_FORMAT'), $this->$prop->getTimestamp());
+			return strftime(Translator::do('LC_DATE_FORMAT'), $this->$prop->getTimestamp());
 
 		// otherwise choose another format
 		} else {
 
-			$format = $tran->stringExists('DATE_FORMAT') ? $tran->get('DATE_FORMAT') : 'Y-m-d';
+			$format = $tran->stringExists('DATE_FORMAT') ? Translator::do('DATE_FORMAT') : 'Y-m-d';
 
 			return $this->formatDateTime($prop, $format);
 

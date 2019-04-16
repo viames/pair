@@ -425,8 +425,7 @@ class Utilities {
 	 */
 	public static function getTimeago($date) {
 
-		$app  = Application::getInstance();
-		$tran = Translator::getInstance();
+		$app = Application::getInstance();
 		
 		// create DateTime object with int or strings
 		if (is_int($date)) {
@@ -450,6 +449,8 @@ class Utilities {
 		// if date valid, create the expected object
 		if (is_a($dateTime,'DateTime')) {
 			
+			$tran = Translator::getInstance();
+		
 			// if is set a locale date format, use it
 			if ($tran->stringExists('LC_DATETIME_FORMAT')) {
 
@@ -460,12 +461,12 @@ class Utilities {
 					$localeTimestamp += $dateTime->getOffset();
 				}
 				
-				$humanDate = strftime($tran->get('LC_DATETIME_FORMAT'), $localeTimestamp);
+				$humanDate = strftime(Translator::do('LC_DATETIME_FORMAT'), $localeTimestamp);
 			
 			// otherwise choose another format
 			} else {
 					
-				$format = $tran->stringExists('DATETIME_FORMAT') ? $tran->get('DATETIME_FORMAT') : 'Y-m-d H:i:s';
+				$format = $tran->stringExists('DATETIME_FORMAT') ? Translator::do('DATETIME_FORMAT') : 'Y-m-d H:i:s';
 				$humanDate = $dateTime->format($format);
 					
 			}
@@ -475,7 +476,7 @@ class Utilities {
 		// otherwise return n.a. date
 		} else {
 
-			return '<span class="timeago">' . $tran->get('NOT_AVAILABLE') . '</span>';
+			return '<span class="timeago">' . Translator::do('NOT_AVAILABLE') . '</span>';
 
 		}
 
@@ -493,11 +494,9 @@ class Utilities {
 	 */
 	public static function prependNullOption(&$list,$idField=NULL,$nameField=NULL,$text=NULL) {
 	
-		$tran = Translator::getInstance();
-		
 		$idField	= $idField	? $idField	: 'id';
 		$nameField	= $nameField? $nameField: 'name';
-		$text		= $text		? $text		: $tran->get('SELECT_NULL_VALUE');
+		$text		= $text		? $text		: Translator::do('SELECT_NULL_VALUE');
 	
 		$nullItem = new \stdClass();
 	
@@ -540,8 +539,7 @@ class Utilities {
 		
 		Router::exceedingPaginationFallback();
 		
-		$tran = Translator::getInstance();
-		?><div class="messageNodata"><?php print ($customMessage ? $customMessage : $tran->get('NOTHING_TO_SHOW')) ?></div><?php
+		?><div class="messageNodata"><?php print ($customMessage ? $customMessage : Translator::do('NOTHING_TO_SHOW')) ?></div><?php
 		
 	}
 

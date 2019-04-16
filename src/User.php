@@ -26,12 +26,6 @@ class User extends ActiveRecord {
 	protected $localeId;
 	
 	/**
-	 * Username for LDAP domain.
-	 * @var string
-	 */
-	protected $ldapUser;
-	
-	/**
 	 * Username for local authentication
 	 * @var string
 	 */
@@ -84,6 +78,18 @@ class User extends ActiveRecord {
 	 * @var int
 	 */
 	protected $faults;
+	
+	/**
+	 * Token to start password reset.
+	 * @var string
+	 */
+	protected $pwReset;
+	
+	/**
+	 * Token to auto-login by cookies.
+	 * @var string
+	 */
+	protected $rememberMe;
 	
 	/**
 	 * Time zone offset in hours. Cached.
@@ -170,7 +176,6 @@ class User extends ActiveRecord {
 			'id'		=> 'id',
 			'groupId'	=> 'group_id',
 			'localeId'	=> 'locale_id',
-			'ldapUser'	=> 'ldap_user',
 			'username'	=> 'username',
 			'hash'		=> 'hash',
 			'name'		=> 'name',
@@ -179,7 +184,10 @@ class User extends ActiveRecord {
 			'admin'		=> 'admin',
 			'enabled'	=> 'enabled',
 			'lastLogin'	=> 'last_login',
-			'faults'	=> 'faults');
+			'faults'	=> 'faults',
+			'pwReset'	=> 'pw_reset',
+			'rememberMe'=> 'remember_me'
+		);
 		
 		return $varFields;
 		
@@ -241,11 +249,10 @@ class User extends ActiveRecord {
 	 * 
 	 * @return	stdClass
 	 */
-	public static function doLogin($username, $password, $timezone) {
+	public static function doLogin(string $username, string $password, string $timezone): \stdClass {
 	
 		$app	= Application::getInstance();
 		$db		= Database::getInstance();
-		$tran	= Translator::getInstance();
 		
 		$ret = new \stdClass();
 
@@ -260,37 +267,43 @@ class User extends ActiveRecord {
 	
 		if (is_object($row)) {
 				
-			$user = new User($row);
+			$user = new static($row);
 
 			// over 9 faults
 			if ($user->faults > 9) {
 			
 				$ret->error = TRUE;
-				$ret->message = $tran->get('TOO_MANY_LOGIN_ATTEMPTS');
+				$ret->message = Translator::do('TOO_MANY_LOGIN_ATTEMPTS');
 				$user->addFault();
 					
 			// user disabled
 			} else if ('0' == $user->enabled) {
 
 				$ret->error = TRUE;
-				$ret->message = $tran->get('USER_IS_DISABLED');
+				$ret->message = Translator::do('USER_IS_DISABLED');
 				$user->addFault();
 					
 			// user password doesn’t match
 			} else if (!User::checkPassword($password, $user->hash)) {
 
 				$ret->error = TRUE;
-				$ret->message = $tran->get('PASSWORD_IS_NOT_VALID');
+				$ret->message = Translator::do('PASSWORD_IS_NOT_VALID');
 				$user->addFault();
 				
 			// login ok
 			} else {
 				
 				// creates session for this user
-				$user->createSession($user->fullName, $timezone);
+				$user->createSession($timezone);
 				$ret->userId = $user->id;
 				$ret->sessionId = session_id();
 				$user->resetFaults();
+
+				// clear any password-reset
+				if (!is_null($user->pwReset)) {
+					$user->pwReset = NULL;
+					$user->store();
+				}
 	
 			}
 				
@@ -298,7 +311,7 @@ class User extends ActiveRecord {
 		} else {
 				
 			$ret->error = TRUE;
-			$ret->message = $tran->get('USERNAME_NOT_VALID');
+			$ret->message = Translator::do('USERNAME_NOT_VALID');
 				
 		}
 
@@ -330,12 +343,11 @@ class User extends ActiveRecord {
 	 * Starts a new session, writes on db and updates users table for last login.
 	 * Returns true if both db writing has been done succesfully. 
 	 * 
-	 * @param	string	User name for this session (useful in case of LDAP login).
 	 * @param	string	IANA time zone identifier.
 	 * 
 	 * @return	bool
 	 */
-	private function createSession($name, $timezone) {
+	private function createSession(string $timezone): bool {
 
 		// checks if time zone name is valid
 		if (!in_array($timezone, \DateTimeZone::listIdentifiers())) {
@@ -377,7 +389,7 @@ class User extends ActiveRecord {
 	 * 
 	 * @return	bool
 	 */
-	public static function doLogout($sid) {
+	public static function doLogout($sid): bool {
 
 		$app = Application::getInstance();
 		$db  = Database::getInstance();
@@ -386,13 +398,10 @@ class User extends ActiveRecord {
 		$res = $db->exec('DELETE FROM `sessions` WHERE id = ?', $sid);
 
 		// unset all persistent states
-		$prefix = PRODUCT_NAME . '_';
-		foreach ($_COOKIE as $name=>$content) {
-			if (0 == strpos($name, $prefix)) {
-				unset($_COOKIE[$name]);
-				setcookie($name, '', -1, '/');
-			}
-		}
+		$app->unsetAllPersistentStates();
+
+		// unset RememberMe
+		$app->currentUser->unsetRememberMe();
 		
 		// reset the user in Application object
 		$app->currentUser = NULL;
@@ -406,7 +415,7 @@ class User extends ActiveRecord {
 	 *
 	 * @return DateTimeZone
 	 */
-	public function getDateTimeZone() {
+	public function getDateTimeZone(): \DateTimeZone {
 	
 		$this->loadTimezone();
 	
@@ -441,7 +450,7 @@ class User extends ActiveRecord {
 	 * 
 	 * @return	bool	True if access is granted.
 	 */
-	public function canAccess($module, $action=NULL) {
+	public function canAccess($module, $action=NULL): bool {
 
 		// FIXME parse custom routes
 		
@@ -473,18 +482,18 @@ class User extends ActiveRecord {
 	 * 
 	 * @return	array:stdClass
 	 */
-	protected function getAcl() {
+	private function getAcl(): array {
 
 		if (!$this->issetCache('acl')) {
 		
-		$query =
-			'SELECT r.*, m.name AS module_name' .
-			' FROM `rules` AS r' .
-			' INNER JOIN `acl` AS a ON a.rule_id = r.id'.
-			' INNER JOIN `modules` AS m ON r.module_id = m.id'.
-			' WHERE a.group_id = ?';
-		
-		$this->db->setQuery($query);
+			$query =
+				'SELECT r.*, m.name AS module_name' .
+				' FROM `rules` AS r' .
+				' INNER JOIN `acl` AS a ON a.rule_id = r.id'.
+				' INNER JOIN `modules` AS m ON r.module_id = m.id'.
+				' WHERE a.group_id = ?';
+			
+			$this->db->setQuery($query);
 			$this->setCache('acl', $this->db->loadObjectList($this->groupId));
 
 		}
@@ -496,9 +505,9 @@ class User extends ActiveRecord {
 	/**
 	 * Get landing module and action as object properties where the user goes after login.
 	 *
-	 * @return stdClass
+	 * @return \stdClass|NULL
 	 */
-	public function getLanding() {
+	public function getLanding(): ?\stdClass {
 		
 		$query =
 			' SELECT m.`name` AS module, r.action' .
@@ -557,7 +566,7 @@ class User extends ActiveRecord {
 	 *
 	 * @return Group
 	 */
-	public function getGroup() {
+	public function getGroup(): Group {
 	
 		if (!$this->issetCache('group')) {
 			$this->setCache('group', new Group($this->groupId));
@@ -572,7 +581,7 @@ class User extends ActiveRecord {
 	 * 
 	 * @return	string
 	 */
-	public function getFullName() {
+	public function getFullName(): string {
 		
 		return $this->name . ' ' . $this->surname;
 		
@@ -583,7 +592,7 @@ class User extends ActiveRecord {
 	 * 
 	 * @return boolean
 	 */
-	public function isLocaleSet() {
+	public function isLocaleSet(): bool {
 		
 		return (bool)$this->localeId;
 		
@@ -610,7 +619,7 @@ class User extends ActiveRecord {
 	 *
 	 * @return	bool
 	 */
-	public function isDeletable() {
+	public function isDeletable(): bool {
 		
 		$app = Application::getInstance();
 		
@@ -619,6 +628,187 @@ class User extends ActiveRecord {
 		}
 		
 		return parent::isDeletable();
+		
+	}
+	
+	/**
+	 * Return an user that matches pw_reset string. NULL if not found.
+	 * 
+	 * @param	string		PwReset value.
+	 * @return	User|NULL
+	 */
+	public static function getByPwReset(string $pwReset): ?User {
+		
+		$query =
+			'SELECT *' .
+			' FROM `users`' .
+			' WHERE `pw_reset` IS NOT NULL' . 
+			' AND `pw_reset` = ?'; 
+		
+		return static::getObjectByQuery($query, [$pwReset]);
+		
+	}
+	
+	/**
+	 * Apply a password reset for this User.
+	 * 
+	 * @param	string	New password to set.
+	 * @param	string	IANA time zone identifier.
+	 * @return	bool
+	 */
+	public function setNewPassword(string $newPassword, string $timezone): bool {
+		
+		$this->pwReset = NULL;
+		$this->hash = static::getHashedPasswordWithSalt($newPassword);
+		
+		if (!$this->store()) {
+			return FALSE;
+		}
+		
+		// creates session for this user
+		$this->createSession($timezone);
+		$this->resetFaults();
+		
+		return TRUE;
+		
+	}
+	
+	/**
+	 * Set a browser’s cookie remember-me string.
+	 * 
+	 * @param	string	IANA time zone identifier.
+	 * 
+	 * @return	bool
+	 */
+	public function createRememberMe(string $timezone): bool {
+		
+		// list of available chars for random string
+		$availableChars = '123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVXYWZ';
+		
+		// store a random string
+		$this->rememberMe = substr(str_shuffle($availableChars . $availableChars), 0, 32);
+		
+		if (!$this->store()) {
+			return FALSE;
+		}
+
+		// serialize an array with timezone and RememberMe string
+		$content = serialize([$timezone, $this->rememberMe]);
+		
+		// expire in 30 days
+		$expire = time() + 60*60*24*30;
+		
+		// set cookie and return the result
+		return setcookie(static::getRememberMeCookieName(), $content, $expire, '/');
+		
+	}
+
+	/**
+	 * Update the expire date of RememberMe cookie.
+	 * 
+	 * @return boolean
+	 */
+	public function renewRememberMe() {
+		
+		// build the cookie name
+		$cookieName = static::getRememberMeCookieName();
+		
+		// check if cookie exists
+		if (!isset($_COOKIE[$cookieName])) {
+			return FALSE;
+		}
+		
+		// expire in 30 days
+		$expire = time() + 60*60*24*30;
+		
+		// set cookie and return the result
+		return setcookie($cookieName, $_COOKIE[$cookieName], $expire, '/');
+		
+	}
+	
+	/**
+	 * Return an user that matches remember_me string if logged less than 1 month ago. NULL if not found.
+	 *
+	 * @param	string		RememberMe value.
+	 * @return	User|NULL
+	 */
+	private static function getByRememberMe(string $rememberMe): ?User {
+
+		$query =
+			'SELECT *' .
+			' FROM `users`' .
+			' WHERE `remember_me` IS NOT NULL' .
+			' AND `remember_me` = ?' .
+			' AND `last_login` > DATE_SUB(NOW(), INTERVAL 1 MONTH)';
+		
+		return static::getObjectByQuery($query, [$rememberMe]);
+		
+	}
+	
+	/**
+	 * Check if the browser’s cookie contains a RememberMe. In case, do an auto-login.
+	 * 
+	 * @return bool
+	 */
+	public function loginByRememberMe(): bool {
+		
+		// build the cookie name
+		$cookieName = static::getRememberMeCookieName();
+
+		// check if cookie exists
+		if (!isset($_COOKIE[$cookieName])) {
+			return FALSE;
+		}
+			
+		// try to unserialize the cookie content
+		$content = unserialize($_COOKIE[$cookieName]);
+		
+		// cookie content is not unserializable
+		if (FALSE === $content) {
+			return FALSE;
+		}
+
+		// check if content exists and RememberMe length
+		if (isset($content[0]) and isset($content[1]) and 32==strlen($content[1])) {
+			
+			// try to load user
+			$user = static::getByRememberMe($content[1]);
+			
+			// if user exists, return it
+			if (is_a($user, 'Pair\User')) {
+				$user->createSession($content[0]);
+				$user->renewRememberMe();
+				return TRUE;
+			}
+		
+		}
+		
+		return FALSE;
+	
+	}
+	
+	/**
+	 * Set deletion for browser’s cookie about RememberMe.
+	 */
+	private function unsetRememberMe(): bool {
+		
+		$this->rememberMe = NULL;
+		if (!$this->store()) {
+			return FALSE;
+		}
+		
+		return setcookie(static::getRememberMeCookieName(), '', -1, '/');
+		
+	}
+	
+	/**
+	 * Build and return the cookie name.
+	 * 
+	 * @return string
+	 */
+	private function getRememberMeCookieName(): string {
+		
+		return Application::getCookiePrefix() . 'RememberMe';
 		
 	}
 	
