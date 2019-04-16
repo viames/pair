@@ -709,10 +709,11 @@ class Application {
 		
 		// sets an empty user object
 		$this->setCurrentUser(new $userClass());
-		
-		// session exists but expired
+	
+		// session exists
 		if ($session->isLoaded()) {
 			
+			// session is expired
 			if ($session->isExpired($sessionTime)) {
 				
 				// check RememberMe cookie
@@ -791,7 +792,7 @@ class Application {
 			
 			// check RememberMe cookie
 			if (User::loginByRememberMe()) {
-				return;
+				$this->currentUser->redirectToDefault();
 			}
 			
 			// redirect to login page if action is not login or password reset

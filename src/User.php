@@ -480,9 +480,9 @@ class User extends ActiveRecord {
 	/**
 	 * Load the rule list for this user. Cached.
 	 * 
-	 * @return	array:stdClass
+	 * @return	array:stdClass|NULL
 	 */
-	private function getAcl(): array {
+	private function getAcl(): ?array {
 
 		if (!$this->issetCache('acl')) {
 		
