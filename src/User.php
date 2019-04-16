@@ -261,8 +261,10 @@ class User extends ActiveRecord {
 		$ret->userId	= NULL;
 		$ret->sessionId	= NULL;
 		
-		// loads user row
-		$db->setQuery('SELECT * FROM `users` WHERE username = ?');
+		$query = 'SELECT * FROM `users` WHERE `' . (PAIR_AUTH_BY_EMAIL ? 'email' : 'username') . '` = ?';
+		
+		// load user row
+		$db->setQuery($query);
 		$row = $db->loadObject($username);
 	
 		if (is_object($row)) {
