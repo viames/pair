@@ -1241,15 +1241,23 @@ class FormControlSelect extends FormControl {
 	 * 
 	 * @return	FormControlSelect
 	 */
-	public function setListByObjectArray($list, $propertyValue, $propertyText, $propertyAttribute = null) {
+	public function setListByObjectArray($list, $propertyValue, $propertyText, $propertyAttributes = null) {
 
 		// for each list object, add an option
 		foreach ($list as $opt) {
 
 			$option			= new \stdClass();
 			$option->value	= $opt->$propertyValue;
-			$option->attribute = $propertyAttribute !== null ? $opt->$propertyAttribute : null;
-			$option->attributeName = $propertyAttribute !== null ? $propertyAttribute : null;
+			$option->attributes = [];
+
+			if(is_array($propertyAttributes)) {
+				foreach($propertyAttributes as $pa) {
+					array_push($option->attributes, ['name' => $pa, 'value' => $opt->$pa]);
+				}
+			}
+			else if(is_string($propertyAttributes)) {
+				array_push($option->attributes, ['name' => $pa, 'value' => $opt->$pa]);
+			}
 
 			// check wheter the propertyText is a function call
 			if (FALSE !== strpos($propertyText,'()') and strpos($propertyText,'()')+2 == strlen($propertyText)) {
@@ -1340,13 +1348,16 @@ class FormControlSelect extends FormControl {
 				$selected = $this->value == $option->value ? ' selected="selected"' : '';
 			}
 
-			if(!is_null($option->attributeName)) {
-				$attribute = ' ' . $option->attributeName . '="' . $option->attribute . '"';
+			$attributes = '';
+
+			if(count($option->attributes)) {
+				foreach($option->attributes as $a) {
+					$attributes .= ' ' . $a['name'] . '="' . $a['value'] . '"';
+				}
 			}
-			else $attribute = "";
 			
 			// build the option
-			return '<option value="' . htmlspecialchars($option->value) . '"' . $selected . $attribute . '>' .
+			return '<option value="' . htmlspecialchars($option->value) . '"' . $selected . $attributes . '>' .
 					htmlspecialchars($option->text) . "</option>\n";
 		};
 	

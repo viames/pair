@@ -206,7 +206,7 @@ class Translator {
 		} else if (is_array($self->defaultStrings) and array_key_exists($key, $self->defaultStrings) and $self->defaultStrings[$key]) {
 			
 			$app->logWarning('Language string ' . $key . ' is untranslated for current language [' . $self->currentLocale->code . ']');
-			$string = $this->defaultStrings[$key];
+			$string = $self->defaultStrings[$key];
 			
 		// return the string constant, as debug info
 		} else {
