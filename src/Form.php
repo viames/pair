@@ -1237,16 +1237,19 @@ class FormControlSelect extends FormControl {
 	 * @param	array:stdClass	Object with value and text properties.
 	 * @param	string			Name of property’s value.
 	 * @param	string			Name of property’s text or an existent object function.
+	 * @param 	string			Name of property's value
 	 * 
 	 * @return	FormControlSelect
 	 */
-	public function setListByObjectArray($list, $propertyValue, $propertyText) {
+	public function setListByObjectArray($list, $propertyValue, $propertyText, $propertyAttribute = null) {
 
 		// for each list object, add an option
 		foreach ($list as $opt) {
 
 			$option			= new \stdClass();
 			$option->value	= $opt->$propertyValue;
+			$option->attribute = $propertyAttribute !== null ? $opt->$propertyAttribute : null;
+			$option->attributeName = $propertyAttribute !== null ? $propertyAttribute : null;
 
 			// check wheter the propertyText is a function call
 			if (FALSE !== strpos($propertyText,'()') and strpos($propertyText,'()')+2 == strlen($propertyText)) {
@@ -1336,9 +1339,14 @@ class FormControlSelect extends FormControl {
 			} else {
 				$selected = $this->value == $option->value ? ' selected="selected"' : '';
 			}
+
+			if(!is_null($option->attributeName)) {
+				$attribute = ' ' . $option->attributeName . '="' . $option->attribute . '"';
+			}
+			else $attribute = "";
 			
 			// build the option
-			return '<option value="' . htmlspecialchars($option->value) . '"' . $selected . '>' .
+			return '<option value="' . htmlspecialchars($option->value) . '"' . $selected . $attribute . '>' .
 					htmlspecialchars($option->text) . "</option>\n";
 		};
 	
