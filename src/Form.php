@@ -1220,6 +1220,7 @@ class FormControlSelect extends FormControl {
 			$option			= new \stdClass();
 			$option->value	= $value;
 			$option->text	= $text;
+			$option->attributes	= [];
 
 			$this->list[]	= $option;
 				
@@ -1237,7 +1238,7 @@ class FormControlSelect extends FormControl {
 	 * @param	array:stdClass	Object with value and text properties.
 	 * @param	string			Name of property’s value.
 	 * @param	string			Name of property’s text or an existent object function.
-	 * @param 	string			Name of property's value
+	 * @param 	string			Name of property's attributes (optional).
 	 * 
 	 * @return	FormControlSelect
 	 */
@@ -1350,7 +1351,7 @@ class FormControlSelect extends FormControl {
 
 			$attributes = '';
 
-			if(count($option->attributes)) {
+			if (isset($option->attributes) and count($option->attributes)) {
 				foreach($option->attributes as $a) {
 					$attributes .= ' ' . $a['name'] . '="' . $a['value'] . '"';
 				}
