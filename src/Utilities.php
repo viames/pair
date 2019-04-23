@@ -1107,5 +1107,21 @@ class Utilities {
 		return $url;
 
 	}
+	
+	/**
+	 * Return a random alpha-numeric string of specified length.
+	 *
+	 * @param	int 	Wanted string length.
+	 * @return	string
+	 */
+	public static function getRandomString(int $length): string {
+		
+		// list of available chars for random string
+		$availableChars = '123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVXYWZ';
+		
+		// create a random string
+		return substr(str_shuffle($availableChars . $availableChars), 0, $length);
+		
+	}
 
 }
