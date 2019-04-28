@@ -120,7 +120,7 @@ class Translator {
 		}
 		
 		// set current locale to all categories
-		setlocale(LC_ALL, str_replace('-', '_', $newLocale->getRepresentation()));
+		setlocale(LC_ALL, str_replace('-', '_', $newLocale->getRepresentation()) . '.UTF-8');
 		
 	}
 	
