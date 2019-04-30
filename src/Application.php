@@ -602,7 +602,7 @@ class Application {
 		$sid = Input::get('sid');
 		
 		// get token as well
-		$tokenValue = Input::get('token');
+		$tokenValue = Router::get('token');
 
 		$ctlName = $name . 'Controller';
 		$apiCtl = new $ctlName();
