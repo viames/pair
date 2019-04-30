@@ -679,16 +679,12 @@ class User extends ActiveRecord {
 	 * Set a browser’s cookie remember-me string.
 	 * 
 	 * @param	string	IANA time zone identifier.
-	 * 
 	 * @return	bool
 	 */
 	public function createRememberMe(string $timezone): bool {
 		
-		// list of available chars for random string
-		$availableChars = '123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVXYWZ';
-		
-		// store a random string
-		$this->rememberMe = substr(str_shuffle($availableChars . $availableChars), 0, 32);
+		// set a random string
+		$this->rememberMe = Utilities::getRandomString(32);
 		
 		if (!$this->store()) {
 			return FALSE;

@@ -4,6 +4,10 @@ namespace Pair;
 
 class Router {
 	
+	/**
+	 * Singleton object.
+	 * @var Router
+	 */
 	static private $instance;
 	
 	/**
