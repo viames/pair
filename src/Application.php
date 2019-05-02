@@ -149,6 +149,11 @@ class Application {
 			}
 		}
 		
+		// set the default user class if not customized
+		if (!defined('PAIR_USER_CLASS')) {
+			define ('PAIR_USER_CLASS', 'Pair\User');
+		}
+		
 		// force php server date to UTC
 		if (defined('UTC_DATE') and UTC_DATE) {
 			ini_set('date.timezone', 'UTC');
@@ -648,7 +653,8 @@ class Application {
 			$session->extendTimeout();
 
 			// create User object for API
-			$user = new User($session->idUser);
+			$userClass = PAIR_USER_CLASS;
+			$user = new $userClass($session->idUser);
 			$this->setCurrentUser($user);
 
 			// set session and start controller
@@ -682,10 +688,11 @@ class Application {
 	/**
 	 * Start the session and set the User class (Pair/User or a custom one that inherites
 	 * from Pair/User). Must use only for command-line and web application access.
-	 * 
-	 * @param	string	Custom User-inherit class (optional).
 	 */
-	public function manageSession(string $userClass = 'Pair\User') {
+	public function manageSession() {
+		
+		// can be customized before Application is initialized
+		$userClass = PAIR_USER_CLASS;
 	
 		// get required singleton instances
 		$logger = Logger::getInstance();

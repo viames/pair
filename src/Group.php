@@ -125,9 +125,11 @@ class Group extends ActiveRecord {
 	
 		$users = array();
 	
+		$userClass = PAIR_USER_CLASS;
+	
 		// iterate on each page
 		foreach ($list as $row) {
-			$users[] = new User($row);
+			$users[] = new $userClass($row);
 		}
 	
 		return $users;
