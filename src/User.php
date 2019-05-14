@@ -214,7 +214,7 @@ class User extends ActiveRecord {
 	 * 
 	 * @see		http://php.net/crypt
 	 */
-	public static function getHashedPasswordWithSalt($password) {
+	public static function getHashedPasswordWithSalt($password): string {
 		
 		// salt for bcrypt needs to be 22 base64 characters (only [./0-9A-Za-z])
 		$salt = substr(str_replace('+', '.', base64_encode(sha1(microtime(true), true))), 0, 22);
@@ -233,7 +233,7 @@ class User extends ActiveRecord {
 	 * @param	string	Crypted hash.
 	 * @return	boolean
 	 */
-	public static function checkPassword($password, $hash) {
+	public static function checkPassword($password, $hash): bool {
 
 		return ($hash == crypt($password, $hash) ? TRUE : FALSE);
 		
@@ -739,7 +739,9 @@ class User extends ActiveRecord {
 			' AND `remember_me` = ?' .
 			' AND `last_login` > DATE_SUB(NOW(), INTERVAL 1 MONTH)';
 		
-		return static::getObjectByQuery($query, [$rememberMe]);
+		$userClass = PAIR_USER_CLASS;
+		
+		return $userClass::getObjectByQuery($query, [$rememberMe]);
 		
 	}
 	
@@ -776,17 +778,22 @@ class User extends ActiveRecord {
 			if (is_a($user, 'Pair\User')) {
 				$user->createSession($content[0]);
 				$user->renewRememberMe();
+				$app = Application::getInstance();
+				$app->setCurrentUser($user);
 				return TRUE;
 			}
 		
 		}
 		
+		// login unsucceded
 		return FALSE;
 	
 	}
 	
 	/**
 	 * Set deletion for browser’s cookie about RememberMe.
+	 * 
+	 * @return bool
 	 */
 	private function unsetRememberMe(): bool {
 		

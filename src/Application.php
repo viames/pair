@@ -292,7 +292,7 @@ class Application {
 	 * 
 	 * @param	User	User object or inherited class object. 
 	 */
-	protected function setCurrentUser($user) {
+	public function setCurrentUser(User $user) {
 		
 		if (is_a($user,'Pair\User')) {
 
