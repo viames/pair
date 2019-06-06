@@ -23,7 +23,7 @@ class Pagination {
 	private $count = NULL;
 	
 	/**
-	 * Flag per nascondere la barra se con una sola pagina.
+	 * Flag to hide bar if one page only.
 	 * @var bool
 	 */
 	private $hideEmpty = TRUE;
