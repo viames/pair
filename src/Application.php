@@ -134,7 +134,7 @@ class Application {
 		
 		// default constants
 		$defaults = array(
-			'AUTH_SOURCE'		=> 'internal',
+			'PAIR_AUTH_BY_EMAIL'=> TRUE,
 			'BASE_URI'			=> '',
 			'DBMS'				=> 'mysql',
 			'PRODUCT_NAME'		=> 'NewProduct',
