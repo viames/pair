@@ -750,7 +750,7 @@ class User extends ActiveRecord {
 	 * 
 	 * @return bool
 	 */
-	public function loginByRememberMe(): bool {
+	public static function loginByRememberMe(): bool {
 		
 		// build the cookie name
 		$cookieName = static::getRememberMeCookieName();
@@ -811,7 +811,7 @@ class User extends ActiveRecord {
 	 * 
 	 * @return string
 	 */
-	private function getRememberMeCookieName(): string {
+	private static function getRememberMeCookieName(): string {
 		
 		return Application::getCookiePrefix() . 'RememberMe';
 		
