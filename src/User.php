@@ -462,7 +462,7 @@ class User extends ActiveRecord {
 		}
 		
 		// user module is for login and personal profile
-		if ($this->admin or 'user'==$module) {
+		if ('user'==$module) {
 			return TRUE;
 		}
 		
