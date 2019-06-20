@@ -980,7 +980,7 @@ class FormControlInput extends FormControl {
 	 *
 	 * @param	mixed	Minimum value.
 	 *
-	 * @return	FormControl subclass
+	 * @return	FormControlInput
 	 */
 	public function setMin($minValue): FormControlInput {
 		
@@ -994,7 +994,7 @@ class FormControlInput extends FormControl {
 	 *
 	 * @param	mixed		Maximum value.
 	 *
-	 * @return	FormControl subclass
+	 * @return	FormControlInput
 	 */
 	public function setMax($maxValue): FormControlInput {
 		
