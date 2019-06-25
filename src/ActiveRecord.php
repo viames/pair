@@ -29,19 +29,25 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * List of special properties that will be cast (name => type).
 	 * @var array:string
 	 */
-	private $typeList = array();
+	private $typeList = [];
 	
 	/**
 	 * Cache for any variable type.
 	 * @var array:multitype
 	 */
-	private $cache = array();
+	private $cache = [];
 	
 	/**
 	 * List of all errors tracked.
 	 * @var array
 	 */
-	private $errors = array();
+	private $errors = [];
+
+	/**
+	 * List of encryptable properties.
+	 * @var array
+	 */
+	private $encryptables = [];
 	
 	/**
 	 * Constructor, if param is db-row, will bind it on this object, if it’s id,
@@ -69,6 +75,11 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 		
 		$this->init();
+
+		// set the type for special property “encrypted”
+		if (property_exists($this, 'encrypted')) {
+			$this->bindAsBoolean('encrypted');
+		}
 
 		// db row, will populate each property with bound field value
 		if (is_a($initParam, 'stdClass')) {
@@ -260,6 +271,11 @@ abstract class ActiveRecord implements \JsonSerializable {
 		
 		foreach ($varFields as $objProperty => $dbField) {
 
+			// if fields are encrypted, they are decrypted
+			if ($this->isCryptAvailable() and in_array($objProperty, $this->encryptables) and '1'==$dbRow->encrypted) {
+				$dbRow->$dbField = openssl_decrypt($dbRow->$dbField, 'AES128', OPTIONS_CRYPT_KEY);
+			}
+
 			// cast it and assign
 			$this->__set($objProperty, $dbRow->$dbField);
 			
@@ -287,7 +303,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @param	array	List of property name to prepare.
 	 * 
-	 * @return	stdClass
+	 * @return	mixed
 	 */
 	final private function prepareData($properties) {
 	
@@ -347,7 +363,11 @@ abstract class ActiveRecord implements \JsonSerializable {
 							and static::isNullable($field)) {
 						$ret = NULL;
 					} else {
-						$ret = $this->$prop;
+						if ($this->isCryptAvailable() and in_array($prop, $this->encryptables) and $this->encrypted) {
+							$ret = @openssl_encrypt($this->$prop, 'AES128', OPTIONS_CRYPT_KEY);
+						} else {
+							$ret = $this->$prop;
+						}
 					}
 					break;
 					
@@ -433,7 +453,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$class = get_called_class();
 		
 		// properties to not reset
-		$propertiesToSave = array('keyProperties', 'db', 'loadedFromDb', 'typeList', 'cache', 'errors');
+		$propertiesToSave = array('keyProperties', 'db', 'loadedFromDb', 'typeList', 'cache', 'errors', 'encryptables');
 		
 		// save key from being unset
 		$propertiesToSave = array_merge($propertiesToSave, $this->keyProperties);
@@ -734,7 +754,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 				$dbKey->{$binds[$k]} = $this->$k;
 					
 			}
-				
+			
 			$res = (bool)$this->db->updateObject($class::TABLE_NAME, $dbObj, $dbKey);
 			
 			$app->logEvent('Updated ' . $class . ' object with ' . $logParam);
@@ -810,7 +830,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$res = $this->db->exec($query, $this->getSqlKeyValues());
 		
 		// list properties to not remove
-		$activeRecordsProperties = array('db', 'loadedFromDb', 'typeList', 'errors');
+		$activeRecordsProperties = array('db', 'loadedFromDb', 'typeList', 'errors', 'encryptables');
 		
 		// unset all properties
 		foreach ($this as $key => $value) {
@@ -1200,7 +1220,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	final public function getPropertyType($name) {
 
-		if (in_array($name, ['db', 'loadedFromDb', 'typeList', 'errors'])) {
+		if (in_array($name, ['db', 'loadedFromDb', 'typeList', 'errors', 'encryptables'])) {
 			$type = NULL;
 		} else if (array_key_exists($name, $this->typeList)) {
 			$type = $this->typeList[$name];
@@ -2157,6 +2177,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * @return array
 	 */
 	public function jsonSerialize() {
+
 		$vars = get_object_vars($this);
 		unset($vars['keyProperties']);
 		unset($vars['db']);
@@ -2164,8 +2185,71 @@ abstract class ActiveRecord implements \JsonSerializable {
 		unset($vars['typeList']);
 		unset($vars['cache']);
 		unset($vars['errors']);
+		unset($vars['encryptables']);
 
 		return $vars;
+
+	}
+
+	/**
+	 * Set some properties name as encryptable.
+	 *
+	 * @param	string	List of variable names.
+	 */
+	final protected function setAsEncryptable() {
+		
+		if (!$this->isCryptAvailable()) {
+			$this->addError('Encryption key is not set');
+			return;
+		}
+
+		// add each property name if type of string
+		foreach (func_get_args() as $name) {
+
+			if (property_exists($this, $name) and 'string' == $this->getPropertyType($name)) {
+				$this->encryptables[] = $name;
+			}
+
+		}
+
+	}
+
+	/**
+	 * Check wheter options crypt key has been defined into config.php file.
+	 * 
+	 * @return boolean
+	 */
+	public function isCryptAvailable() {
+		
+		return (defined('OPTIONS_CRYPT_KEY') and strlen(OPTIONS_CRYPT_KEY) > 0 and property_exists($this, 'encrypted'));
+		
+	}
+
+	/**
+	 * Store this object with some encrypted properties if encryption is available and the record is not already encrypted.
+	 * 
+	 * @return bool
+	 */
+	public function encrypt(): bool {
+
+		if (!$this->isCryptAvailable()) {
+			$this->addError('Encryption key is not set');
+			return FALSE;
+		}
+
+		if ($this->encrypted) {
+			$this->addError('Object is already encrypted');
+			return FALSE;
+		}	
+		
+		$this->encrypted = TRUE;
+		$this->store();
+		
+		$app = Application::getInstance();
+		$app->logEvent('These properties have been encrypted: ' . implode(', ', $this->encryptables));
+
+		return TRUE;
+	
 	}
 
 }

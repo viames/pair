@@ -470,7 +470,8 @@ class User extends ActiveRecord {
 		$acl = $this->getAcl();
 
 		foreach ($acl as $rule) {
-			if ($rule->module_name == $module and (!$rule->action or ($rule->action and $rule->action == $action))) {
+			if (($rule->moduleName == $module and (!$rule->action or ($rule->action and $rule->action == $action)))
+				or ($rule->adminOnly and $this->admin)) {
 				return TRUE;
 			}
 		}
@@ -495,8 +496,7 @@ class User extends ActiveRecord {
 				' INNER JOIN `modules` AS m ON r.module_id = m.id'.
 				' WHERE a.group_id = ?';
 			
-			$this->db->setQuery($query);
-			$this->setCache('acl', $this->db->loadObjectList($this->groupId));
+			$this->setCache('acl', Rule::getObjectsByQuery($query, [$this->groupId]));
 
 		}
 
