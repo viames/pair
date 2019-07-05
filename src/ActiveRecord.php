@@ -2243,11 +2243,42 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}	
 		
 		$this->encrypted = TRUE;
-		$this->store();
-		
+
+		if (!$this->store()) {
+			return FALSE;
+		}
+	
 		$app = Application::getInstance();
 		$app->logEvent('These properties have been encrypted: ' . implode(', ', $this->encryptables));
+		return TRUE;
+	
+	}
 
+	/**
+	 * Store this object with plain text properties if the record was encrypted.
+	 * 
+	 * @return bool
+	 */
+	public function decrypt(): bool {
+
+		if (!$this->isCryptAvailable()) {
+			$this->addError('Encryption key is not set');
+			return FALSE;
+		}
+
+		if (!$this->encrypted) {
+			$this->addError('Object is not encrypted');
+			return FALSE;
+		}	
+		
+		$this->encrypted = FALSE;
+
+		if (!$this->store()) {
+			return FALSE;
+		}
+
+		$app = Application::getInstance();
+		$app->logEvent('These properties have been decrypted: ' . implode(', ', $this->encryptables));
 		return TRUE;
 	
 	}
