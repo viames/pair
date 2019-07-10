@@ -44,12 +44,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 	private $errors = [];
 
 	/**
-	 * List of encryptable properties.
-	 * @var array
-	 */
-	private $encryptables = [];
-	
-	/**
 	 * Constructor, if param is db-row, will bind it on this object, if it’s id,
 	 * with load the object data from db, otherwise the object will be empty.
 	 * 
@@ -75,11 +69,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 		
 		$this->init();
-
-		// set the type for special property “encrypted”
-		if (property_exists($this, 'encrypted')) {
-			$this->bindAsBoolean('encrypted');
-		}
 
 		// db row, will populate each property with bound field value
 		if (is_a($initParam, 'stdClass')) {
@@ -271,11 +260,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 		
 		foreach ($varFields as $objProperty => $dbField) {
 
-			// if fields are encrypted, they are decrypted
-			if ($this->isCryptAvailable() and in_array($objProperty, $this->encryptables) and '1'==$dbRow->encrypted) {
-				$dbRow->$dbField = openssl_decrypt($dbRow->$dbField, 'AES128', OPTIONS_CRYPT_KEY);
-			}
-
 			// cast it and assign
 			$this->__set($objProperty, $dbRow->$dbField);
 			
@@ -359,15 +343,10 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 				// assign with no convertion
 				default:
-					if ((is_null($this->$prop) or (''==$this->$prop and !static::isEmptiable($field)))
-							and static::isNullable($field)) {
+					if ((is_null($this->$prop) or (''==$this->$prop and !static::isEmptiable($field))) and static::isNullable($field)) {
 						$ret = NULL;
 					} else {
-						if ($this->isCryptAvailable() and in_array($prop, $this->encryptables) and $this->encrypted) {
-							$ret = @openssl_encrypt($this->$prop, 'AES128', OPTIONS_CRYPT_KEY);
-						} else {
-							$ret = $this->$prop;
-						}
+						$ret = $this->$prop;
 					}
 					break;
 					
@@ -426,9 +405,9 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$where = ' WHERE ' . implode(' AND ', $this->getSqlKeyConditions());
 		
 		// load the requested record
-		$query = 'SELECT * FROM `' . $class::TABLE_NAME . '`' . $where . ' LIMIT 1';
+		$query = 'SELECT ' . static::getQueryColumns() . ' FROM `' . $class::TABLE_NAME . '`' . $where . ' LIMIT 1';
 		$this->db->setQuery($query);
-		$obj = $this->db->loadObject($key);
+		$obj = $this->db->loadObject((array)$key);
 
 		// if db record exists, will populate the object properties
 		if (is_object($obj)) {
@@ -453,7 +432,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$class = get_called_class();
 		
 		// properties to not reset
-		$propertiesToSave = array('keyProperties', 'db', 'loadedFromDb', 'typeList', 'cache', 'errors', 'encryptables');
+		$propertiesToSave = array('keyProperties', 'db', 'loadedFromDb', 'typeList', 'cache', 'errors');
 		
 		// save key from being unset
 		$propertiesToSave = array_merge($propertiesToSave, $this->keyProperties);
@@ -523,9 +502,9 @@ abstract class ActiveRecord implements \JsonSerializable {
 	/**
 	 * Reveal if children class has a compound key as array made by one field at least.
 	 * 
-	 * @return boolean
+	 * @return bool
 	 */
-	final private static function hasCompoundKey() {
+	final private static function hasCompoundKey(): bool {
 
 		$class = get_called_class();
 		$res = (is_array($class::TABLE_KEY) and count($class::TABLE_KEY) > 1);
@@ -540,7 +519,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * 
 	 * @return	bool
 	 */
-	final private function isKeyProperty($propertyName) {
+	final private function isKeyProperty(string $propertyName): bool {
 		
 		return (in_array($propertyName, $this->keyProperties));
 
@@ -551,14 +530,14 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * 
 	 * @return string[]
 	 */
-	final private function getSqlKeyConditions() {
+	final private function getSqlKeyConditions(): array {
 	
 		$class		= get_called_class();
 		$tableKey	= (array)$class::TABLE_KEY;
 		$conds		= array();
 		
 			foreach ($tableKey as $field) {
-				$conds[] = $this->db->escape($field) . ' = ?';
+				$conds[] = '`' . $field . '` = ?';
 			}
 		
 		return $conds;
@@ -571,7 +550,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @return array
 	 */
-	final private function getSqlKeyValues() {
+	final private function getSqlKeyValues(): array {
 		
 		// force to array
 		$propertyNames = (array)$this->keyProperties;
@@ -667,7 +646,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		
 		// insert the object as db record
 		$dbObj = $this->prepareData($props);
-		$res = $this->db->insertObject(static::TABLE_NAME, $dbObj);
+		$res = $this->db->insertObject(static::TABLE_NAME, $dbObj, static::getEncryptableFields());
 
 		// get last insert id if not compound key
 		if (!static::hasCompoundKey()) {
@@ -755,7 +734,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 					
 			}
 			
-			$res = (bool)$this->db->updateObject($class::TABLE_NAME, $dbObj, $dbKey);
+			$res = (bool)$this->db->updateObject($class::TABLE_NAME, $dbObj, $dbKey, static::getEncryptableFields());
 			
 			$app->logEvent('Updated ' . $class . ' object with ' . $logParam);
 
@@ -830,7 +809,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$res = $this->db->exec($query, $this->getSqlKeyValues());
 		
 		// list properties to not remove
-		$activeRecordsProperties = array('db', 'loadedFromDb', 'typeList', 'errors', 'encryptables');
+		$activeRecordsProperties = array('db', 'loadedFromDb', 'typeList', 'errors');
 		
 		// unset all properties
 		foreach ($this as $key => $value) {
@@ -878,13 +857,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 			$property = array_search($r->REFERENCED_COLUMN_NAME, static::getBinds());
 			
 			// count for existing records that references
-			$query =
-				'SELECT COUNT(*)' .
-				' FROM `' . $this->db->escape($r->TABLE_NAME) . '`' .
-				' WHERE ' . $this->db->escape($r->COLUMN_NAME) . ' = ?';
-			
-			$this->db->setQuery($query);
-			$count = $this->db->loadCount($this->$property);
+			$query = 'SELECT COUNT(*) FROM `' . $r->TABLE_NAME . '` WHERE `' . $r->COLUMN_NAME . '` = ?';
+			$count = Database::load($query, [$this->$property], PAIR_DB_COUNT);
 
 			// set flag as true
 			if ($count) $exists = TRUE;
@@ -1220,7 +1194,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	final public function getPropertyType($name) {
 
-		if (in_array($name, ['db', 'loadedFromDb', 'typeList', 'errors', 'encryptables'])) {
+		if (in_array($name, ['db', 'loadedFromDb', 'typeList', 'errors'])) {
 			$type = NULL;
 		} else if (array_key_exists($name, $this->typeList)) {
 			$type = $this->typeList[$name];
@@ -1497,8 +1471,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 		
 		// runs query
-		$db->setQuery('SELECT * FROM `' . $class::TABLE_NAME . '`' . $where . $order);
-		$list = $db->loadObjectList();
+		$list = Database::load('SELECT ' . static::getQueryColumns() . ' FROM `' . $class::TABLE_NAME . '`' . $where . $order);
 	
 		$objects = array();
 
@@ -1585,7 +1558,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @return	mixed|NULL
 	 */
-	final public static function getObjectByQuery($query, $params=[]) {
+	final public static function getObjectByQuery(string $query, $params=[]): ?self {
 		
 		$app	= Application::getInstance();
 		$db		= Database::getInstance();
@@ -1638,7 +1611,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @return	array:mixed
 	 */
-	final public static function getObjectsByQuery($query, $params=[]) {
+	final public static function getObjectsByQuery(string $query, $params=[]): ?array {
 		
 		$app	= Application::getInstance();
 		$db		= Database::getInstance();
@@ -1646,7 +1619,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		// run query
 		$db->setQuery($query);
-		$list = $db->loadObjectList($params);
+		$list = $db->loadObjectList((array)$params);
 		
 		// array that returns and custom binds
 		$objects = [];
@@ -1976,10 +1949,9 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * Get the name of db field mapped by a class property. NULL if not found.
 	 *
 	 * @param	string	Property name.
-	 *
 	 * @return	NULL|string
 	 */
-	final static public function getMappedField($propertyName) {
+	final static public function getMappedField(string $propertyName): ?string {
 		
 		$binds = static::getBinds();
 		return isset($binds[$propertyName]) ? $binds[$propertyName] : NULL;
@@ -2185,32 +2157,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 		unset($vars['typeList']);
 		unset($vars['cache']);
 		unset($vars['errors']);
-		unset($vars['encryptables']);
 
 		return $vars;
-
-	}
-
-	/**
-	 * Set some properties name as encryptable.
-	 *
-	 * @param	string	List of variable names.
-	 */
-	final protected function setAsEncryptable() {
-		
-		if (!$this->isCryptAvailable()) {
-			$this->addError('Encryption key is not set');
-			return;
-		}
-
-		// add each property name if type of string
-		foreach (func_get_args() as $name) {
-
-			if (property_exists($this, $name) and 'string' == $this->getPropertyType($name)) {
-				$this->encryptables[] = $name;
-			}
-
-		}
 
 	}
 
@@ -2221,65 +2169,55 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	public function isCryptAvailable() {
 		
-		return (defined('OPTIONS_CRYPT_KEY') and strlen(OPTIONS_CRYPT_KEY) > 0 and property_exists($this, 'encrypted'));
-		
+		return (defined('AES_CRYPT_KEY') and strlen(AES_CRYPT_KEY) > 0);
+
 	}
 
 	/**
-	 * Store this object with some encrypted properties if encryption is available and the record is not already encrypted.
+	 * Return list of encryptable db-column names, if any.
 	 * 
-	 * @return bool
+	 * @return	array
 	 */
-	public function encrypt(): bool {
+	private static function getEncryptableFields(): array {
 
-		if (!$this->isCryptAvailable()) {
-			$this->addError('Encryption key is not set');
-			return FALSE;
+		$encryptables = [];
+
+		// list encryptables fields
+		if (defined('static::ENCRYPTABLES') and
+		 is_array(static::ENCRYPTABLES)) {
+			foreach (static::ENCRYPTABLES as $property) {
+				$encryptables[] = self::getMappedField($property);
+			}
 		}
-
-		if ($this->encrypted) {
-			$this->addError('Object is already encrypted');
-			return FALSE;
-		}	
 		
-		$this->encrypted = TRUE;
-
-		if (!$this->store()) {
-			return FALSE;
-		}
-	
-		$app = Application::getInstance();
-		$app->logEvent('These properties have been encrypted: ' . implode(', ', $this->encryptables));
-		return TRUE;
+		return $encryptables;
 	
 	}
 
 	/**
-	 * Store this object with plain text properties if the record was encrypted.
-	 * 
-	 * @return bool
+	 * Return the query column list, in case there are encryptable fields or just *.
+	 *
+	 * @return	string
 	 */
-	public function decrypt(): bool {
+	private static function getQueryColumns(): string {
 
-		if (!$this->isCryptAvailable()) {
-			$this->addError('Encryption key is not set');
-			return FALSE;
+		$fields = '*';
+		$db = Database::getInstance();
+		$encryptables = static::getEncryptableFields();
+
+		if ($encryptables) {
+
+			$items = [];
+			
+			foreach ($encryptables as $e) {
+				$items[] = 'AES_DECRYPT(`' . $e . '`,' . $db->quote(AES_CRYPT_KEY) . ') AS `' . $e . '`';
+			}
+
+			$fields .= ',' . implode(',',$items);
+
 		}
 
-		if (!$this->encrypted) {
-			$this->addError('Object is not encrypted');
-			return FALSE;
-		}	
-		
-		$this->encrypted = FALSE;
-
-		if (!$this->store()) {
-			return FALSE;
-		}
-
-		$app = Application::getInstance();
-		$app->logEvent('These properties have been decrypted: ' . implode(', ', $this->encryptables));
-		return TRUE;
+		return $fields;
 	
 	}
 

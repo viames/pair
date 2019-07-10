@@ -19,7 +19,7 @@ class Menu {
 	 * @param	string	Optional, is CSS extra class definition.
 	 * @param	string	Optional, the anchor target.
 	 */
-	public function addItem($url, $title, $badge=NULL, $class=NULL, $target=NULL) {
+	public function addItem(string $url, string $title, string $badge=NULL, string $class=NULL, string $target=NULL) {
 
 		$this->items[]	= self::getItemObject($url, $title, $badge, $class, $target);
 
@@ -32,8 +32,8 @@ class Menu {
 	 * @param	array	List of single-item objects
 	 * @param	string	Optional, can be an icon, a subtitle or icon placeholder.
 	 */
-	public function addMulti($title, $list, $class=NULL) {
-
+	public function addMulti(string $title, array $list, string $class=NULL) {
+	
 		$multi 			= new \stdClass();
 		$multi->type	= 'multi';
 		$multi->title	= $title;
@@ -52,7 +52,7 @@ class Menu {
 	 * 
 	 * @param	string	Separator title. Optional.
 	 */
-	public function addSeparator($title=NULL) {
+	public function addSeparator(string $title=NULL) {
 	
 		$item 			= new \stdClass();
 		$item->type		= 'separator';
@@ -72,7 +72,7 @@ class Menu {
 	 * 
 	 * @return	stdClass
 	 */
-	public static function getItemObject($url, $title, $badge=NULL, $class=NULL, $target=NULL) {
+	public static function getItemObject(string $url, string $title, string $badge=NULL, string $class=NULL, string $target=NULL): \stdClass {
 
 		$item 			= new \stdClass();
 		$item->type		= 'single';
@@ -91,7 +91,7 @@ class Menu {
 	 *
 	 * @return string
 	 */
-	public function render() {
+	public function render(): string {
 
 		$app = Application::getInstance();
 
@@ -100,7 +100,7 @@ class Menu {
 		foreach ($this->items as $item) {
 			
 			// check on permissions
-			if (isset($item->url) and !(is_a($app->currentUser, 'Pair\User') and !$app->currentUser->canAccess($item->url))) {
+			if (isset($item->url) and (!is_a($app->currentUser, 'Pair\User') or !$app->currentUser->canAccess($item->url))) {
 				continue;
 			}
 			

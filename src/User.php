@@ -246,7 +246,6 @@ class User extends ActiveRecord {
 	 * @param	string	Username.
 	 * @param	string	Plain text password.
 	 * @param	string	IANA time zone identifier.
-	 * 
 	 * @return	stdClass
 	 */
 	public static function doLogin(string $username, string $password, string $timezone): \stdClass {
@@ -265,7 +264,7 @@ class User extends ActiveRecord {
 		
 		// load user row
 		$db->setQuery($query);
-		$row = $db->loadObject($username);
+		$row = $db->loadObject([$username]);
 	
 		if (is_object($row)) {
 				
@@ -391,13 +390,13 @@ class User extends ActiveRecord {
 	 * 
 	 * @return	bool
 	 */
-	public static function doLogout($sid): bool {
+	public static function doLogout(string $sid): bool {
 
 		$app = Application::getInstance();
 		$db  = Database::getInstance();
 
 		// delete session
-		$res = $db->exec('DELETE FROM `sessions` WHERE id = ?', $sid);
+		$res = $db->exec('DELETE FROM `sessions` WHERE id = ?', [$sid]);
 
 		// unset all persistent states
 		$app->unsetAllPersistentStates();
@@ -435,7 +434,7 @@ class User extends ActiveRecord {
 		if (!is_null($this->id) and (is_null($this->tzName) or is_null($this->tzOffset))) {
 			
 			$this->db->setQuery('SELECT timezone_name, timezone_offset FROM `sessions` WHERE id_user = ?');
-			$obj = $this->db->loadObject($this->id);
+			$obj = $this->db->loadObject([$this->id]);
 			$this->tzOffset	= $obj->timezone_offset;
 			$this->tzName	= $obj->timezone_name;
 			
@@ -470,8 +469,7 @@ class User extends ActiveRecord {
 		$acl = $this->getAcl();
 
 		foreach ($acl as $rule) {
-			if (($rule->moduleName == $module and (!$rule->action or ($rule->action and $rule->action == $action)))
-				or ($rule->adminOnly and $this->admin)) {
+			if ($rule->moduleName == $module and (($rule->adminOnly and $this->admin) or !$rule->action or ($rule->action and $rule->action == $action))) {
 				return TRUE;
 			}
 		}
@@ -483,7 +481,7 @@ class User extends ActiveRecord {
 	/**
 	 * Load the rule list for this user. Cached.
 	 * 
-	 * @return	array:stdClass|NULL
+	 * @return	Rule[]|NULL
 	 */
 	private function getAcl(): ?array {
 
@@ -520,7 +518,7 @@ class User extends ActiveRecord {
 			' AND a.group_id = ?';
 
 		$this->db->setQuery($query);
-		$obj = $this->db->loadObject($this->groupId);
+		$obj = $this->db->loadObject([$this->groupId]);
 
 		return $obj;
 		
@@ -555,7 +553,7 @@ class User extends ActiveRecord {
 				' INNER JOIN `users` AS u ON u.locale_id = lc.id' .
 				' WHERE u.id = ?';
 			$this->db->setQuery($query);
-			$this->setCache('lang', $this->db->loadResult($this->id));
+			$this->setCache('lang', $this->db->loadResult([$this->id]));
 
 		}
 	
@@ -605,7 +603,7 @@ class User extends ActiveRecord {
 	 * 
 	 * @return Locale
 	 */
-	public function getLocale() {
+	public function getLocale(): Locale {
 		
 		if ($this->isLocaleSet()) {
 			return new Locale($this->localeId);

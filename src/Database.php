@@ -100,7 +100,7 @@ class Database {
 	 * 
 	 * @throws	PDOException
 	 */
-	private function openConnection($persistent=FALSE) {
+	private function openConnection(bool $persistent=FALSE) {
 
 		// continue only if not already connected
 		if (is_a($this->handler, 'PDO')) {
@@ -160,7 +160,7 @@ class Database {
 	 * 
 	 * @param	string	SQL query.
 	 */
-	public function setQuery($query) {
+	public function setQuery(string $query) {
 		
 		$this->query = $query;
 		
@@ -169,12 +169,11 @@ class Database {
 	/**
 	 * Executes a query and returns TRUE if success.
 	 * 
-	 * @param	string	SQL Query da eseguire.
-	 * @param	mixed	Parameters to bind on sql query in array or simple value.
-	 * 
-	 * @return	mixed	Number of affected items.
+	 * @param	string		SQL Query da eseguire.
+	 * @param	array|NULL	Parameters to bind on sql query in array or simple value.
+	 * @return	int	Number of affected items.
 	 */
-	public function exec($query, $params=array()) {
+	public function exec(string $query, $params=[]): int {
 
 		$this->openConnection();
 		
@@ -255,10 +254,9 @@ class Database {
 	 * Quotes a string for use in a query.
 	 * 
 	 * @param	string	String to quote.
-	 * 
 	 * @return	string
 	 */
-	public function quote($text) {
+	public function quote(string $text): string {
 		
 		$this->openConnection();
 		
@@ -270,10 +268,9 @@ class Database {
 	 * Wrap a field name in a couple of backticks.
 	 *  
 	 * @param	string	The field name.
-	 * 
-	 * @return string
+	 * @return	string
 	 */
-	public function escape($text) {
+	public function escape(string $text): string {
 		
 		return '`' . $text . '`';
 		
@@ -283,13 +280,12 @@ class Database {
 	 * Return data in various formats by third string parameter. Default is PAIR_DB_OBJECT_LIST parameters
 	 * as array. Support PDO parameters bind.
 	 *
-	 * @param	string	SQL query.
-	 * @param	array	List of parameters to bind on the sql query. 
-	 * @param	string	Returned type (see constants PAIR_DB_*). PAIR_DB_OBJECT_LIST is default.
-	 * 
+	 * @param	string		SQL query.
+	 * @param	array|NULL	List of parameters to bind on the sql query. 
+	 * @param	string		Returned type (see constants PAIR_DB_*). PAIR_DB_OBJECT_LIST is default.
 	 * @return	array|stdClass|int|NULL
 	 */
-	public static function load(string $query, ?array $params=array(), $option=NULL) {
+	public static function load(string $query, $params=[], string $option=NULL) {
 		
 		$self = static::getInstance();
 		
@@ -362,12 +358,11 @@ class Database {
 	/**
 	 * Run a query with parameters and return TRUE if success. Support PDO parameters bind.
 	 *
-	 * @param	string	SQL query to run.
-	 * @param	array	List of parameters to bind on the sql query.
-	 *
-	 * @return	int		Number of affected items.
+	 * @param	string		SQL query to run.
+	 * @param	array|NULL	List of parameters to bind on the sql query.
+	 * @return	int			Number of affected items.
 	 */
-	public static function run($query, $params=array()) {
+	public static function run(string $query, $params=[]): int {
 		
 		$self = static::getInstance();
 		
@@ -428,11 +423,10 @@ class Database {
 	 * Gets the first returned record from a previously setQuery(), otherwise NULL if record
 	 * doesn’t exist.
 	 * 
-	 * @param	mixed	Parameters to bind on sql query in array or simple value.
-	 * 
-	 * @return	object|NULL
+	 * @param	array|NULL	Parameters to bind on sql query in array or simple value.
+	 * @return	stdClass|FALSE|NULL
 	 */
-	public function loadObject($params=array()) {
+	public function loadObject($params=[]) {
 
 		$this->openConnection();
 		
@@ -463,10 +457,10 @@ class Database {
 	 * Returns a recordset executing the query previously set with setQuery() method and
 	 * optional parameters as array. 
 	 * 
-	 * @param	array	List of parameters to bind on sql query.
+	 * @param	array|NULL	List of parameters to bind on sql query.
 	 * @return	array
 	 */
-	public function loadObjectList($params=array()) {
+	public function loadObjectList($params=[]): ?array {
 
 		$this->openConnection();
 		
@@ -496,10 +490,10 @@ class Database {
 	/**
 	 * Returns array of first field value fetched from the resultset.
 	 * 
-	 * @param	array	List of parameters to bind on sql query.
-	 * @return	array
+	 * @param	array|NULL	List of parameters to bind on sql query.
+	 * @return	array|NULL
 	 */
-	public function loadResultList($params=array()) {
+	public function loadResultList($params=[]): ?array {
 
 		$this->openConnection();
 		
@@ -529,11 +523,10 @@ class Database {
 	/**
 	 * Returns first field value or NULL if row is not found.
 	 * 
-	 * @param	mixed	List of parameters to bind on sql query.
-	 * 
-	 * @return	multitype|NULL
+	 * @param	array|NULL	List of parameters to bind on sql query.
+	 * @return	string|NULL
 	 */
-	public function loadResult($params=array()) {
+	public function loadResult($params=[]): ?string {
 		
 		$this->openConnection();
 		
@@ -564,11 +557,10 @@ class Database {
 	/**
 	 * Return the query count as integer number.
 	 *
-	 * @param	mixed	List of parameters to bind on sql query.
-	 *
+	 * @param	array|NULL	List of parameters to bind on sql query.
 	 * @return	int
 	 */
-	public function loadCount($params=array()) {
+	public function loadCount($params=[]): int {
 		
 		$this->openConnection();
 		
@@ -600,27 +592,32 @@ class Database {
 	 *
 	 * @param	string	Table name.
 	 * @param	object	Object with property name as each field name.
-	 * 
+	 * @param	array	Optional list of encryptable fields.
 	 * @return	bool	TRUE if insert was succesfully done.
 	 */
-	public function insertObject($table, $object) {
+	public function insertObject(string $table, \stdClass $object, ?array $encryptables=[]): bool {
 
 		$fields = array();
 		$values = array();
 
 		// converts all object properties in vars SQL ready
 		foreach (get_object_vars($object) as $k => $v) {
-			if (is_string($v) or is_numeric($v)) {
-				$fields[] = '`' . $k . '`';
-				$values[] = $this->quote($v);
-			} else if (is_null($v)) {
+
+			if (is_null($v)) {
 				$fields[] = '`' . $k . '`';
 				$values[] = 'NULL';
+			} else if (defined('AES_CRYPT_KEY') and in_array($k, $encryptables)) {
+				$fields[] = '`' . $k . '`';
+				$values[] = 'AES_ENCRYPT(' . $this->quote($v) . ',' . $this->quote(AES_CRYPT_KEY) . ')';
+			} else if (is_string($v) or is_numeric($v)) {
+				$fields[] = '`' . $k . '`';
+				$values[] = $this->quote($v);
 			}
+
 		}
 
-		$sql = 'INSERT INTO `'. $table .'` (%s) VALUES (%s)';
-		$this->query = sprintf($sql, implode(', ', $fields), implode(', ', $values));
+		$sql = 'INSERT INTO `' . $table . '` (%s) VALUES (%s)';
+		$this->query = sprintf($sql, implode(',', $fields), implode(',', $values));
 		
 		$res = $this->exec($this->query);
 		
@@ -633,10 +630,10 @@ class Database {
 	 * 
 	 * @param	string	Table name.
 	 * @param	array	Object list, named as the table fields.
-	 * 
-	 * @return	integer	Number of inserted rows.
+	 * @param	array	Optional list of encryptable fields.
+	 * @return	int		Number of inserted rows.
 	 */
-	public function insertObjects($table, $list) {
+	public function insertObjects(string $table, array $list, ?array $encryptables=[]): int {
 		
 		if (!is_array($list) or 0==count($list)) {
 			return 0;
@@ -655,7 +652,13 @@ class Database {
 					$fields[] = '`' . $k . '`';
 				}
 				
-				$values[] = is_null($v) ? 'NULL' : $this->quote($v);
+				if (is_null($v)) {
+					$values[] = 'NULL';
+				} else if (defined('AES_CRYPT_KEY') and in_array($k, $encryptables)) {
+					$values[] = 'AES_ENCRYPT(' . $this->quote($v) . ',' . $this->quote(AES_CRYPT_KEY) . ')';
+				} else {
+					$values[] = $this->quote($v);
+				}
 
 			}
 
@@ -676,13 +679,13 @@ class Database {
 	/**
 	 * Update record of given key on the param object. Properly manage NULL values.
 	 * 
-	 * @param	string		DB Table.
+	 * @param	string		Table name.
 	 * @param	stdClass	Object with properties of new values to update.
-	 * @param	array		Object with keys and values for where clause.
-	 * 
+	 * @param	stdClass	Object with keys and values for where clause.
+	 * @param	array		Optional list of encryptable fields.
 	 * @return	int			Numbers of affected rows.
 	 */
-	public function updateObject($table, &$object, $key) {
+	public function updateObject(string $table, \stdClass &$object, \stdClass $key, ?array $encryptables=[]): int {
 
 		$sets		= array();
 		$where		= array();
@@ -701,9 +704,11 @@ class Database {
 		foreach (get_object_vars($object) as $field => $value) {
 				
 			if (is_null($value)) {
-				$sets[] = '`' . $field . '` = NULL';
+				$sets[] = '`' . $field . '`=NULL';
+			} else if (defined('AES_CRYPT_KEY') and in_array($field, $encryptables)) {
+				$sets[] = '`' . $field . '`=AES_ENCRYPT(' . $this->quote($value) . ',' . $this->quote(AES_CRYPT_KEY) . ')';
 			} else {
-				$sets[] = '`' . $field . '` = ?';
+				$sets[] = '`' . $field . '`=?';
 				$fieldVal[] = $value;
 			}
 
@@ -734,14 +739,14 @@ class Database {
 	}
 	
 	/**
-	 * Inserisce una riga in una tabella o l’aggiorna se presente in base ai campi Primary
-	 * oppure Unique.
+	 * Insert a row into a table or update it if present based on the Primary fields
+	 * or Unique.
 	 *
-	 * @param	string	Nome tabella.
-	 * @param	object	Oggetto con le proprietà corrispondenti ai nomi dei campi.
-	 * @return	bool	Esito della modifica.
+	 * @param	string		Table name.
+	 * @param	stdClass	Object with properties that equal columns name.
+	 * @return	bool		Execution result.
 	 */
-	public function insertUpdateObject($table, $object) {
+	public function insertUpdateObject(string $table, \stdClass $object): bool {
 	
 		$this->openConnection();
 		
@@ -750,20 +755,27 @@ class Database {
 		$updates = array();
 	
 		foreach (get_object_vars($object) as $k => $v) {
-			if (is_string($v) or is_numeric($v)) {
-				$values[]  = $this->quote($v);
-			} else if (is_null($v)) {
+
+			if (is_null($v)) {
+				$fields[] = '`' . $k . '`';
 				$values[] = 'NULL';
+			} else if (defined('AES_CRYPT_KEY') and in_array($k, $encryptables)) {
+				$fields[] = '`' . $k . '`';
+				$values[] = 'AES_ENCRYPT(' . $this->quote($v) . ',' . $this->quote(AES_CRYPT_KEY) . ')';
+			} else if (is_string($v) or is_numeric($v)) {
+				$fields[] = '`' . $k . '`';
+				$values[] = $this->quote($v);
 			}
-			$fields[] = '`' . $k . '`';
+
 			$updates[] = $v!==NULL ? $k.'='.$this->quote($v) : $k.'=NULL';
+
 		}
 	
 		$sql = 'INSERT INTO `'. $table .'` (%s) VALUES (%s) ON DUPLICATE KEY UPDATE %s';
 		
-		$this->query = sprintf($sql, implode(', ', $fields), implode(', ', $values), implode(', ', $updates));
+		$query = sprintf($sql, implode(', ', $fields), implode(', ', $values), implode(', ', $updates));
 		
-		$res = $this->exec($this->query);
+		$res = static::run($query);
 	
 		return (bool)$res;
 	
@@ -774,10 +786,9 @@ class Database {
 	 * Require grant on “references” permissions of connected db-user. Memory cached.
 	 *
 	 * @param	string	Name of table to check.
-	 *
 	 * @return	stdClass[]
 	 */
-	public function getForeignKeys($tableName): array {
+	public function getForeignKeys(string $tableName): array {
 
 		if (!isset($this->definitions[$tableName]['foreignKeys'])) {
 			
@@ -805,10 +816,9 @@ class Database {
 	 * Require grant on “references” permissions of connected db-user. Memory cached.
 	 * 
 	 * @param	string	Name of external table to check.
-	 * 
 	 * @return	stdClass[]
 	 */
-	public function getInverseForeignKeys($tableName): array {
+	public function getInverseForeignKeys(string $tableName): array {
 		
 		if (!isset($this->definitions[$tableName]['inverseForeignKeys'])) {
 			
@@ -835,10 +845,9 @@ class Database {
 	 * Return data about table scheme. Memory cached.
 	 * 
 	 * @param	string	Name of table to describe.
-	 * 
 	 * @return	stdClass[]
 	 */
-	public function describeTable($tableName) {
+	public function describeTable(string $tableName): array {
 	
 		// check if was set in the object cache property
 		if (!isset($this->definitions[$tableName]['describe'])) {
@@ -861,7 +870,7 @@ class Database {
 	 *
 	 * @return	stdClass|NULL
 	 */
-	public function describeColumn($tableName, $column) {
+	public function describeColumn(string $tableName, string $column): ?\stdClass {
 		
 		// search in cached table structure
 		if (isset($this->definitions[$tableName]['describe'])) {
@@ -882,10 +891,9 @@ class Database {
 	 * Return an array of table-key names by using cached methods.
 	 *
 	 * @param	string	Name of table to which get the keys.
-	 *
 	 * @return	string[]
 	 */
-	public function getTableKeys($tableName) {
+	public function getTableKeys(string $tableName): array {
 		
 		$keys = array();
 		
@@ -905,10 +913,9 @@ class Database {
 	 * Check if parameter table has auto-increment primary key by using cached method.
 	 *
 	 * @param	string	Name of table to check auto-increment flag.
-	 *
 	 * @return	bool
 	 */
-	public function isAutoIncrement($tableName) {
+	public function isAutoIncrement(string $tableName): bool {
 
 		$fields = $this->describeTable($tableName);
 		
@@ -926,13 +933,12 @@ class Database {
 	 * Check wheter a table exists by its name.
 	 *
 	 * @param	string	Table name.
-	 *
-	 * @return	boolean
+	 * @return	bool
 	 */
-	public function tableExists(string $tableName) {
+	public function tableExists(string $tableName): bool {
 		
 		$this->setQuery('SHOW TABLES LIKE ?');
-		return (bool)$this->loadResult($tableName);
+		return (bool)$this->loadResult([$tableName]);
 		
 	}
 	
@@ -995,7 +1001,7 @@ class Database {
 	 *
 	 * @param	string	Text error message.
 	 */
-	public function addError($message) {
+	public function addError(string $message) {
 		
 		trigger_error($message);
 		$this->errors[] = $message;
@@ -1005,7 +1011,7 @@ class Database {
 	/**
 	 * Returns text of latest error message, or FALSE if not errors.
 	 *
-	 * @return	string|NULL
+	 * @return	string|bool
 	 */
 	public function getLastError() {
 	
@@ -1019,7 +1025,7 @@ class Database {
 	 * @param	string	SQL query.
 	 * @param	int		Number of items in result-set or affected rows.
 	 */
-	private function logQuery($query, $result) {
+	private function logQuery(string $query, int $result) {
 		
 		$subtext = (int)$result . ' ' . (1==$result ? 'row' : 'rows');
 
@@ -1031,11 +1037,11 @@ class Database {
 	/**
 	 * Proxy for logQuery() that binds query parameters.
 	 * 
-	 * @param	string	SQL query.
-	 * @param	int		Number of items in result-set or affected rows.
-	 * @param	array	Parameters to bind.
+	 * @param	string		SQL query.
+	 * @param	int			Number of items in result-set or affected rows.
+	 * @param	array|NULL	Parameters to bind.
 	 */
-	private function logParamQuery($query, $result, $params) {
+	private function logParamQuery(string $query, int $result, $params=[]) {
 		
 		$params = (array)$params;
 
@@ -1057,10 +1063,12 @@ class Database {
 	/**
 	 * Log query, switch error and add to DB class error list.
 	 *  
-	 * @param	stdClass	Error object.
-	 * @param	array		Parameters.
+	 * @param	Exception	Error object.
+	 * @param	array|NULL	Parameters.
 	 */
-	private function handleException($e, $params) {
+	private function handleException(\Exception $e, ?array $params) {
+		
+		$params = (array)$params;
 		
 		// logger
 		$this->logParamQuery($this->query, 0, $params);
