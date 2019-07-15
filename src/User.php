@@ -517,10 +517,7 @@ class User extends ActiveRecord {
 			' WHERE a.is_default = 1' . 
 			' AND a.group_id = ?';
 
-		$this->db->setQuery($query);
-		$obj = $this->db->loadObject([$this->groupId]);
-
-		return $obj;
+		return Database::load($query, [$this->groupId], PAIR_DB_OBJECT);
 		
 	}
 	
@@ -552,8 +549,8 @@ class User extends ActiveRecord {
 				' INNER JOIN `locales` AS lc ON l.id = lc.language_id' .
 				' INNER JOIN `users` AS u ON u.locale_id = lc.id' .
 				' WHERE u.id = ?';
-			$this->db->setQuery($query);
-			$this->setCache('lang', $this->db->loadResult([$this->id]));
+			
+			$this->setCache('lang', Database::load($query, [$this->id], PAIR_DB_RESULT));
 
 		}
 	

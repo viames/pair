@@ -282,10 +282,10 @@ class Database {
 	 *
 	 * @param	string		SQL query.
 	 * @param	array|NULL	List of parameters to bind on the sql query. 
-	 * @param	string		Returned type (see constants PAIR_DB_*). PAIR_DB_OBJECT_LIST is default.
+	 * @param	int			Returned type (see constants PAIR_DB_*). PAIR_DB_OBJECT_LIST is default.
 	 * @return	array|stdClass|int|NULL
 	 */
-	public static function load(string $query, $params=[], string $option=NULL) {
+	public static function load(string $query, $params=[], int $option=NULL) {
 		
 		$self = static::getInstance();
 		
@@ -306,35 +306,31 @@ class Database {
 				// list of stdClass objects
 				default:
 				case PAIR_DB_OBJECT_LIST:
-				case 'objectlist':
 					$res = $stat->fetchAll(\PDO::FETCH_OBJ);
 					$count = count($res);
 					break;
 				
 				// first row as stdClass object
 				case PAIR_DB_OBJECT:
-				case 'object':
 					$res = $stat->fetch(\PDO::FETCH_OBJ);
+					if (!$res) $res = NULL;
 					$count = (bool)$res;
 					break;
 
 				// array of first column results
 				case PAIR_DB_RESULT_LIST:
-				case 'resultlist':
 					$res = $stat->fetchAll(\PDO::FETCH_COLUMN);
 					$count = count($res);
 					break;
 			
 				// first column of first row
 				case PAIR_DB_RESULT:
-				case 'result':
 					$res = $stat->fetch(\PDO::FETCH_COLUMN);
 					$count = $self->handler->query('SELECT FOUND_ROWS()')->fetchColumn();
 					break;
 
 				// result count as integer
 				case PAIR_DB_COUNT:
-				case 'count':
 					$res = (int)$stat->fetch(\PDO::FETCH_COLUMN);
 					$count = $res;
 					break;
@@ -424,9 +420,10 @@ class Database {
 	 * doesn’t exist.
 	 * 
 	 * @param	array|NULL	Parameters to bind on sql query in array or simple value.
-	 * @return	stdClass|FALSE|NULL
+	 * @return	stdClass|NULL
+	 * @deprecated	Use Database::load($query, [], PAIR_DB_OBJECT) instead.
 	 */
-	public function loadObject($params=[]) {
+	public function loadObject($params=[]): ?\stdClass {
 
 		$this->openConnection();
 		
@@ -437,6 +434,7 @@ class Database {
 			$stat = $this->handler->prepare($this->query);
 			$stat->execute((array)$params);
 			$obj = $stat->fetch(\PDO::FETCH_OBJ);
+			if (!$obj) $obj = NULL;
 			
 			// logger
 			$this->logParamQuery($this->query, (bool)$obj, $params);
