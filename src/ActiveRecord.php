@@ -1183,7 +1183,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$query = 'SELECT COUNT(1) FROM `' . $table . '` WHERE ' . $column . ' = ?';
 		
 		// search the record into the db
-		return (bool)Database::load($query, (array) $value, 'count');
+		return (bool)Database::load($query, (array) $value, PAIR_DB_COUNT);
 		
 	}
 	
