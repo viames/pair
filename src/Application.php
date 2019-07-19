@@ -134,12 +134,25 @@ class Application {
 		
 		// default constants
 		$defaults = array(
-			'PAIR_AUTH_BY_EMAIL'=> TRUE,
-			'BASE_URI'			=> '',
-			'DBMS'				=> 'mysql',
-			'PRODUCT_NAME'		=> 'NewProduct',
-			'PRODUCT_VERSION'	=> '1.0',
-			'UTC_DATE'			=> TRUE
+			'PAIR_AUTH_BY_EMAIL' => TRUE,
+			'BASE_URI' => '',
+			'DBMS' => 'mysql',
+			'PRODUCT_NAME' => 'NewProduct',
+			'PRODUCT_VERSION' => '1.0',
+			'UTC_DATE' => TRUE,
+			'PAIR_DEVELOPMENT' => FALSE,
+			'PAIR_DEBUG' => FALSE,
+			'PAIR_AUDIT_PASSWORD_CHANGED' => FALSE,
+			'PAIR_AUDIT_LOGIN_FAILED' => FALSE,
+			'PAIR_AUDIT_LOGIN_SUCCESSFUL' => FALSE,
+			'PAIR_AUDIT_LOGOUT' => FALSE,
+			'PAIR_AUDIT_SESSION_EXPIRED' => FALSE,
+			'PAIR_AUDIT_REMEMBER_ME_LOGIN' => FALSE,
+			'PAIR_AUDIT_USER_BLOCKED' => FALSE,
+			'PAIR_AUDIT_USER_CREATED' => FALSE,
+			'PAIR_AUDIT_USER_DELETED' => FALSE,
+			'PAIR_AUDIT_USER_CHANGED' => FALSE,
+			'PAIR_AUDIT_PERMISSIONS_CHANGED' => FALSE
 		);
 		
 		// set default constants in case of missing
@@ -1068,6 +1081,23 @@ class Application {
 		
 		return $this->template;
 
+	}
+	
+	/**
+	 * Return TRUE if this host is a developer server.
+	 *
+	 * @return bool
+	 */
+	final public static function isDevelopmentHost(): bool {
+		
+		if (defined('PAIR_DEVELOPMENT')) {
+			return PAIR_DEVELOPMENT;
+		} else if (Options::exists('development')) {
+			Options::get('development');
+		} else {
+			return FALSE;
+		}
+		
 	}
 
 }

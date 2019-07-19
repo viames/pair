@@ -140,4 +140,19 @@ class Session extends ActiveRecord {
 
 	}
 	
+	/**
+	 * Return the User object of this Session, if exists.
+	 * 
+	 * @return	User|NULL 
+	 */
+	public function getUser(): ?User {
+
+		if (!$this->idUser) return NULL;
+
+		$user = new User($this->idUser);
+
+		return ($user->isLoaded() ? $user : NULL);
+
+	}
+	
 }

@@ -51,7 +51,7 @@ class Options {
 	 * 
 	 * @return array
 	 */
-	public function getAll() {
+	public function getAll(): array {
 		
 		$this->checkPopulated();		
 		
@@ -74,7 +74,7 @@ class Options {
 		
 		try {
 			
-			if (!array_key_exists($name, $self->list)) {
+			if (!static::exists($name)) {
 				throw new \Exception('Cannot read the value of option “'. $name .'” as it doesn’t exist.');
 			}
 
@@ -96,8 +96,10 @@ class Options {
 	 * @throws	Exception
 	 * @return	mixed|NULL
 	 */
-	public static function set($name, $value) {
+	public static function set($name, $value): bool {
 		
+		$ret = FALSE;
+
 		// instance of the singleton
 		$self = static::getInstance();
 		
@@ -128,7 +130,7 @@ class Options {
 			}
 
 			// update the value into db
-			Database::run('UPDATE `options` SET `value` = ? WHERE `name` = ?', [$value, $name]);
+			$ret = Database::run('UPDATE `options` SET `value` = ? WHERE `name` = ?', [$value, $name]);
 			
 			// update value into the singleton object
 			$self->list[$name]->value = $value;
@@ -139,6 +141,8 @@ class Options {
 			$app->logWarning($e->getMessage());
 			
 		}
+
+		return $ret;
 		
 	}
 	
@@ -193,8 +197,6 @@ class Options {
 	
 	/**
 	 * Load from DB and sets all options to this object.
-	 *
-	 * @return array
 	 */
 	private function populate() {
 	
@@ -241,7 +243,7 @@ class Options {
 	 * 
 	 * @return	mixed
 	 */
-	private function castTo($value, $type) {
+	private function castTo($value, string $type) {
 	
 		switch ($type) {
 	
@@ -280,10 +282,26 @@ class Options {
 	 * 
 	 * @return boolean
 	 */
-	public function isCryptAvailable() {
+	public function isCryptAvailable(): bool {
 		
 		return (defined('OPTIONS_CRYPT_KEY') and strlen(OPTIONS_CRYPT_KEY) > 0);
 		
 	}
-	
+
+	/**
+	 * Check if an option’s exists.
+	 *
+	 * @param	string	The option’s name.
+	 * @throws	Exception
+	 * @return	bool
+	 */
+	public static function exists(string $name): bool {
+
+		$self = static::getInstance();
+		$self->checkPopulated();
+
+		return array_key_exists($name, $self->list);
+
+	}
+
 }

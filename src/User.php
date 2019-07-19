@@ -266,6 +266,9 @@ class User extends ActiveRecord {
 		$db->setQuery($query);
 		$row = $db->loadObject([$username]);
 	
+		// track ip address for audit
+		$ipAddress = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : NULL;
+	
 		if (is_object($row)) {
 				
 			$user = new static($row);
@@ -277,6 +280,8 @@ class User extends ActiveRecord {
 				$ret->message = Translator::do('TOO_MANY_LOGIN_ATTEMPTS');
 				$user->addFault();
 					
+				Audit::loginFailed($username, $ipAddress);
+					
 			// user disabled
 			} else if ('0' == $user->enabled) {
 
@@ -284,12 +289,16 @@ class User extends ActiveRecord {
 				$ret->message = Translator::do('USER_IS_DISABLED');
 				$user->addFault();
 					
+				Audit::loginFailed($username, $ipAddress);
+					
 			// user password doesn’t match
 			} else if (!User::checkPassword($password, $user->hash)) {
 
 				$ret->error = TRUE;
 				$ret->message = Translator::do('PASSWORD_IS_NOT_VALID');
 				$user->addFault();
+				
+				Audit::loginFailed($username, $ipAddress);
 				
 			// login ok
 			} else {
@@ -306,10 +315,14 @@ class User extends ActiveRecord {
 					$user->store();
 				}
 	
+				Audit::loginSuccessful($user);
+
 			}
 				
 		// this username doesn’t exist into db
 		} else {
+				
+			Audit::loginFailed($username, $ipAddress);
 				
 			$ret->error = TRUE;
 			$ret->message = Translator::do('USERNAME_NOT_VALID');
@@ -345,7 +358,6 @@ class User extends ActiveRecord {
 	 * Returns true if both db writing has been done succesfully. 
 	 * 
 	 * @param	string	IANA time zone identifier.
-	 * 
 	 * @return	bool
 	 */
 	private function createSession(string $timezone): bool {
@@ -387,13 +399,23 @@ class User extends ActiveRecord {
 	 * Does the logout action and returns TRUE if session is found and deleted. 
 	 * 
 	 * @param	string	Session ID to close.
-	 * 
 	 * @return	bool
 	 */
 	public static function doLogout(string $sid): bool {
 
 		$app = Application::getInstance();
 		$db  = Database::getInstance();
+
+		// get User object by Session
+		$session = new Session($sid);
+		$user = $session->getUser();
+
+		if (is_null($user)) {
+			return FALSE;
+		}
+
+		// record the logout
+		Audit::logout($user);
 
 		// delete session
 		$res = $db->exec('DELETE FROM `sessions` WHERE id = ?', [$sid]);
@@ -448,18 +470,26 @@ class User extends ActiveRecord {
 	 * 
 	 * @param	string	Module name.
 	 * @param	string	Optional action name.
-	 * 
 	 * @return	bool	True if access is granted.
 	 */
-	public function canAccess($module, $action=NULL): bool {
+	public function canAccess(string $module, string $action=NULL): bool {
 
-		// FIXME parse custom routes
-		
 		// reveal module/action type
 		if (is_null($action) and FALSE !== strpos($module, '/')) {
 			list($module,$action) = explode('/', $module);
 		}
+
+		// check if it’s a custom route
+		$router = Router::getInstance();
+		$url = '/' . $module . ($action ? '/' . $action : '');
+		$res = $router->getModuleActionFromCustomUrl($url);
 		
+		// in case, overwrite module and action
+		if (is_a($res, 'stdClass')) {
+			$module = $res->module;
+			$action = $res->action;
+		}
+
 		// user module is for login and personal profile
 		if ('user'==$module) {
 			return TRUE;

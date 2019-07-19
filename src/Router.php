@@ -110,25 +110,25 @@ class Router {
 		
 		// remove special prefixes and return parameters
 		$params = $this->getParameters();
-		
-		// search for routes.php file in the application root
-		$custom = $this->parseCustomRoute($params, APPLICATION_PATH . '/routes.php');
-		
-		if (!$custom and isset($params[0])) {
-			
-			// set module and define the MODULE_PATH constant
-			$this->setModule(urldecode($params[0]));
-			
-			// search for module specifics custom routes
-			$custom = $this->parseCustomRoute($params, APPLICATION_PATH . '/' . MODULE_PATH . 'routes.php', TRUE);
 
+		// try matches in /root/routes.php file
+		$routeMatches1 = $this->parseCustomRoutes($params, APPLICATION_PATH . '/routes.php');
+		
+		// set module and define the MODULE_PATH constant
+		if (!defined('MODULE_PATH') and isset($params[0])) {
+			$this->setModule(urldecode($params[0]));
+		}
+
+		// try matches in module specifics routes.php file
+		if (defined('MODULE_PATH')) {
+			$routeMatches2 = $this->parseCustomRoutes($params, APPLICATION_PATH . '/' . MODULE_PATH . 'routes.php', TRUE);
 		}
 		
 		// if custom routes don't match, go for standard
-		if (!$custom) {
-			$this->parseStandardRoute($params);
+		if (!$routeMatches1 and !$routeMatches2) {
+			$this->parseStandardRoutes($params);
 		}
-			
+		
 	}
 	
 	/**
@@ -165,11 +165,11 @@ class Router {
 	}
 
 	/**
-	 * remove special prefixes and return parameters.
+	 * Remove special prefixes (ajax, raw) and return all the parameters found in the URL.
 	 * 
 	 * @return	array()
 	 */
-	private function getParameters() {
+	private function getParameters(): array {
 		
 		$url = '/' == $this->url{0} ? substr($this->url,1) : $this->url;
 		
@@ -198,54 +198,44 @@ class Router {
 		return $params;
 		
 	}
-	
+
 	/**
 	 * Parse an URL searching for a custom route that matches and store parameter values.
 	 *
 	 * @param	array:string	List of URL parameters.
 	 * @param	string			Path to routes file.
 	 * @param	bool			Flag to set as module routes.
-	 *
 	 * @return	bool
 	 */
-	private function parseCustomRoute($params, $routesFile, $moduleRoute=FALSE) {
+	private function parseCustomRoutes(array $params, string $routesFile, bool $moduleRoute=FALSE): bool {
 		
-		$this->routes = array();
-		
-		// trigger for route processed
-		$routeMatches = FALSE;
-			
 		// check if controller file exists
 		if (!file_exists($routesFile)) {
 			return FALSE;
 		}
-			
+		
+		// trigger for route processed
+		$routeMatches = FALSE;
+		
+		// temporary store previous routes
+		$routesBackup = $this->routes;
+
+		// fall-back in case of no adds in routesFile
+		$this->routes = [];
+		
 		// read the custom routes by php file
 		require $routesFile;
 		
 		// check about the third parameter $module in the custom-routes available as of now
-		foreach ($this->routes as $r) {
-			
-			// force initial slash
-			if (!$r->path) {
-				$r->path = '/';
-			} else if ('/' != $r->path{0}) {
-				$r->path = '/' . $r->path;
-			}
+		foreach ($this->routes as &$r) {
 			
 			// add module prefix if not set
 			if ($moduleRoute and strpos($r->path,'/'.$this->module) !== 0) {
 				$r->path = '/' . $this->module . $r->path;
 			}
 
-			// replace any regex after param name in path
-			$pathRegex = preg_replace('|/:[^/(]+\(([^)]+)\)|', '/($1)', $r->path);
-			
-			// then replace simple param name in path
-			$pathRegex = preg_replace('|/(:[^/]+)|', '/([^/]+)', $pathRegex);
-			
 			// compare current URL to regex
-			if (preg_match('|^' . $pathRegex . '$|', $this->url)) {
+			if ($this->routePathMatchesUrl($r->path, $this->url)) {
 				
 				// assign action
 				$this->action = $r->action;
@@ -324,6 +314,9 @@ class Router {
 			}
 			
 		}
+
+		// restore the Router::routes array property
+		$this->routes = array_merge($routesBackup, $this->routes);
 		
 		return $routeMatches;
 		
@@ -334,7 +327,7 @@ class Router {
 	 *
 	 * @param	array:string	List of URL parameters.
 	 */
-	private function parseStandardRoute($params) {
+	private function parseStandardRoutes(array $params) {
 		
 		// set module, action and page nr by parameters
 		foreach ($params as $pos => $value) {
@@ -384,7 +377,7 @@ class Router {
 	 * 
 	 * @return Router
 	 */
-	public static function getInstance() {
+	public static function getInstance(): self {
 	
 		if (is_null(self::$instance)) {
 			self::$instance = new self();
@@ -398,12 +391,10 @@ class Router {
 	 * Will returns property’s value if set. Throw an exception and returns NULL if not set.
 	 *
 	 * @param	string	Property’s name.
-	 * 
 	 * @throws	Exception
-	 * 
 	 * @return	mixed|NULL
 	 */
-	public function __get($name) {
+	public function __get(string $name) {
 	
 		try {
 	
@@ -428,7 +419,7 @@ class Router {
 	 * @param	string	Property’s name.
 	 * @param	mixed
 	 */
-	public function __set($name, $value) {
+	public function __set(string $name, $value) {
 		
 		$this->$name = $value;
 		
@@ -442,7 +433,7 @@ class Router {
 	 *
 	 * @return	string|NULL
 	 */
-	public static function get($paramIdx, $decode=FALSE) {
+	public static function get($paramIdx, bool $decode=FALSE): ?string {
 		
 		$self = static::$instance;
 		
@@ -465,10 +456,9 @@ class Router {
 	 * 
 	 * @param	mixed	Parameter position (zero based) or Key name.
 	 * @param	bool	Flag to decode a previously encoded value as char-only.
-	 *  
-	 * @return	string
+	 * @return	string|NULL
 	 */
-	public function getParam($paramIdx, $decode=FALSE) {
+	public function getParam($paramIdx, bool $decode=FALSE): ?string {
 		
 		if (array_key_exists($paramIdx, $this->vars) and ''!=$this->vars[$paramIdx]) {
 			$value = $this->vars[$paramIdx];
@@ -489,7 +479,7 @@ class Router {
 	 * @param	string	Value to add.
 	 * @param	bool	Flag to encode as char-only the value.
 	 */
-	public function setParam($paramIdx=NULL, $value, $encode=FALSE) {
+	public function setParam($paramIdx=NULL, $value, bool $encode=FALSE) {
 		
 		if ($encode) {
 			$value = rtrim(strtr(base64_encode(gzdeflate(json_encode($value), 9)), '+/', '-_'), '=');
@@ -517,7 +507,7 @@ class Router {
 	 * 
 	 * @return	int
 	 */
-	public function getPage() {
+	public function getPage(): int {
 		
 		$cookieName = Application::getCookiePrefix() . ucfirst($this->module) . ucfirst($this->action);
 		
@@ -542,7 +532,7 @@ class Router {
 	 * 
 	 * @param	int		Page number.
 	 */
-	public function setPage($number) {
+	public function setPage(int $number) {
 
 		$number = (int)$number;
 		
@@ -579,7 +569,7 @@ class Router {
 	 * 
 	 * @param	string	Module name.
 	 */
-	public function setModule($moduleName) {
+	public function setModule(string $moduleName) {
 	
 		if (!defined('MODULE_PATH')) {
 			
@@ -591,7 +581,13 @@ class Router {
 	
 	}
 	
-	public function setAction($action) {
+	/**
+	 * Set the action
+	 *
+	 * @param  mixed	Action string or NULL.
+	 * @return void
+	 */
+	public function setAction(?string $action): void {
 	
 		$this->action = $action;
 	
@@ -600,9 +596,9 @@ class Router {
 	/**
 	 * Return action string.
 	 * 
-	 * @return	string
+	 * @return	string|NULL
 	 */
-	public function getAction() {
+	public function getAction(): ?string {
 	
 		return $this->action;
 	
@@ -614,7 +610,7 @@ class Router {
 	 * @param	string	Default module name.
 	 * @param	string	Default action.
 	 */
-	public function setDefaults($module, $action) {
+	public function setDefaults(string $module, string $action) {
 		
 		$this->defaults['module'] = $module;
 		$this->defaults['action'] = $action;
@@ -626,7 +622,7 @@ class Router {
 	 * 
 	 * @return string
 	 */
-	public function getDefaultUrl() {
+	public function getDefaultUrl(): string {
 		
 		return $this->defaults['module'] . '/' . $this->defaults['action'];
 		
@@ -652,8 +648,16 @@ class Router {
 	 * @param	string		Action.
 	 * @param	string|NULL	Optional module name.
 	 */
-	public static function addRoute($path, $action, $module=NULL) {
-		
+	public static function addRoute(string $path, string $action, ?string $module=NULL) {
+
+		// fix empty path
+		if ('' == $path) {
+			$path = '/';
+		// force initial slash
+		} else if ('/' != $path{0}) {
+			$path = '/' . $path;
+		}
+
 		$route = new \stdClass();
 		$route->path	 = $path;
 		$route->action	 = $action;
@@ -668,11 +672,53 @@ class Router {
 	}
 
 	/**
+	 * Compare a custom route path as text or regex to the param URL and
+	 * return TRUE if it matches.
+	 * 
+	 * @param	string	The custom Route path.
+	 * @param	string	The URL to check.
+	 * @return	bool
+	 */
+	public function routePathMatchesUrl(string $path, string $url): bool {
+
+		// replace any regex after param name in path
+		$pathRegex = preg_replace('|/:[^/(]+\(([^)]+)\)|', '/($1)', $path);
+	
+		// then replace simple param name in path
+		$pathRegex = preg_replace('|/(:[^/]+)|', '/([^/]+)', $pathRegex);
+		
+		// compare current URL to regex
+		return preg_match('|^' . $pathRegex . '$|', $url);
+
+	}
+
+	/**
+	 * Return, if exists, the custom route object that matches the URL in param.
+	 * 
+	 * @param	string	The URL as /module/action.
+	 * @return	\stdClass|NULL
+	 */
+	public function getModuleActionFromCustomUrl(string $url): ?\stdClass {
+		
+		foreach ($this->routes as $r) {
+			
+			// compare current URL to regex
+			if ($this->routePathMatchesUrl($r->path, $url)) {
+				return $r;
+			}
+			
+		}
+
+		return NULL;
+		
+	}
+	
+	/**
 	 * Returns current relative URL, with order and optional pagination.
 	 * 
 	 * @return	string
 	 */
-	public function getUrl() {
+	public function getUrl(): string {
 		
 		$sefParams = array();
 		$cgiParams = array();
@@ -717,10 +763,9 @@ class Router {
 	 * reset ordering.
 	 * 
 	 * @param	int		Optional order value to build the URL with.
-	 * 
 	 * @return	string
 	 */
-	public function getOrderUrl($val=NULL) {
+	public function getOrderUrl(int $val=NULL): string {
 		
 		// save current order val
 		$tmp = $this->order;
@@ -739,10 +784,9 @@ class Router {
 	 * reset pagination.
 	 *
 	 * @param	int		Optional page number to build the URL with.
-	 *
 	 * @return	string
 	 */
-	public function getPageUrl($page=NULL) {
+	public function getPageUrl(int $page=NULL): string {
 	
 		// save current order val
 		$tmp = $this->page;
@@ -761,7 +805,7 @@ class Router {
 	 * 
 	 * @return	string
 	 */
-	public function __toString() {
+	public function __toString(): string {
 		
 		$path = $this->module .'/'. $this->action;
 		if (count($this->vars)) {
@@ -776,7 +820,7 @@ class Router {
 	 * 
 	 * @return boolean
 	 */
-	public function isRaw() {
+	public function isRaw(): bool {
 		
 		return $this->raw;
 		

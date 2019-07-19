@@ -162,6 +162,14 @@ abstract class ActiveRecord implements \JsonSerializable {
 						}
 						break;
 
+					case 'json':
+						if ('' === $value and $this->isNullable($this->getMappedField($name))) {
+							$this->$name = NULL;
+						} else {
+							$this->$name = json_decode($value);
+						}
+						break;
+
 					case 'DateTime':
 						$this->setDatetimeProperty($name, $value);
 						break;
@@ -206,7 +214,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	public function __call($name, $arguments) {
 	
 		if (!method_exists($this, $name)) {
-			if (Options::get('development')) {
+			if (Application::isDevelopmentHost()) {
 				$backtrace = debug_backtrace();
 				$app = Application::getInstance();
 				$app->logError('Method '. get_called_class() . $backtrace[0]['type'] . $name .'(), which doesn’t exist, has been called by '. $backtrace[0]['file'] .' on line '. $backtrace[0]['line']);
@@ -338,6 +346,14 @@ abstract class ActiveRecord implements \JsonSerializable {
 						setlocale(LC_NUMERIC, 'en_US');
 						$ret = (string)$this->$prop;
 						setlocale(LC_NUMERIC, $curr);
+					}
+					break;
+
+				case 'json':
+					if (is_null($this->$prop) and static::isNullable($field)) {
+						$ret = NULL;
+					} else {
+						$ret = json_encode($this->$prop);
 					}
 					break;
 
@@ -938,6 +954,20 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 	
 	}
+
+	/**
+	 * Set JSON type variable names for convertion when populating the object and
+	 * writing into db.
+	 *
+	 * @param	string	List of variable names.
+	 */
+	final protected function bindAsJson() {
+	
+		foreach (func_get_args() as $name) {
+			$this->typeList[$name] = 'json';
+		}
+	
+	}
 	
 	/**
 	 * Return the Pair\ActiveRecord inherited object related to this by a ForeignKey in DB-table. Cached method.
@@ -946,7 +976,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * 
 	 * @return	multitype|NULL
 	 */
-	final public function getRelated($relatedProperty) {
+	final public function getRelated(string $relatedProperty) {
 		
 		$cacheName = $relatedProperty . 'RelatedObject';
 		
@@ -1036,7 +1066,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @return	multitype|NULL
 	 */
-	final public function getRelatedProperty($relatedProperty, $wantedProperty) {
+	final public function getRelatedProperty(string $relatedProperty, string $wantedProperty) {
 		
 		$obj = $this->getRelated($relatedProperty);
 		
@@ -1056,7 +1086,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * 
 	 * @return	NULL|stdClass
 	 */
-	final private static function getColumnType($fieldName) {
+	final private static function getColumnType(string $fieldName): ?\stdClass {
 		
 		$db = Database::getInstance();
 		$column = $db->describeColumn(static::TABLE_NAME, $fieldName);
@@ -1099,7 +1129,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * 
 	 * @return	bool|NULL
 	 */
-	final public static function isNullable($fieldName) {
+	final public static function isNullable(string $fieldName): ?bool {
 		
 		$db = Database::getInstance();
 		$column = $db->describeColumn(static::TABLE_NAME, $fieldName);
@@ -1119,7 +1149,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @return	bool|NULL
 	 */
-	final public static function isEmptiable($fieldName) {
+	final public static function isEmptiable(string $fieldName): ?bool {
 		
 		$column = static::getColumnType($fieldName);
 		
@@ -1143,7 +1173,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @return	bool
 	 */
-	public function isDeletable() {
+	public function isDeletable(): bool {
 		
 		$inverseForeignKeys = $this->db->getInverseForeignKeys(static::TABLE_NAME);
 		
@@ -1173,7 +1203,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @return	bool
 	 */
-	private function checkRecordExists($table, $column, $value) {
+	private function checkRecordExists(string $table, string $column, $value): bool {
 		
 		if (!$value) {
 			return FALSE;
@@ -1188,11 +1218,11 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 	
 	/**
-	 * Return the property PHP type (bool, DateTime, float, int or string).
+	 * Return the property PHP type (bool, DateTime, float, int, string, csv and json).
 	 * 
 	 * @return string|NULL
 	 */
-	final public function getPropertyType($name) {
+	final public function getPropertyType(string $name): ?string {
 
 		if (in_array($name, ['db', 'loadedFromDb', 'typeList', 'errors'])) {
 			$type = NULL;
@@ -1214,7 +1244,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * @param	string	Property’s name.
 	 * @param	mixed	Property’s value.
 	 */
-	final private function setDatetimeProperty($propertyName, $value) {
+	final private function setDatetimeProperty(string $propertyName, $value) {
 		
 		$app = Application::getInstance();
 		
@@ -1273,7 +1303,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * 
 	 * @return	bool
 	 */
-	final public function hasChanged() {
+	final public function hasChanged(): bool {
 
 		$class = get_called_class();
 		$varFields = $class::getBinds();
@@ -1298,7 +1328,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * 
 	 * @return	bool
 	 */
-	final public function existsInDb() {
+	final public function existsInDb(): bool {
 
 		$class = get_called_class();
 		$conds = implode(' AND ', $this->getSqlKeyConditions());
@@ -1863,6 +1893,10 @@ abstract class ActiveRecord implements \JsonSerializable {
 				case 'csv':
 					print implode(', ', $this->$name);
 					break;
+
+				case 'json':
+					print Utilities::varToText($this->$name);
+					break;
 					
 				default:
 					print htmlspecialchars($this->$name);
@@ -1969,7 +2003,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * 
 	 * @return	ActiveRecord|NULL
 	 */
-	final public function getObjectByCachedList($class, $property, $value) {
+	final public function getObjectByCachedList(string $class, string $property, $value): ?self {
 		
 		$app = Application::getInstance();
 		
@@ -2089,6 +2123,11 @@ abstract class ActiveRecord implements \JsonSerializable {
 					case 'csv':
 						$control = $getSelectControl($propName, $field, $column->length);
 						$control->setMultiple();
+						break;
+
+					// textarea for json
+					case 'json':
+						$control = $form->addTextarea($propName);
 						break;
 					
 					// select, textarea or text
