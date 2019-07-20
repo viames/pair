@@ -103,13 +103,11 @@ class Rule extends ActiveRecord {
 	 * 
 	 * @param	int		Module ID.
 	 * @param	string	Action name.
-	 * @param	bool	Flag to get admin-only rules.
+	 * @param	bool	Optional flag to get admin-only rules.
 	 *
 	 * @return	stdClass|NULL
 	 */
-	public static function getRuleModuleName($module_id, $action, $adminOnly) {
-
-		$db = Database::getInstance();
+	public static function getRuleModuleName($module_id, $action, $adminOnly=FALSE): ?\stdClass {
 
 		$query =
 			' SELECT m.name AS moduleName,r.action AS ruleAction, r.admin_only '.
@@ -117,10 +115,7 @@ class Rule extends ActiveRecord {
 			' INNER JOIN `modules` AS m ON m.id = r.module_id '.
 			' WHERE m.id = ? AND r.action = ? AND r.admin_only = ?';
 
-		$db->setQuery($query);
-		$module = $db->loadObject(array($module_id, $action, $adminOnly));
-
-		return $module;
+		return Database::load($query, [$module_id, $action, $adminOnly], PAIR_DB_OBJECT);
 
 	}
 

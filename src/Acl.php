@@ -69,6 +69,24 @@ class Acl extends ActiveRecord {
 	}
 
 	/**
+	 * Trigger function called after delete() method execution.
+	 */
+	protected function afterCreate() {
+
+		Audit::aclAdded($this);
+
+	}
+
+	/**
+	 * Trigger function called after delete() method execution.
+	 */
+	protected function beforeDelete() {
+
+		Audit::aclRemoved($this);
+
+	}
+
+	/**
 	 * Checks if user-group is allowed on a module/action doing a single sql query to db.
 	 * Expensive function.
 	 *

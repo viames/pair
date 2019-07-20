@@ -1123,5 +1123,21 @@ class Utilities {
 		return substr(str_shuffle($availableChars . $availableChars), 0, $length);
 		
 	}
+	
+	/**
+	 * Return a standard ascii one or a predefined icon HTML as constant.
+	 * 
+	 * @param	bool	Value to show as an icon.
+	 * @return	string
+	 */
+	public static function getBoolIcon(bool $value): string {
+
+		if ($value) {
+			return (defined('PAIR_CHECK_ICON') ? PAIR_CHECK_ICON : '<span style="color:green">√</span>');
+		} else {
+			return (defined('PAIR_TIMES_ICON') ? PAIR_TIMES_ICON : '<span style="color:red">×</span>');
+		}
+
+	}
 
 }

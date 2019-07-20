@@ -1997,16 +1997,14 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * then look for the required property in this list. It is very useful for repeated
 	 * searches on small tables of the DB, eg. less than 1000 records.
 	 * 
-	 * @param	string	Class name.
 	 * @param	string	Property name.
 	 * @param	mixed	Property value. If not unique property, return the first table item.
-	 * 
 	 * @return	ActiveRecord|NULL
 	 */
-	final public function getObjectByCachedList(string $class, string $property, $value): ?self {
+	final public static function getObjectByCachedList(string $property, $value): ?self {
 		
 		$app = Application::getInstance();
-		
+		$class = get_called_class();
 		$cacheName = $class . 'ObjectList';
 		
 		if (!$app->issetState($cacheName)) {

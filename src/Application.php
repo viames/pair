@@ -148,7 +148,6 @@ class Application {
 			'PAIR_AUDIT_LOGOUT' => FALSE,
 			'PAIR_AUDIT_SESSION_EXPIRED' => FALSE,
 			'PAIR_AUDIT_REMEMBER_ME_LOGIN' => FALSE,
-			'PAIR_AUDIT_USER_BLOCKED' => FALSE,
 			'PAIR_AUDIT_USER_CREATED' => FALSE,
 			'PAIR_AUDIT_USER_DELETED' => FALSE,
 			'PAIR_AUDIT_USER_CHANGED' => FALSE,
@@ -735,9 +734,12 @@ class Application {
 			
 			// session is expired
 			if ($session->isExpired($sessionTime)) {
+
+				Audit::sessionExpired($session);
 				
 				// check RememberMe cookie
 				if (User::loginByRememberMe()) {
+					Audit::rememberMeLogin();
 					return;
 				}
 		

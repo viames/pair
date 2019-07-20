@@ -129,7 +129,7 @@ class Audit extends ActiveRecord {
 
 	}
 
-	public static function loginSuccessful(User $user) {
+	public static function loginSuccessful(User $user): bool {
 
 		if (!defined('PAIR_AUDIT_LOGIN_SUCCESSFUL') or !PAIR_AUDIT_LOGIN_SUCCESSFUL) {
 			return FALSE;
@@ -144,7 +144,7 @@ class Audit extends ActiveRecord {
 
 	}
 
-	public static function logout(User $user) {
+	public static function logout(User $user): bool {
 
 		if (!defined('PAIR_AUDIT_LOGOUT') or !PAIR_AUDIT_LOGOUT) {
 			return FALSE;
@@ -159,13 +159,20 @@ class Audit extends ActiveRecord {
 
 	}
 
-	public static function sessionExpired() {
+	public static function sessionExpired(Session $session): bool {
 
 		if (!defined('PAIR_AUDIT_SESSION_EXPIRED') or !PAIR_AUDIT_SESSION_EXPIRED) {
 			return FALSE;
 		}
 
-		// TODO
+		$user = $session->getUser();
+
+		$audit = new Audit();
+		$audit->userId = $user->id;
+		$audit->event = 'session_expired';
+		$audit->details = NULL;
+
+		return $audit->store();
 
 	}
 
@@ -175,17 +182,10 @@ class Audit extends ActiveRecord {
 			return FALSE;
 		}
 
-		// TODO
+		$audit = new Audit();
+		$audit->event = 'remember_me_login';
 
-	}
-
-	public static function userBlocked(User $subject) {
-
-		if (!defined('PAIR_AUDIT_USER_BLOCKED') or !PAIR_AUDIT_USER_BLOCKED) {
-			return FALSE;
-		}
-
-		// TODO
+		return $audit->store();
 
 	}
 
@@ -195,7 +195,13 @@ class Audit extends ActiveRecord {
 			return FALSE;
 		}
 
-		// TODO
+		$wantedProperties = ['id','groupId','localeId','username','name','surname','email','admin','enabled'];
+
+		$audit = new Audit();
+		$audit->event = 'user_created';
+		$audit->details = static::convertToStdclass($subject, $wantedProperties);
+
+		return $audit->store();
 
 	}
 
@@ -205,7 +211,13 @@ class Audit extends ActiveRecord {
 			return FALSE;
 		}
 
-		// TODO
+		$wantedProperties = ['id','groupId','username','name','surname'];
+
+		$audit = new Audit();
+		$audit->event = 'user_deleted';
+		$audit->details = static::convertToStdclass($subject, $wantedProperties);
+
+		return $audit->store();
 
 	}
 
@@ -225,13 +237,84 @@ class Audit extends ActiveRecord {
 
 	}
 
-	public static function permissionsChanged(Group $subject) {
+	/**
+	 * Add a new ACL into an existent Audit record or create a new one.
+	 *
+	 * @param  Acl	Object to set as removed.
+	 * @return bool
+	 */
+	public static function aclAdded(Acl $acl) {
+
+		// create a new detail item
+		$detail = new \stdClass();
+		$detail->groupId = $acl->groupId;
+		$detail->ruleId  = $acl->ruleId;
+		$detail->action  = 'added';
+
+		// save it
+		return Audit::permissionsChanged($detail);
+
+	}
+
+	/**
+	 * Remove an ACL from an existent Audit record or create a new one.
+	 *
+	 * @param  Acl	Object to set as removed.
+	 * @return bool
+	 */
+	public static function aclRemoved(Acl $acl): bool {
+
+		// create a new detail item
+		$detail = new \stdClass();
+		$detail->groupId = $acl->groupId;
+		$detail->ruleId  = $acl->ruleId;
+		$detail->action  = 'removed';
+
+		// save it
+		return Audit::permissionsChanged($detail);
+
+	}
+
+	private static function permissionsChanged(\stdClass $detail): bool {
 
 		if (!defined('PAIR_AUDIT_PERMISSIONS_CHANGED') or !PAIR_AUDIT_PERMISSIONS_CHANGED) {
 			return FALSE;
 		}
 
-		// TODO
+
+		$audit = new Audit();
+		$audit->event = 'permissions_changed';
+		$audit->details = [$detail];
+		
+		// get last audit item by the same user and date
+		$lastAudit = Audit::getMyLatestPermissionsChanged();
+		
+		// if exists, merge the details with old ones, save and exit
+		if ($lastAudit) {
+			$lastAudit->details = array_merge($lastAudit->details, $audit->details);
+			return $lastAudit->store();
+		}
+
+		// otherwise save a new one
+		return $audit->store();
+
+	}
+
+	/**
+	 * Get last audit item by the same user and date.
+	 * 
+	 * @return	Audit|NULL
+	 */
+	private static function getMyLatestPermissionsChanged(): ?Audit {
+
+		$app = Application::getInstance();
+
+		$query = 'SELECT * FROM `audit` WHERE `event` = "permissions_changed" AND `user_id` = ? AND `created_at` = ?';
+
+		$now = new \DateTime();
+		$createdAt = $now->format('Y-m-d H:i:s');
+
+		return Audit::getObjectByQuery($query, [$app->currentUser->id, $createdAt]);
 
 	}
 

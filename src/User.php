@@ -192,6 +192,15 @@ class User extends ActiveRecord {
 		return $varFields;
 		
 	}
+
+	/**
+	 * Track the user creation in Audit table just after record saving.
+	 */
+	protected function afterCreate() {
+	
+		Audit::userCreated($this);
+
+	}
 	
 	/**
 	 * Deletes sessions of an user before its deletion.
@@ -199,11 +208,15 @@ class User extends ActiveRecord {
 	protected function beforeDelete() {
 
 		// deletes user sessions
-		$this->db->exec('DELETE FROM `sessions` WHERE id_user = ?', $this->id);
+		Database::run('DELETE FROM `sessions` WHERE `id_user` = ?', [$this->id]);
 	
 		// deletes error_logs of this user
-		$this->db->exec('DELETE FROM `error_logs` WHERE user_id = ?', $this->id);
+		Database::run('DELETE FROM `error_logs` WHERE `user_id` = ?', [$this->id]);
 		
+		if ($this->isDeletable()) {
+			Audit::userDeleted($this);
+		}
+
 	}
 
 	/**
