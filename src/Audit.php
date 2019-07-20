@@ -221,17 +221,40 @@ class Audit extends ActiveRecord {
 
 	}
 
-	public static function userChanged(User $subject) {
+	/**
+	 * Keep track of changed property in user edit.
+	 * 
+	 * @param	User	The old user object.
+	 * @param	User	The new user object.
+	 * @return	bool
+	 */
+	public static function userChanged(User $oldUser, User $newUser): bool {
 
 		if (!defined('PAIR_AUDIT_USER_CHANGED') or !PAIR_AUDIT_USER_CHANGED) {
 			return FALSE;
 		}
 
+		$details = new \stdClass();
+		$details->subjectId = $newUser->id;
+		$details->fullName = $newUser->fullName;
+		$details->username = $newUser->username;
+		$details->changes = [];
+		
 		$wantedProperties = ['id','groupId','localeId','username','name','surname','email','admin','enabled'];
+
+		foreach ($wantedProperties as $wp) {
+			if ($oldUser->$wp != $newUser->$wp) {
+				$c = new \stdClass();
+				$c->property = $wp;
+				$c->oldValue = $oldUser->$wp;
+				$c->newValue = $newUser->$wp;
+				$details->changes[] = $c;
+			}
+		}
 
 		$audit = new Audit();
 		$audit->event = 'user_changed';
-		$audit->details = static::convertToStdclass($subject, $wantedProperties);
+		$audit->details = $details;
 
 		return $audit->store();
 

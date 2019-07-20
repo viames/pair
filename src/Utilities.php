@@ -154,12 +154,15 @@ class Utilities {
 	 * Creates a plain text string from any variable type.
 	 * 
 	 * @param	multitype	Variable of any type.
+	 * @param	bool		Flag to hide var type.
 	 * @return	string
 	 */
-	public static function varToText($var) {
+	public static function varToText($var, bool $showTypes=TRUE): string {
 				
 		$type = gettype($var);
-		$text = is_null($type) ? 'NULL' : $type . ':';
+		$text = is_null($type) ?
+			'NULL' :
+			($showTypes ? $type . ':' : '');
 		
 		switch ($type) {
 
