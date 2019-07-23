@@ -95,6 +95,30 @@ class Audit extends ActiveRecord {
 	}
 
 	/**
+	 * Return a current list and state of all audit items with readable “name”, coded “type” and “enabled”.
+	 * 
+	 * @return	array
+	 */
+	public static function getAuditList(): array {
+
+		$events = ['password_changed','login_failed','login_successful','logout','session_expired',
+			'remember_me_login','user_created','user_deleted','user_changed','permissions_changed'];
+
+		$list = [];
+
+		foreach($events as $e) {
+			$list[] = (object)[
+				'type'    => $e,
+				'name'    => ucfirst(str_replace('_',' ', $e)),
+				'enabled' => constant(strtoupper('PAIR_AUDIT_'.$e))
+				];
+		}
+
+		return $list;
+
+	}
+
+	/**
 	 * Track the user’s password change.
 	 */
 	public static function passwordChanged(User $subject): bool {
