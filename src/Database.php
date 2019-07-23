@@ -742,9 +742,10 @@ class Database {
 	 *
 	 * @param	string		Table name.
 	 * @param	stdClass	Object with properties that equal columns name.
+	 * @param	array		Optional list of encryptable fields.
 	 * @return	bool		Execution result.
 	 */
-	public function insertUpdateObject(string $table, \stdClass $object): bool {
+	public function insertUpdateObject(string $table, \stdClass $object, ?array $encryptables=[]): bool {
 	
 		$this->openConnection();
 		
