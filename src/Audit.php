@@ -101,8 +101,8 @@ class Audit extends ActiveRecord {
 	 */
 	public static function getAuditList(): array {
 
-		$events = ['password_changed','login_failed','login_successful','logout','session_expired',
-			'remember_me_login','user_created','user_deleted','user_changed','permissions_changed'];
+		$events = ['login_failed','login_successful','logout','password_changed','permissions_changed',
+				'remember_me_login','session_expired','user_changed','user_created','user_deleted'];
 
 		$list = [];
 
@@ -274,6 +274,11 @@ class Audit extends ActiveRecord {
 				$c->newValue = $newUser->$wp;
 				$details->changes[] = $c;
 			}
+		}
+
+		// if nothing has changed, avoid storing the record
+		if (!count($details->changes)) {
+			return FALSE;
 		}
 
 		$audit = new Audit();
