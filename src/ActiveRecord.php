@@ -2236,7 +2236,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @return	string
 	 */
-	private static function getQueryColumns(): string {
+	public static function getQueryColumns(): string {
 
 		$fields = '*';
 		$db = Database::getInstance();
