@@ -689,7 +689,7 @@ class Application {
 	 * 
 	 * @param	string	Module name.
 	 */
-	public function setGuestModule($moduleName) {
+	public function setGuestModule(string $moduleName) {
 		
 		if (!in_array($moduleName, $this->guestModules)) {
 			$this->guestModules[] = $moduleName;

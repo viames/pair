@@ -1891,7 +1891,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 					break;
 					
 				case 'csv':
-					print implode(', ', $this->$name);
+					print htmlspecialchars(implode(', ', $this->$name));
 					break;
 
 				case 'json':
