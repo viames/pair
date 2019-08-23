@@ -58,7 +58,30 @@ class Breadcrumb {
 	 * 
 	 * @param	string	Title of the sub-path.
 	 * @param	string	Destination URL (default NULL).
+	 */
+	public static function path(string $title, string $url=NULL) {
+
+		$self = self::getInstance();
+		
+		$path			= new \stdClass();
+		$path->title	= $title;
+		$path->url		= $url;
+		$path->active	= TRUE;
+
+		// just last active path will remains active
+		foreach ($self->paths as $p) {
+			$p->active = FALSE;
+		}
+		
+		$self->paths[]	= $path;
+		
+	}
+	
+	/**
+	 * Adds a new sub-path to Breadcrumb. Chainable method.
 	 * 
+	 * @param	string	Title of the sub-path.
+	 * @param	string	Destination URL (default NULL).
 	 * @return	Breadcrumb
 	 */
 	public function addPath($title, $url=NULL) {
