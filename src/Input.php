@@ -141,7 +141,7 @@ class Input {
 	 * @param	string	HTTP parameter name.
 	 * @param	string	Default value to return, in case of null or empty.
 	 *
-	 * @return	DateTime
+	 * @return	\DateTime
 	 */
 	public static function getDate($name, $default=NULL) {
 		
@@ -156,7 +156,7 @@ class Input {
 	 * @param	string	HTTP parameter name.
 	 * @param	string	Default value to return, in case of null or empty.
 	 *
-	 * @return	DateTime
+	 * @return	\DateTime
 	 */
 	public static function getDatetime($name, $default=NULL) {
 		
