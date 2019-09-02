@@ -126,7 +126,7 @@ class Input {
 	 * @param	string	HTTP parameter name.
 	 * @param	string	Default value to return, in case of null or empty.
 	 *
-	 * @return	int
+	 * @return	bool
 	 */
 	public static function getBool($name, $default=NULL) {
 		
@@ -141,7 +141,7 @@ class Input {
 	 * @param	string	HTTP parameter name.
 	 * @param	string	Default value to return, in case of null or empty.
 	 *
-	 * @return	int
+	 * @return	DateTime
 	 */
 	public static function getDate($name, $default=NULL) {
 		
@@ -156,7 +156,7 @@ class Input {
 	 * @param	string	HTTP parameter name.
 	 * @param	string	Default value to return, in case of null or empty.
 	 *
-	 * @return	int
+	 * @return	DateTime
 	 */
 	public static function getDatetime($name, $default=NULL) {
 		
@@ -208,11 +208,12 @@ class Input {
 	/**
 	 * Casts a value to a type string, integer or boolean.
 	 * 
-	 * @param	string	Type string, int or bool, will be casted.
+	 * @param	string	Variable value.
+	 * @param	string	Varible type.
 	 * 
 	 * @return	multitype
 	 */
-	private static function castTo($val, $type) {
+	private static function castTo($val, string $type) {
 		
 		$app = Application::getInstance();
 		
