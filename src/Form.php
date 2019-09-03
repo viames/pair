@@ -6,15 +6,15 @@ class Form {
 	
 	/**
 	 * List of all controls added to this form.
-	 * @var array:multitype
+	 * @var FormControl[]
 	 */
-	private $controls = array();
+	private $controls = [];
 	
 	/**
 	 * List of class to add on each controls.
-	 * @var array:string
+	 * @var string[]
 	 */
-	private $controlClasses = array();
+	private $controlClasses = [];
 
 	/**
 	 * Adds an FormControlInput object to this Form object. Default type is Text.
@@ -22,10 +22,9 @@ class Form {
 	 * 
 	 * @param	string	Control name.
 	 * @param	array	List of attributes.
-	 * 
 	 * @return	FormControlInput
 	 */
-	public function addInput($name, $attributes = array()) {
+	public function addInput(string $name, array $attributes = []): FormControlInput {
 
 		$control = new FormControlInput($name, $attributes);
 		$this->addControl($control);
@@ -39,10 +38,9 @@ class Form {
 	 *
 	 * @param	string	Control name.
 	 * @param	array	List of attributes.
-	 *
 	 * @return	FormControlSelect
 	 */
-	public function addSelect($name, $attributes = array()) {
+	public function addSelect(string $name, array $attributes = []): FormControlSelect {
 	
 		$control = new FormControlSelect($name, $attributes);
 		$this->addControl($control);
@@ -56,10 +54,9 @@ class Form {
 	 *
 	 * @param	string	Control name.
 	 * @param	array	List of attributes.
-	 *
 	 * @return	FormControlTextarea
 	 */
-	public function addTextarea($name, $attributes = array()) {
+	public function addTextarea(string $name, array $attributes = []): FormControlTextarea {
 	
 		$control = new FormControlTextarea($name, $attributes);
 		$this->addControl($control);
@@ -73,10 +70,9 @@ class Form {
 	 *
 	 * @param	string	Control name.
 	 * @param	array	List of attributes.
-	 *
 	 * @return	FormControlButton
 	 */
-	public function addButton($name, $attributes = array()) {
+	public function addButton(string $name, array $attributes = array()): FormControlButton {
 	
 		$control = new FormControlButton($name, $attributes);
 		$this->addControl($control);
@@ -88,7 +84,7 @@ class Form {
 	/**
 	 * Add a FormControl object to controls list of this Form.
 	 * 
-	 * @param	multitype	FormControl children class object.
+	 * @param	mixed	FormControl children class object.
 	 */
 	private function addControl($control) {
 		
@@ -99,11 +95,10 @@ class Form {
 	/**
 	 * Return the control object by its name.
 	 * 
-	 * @param	string	Control name
-	 * 
+	 * @param	string	Control name.
 	 * @return	FormControl|NULL
 	 */
-	public function getControl($name) {
+	public function getControl($name): ?FormControl {
 		
 		if (substr($name, -2) == '[]') {
 			$name = substr($name, 0, -2);
@@ -168,9 +163,10 @@ class Form {
 	/**
 	 * Assigns all attributes of passed ActiveRecord children to controls with same name.
 	 * 
-	 * @param	multitype	An object inherited by ActiveRecord.
+	 * @param	mixed	An object inherited by ActiveRecord.
+	 * @return	ActiveRecord
 	 */
-	public function setValuesByObject($object) {
+	public function setValuesByObject(ActiveRecord $object): void {
 
 		if (is_object($object) and is_subclass_of($object, 'Pair\ActiveRecord')) {
 
@@ -190,9 +186,9 @@ class Form {
 	/**
 	 * Returns all FormControl subclass objects registered in this Form object. 
 	 * 
-	 * @return array:FormControl (subclasses)
+	 * @return FormControl[]
 	 */
-	public function getAllControls() {
+	public function getAllControls(): array {
 	
 		return $this->controls;
 	
@@ -202,10 +198,9 @@ class Form {
 	 * Creates an HTML form control getting its object by its name.
 	 *
 	 * @param	string	HTML name for this control.
-	 *
 	 * @return	string
 	 */
-	public function renderControl($name) {
+	public function renderControl(string $name): string {
 
 		// gets control object
 		$control = $this->getControl($name);
@@ -217,8 +212,12 @@ class Form {
 				$control->addClass(implode(' ', $this->controlClasses));
 			}
 			
-			print $control->render();
+			return $control->render();
 			
+		} else {
+
+			return '';
+
 		}
 		
 	}
@@ -227,8 +226,9 @@ class Form {
 	 * Print the HTML code of a form control by its name.
 	 *
 	 * @param	string	HTML name of the wanted control.
+	 * @return	void
 	 */
-	public function printControl($name) {
+	public function printControl($name): void {
 		
 		print $this->renderControl($name);
 		
@@ -479,15 +479,15 @@ abstract class FormControl {
 	
 	/**
 	 * List of optional attributes as associative array.
-	 * @var array:string
+	 * @var string[]
 	 */
-	private $attributes = array();
+	private $attributes = [];
 	
 	/**
 	 * Container for all control CSS classes.
-	 * @var array:string
+	 * @var string[]
 	 */
-	private $class = array();
+	private $class = [];
 	
 	/**
 	 * Optional label for this control.
@@ -501,7 +501,7 @@ abstract class FormControl {
 	 * @param	string	Control name.
 	 * @param	array	Optional attributes (tag=>value).
 	 */
-	public function __construct($name, $attributes = array()) {
+	public function __construct(string $name, array $attributes=[]) {
 		
 		// remove [] from array and set TRUE to arrayName property
 		if (substr($name, -2) == '[]') {
@@ -575,10 +575,9 @@ abstract class FormControl {
 	 * Sets value for this control subclass.
 	 * 
 	 * @param	mixed		Value for this control.
-	 * 
 	 * @return	FormControl
 	 */
-	public function setValue($value) {
+	public function setValue($value): FormControl {
 
 		// special behavior for DateTime
 		if (is_a($value, 'DateTime') and is_a($this, 'Pair\FormControlInput')) {
@@ -603,7 +602,13 @@ abstract class FormControl {
 
 	}
 
-	public function setId($id) {
+	/**
+	 * Set the control ID.
+	 * 
+	 * @param	string	Control identifier.
+	 * @return	FormControl
+	 */
+	public function setId(string $id): FormControl {
 	
 		$this->id = $id;
 		return $this;
@@ -616,7 +621,7 @@ abstract class FormControl {
 	 * 
 	 * @return	FormControl subclass
 	 */
-	public function setRequired() {
+	public function setRequired(): FormControl {
 		
 		$this->required = TRUE;
 		return $this;
@@ -626,9 +631,9 @@ abstract class FormControl {
 	/**
 	 * Sets this field as disabled only. Chainable method.
 	 * 
-	 * @return	FormControl subclass
+	 * @return	FormControl
 	 */
-	public function setDisabled() {
+	public function setDisabled(): FormControl {
 		
 		$this->disabled = TRUE;
 		return $this;
@@ -640,7 +645,7 @@ abstract class FormControl {
 	 * 
 	 * @return	FormControl subclass
 	 */
-	public function setReadonly() {
+	public function setReadonly(): FormControl {
 		
 		$this->readonly = TRUE;
 		return $this;
@@ -652,7 +657,7 @@ abstract class FormControl {
 	 * 
 	 * @return	FormControl subclass
 	 */
-	public function setArrayName() {
+	public function setArrayName(): FormControl {
 		
 		$this->arrayName = TRUE;
 		return $this;
@@ -664,7 +669,7 @@ abstract class FormControl {
 	 * 
 	 * @return	FormControl subclass
 	 */
-	public function setPlaceholder($text) {
+	public function setPlaceholder(string $text): FormControl {
 
 		$this->placeholder = $text;
 		return $this;
@@ -678,7 +683,7 @@ abstract class FormControl {
 	 *
 	 * @return	FormControl subclass
 	 */
-	public function setMinLength($length) {
+	public function setMinLength($length): FormControl {
 		
 		$this->minLength = (int)$length;
 		return $this;
@@ -692,7 +697,7 @@ abstract class FormControl {
 	 *
 	 * @return	FormControl subclass
 	 */
-	public function setMaxLength($length) {
+	public function setMaxLength($length): FormControl {
 	
 		$this->maxLength = (int)$length;
 		return $this;
@@ -707,7 +712,7 @@ abstract class FormControl {
 	 * 
 	 * @return	FormControl subclass
 	 */
-	public function addClass($class) {
+	public function addClass($class): FormControl {
 
 		// classes array
 		if (is_array($class)) {
@@ -735,7 +740,7 @@ abstract class FormControl {
 	 * 
 	 * @param	string	The text label or the uppercase translation key.
 	 */
-	public function setLabel($label) {
+	public function setLabel($label): FormControl {
 		
 		$this->label = $label;
 		
@@ -748,7 +753,7 @@ abstract class FormControl {
 	 *
 	 * @return	string
 	 */
-	public function getLabel() {
+	public function getLabel(): string {
 		
 		// no label, get it by the control’s name
 		if (!$this->label) {
@@ -773,8 +778,10 @@ abstract class FormControl {
 	
 	/**
 	 * Print the control’s label even with required-field class.
+	 * 
+	 * @return	void
 	 */
-	public function printLabel() {
+	public function printLabel(): void {
 		
 		$label = $this->getLabel();
 		
@@ -792,7 +799,7 @@ abstract class FormControl {
 	 * 
 	 * @return string
 	 */
-	protected function processProperties() {
+	protected function processProperties(): string {
 
 		$ret = '';
 

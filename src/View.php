@@ -62,7 +62,7 @@ abstract class View {
 	
 	/**
 	 * Model class object.
-	 * @var multitype
+	 * @var mixed
 	 */
 	protected $model;
 	
@@ -186,7 +186,7 @@ abstract class View {
 	 * altrimenti la proprietà del metodo, altrimenti NULL.
 	 * 
 	 * @param	string	Nome della proprietà richiesta.
-	 * @return	multitype
+	 * @return	mixed
 	 */
 	public function __get($name) {
 		
@@ -224,7 +224,7 @@ abstract class View {
 	 * Returns the requested session state variable.
 	 *
 	 * @param	integer	Variable’s name.
-	 * @return	multitype
+	 * @return	mixed
 	 */
 	final public function getState($name) {
 	

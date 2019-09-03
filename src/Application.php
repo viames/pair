@@ -15,15 +15,15 @@ class Application {
 
 	/**
 	 * List of temporary variables.
-	 * @var array:mixed
+	 * @var mixed[]
 	 */
-	private $state = array();
+	private $state = [];
 
 	/**
 	 * List of temporary variables, stored also in the browser cookie.
-	 * @var array:mixed
+	 * @var mixed[]
 	 */
-	private $persistentState = array();
+	private $persistentState = [];
 	
 	/**
 	 * Web page title, in plain text.
@@ -39,27 +39,27 @@ class Application {
 
 	/**
 	 * Contains a list of plain text script to add.
-	 * @var array:string
+	 * @var string[]
 	 */
-	private $scriptContent = array();
+	private $scriptContent = [];
 
 	/**
 	 * Contains all external script files to load.
-	 * @var array:stdClass
+	 * @var \stdClass[]
 	 */
-	private $scriptFiles = array();
+	private $scriptFiles = [];
 
 	/**
 	 * Contains all CSS files to load.
-	 * @var array:string
+	 * @var string[]
 	 */
-	private $cssFiles = array();
+	private $cssFiles = [];
 
 	/**
 	 * Message list.
-	 * @var array:stdClass
+	 * @var \stdClass[]
 	 */
-	private $messages = array();
+	private $messages = [];
 
 	/**
 	 * Currently connected user.
@@ -71,7 +71,7 @@ class Application {
 	 * Contents variables for layouts.
 	 * @var array
 	 */
-	private $vars = array();
+	private $vars = [];
 
 	/**
 	 * URL of the active menu item.
@@ -226,7 +226,7 @@ class Application {
 	 * otherwise the properties of the method, otherwise NULL
 	 *
 	 * @param	string	Requested property’s name.
-	 * @return	multitype
+	 * @return	mixed
 	 */
 	public function __get($name) {
 		
@@ -364,9 +364,9 @@ class Application {
 	 * 
 	 * @param	string	State’s name.
 	 * 
-	 * @return	multitype|NULL
+	 * @return	mixed|NULL
 	 */
-	final public function getState($name) {
+	final public function getState(string $name) {
 		
 		if (array_key_exists($name, $this->state)) {
 			return $this->state[$name];
@@ -530,7 +530,7 @@ class Application {
 	 * @param	string	Location URL.
 	 * @param	bool	If TRUE, will avoids to add base url (default FALSE).
 	 */
-	public function redirect($url, $externalUrl=FALSE) {
+	public function redirect(string $url, bool $externalUrl=FALSE) {
 	
 		// stores enqueued messages for next retrievement
 		$this->makeQueuedMessagesPersistent();
@@ -597,7 +597,7 @@ class Application {
 	 * 
 	 * @param	string	Name of module that executes API requests. Default is “api”.
 	 */
-	public function runApi($name = 'api') {
+	public function runApi(string $name = 'api') {
 
 		$router = Router::getInstance();
 
@@ -833,7 +833,7 @@ class Application {
 	 * @param	string	State name.
 	 * @param	mixed	State value (any variable type).
 	 */
-	public function setPersistentState($name, $value) {
+	public function setPersistentState(string $name, $value) {
 		
 		$name = static::getCookiePrefix() . ucfirst($name);
 		
@@ -850,7 +850,7 @@ class Application {
 	 * 
 	 * @return	mixed
 	 */
-	public function getPersistentState($name) {
+	public function getPersistentState(string $name) {
 	
 		$name = static::getCookiePrefix() . ucfirst($name);
 		
@@ -869,7 +869,7 @@ class Application {
 	 * 
 	 * @param	string	State name.
 	 */
-	public function unsetPersistentState($name) {
+	public function unsetPersistentState(string $name) {
 		
 		$name = static::getCookiePrefix() . ucfirst($name);
 		
@@ -902,7 +902,7 @@ class Application {
 	 * 
 	 * @return	string
 	 */
-	public static function getCookiePrefix() {
+	public static function getCookiePrefix(): string {
 		
 		return str_replace(' ', '', ucwords(str_replace('_', ' ', PRODUCT_NAME)));
 		

@@ -117,9 +117,9 @@ class Utilities {
 	/**
 	 * Get the backtrace and assemble an array with comprehensible items.
 	 *
-	 * @return array:string
+	 * @return string[]
 	 */
-	public static function getDebugBacktrace() {
+	public static function getDebugBacktrace(): array {
 	
 		// get the backtrace and remove the error handler entry
 		$backtrace = debug_backtrace();
@@ -153,8 +153,8 @@ class Utilities {
 	/**
 	 * Creates a plain text string from any variable type.
 	 * 
-	 * @param	multitype	Variable of any type.
-	 * @param	bool		Flag to hide var type.
+	 * @param	mixed	Variable of any type.
+	 * @param	bool	Flag to hide var type.
 	 * @return	string
 	 */
 	public static function varToText($var, bool $showTypes=TRUE): string {
@@ -203,7 +203,7 @@ class Utilities {
 	 *  
 	 * @return	string
 	 */
-	public static function cropText($text, $length) {
+	public static function cropText($text, $length): string {
 		
 		// remove HTML tags
 		$text = strip_tags($text);
@@ -226,8 +226,9 @@ class Utilities {
 	 * Proxy method to print a JSON error message.
 	 * 
 	 * @param	string	Error message to print on user.
+	 * @return	void
 	 */
-	public static function printJsonError($message) {
+	public static function printJsonError(string $message): void {
 
 		self::printJsonMessage($message, TRUE);
 	
@@ -241,8 +242,8 @@ class Utilities {
 	 * @param	bool	Error flag, set TRUE to notice about error (optional).
 	 * @param	bool	Error code (optional).
 	 */
-	public static function printJsonMessage($message, $error=FALSE, $code=NULL) {
-
+	public static function printJsonMessage(string $message, $error=FALSE, $code=NULL) {
+	
 		$logger = Logger::getInstance();
 		
 		$ret			= new \stdClass();
@@ -290,7 +291,7 @@ class Utilities {
 	 * 
 	 * @return	string
 	 */
-	public static function convertDateToIso($dbDate) {
+	public static function convertDateToIso(string $dbDate): string {
 
 		$date = new \DateTime($dbDate);
 		return $date->format(DATE_W3C);
@@ -304,7 +305,7 @@ class Utilities {
 	 * @param	bool	If this flag is TRUE, removes hours from result; default is FALSE.
 	 * @return	string
 	 */
-	public static function convertDateToHuman($dbDate, $removeHours=FALSE) {
+	public static function convertDateToHuman(string $dbDate, bool $removeHours=FALSE): string {
 
 		$t = Translator::getInstance();
 
@@ -323,7 +324,7 @@ class Utilities {
 	 * 
 	 * @return	string
 	 */
-	public static function convertToDbDate(\DateTime $dateTime) {
+	public static function convertToDbDate(\DateTime $dateTime): string {
 		
 		$currentTz = $dateTime->getTimezone();
 		$dateTime->setTimezone(new \DateTimeZone(BASE_TIMEZONE));
@@ -341,7 +342,7 @@ class Utilities {
 	 * 
 	 * @return	string
 	 */
-	public static function convertToDbDatetime(\DateTime $dateTime) {
+	public static function convertToDbDatetime(\DateTime $dateTime): string {
 	
 		$currentTz = $dateTime->getTimezone();
 		$dateTime->setTimezone(new \DateTimeZone(BASE_TIMEZONE));
@@ -361,7 +362,7 @@ class Utilities {
 	 * 
 	 * @return	int
 	 */
-	public static function timestampFromDatepicker($date, $hour=NULL, $minute=NULL, $second=NULL) {
+	public static function timestampFromDatepicker(string $date, int $hour=NULL, int $minute=NULL, int $second=NULL): ?int {
 		
 		/*
 		 * TODO verify result with different timezones
@@ -379,7 +380,7 @@ class Utilities {
 		$y = substr($date, 6, 4);
 		$time = mktime($hour, $minute, $second, $m, $d, $y);
 		
-		return ($time ? $time : null);
+		return ($time ? $time : NULL);
 		
 	}
 	
@@ -389,8 +390,9 @@ class Utilities {
 	 * @param	string	Message title.
 	 * @param	string	Message text.
 	 * @param	string	Type, can be info, error or warning.
+	 * @return	void
 	 */
-	public static function printJsMessage($title, $message, $type='info') {
+	public static function printJsMessage(string $title, string $message, string $type='info'): void {
 	
 		print self::getJsMessage($title, $message, $type);
 		
@@ -402,10 +404,9 @@ class Utilities {
 	 * @param	string	Message title.
 	 * @param	string	Message text.
 	 * @param	string	Type, can be info, error or warning.
-	 * 
 	 * @return	string
 	 */
-	public static function getJsMessage($title, $message, $type='info') {
+	public static function getJsMessage(string $title, string $message, string $type='info'): string {
 	
 		$types = array('info', 'warning', 'error');
 		if (!in_array($type, $types)) $type = 'info';
@@ -426,7 +427,7 @@ class Utilities {
 	 * 
 	 * @return	string
 	 */
-	public static function getTimeago($date) {
+	public static function getTimeago($date): string {
 
 		$app = Application::getInstance();
 		

@@ -33,7 +33,7 @@ class Pagination {
 	 * 
 	 * @param	string	Desired value name.
 	 * 
-	 * @return	multitype
+	 * @return	mixed
 	 */
 	public function __get($name) {
 	
@@ -66,8 +66,8 @@ class Pagination {
 	/**
 	 * Set value for any private property.
 	 * 
-	 * @param	string		Property’s name.
-	 * @param	multitype	Value.
+	 * @param	string	Property’s name.
+	 * @param	mixed	Value.
 	 */
 	public function __set($name, $value) {
 	

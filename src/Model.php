@@ -154,9 +154,9 @@ abstract class Model {
 	 * @param	string	Ordering db field.
 	 * @param	bool	Sorting direction ASC or DESC (optional)
 	 * 
-	 * @return	array:multitype
+	 * @return	mixed[]
 	 */
-	public function getActiveRecordObjects($class, $orderBy=NULL, $descOrder=FALSE) {
+	public function getActiveRecordObjects($class, ?string $orderBy=NULL, $descOrder=FALSE) {
 
 		if (!class_exists($class) or !is_subclass_of($class, 'Pair\ActiveRecord')) {
 			return array();

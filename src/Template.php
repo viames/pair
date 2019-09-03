@@ -87,7 +87,7 @@ class Template extends ActiveRecord implements PluginInterface {
 	 *
 	 * @param	string	Requested property’s name.
 	 * 
-	 * @return	multitype
+	 * @return	mixed
 	 * 
 	 * @deprecated
 	 */

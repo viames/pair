@@ -27,13 +27,13 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 	/**
 	 * List of special properties that will be cast (name => type).
-	 * @var array:string
+	 * @var string[]
 	 */
 	private $typeList = [];
 	
 	/**
 	 * Cache for any variable type.
-	 * @var array:multitype
+	 * @var mixed[]
 	 */
 	private $cache = [];
 	
@@ -974,9 +974,9 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * 
 	 * @param	string	Related property name.
 	 * 
-	 * @return	multitype|NULL
+	 * @return	ActiveRecord|NULL
 	 */
-	final public function getRelated(string $relatedProperty) {
+	final public function getRelated(string $relatedProperty): ?ActiveRecord {
 		
 		$cacheName = $relatedProperty . 'RelatedObject';
 		
@@ -1064,7 +1064,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * @param	string	Related property name, belongs to this object.
 	 * @param	string	Wanted property name, belongs to related object.
 	 *
-	 * @return	multitype|NULL
+	 * @return	mixed|NULL
 	 */
 	final public function getRelatedProperty(string $relatedProperty, string $wantedProperty) {
 		
@@ -1084,7 +1084,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * 
 	 * @param	string	Field name.
 	 * 
-	 * @return	NULL|stdClass
+	 * @return	NULL|\stdClass
 	 */
 	final private static function getColumnType(string $fieldName): ?\stdClass {
 		
@@ -1724,7 +1724,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @param	string	Name of the cached variable.
 	 *
-	 * @return	NULL|multitype
+	 * @return	NULL|mixed
 	 */
 	final public function getCache($name) {
 	
@@ -1735,10 +1735,11 @@ abstract class ActiveRecord implements \JsonSerializable {
 	/**
 	 * Adds to object’s cache a variable.
 	 * 
-	 * @param	string		Name of the cached variable.
-	 * @param	multitype	Variable value to cache.
+	 * @param	string	Name of the cached variable.
+	 * @param	mixed	Variable value to cache.
+	 * @return	void
 	 */
-	final public function setCache($name, $value) {
+	final public function setCache(string $name, $value): void {
 	
 		$this->cache[$name] = $value;
 	
@@ -1751,7 +1752,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * 
 	 * @return	bool
 	 */
-	final public function issetCache($name) {
+	final public function issetCache(string $name): bool {
 	
 		return ((is_array($this->cache) and array_key_exists($name, $this->cache)) ? TRUE : FALSE);
 	
@@ -1762,10 +1763,10 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @param	string	Name of the cached variable.
 	 */
-	final public function unsetCache($name) {
+	final public function unsetCache(string $name) {
 	
 		if (is_array($this->cache) and isset($this->cache[$name])) {
-		unset ($this->cache[$name]);
+			unset ($this->cache[$name]);
 		}
 	
 	}
@@ -1779,7 +1780,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * 
 	 * @return	string|NULL
 	 */
-	final public function formatDateTime($prop, $format=NULL) {
+	final public function formatDateTime(string $prop, string $format=NULL): ?string {
 
 		if (!is_a($this->$prop, 'DateTime')) {
 			return NULL;
@@ -1946,7 +1947,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	/**
 	 * Utility that works like \get_object_vars() but restricted to bound properties.
 	 *   
-	 * @return array:multitype
+	 * @return mixed[]
 	 */
 	final public function getAllProperties() {
 		

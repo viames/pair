@@ -15,7 +15,7 @@ class Input {
 	 * @param	string	Type string -default-, int, bool, date or datetime will be casted.
 	 * @param	string	Default value to return, in case of null or empty.
 	 * 
-	 * @return	multitype
+	 * @return	mixed
 	 */
 	public static function get($name, $type='string', $default=NULL) {
 
@@ -208,10 +208,9 @@ class Input {
 	/**
 	 * Casts a value to a type string, integer or boolean.
 	 * 
-	 * @param	string	Variable value.
-	 * @param	string	Varible type.
-	 * 
-	 * @return	multitype
+	 * @param	mixed	Variable value.
+	 * @param	string	Variable type.
+	 * @return	mixed
 	 */
 	private static function castTo($val, string $type) {
 		
@@ -272,13 +271,13 @@ class Input {
 		
 	}
 
-	public static function usingCustomDatepicker() {
+	public static function usingCustomDatepicker(): bool {
 
 	    return !(isset($_COOKIE['InputTypesDate']) and $_COOKIE['InputTypesDate']);
 
 	}
 
-    public static function usingCustomDatetimepicker() {
+    public static function usingCustomDatetimepicker(): bool {
 
         return !(isset($_COOKIE['InputTypesDatetime']) and $_COOKIE['InputTypesDatetime']);
 

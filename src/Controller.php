@@ -18,7 +18,7 @@ abstract class Controller {
 	
 	/**
 	 * Model for this MVC stack.
-	 * @var multitype
+	 * @var mixed
 	 */
 	protected $model;
 	
@@ -252,7 +252,7 @@ abstract class Controller {
 	/**
 	 * Return View object related to this controller.
 	 * 
-	 * @return	multitype
+	 * @return	mixed
 	 * 
 	 * @throws Exception
 	 */
