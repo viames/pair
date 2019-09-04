@@ -243,7 +243,7 @@ abstract class Controller {
 	 * @param	string	Location URL.
 	 * @param	bool	If TRUE, will avoids to add base url (default FALSE).
 	 */
-	public function redirect($url, $absoluteUrl=FALSE) {
+	public function redirect(string $url, bool $absoluteUrl=FALSE) {
 
 		$this->app->redirect($url, $absoluteUrl);
 
@@ -295,7 +295,7 @@ abstract class Controller {
 			
 			// get a fall-back referer or default and redirect the user
 			$url = !isset($_SERVER['REFERER']) ? $_SERVER['REFERER'] : BASE_HREF;
-			$this->redirect($url, TRUE);
+			$this->redirect((string)$url, TRUE);
 			
 		}
 		
