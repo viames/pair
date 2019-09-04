@@ -90,8 +90,8 @@ class Router {
 		// get the BASE_URI constant defined in config.php file
 		$this->baseUrl = BASE_URI;
 
-		// request URL
-		$this->url = $_SERVER['REQUEST_URI'];
+		// request URL, NULL for CLI
+		$this->url = Application::isCli() ? NULL : $_SERVER['REQUEST_URI'];
 		
 		// remove baseUrl from URL
 		if ($this->baseUrl and strpos($this->url,$this->baseUrl)===0) {
@@ -235,7 +235,7 @@ class Router {
 			}
 
 			// compare current URL to regex
-			if ($this->routePathMatchesUrl($r->path, $this->url)) {
+			if (!Application::isCli() and $this->routePathMatchesUrl($r->path, $this->url)) {
 				
 				// assign action
 				$this->action = $r->action;

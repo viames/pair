@@ -175,9 +175,14 @@ class Application {
 			define('BASE_TIMEZONE', ($tz ? $tz : 'UTC'));
 		}
 		
+		// base URL is NULL
+		if (static::isCli()) {
+			$baseHref = NULL;
 		// define full URL to web page index with trailing slash or NULL
-		$protocol = ($_SERVER['SERVER_PORT'] == 443 or (isset($_SERVER['HTTPS']) and $_SERVER['HTTPS'] !== 'off')) ? "https://" : "http://";
-		$baseHref = isset($_SERVER['HTTP_HOST']) ? $protocol . $_SERVER['HTTP_HOST'] . BASE_URI . '/' : NULL;
+		} else {
+			$protocol = ($_SERVER['SERVER_PORT'] == 443 or (isset($_SERVER['HTTPS']) and $_SERVER['HTTPS'] !== 'off')) ? "https://" : "http://";
+			$baseHref = isset($_SERVER['HTTP_HOST']) ? $protocol . $_SERVER['HTTP_HOST'] . BASE_URI . '/' : NULL;
+		}
 		define('BASE_HREF', $baseHref);
 		
 		// error management
@@ -716,7 +721,8 @@ class Application {
 		// session time length in minutes
 		$sessionTime = Options::get('session_time');
 		
-		if (in_array($router->module, $this->guestModules)) {
+		// stop processing if it is a CLI or guest module
+		if (static::isCli() or in_array($router->module, $this->guestModules)) {
 			return;
 		}
 		
@@ -1100,6 +1106,15 @@ class Application {
 			return FALSE;
 		}
 		
+	}
+
+	/**
+	 * Return TRUE if Pair was invoked by CLI.
+	 */
+	final public static function isCli(): bool {
+
+		return (php_sapi_name() === 'cli');
+
 	}
 
 }
