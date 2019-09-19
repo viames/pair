@@ -283,6 +283,21 @@ class Utilities {
 		die();
 		
 	}
+
+	/**
+	 * Forces the HTTP response as download of an XML file 
+	 * 
+	 * @param	string	string containing XML data.
+	 * @param	string	name that the downloaded file will have on client.
+	 */
+	public static function printXmlData(string $data, string $filename)
+	{
+		header('Content-type: text/xml');
+		header('Content-Disposition: attachment; filename="' . $filename . '"');
+
+		print $data;
+		die();
+	}
 	
 	/**
 	 * Convert date from DB format to W3C format.
