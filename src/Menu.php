@@ -94,6 +94,7 @@ class Menu {
 	public function render(): string {
 
 		$app = Application::getInstance();
+		$this->activeItem = $app->activeMenuItem;
 
 		$ret = '';
 
@@ -108,73 +109,17 @@ class Menu {
 				
 				// single menu item rendering
 				case 'single':
-
-					$class  = ($item->url == $app->activeMenuItem ? ' active' : '');
-
-					if ($item->class) {
-						$class .= ' ' . $item->class;
-					}
-
-					// if url set <a>, otherwise set <div>
-					$ret .= $item->url ? '<a href="' . $item->url . '"' : '<div'; 
-					
-					$ret .= ' class="item' . $class . '"' .
-						($item->target ? ' target="' . $item->target . '"' : '') .
-						(!is_null($item->badge) ? ' data-badge="' . (int)$item->badge . '" ' : '') .
-						'>' .
-						(!is_null($item->badge) ? '<span class="badge">' . $item->badge . '</span>' : '') .
-						'<span class="title">' . $item->title . '</span>';
-
-					// if url close </a>, otherwise close </div>
-					$ret .= $item->url ? '</a>' : '</div>'; 
+					$ret .= $this->renderSingle($item);
 					break;
 
 				// menu item with many sub-items rendering
 				case 'multi':
-
-					$links		= '';
-					$menuClass	= '';
-
-					// builds each sub-item link
-					foreach ($item->list as $i) {
-
-						// check on permissions
-						if (isset($i->url) and !(is_a($app->currentUser, 'Pair\User') and !$app->currentUser->canAccess($i->url))) {
-							continue;
-						}
-						
-						if ($i->url == $app->activeMenuItem) {
-							$class		= ' active';
-							$menuClass	= ' open';
-						} else {
-							$class		= '';
-						}
-
-						if ($i->class) {
-							$class .= ' ' . $i->class;
-						}
-
-						$links .= '<a class="item' . $class . '" href="' . $i->url . '">' .
-							(!is_null($i->badge) ? '<span class="badge">' . $i->badge . '</span>' : '') .
-							'<span class="title">' . $i->title . '</span>' .
-							'</a>';
-					}
-					
-					// prevent empty multi-menu
-					if ('' == $links) {
-						break;
-					}
-					
-					// assembles the multi-menu
-					$ret .= '<div class="dropDownMenu' . $menuClass . '">' .
-						'<div class="title">' . $item->title . '</div>' .
-						'<div class="itemGroup">' . $links . '</div></div>';
+					$ret .= $this->renderMulti($item);
 					break;
-					
-				case 'separator':
 
-					if (!$item->title) $item->title = '&nbsp;';
-					$ret .= '<div class="separator">' . $item->title . '</div>';
+				// menu separator rendering
+				case 'separator':
+					$ret .= $this->renderSeparator($item);
 					break;
 
 			}
@@ -182,6 +127,100 @@ class Menu {
 		}
 
 		return $ret;
+
+	}
+
+	/**
+	 * Single menu item rendering.
+	 * 
+	 * @param	\stdClass Menu item object.
+	 * @return	string
+	 */
+	private function renderSingle(\stdClass $item): string {
+
+		$class  = ($item->url == $app->activeMenuItem ? ' active' : '');
+
+		if ($item->class) {
+			$class .= ' ' . $item->class;
+		}
+
+		// if url set <a>, otherwise set <div>
+		$render = $item->url ? '<a href="' . $item->url . '"' : '<div'; 
+		
+		$render .= ' class="item' . $class . '"' .
+			($item->target ? ' target="' . $item->target . '"' : '') .
+			(!is_null($item->badge) ? ' data-badge="' . (int)$item->badge . '" ' : '') .
+			'>' .
+			(!is_null($item->badge) ? '<span class="badge">' . $item->badge . '</span>' : '') .
+			'<span class="title">' . $item->title . '</span>';
+
+		// if url close </a>, otherwise close </div>
+		$render = $item->url ? '</a>' : '</div>';
+
+		return $render;
+
+	}
+
+	/**
+	 * Menu item with many sub-items rendering.
+	 * 
+	 * @param	\stdClass Menu item object.
+	 * @return	string
+	 */
+	private function renderMulti(\stdClass $item): string {
+
+		$app = Application::getInstance();
+
+		$links		= '';
+		$menuClass	= '';
+
+		// builds each sub-item link
+		foreach ($item->list as $i) {
+
+			// check on permissions
+			if (isset($i->url) and !(is_a($app->currentUser, 'Pair\User') and !$app->currentUser->canAccess($i->url))) {
+				return '';
+			}
+			
+			if ($i->url == $this->activeItem) {
+				$class		= ' active';
+				$menuClass	= ' open';
+			} else {
+				$class		= '';
+			}
+
+			if ($i->class) {
+				$class .= ' ' . $i->class;
+			}
+
+			$links .= '<a class="item' . $class . '" href="' . $i->url . '">' .
+				(!is_null($i->badge) ? '<span class="badge">' . $i->badge . '</span>' : '') .
+				'<span class="title">' . $i->title . '</span>' .
+				'</a>';
+		}
+		
+		// prevent empty multi-menu
+		if ('' == $links) {
+			return '';
+		}
+		
+		// assembles the multi-menu and return
+		return '<div class="dropDownMenu' . $menuClass . '">' .
+			'<div class="title">' . $item->title . '</div>' .
+			'<div class="itemGroup">' . $links . '</div></div>';
+
+	}
+
+	/**
+	 * Menu separator rendering.
+	 * 
+	 * @param	\stdClass Menu item object.
+	 * @return	string
+	 */
+	private function renderSeparator(\stdClass $item): string {
+
+		if (!$item->title) $item->title = '&nbsp;';
+		return '<div class="separator">' . $item->title . '</div>';
 
 	}
 
