@@ -437,7 +437,7 @@ class Database {
 			if (!$obj) $obj = NULL;
 			
 			// logger
-			$this->logParamQuery($this->query, (bool)$obj, $params);
+			$this->logParamQuery($this->query, (int)(bool)$obj, $params);
 
 		} catch (\PDOException $e) {
 
@@ -978,13 +978,25 @@ class Database {
 		
 		try {
 			
+			// set names
 			$this->handler->exec('SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci');
 	
-			$this->handler->exec(
-				'SET character_set_client = "utf8mb4", character_set_connection = "utf8mb4",' . 
-				' character_set_database = "utf8mb4", character_set_results = "utf8mb4",' .
-				' character_set_server = "utf8mb4", collation_connection = "utf8mb4_unicode_ci",' .
-				' collation_database = "utf8mb4_unicode_ci", collation_server = "utf8mb4_unicode_ci"');
+			// prepare query to discover db user privileges
+			$stat = $this->handler->prepare('SELECT `PRIVILEGE_TYPE` FROM information_schema.user_privileges' .
+				' WHERE `GRANTEE` = \'' . DB_USER . '\'@\'' . DB_HOST . '\'');
+			
+			// get user privileges
+			$privilegeType = $stat->fetch(\PDO::FETCH_COLUMN);
+
+			if (in_array($privilegeType, ['SUPER', 'SYSTEM_VARIABLES_ADMIN', 'SESSION_VARIABLES_ADMIN'])) {
+
+				$this->handler->exec(
+					'SET character_set_client = "utf8mb4", character_set_connection = "utf8mb4",' . 
+					' character_set_database = "utf8mb4", character_set_results = "utf8mb4",' .
+					' character_set_server = "utf8mb4", collation_connection = "utf8mb4_unicode_ci",' .
+					' collation_database = "utf8mb4_unicode_ci", collation_server = "utf8mb4_unicode_ci"');
+					
+			}
 		
 		} catch (\Exception $e) {
 			
@@ -992,7 +1004,6 @@ class Database {
 			
 		}
 			
-		
 	}
 
 	/**

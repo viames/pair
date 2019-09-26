@@ -206,19 +206,42 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 
 	/**
-	 * Prevents fatal error on unexistent functions.
+	 * Handle calls to fictitious methods that return objects linked by db’s foreign key and
+	 * prevents fatal error on unexistent functions.
 	 *
-	 * @param	string	$name
-	 * @param	array	$arguments
+	 * @param	string	Called method name.
+	 * @param	array	Arguments.
 	 */
-	public function __call($name, $arguments) {
-	
-		if (!method_exists($this, $name)) {
-			if (Application::isDevelopmentHost()) {
-				$backtrace = debug_backtrace();
-				$app = Application::getInstance();
-				$app->logError('Method '. get_called_class() . $backtrace[0]['type'] . $name .'(), which doesn’t exist, has been called by '. $backtrace[0]['file'] .' on line '. $backtrace[0]['line']);
+	public function __call(string $name, array $arguments) {
+
+		$evenClass = substr($name,3);
+
+		// check if invoked a virtual method to get a related object
+		if ('get'==substr($name,0,3) and class_exists($evenClass) and is_subclass_of($evenClass,'Pair\ActiveRecord')) {
+
+			// get inverse foreign keys list
+			$inverseForeignKeys = $this->db->getInverseForeignKeys($evenClass::TABLE_NAME);
+
+			// search for the object property that matches db fk
+			foreach ($inverseForeignKeys as $ifk) {
+
+				// when found, return the related object
+				if (static::TABLE_NAME == $ifk->TABLE_NAME) {
+					$property = $this->getMappedProperty($ifk->COLUMN_NAME);
+					return $this->getRelated($property);
+				}
+
 			}
+
+			return NULL;
+			
+		// or notify the problem only to developers
+		} else if (Application::isDevelopmentHost()) {
+			
+			$backtrace = debug_backtrace();
+			$app = Application::getInstance();
+			$app->logError('Method '. get_called_class() . $backtrace[0]['type'] . $name .'(), which doesn’t exist, has been called by '. $backtrace[0]['file'] .' on line '. $backtrace[0]['line']);
+
 		}
 	
 	}
@@ -998,7 +1021,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 		foreach ($foreignKeys as $fk) {
 			if ($fk->COLUMN_NAME == $relatedField) {
 				$referencedTable  = $fk->REFERENCED_TABLE_NAME;
-				$referencedColumn = $fk->REFERENCED_COLUMN_NAME;
 				break;
 			}
 		}
@@ -1973,7 +1995,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * 
 	 * @return	NULL|string
 	 */
-	final static public function getMappedProperty($fieldName) {
+	final static public function getMappedProperty(string $fieldName): ?string {
 		
 		$binds = static::getBinds();
 		return in_array($fieldName, $binds) ? array_search($fieldName, $binds) : NULL;
