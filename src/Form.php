@@ -318,10 +318,11 @@ class Form {
 	 * @param	string	Value selected in this select (default NULL).
 	 * @param	string	Extended parameters as associative array tag=>value.
 	 * @param	string	Prepend empty value (default NULL, no prepend).
+	 * @param	string	Optional label.
 	 * 
 	 * @return	string
 	 */
-	public static function buildSelect($name, $list, $valName='value', $textName='text', $value=NULL, $attributes=NULL, $prependEmpty=NULL) {
+	public static function buildSelect($name, $list, $valName='value', $textName='text', $value=NULL, $attributes=NULL, $prependEmpty=NULL, string $label=NULL): string {
 		
 		$control = new FormControlSelect($name, $attributes);
 		$control->setListByObjectArray($list, $valName, $textName)->setValue($value);
@@ -330,6 +331,10 @@ class Form {
 			$control->prependEmpty($prependEmpty);
 		}
 		
+		if ($label) {
+			$control->setLabel($label);
+		}
+
 		return $control->render();
 
 	}
@@ -342,14 +347,19 @@ class Form {
 	 * @param	string	Value selected in this select (default NULL).
 	 * @param	string	Extended attributes as associative array tag=>value (optional).
 	 * @param	string	Prepend empty value (default NULL, no prepend).
+	 * @param	string	Optional label.
 	 * 
 	 * @return	string
 	 */
-	public static function buildSelectFromArray($name, $list, $value=NULL, $attributes=NULL, $prependEmpty=NULL) {
+	public static function buildSelectFromArray($name, $list, $value=NULL, $attributes=NULL, $prependEmpty=NULL, string $label=NULL): string {
 
 		$control = new FormControlSelect($name, $attributes);
 		$control->setListByAssociativeArray($list)->prependEmpty($prependEmpty)->setValue($value);
 		
+		if ($label) {
+			$control->setLabel($label);
+		}
+
 		return $control->render();
 	
 	}
@@ -361,14 +371,19 @@ class Form {
 	 * @param	string	Default value (NULL default).
 	 * @param	string	Type (text -default-, email, tel, url, color, password, number, bool, date, datetime, file, address, hidden).
 	 * @param	string	More parameters as associative array tag=>value (optional).
+	 * @param	string	Optional label.
 	 * 
 	 * @return	string
 	 */
-	public static function buildInput($name, $value=NULL, $type='text', $attributes=array()) {
+	public static function buildInput($name, $value=NULL, $type='text', $attributes=array(), string $label=NULL): string {
 
 		$control = new FormControlInput($name, $attributes);
 		$control->setType($type)->setValue($value);
 		
+		if ($label) {
+			$control->setLabel($label);
+		}
+
 		return $control->render();
 		
 	}
@@ -381,14 +396,19 @@ class Form {
 	 * @param   int		Columns value.
 	 * @param	string	Default value (NULL default).
 	 * @param	string	More parameters as associative array tag=>value (optional).
+	 * @param	string	Optional label.
 	 *
 	 * @return string
 	 */
-	public static function buildTextarea($name, $rows, $cols, $value=NULL, $attributes=array()) {
+	public static function buildTextarea($name, $rows, $cols, $value=NULL, $attributes=array(), string $label=NULL): string {
 
 		$control = new FormControlTextarea($name, $attributes);
 		$control->setRows($rows)->setCols($cols)->setValue($value);
 		
+		if ($label) {
+			$control->setLabel($label);
+		}
+
 		return $control->render();
 
 	}
@@ -401,14 +421,19 @@ class Form {
 	 * @param	string	HTML name for this control (optional).
 	 * @param	string	More parameters as associative array tag=>value (optional).
 	 * @param	string	Name of Font Awesome icon class (optional).
+	 * @param	string	Optional label.
 	 * 
 	 * @return	string
 	 */
-	public static function buildButton($value,  $type='submit', $name=NULL, $attributes=array(), $faIcon=NULL) {
+	public static function buildButton($value,  $type='submit', $name=NULL, $attributes=array(), $faIcon=NULL, string $label=NULL): string {
 
 		$control = new FormControlButton($name, $attributes);
 		$control->setValue($value)->setType($type)->setFaIcon($faIcon);
 		
+		if ($label) {
+			$control->setLabel($label);
+		}
+
 		return $control->render();
 
 	}
