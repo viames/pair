@@ -2060,10 +2060,12 @@ abstract class ActiveRecord implements \JsonSerializable {
 		foreach ($binds as $property => $field) {
 
 			// check that property is in the args or that args is not defined at all
-			if (!count($args) or (isset($args[0]) and in_array($property, $args[0]))) {
+			if (!count($args) or in_array($property, $args)) {
 				
+				// get property type
 				$type = $this->getPropertyType($property);
 				
+				// if input type was set or is bool type
 				if (Input::isSent($property) or 'bool' == $type) {
 					
 					// assign the value to this object property
