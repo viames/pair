@@ -76,9 +76,9 @@ class Upload {
 	/**
 	 * Constructor, sets file uploaded variables as object properties.
 	 * 
-	 * @param	array	HTTP field name.
+	 * @param	string	HTTP field name.
 	 */
-	public function __construct($fieldName) {
+	public function __construct(string $fieldName) {
 
 		// check on field name
 		if (isset($_FILES[$fieldName])) {
@@ -117,7 +117,7 @@ class Upload {
 		
 	}
 	
-	public function __get($name) {
+	public function __get(string $name) {
 		
 		return $this->$name;
 		
@@ -132,7 +132,7 @@ class Upload {
 	 * 
 	 * @return	bool	TRUE if no errors.
 	 */
-	public function save($path, $name=NULL, $random=FALSE) {
+	public function save(string $path, string $name=NULL, bool $random=FALSE): bool {
 		
 		// fixes path if not containing trailing slash
 		Utilities::fixTrailingSlash($path);
@@ -251,9 +251,9 @@ class Upload {
 	 * Will returns Mime and Type for the file as parameter.
 	 * 
 	 * @param	string	Path to file.
-	 * @return	obj
+	 * @return	\stdClass
 	 */
-	private function getMime($file) {
+	private function getMime(string $file): \stdClass {
 		
 		$info	= new \stdClass;
 
@@ -310,15 +310,15 @@ class Upload {
 	 * Will returns percentual of upload progress with APC.
 	 * 
 	 * @param	string	UniqueID del caricamento
-	 * @return int
+	 * @return	float
 	 */
-	public static function getUploadProgress($uniqueId) {
+	public static function getUploadProgress(string $uniqueId): float {
 		
 		$upload = apc_fetch('upload_' . $uniqueId);
 		if ($upload['done']) {
-			$percent = 100;
+			$percent = 100.0;
 		} else if (0 == $upload['total']) {
-			$percent = 0;
+			$percent = 0.0;
 		} else {
 			$percent = round(($upload['current'] / $upload['total'] * 100), 0);
 		}
@@ -331,7 +331,7 @@ class Upload {
 	 * 
 	 * @param	string	Error text.
 	 */
-	private function setError($error) {
+	private function setError(string $error) {
 		
 		$this->errors[] = $error;
 		$app = Application::getInstance();
