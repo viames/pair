@@ -164,6 +164,32 @@ class Session extends ActiveRecord {
 
 	}
 
+	/**
+	 * Returns true if the session has a former user
+	 *
+	 * @return boolean
+	 */
+	public function hasFormerUser(): bool
+	{
+		return !in_array($this->formerUserId,  [null, '']);
+	}
+
+	/**
+	 * Returns the former user associated to the session, if present
+	 *
+	 * @return User|null
+	 */
+	public function getFormerUser(): ?User
+	{
+		$user = new User($this->formerUserId);
+		return $user->isLoaded() ? $user : null;
+	}
+
+	/**
+	 * Returns the current session object
+	 *
+	 * @return Session
+	 */
 	public static function getCurrent(): Session
 	{
 		return new Session(session_id());
