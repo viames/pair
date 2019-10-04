@@ -345,6 +345,49 @@ class User extends ActiveRecord {
 		return $ret;
 		
 	}
+
+	/**
+	 * Performs a login for the user passed in parameters. It returns an
+	 * stdClass with error, message and userId parameters.
+	 *
+	 * @param	\Pair\User 	$user
+	 * @param	string		$timezone	IANA time zone identifier.
+	 * @return	stdClass
+	 */
+	public static function loginAs(User $user, string $timezone): \stdClass
+	{
+
+		$ret = new \stdClass();
+
+		$ret->error		= FALSE;
+		$ret->message	= NULL;
+		$ret->userId	= NULL;
+		$ret->sessionId	= NULL;
+
+		// track ip address for audit
+		$ipAddress = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : NULL;
+
+		if ('0' == $user->enabled) {
+
+			$ret->error = TRUE;
+			$ret->message = Translator::do('USER_IS_DISABLED');
+			$user->addFault();
+
+			Audit::loginFailed($user->email, $ipAddress);
+
+			// user password doesn’t match
+		} else {
+
+			// creates session for this user
+			$user->createSession($timezone);
+			$ret->userId = $user->id;
+			$ret->sessionId = session_id();
+
+			Audit::loginSuccessful($user);
+		}
+
+		return $ret;
+	}
 	
 	/**
 	 * Adds +1 to faults counter property.
