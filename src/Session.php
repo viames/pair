@@ -84,7 +84,7 @@ class Session extends ActiveRecord {
 	 */
 	public function beforeCreate() {
 
-		$this->db->exec('DELETE FROM `sessions` WHERE `id_user` = ?', [$this->idUser]);
+		// $this->db->exec('DELETE FROM `sessions` WHERE `id_user` = ?', [$this->idUser]);
 
 	}
 	
