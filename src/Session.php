@@ -35,6 +35,13 @@ class Session extends ActiveRecord {
 	protected $timezoneName;
 
 	/**
+	 * Property that binds db field former_user_id.
+	 *
+	 * @var int
+	 */
+	protected $formerUserId;
+
+	/**
 	 * Name of related db table.
 	 * @var string
 	 */
@@ -55,7 +62,7 @@ class Session extends ActiveRecord {
 		
 		$this->bindAsFloat('timezoneOffset');
 
-		$this->bindAsInteger('idUser');
+		$this->bindAsInteger('idUser', 'formerUserId');
 			
 	}
 
@@ -71,7 +78,9 @@ class Session extends ActiveRecord {
 			'idUser'			=> 'id_user',
 			'startTime'			=> 'start_time',
 			'timezoneOffset'	=> 'timezone_offset',
-			'timezoneName'		=> 'timezone_name');
+			'timezoneName'		=> 'timezone_name',
+			'formerUserId'		=> 'former_user_id'
+		);
 		
 		return $varFields;
 		
@@ -153,6 +162,11 @@ class Session extends ActiveRecord {
 
 		return ($user->isLoaded() ? $user : NULL);
 
+	}
+
+	public static function getCurrent(): Session
+	{
+		return new Session(session_id());
 	}
 	
 }

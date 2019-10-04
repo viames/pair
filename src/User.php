@@ -354,7 +354,7 @@ class User extends ActiveRecord {
 	 * @param	string		$timezone	IANA time zone identifier.
 	 * @return	stdClass
 	 */
-	public static function loginAs(User $user, string $timezone): \stdClass
+	public static function loginAs(User $user, string $timezone, ?int $formerUserId = null): \stdClass
 	{
 
 		$ret = new \stdClass();
@@ -379,7 +379,7 @@ class User extends ActiveRecord {
 		} else {
 
 			// creates session for this user
-			$user->createSession($timezone);
+			$user->createSession($timezone, $formerUserId);
 			$ret->userId = $user->id;
 			$ret->sessionId = session_id();
 
@@ -416,7 +416,7 @@ class User extends ActiveRecord {
 	 * @param	string	IANA time zone identifier.
 	 * @return	bool
 	 */
-	private function createSession(string $timezone): bool {
+	private function createSession(string $timezone, ?int $formerUserId = null): bool {
 
 		// checks if time zone name is valid
 		if (!in_array($timezone, \DateTimeZone::listIdentifiers())) {
@@ -437,6 +437,7 @@ class User extends ActiveRecord {
 		$session->startTime			= new \DateTime();
 		$session->timezoneOffset	= $offset;
 		$session->timezoneName		= $timezone;
+		$session->formerUserId		= $formerUserId;
 		
 		$res1 = $session->create();
 		
