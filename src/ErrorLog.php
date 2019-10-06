@@ -114,8 +114,9 @@ class ErrorLog extends ActiveRecord {
 	 * Allows to keep the current Application and browser state.
 	 * 
 	 * @param	string	Description of the snapshot moment.
+	 * @return	bool
 	 */
-	public static function keepSnapshot($description) {
+	public static function keepSnapshot(string $description): bool {
 		
 		$app = Application::getInstance();
 		$router = Router::getInstance();

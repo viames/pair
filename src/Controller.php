@@ -377,6 +377,7 @@ abstract class Controller {
 		$errors = $object->getErrors();
 		
 		$message = $this->lang('ERROR_ON_LAST_REQUEST') . ($errors ? ": \n" . implode(" \n", $errors) : '');
+		ErrorLog::keepSnapshot('Failure in ' . \get_class($object) . ' class');
 		$this->enqueueError($message);
 		$this->view = 'default';
 		
