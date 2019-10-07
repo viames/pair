@@ -81,7 +81,6 @@ class ErrorLog extends ActiveRecord {
 	protected function init() {
 
 		$this->bindAsDatetime('createdTime');
-
 		$this->bindAsInteger('id', 'userId');
 
 	}
@@ -91,7 +90,7 @@ class ErrorLog extends ActiveRecord {
 	 *
 	 * @return	array
 	 */
-	protected static function getBinds() {
+	protected static function getBinds(): array {
 		
 		$varFields = array (
 			'id'			=> 'id',
@@ -109,14 +108,38 @@ class ErrorLog extends ActiveRecord {
 		return $varFields;
 		
 	}
+
+	/**
+	 * Serialize some properties before prepareData() method execution.
+	 */
+	protected function beforePrepareData() {
+
+		$this->getData		= serialize($this->getData);
+		$this->postData		= serialize($this->postData);
+		$this->cookieData	= serialize($this->cookieData);
+		$this->userMessages	= serialize($this->userMessages);
+
+	}
+
+	/**
+	 * Unserialize some properties after populate() method execution.
+	 */
+	protected function afterPopulate() {
+
+		$this->getData		= unserialize($this->getData);
+		$this->postData		= unserialize($this->postData);
+		$this->cookieData	= unserialize($this->cookieData);
+		$this->userMessages	= unserialize($this->userMessages);
+		
+	}
 	
 	/**
 	 * Allows to keep the current Application and browser state.
 	 * 
 	 * @param	string	Description of the snapshot moment.
-	 * @return	bool
+	 * @return	bool	TRUE if save was succesful.
 	 */
-	public static function keepSnapshot(string $description): bool {
+	public static function keepSnapshot($description): bool {
 		
 		$app = Application::getInstance();
 		$router = Router::getInstance();
@@ -127,11 +150,11 @@ class ErrorLog extends ActiveRecord {
 		$snap->userId		= $app->currentUser->id;
 		$snap->module		= $router->module;
 		$snap->action		= $router->action;
-		$snap->getData		= serialize($_GET);
-		$snap->postData		= serialize($_POST);
-		$snap->cookieData	= serialize($_COOKIE);
+		$snap->getData		= $_GET;
+		$snap->postData		= $_POST;
+		$snap->cookieData	= $_COOKIE;
 		$snap->description	= $description;
-		$snap->userMessages	= serialize($app->messages);
+		$snap->userMessages	= $app->messages;
 		
 		if (isset($_SERVER['HTTP_REFERER'])) {
 
