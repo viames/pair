@@ -2263,24 +2263,45 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	public static function getQueryColumns(): string {
 
-		$fields = '*';
-		$db = Database::getInstance();
+		$query = '*';
+
+		$encryptedColumns = static::getEncryptedColumnsQuery();
+		if ($encryptedColumns) {
+			$query .= ',' . $encryptedColumns;
+		}
+
+		return $query;
+	
+	}
+
+	/**
+	 * Return the SELECT fields for encrypted columns. Empty string in case of no encrypted properties.
+	 *
+	 * @param	string|NULL	Table alias.
+	 * @return	string
+	 */
+	public static function getEncryptedColumnsQuery(string $tableAlias=NULL): string {
+
 		$encryptables = static::getEncryptableFields();
 
 		if ($encryptables) {
 
+			$db = Database::getInstance();
 			$items = [];
 			
 			foreach ($encryptables as $e) {
-				$items[] = 'AES_DECRYPT(`' . $e . '`,' . $db->quote(AES_CRYPT_KEY) . ') AS `' . $e . '`';
+				$items[] = 'AES_DECRYPT(' . ($tableAlias ? $tableAlias . '.' : '') .'`' . $e . '`,' .
+					$db->quote(AES_CRYPT_KEY) . ') AS `' . $e . '`';
 			}
 
-			$fields .= ',' . implode(',',$items);
+			return implode(',',$items);
+
+		} else {
+
+			return '';
 
 		}
 
-		return $fields;
-	
 	}
 
 }

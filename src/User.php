@@ -259,12 +259,11 @@ class User extends ActiveRecord {
 	 * @param	string	Username.
 	 * @param	string	Plain text password.
 	 * @param	string	IANA time zone identifier.
-	 * @return	stdClass
+	 * @return	\stdClass
 	 */
 	public static function doLogin(string $username, string $password, string $timezone): \stdClass {
 	
-		$app	= Application::getInstance();
-		$db		= Database::getInstance();
+		$db = Database::getInstance();
 		
 		$ret = new \stdClass();
 
@@ -352,10 +351,10 @@ class User extends ActiveRecord {
 	 *
 	 * @param	\Pair\User 	$user
 	 * @param	string		$timezone	IANA time zone identifier.
-	 * @return	stdClass
+	 * @param	int|NULL	Former user ID.
+	 * @return	\stdClass
 	 */
-	public static function loginAs(User $user, string $timezone, ?int $formerUserId = null): \stdClass
-	{
+	public static function loginAs(User $user, string $timezone, ?int $formerUserId = null): \stdClass {
 
 		$ret = new \stdClass();
 
@@ -897,6 +896,26 @@ class User extends ActiveRecord {
 		
 		return Application::getCookiePrefix() . 'RememberMe';
 		
+	}
+	
+	/**
+	 * Return TRUE if this user or the the former User object if impersonating, is admin.
+	 * 
+	 * @return	bool
+	 */
+	public function isAdmin(): bool {
+
+		if ($this->admin) {
+			return TRUE;
+		} else {
+			$currentSession = Session::getCurrent();
+			$query =
+				'SELECT COUNT(1) FROM `users`' .
+				' INNER JOIN `sessions` AS s ON u.id = s.id_user' .
+				' WHERE s.id = ? AND u.id = ? AND admin = 1';
+			return (bool)Database::load($query, [$currentSession, $this->id], PAIR_DB_COUNT);
+		}
+
 	}
 	
 }

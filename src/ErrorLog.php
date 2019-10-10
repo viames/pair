@@ -33,17 +33,17 @@ class ErrorLog extends ActiveRecord {
 	protected $action;
 		/**
 	 * Property that binds db field get_data.
-	 * @var string
+	 * @var array
 	 */
 	protected $getData;
 	/**
 	 * Property that binds db field post_data.
-	 * @var string
+	 * @var array
 	 */
 	protected $postData;
 	/**
 	 * Property that binds db field cookie_data.
-	 * @var string
+	 * @var array
 	 */
 	protected $cookieData;
 

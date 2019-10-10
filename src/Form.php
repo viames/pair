@@ -163,8 +163,8 @@ class Form {
 	/**
 	 * Assigns all attributes of passed ActiveRecord children to controls with same name.
 	 * 
-	 * @param	mixed	An object inherited by ActiveRecord.
-	 * @return	ActiveRecord
+	 * @param	ActiveRecord	An object inherited by ActiveRecord.
+	 * @return	void
 	 */
 	public function setValuesByObject(ActiveRecord $object): void {
 
