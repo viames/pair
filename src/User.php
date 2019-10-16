@@ -613,7 +613,6 @@ class User extends ActiveRecord {
 	public function redirectToDefault() {
 		
 		$app	 = Application::getInstance();
-		$router	 = Router::getInstance();
 		$landing = $this->getLanding();
 	
 		$app->redirect($landing->module . '/' . $landing->action);

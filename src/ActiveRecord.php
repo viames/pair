@@ -1197,6 +1197,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	public function isDeletable(): bool {
 		
+		// get the list of column with foreign keys from other tables
 		$inverseForeignKeys = $this->db->getInverseForeignKeys(static::TABLE_NAME);
 		
 		foreach ($inverseForeignKeys as $r) {
@@ -1207,7 +1208,10 @@ abstract class ActiveRecord implements \JsonSerializable {
 			// get the property name
 			$propertyName = $this->getMappedProperty($r->REFERENCED_COLUMN_NAME);
 			
-			return !$this->checkRecordExists($r->TABLE_NAME, $r->COLUMN_NAME, $this->$propertyName);
+			// if a record that’s constraining exists, this is not deletable
+			if ($this->checkRecordExists($r->TABLE_NAME, $r->COLUMN_NAME, $this->$propertyName)) {
+				return FALSE;
+			}
 			
 		}
 		
