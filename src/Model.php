@@ -12,7 +12,7 @@ abstract class Model {
 	
 	/**
 	 * Pagination object, started from the View.
-	 * @var object
+	 * @var Pagination
 	 */
 	private $pagination;
 
@@ -26,7 +26,7 @@ abstract class Model {
 	 * List of all errors tracked.
 	 * @var array
 	 */
-	private $errors = array();
+	private $errors = [];
 	
 	/**
 	 * Constructor, connects to db.
@@ -41,13 +41,13 @@ abstract class Model {
 
 	}
 	
-	public function __get($name) {
+	public function __get(string $name) {
 		
 		return $this->$name;
 		
 	}
 
-	public function __set($name, $value) {
+	public function __set(string $name, $value) {
 	
 		$this->$name = $value;
 	
@@ -59,7 +59,7 @@ abstract class Model {
 	 * @param	string	$name
 	 * @param	array	$arguments
 	 */
-	public function __call($name, $arguments) {
+	public function __call(string $name, array $arguments) {
 		
 		if (Application::isDevelopmentHost()) {
 	
@@ -80,7 +80,7 @@ abstract class Model {
 	 * 
 	 * @param	string	Error message’s text.
 	 */
-	public function addError($message) {
+	public function addError(string $message) {
 		
 		$this->errors[] = $message;
 		
@@ -89,7 +89,7 @@ abstract class Model {
 	/**
 	 * Returns text of latest error. In case of no errors, returns FALSE.
 	 * 
-	 * @return FALSE|string
+	 * @return mixed
 	 */
 	public function getLastError() {
 		
@@ -102,7 +102,7 @@ abstract class Model {
 	 *
 	 * @return array
 	 */
-	public function getErrors() {
+	public function getErrors(): array {
 	
 		return $this->errors;
 	
@@ -115,7 +115,7 @@ abstract class Model {
 	 * @param	string	Event type notice or error (default notice).
 	 * @param	string	Optional additional text.
 	 */
-	public function logEvent($description, $type='notice', $subtext=NULL) {
+	public function logEvent(string $description, string $type='notice', string $subtext=NULL) {
 		
 		$logger = Logger::getInstance();
 		$logger->addEvent($description, $type, $subtext);
@@ -127,7 +127,7 @@ abstract class Model {
 	 *
 	 * @param	string	Event description.
 	 */
-	public function logWarning($description) {
+	public function logWarning(string $description) {
 	
 		$logger = Logger::getInstance();
 		$logger->addWarning($description);
@@ -139,7 +139,7 @@ abstract class Model {
 	 *
 	 * @param	string	Event description.
 	 */
-	public function logError($description) {
+	public function logError(string $description) {
 	
 		$logger = Logger::getInstance();
 		$logger->addError($description);
@@ -153,18 +153,16 @@ abstract class Model {
 	 * @param	string	Name of desired class.
 	 * @param	string	Ordering db field.
 	 * @param	bool	Sorting direction ASC or DESC (optional)
-	 * 
 	 * @return	mixed[]
 	 */
-	public function getActiveRecordObjects($class, ?string $orderBy=NULL, $descOrder=FALSE) {
+	public function getActiveRecordObjects(string $class, string $orderBy=NULL, bool $descOrder=FALSE): array {
 
 		if (!class_exists($class) or !is_subclass_of($class, 'Pair\ActiveRecord')) {
 			return array();
 		}
 		
-		// sets pagination count
-		$this->db->setQuery('SELECT COUNT(*) FROM `' . $class::TABLE_NAME . '`');
-		$this->pagination->count = $this->db->loadCount();
+		// set pagination count
+		$this->pagination->count = $class::countAllObjects();
 	
 		$orderDir = $descOrder ? 'DESC' : 'ASC';
 		
@@ -174,16 +172,7 @@ abstract class Model {
 			($orderBy ? ' ORDER BY `' . $orderBy . '` ' . $orderDir : NULL) .
 			' LIMIT ' . $this->pagination->start . ', ' . $this->pagination->limit;
 	
-		$this->db->setQuery($query);
-		$list = $this->db->loadObjectList();
-	
-		$objects = array();
-	
-		foreach ($list as $item) {
-			$objects[] = new $class($item);
-		}
-
-		return $objects;
+		return $class::getObjectsByQuery($query);
 	
 	}
 	

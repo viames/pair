@@ -847,7 +847,7 @@ class Router {
 		
 		if (!$self) return NULL;
 		
-		if ($self->page > 1) {
+		if ($self->getPage() > 1) {
 			$self->resetPage();
 			$app = Application::getInstance();
 			$app->redirect($self->getUrl());
