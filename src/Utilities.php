@@ -675,10 +675,9 @@ class Utilities {
 	 * @param	string	Relative path of the interested folder to scan.
 	 * @param	string	Internal, subfolder recursive name-cache.
 	 * @param	array	Internal, empty array at first scan.
-	 *
 	 * @return	array
 	 */
-	public static function getDirectoryFilenames($path, $subfolder=NULL, $fileList=array()) {
+	public static function getDirectoryFilenames(string $path, string $subfolder=NULL, array $fileList=[]): array {
 	
 		// list of files to exclude
 		$excludes = array('..', '.', '.DS_Store', 'thumbs.db', '.htaccess');

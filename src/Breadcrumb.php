@@ -54,7 +54,7 @@ class Breadcrumb {
 	}
 	
 	/**
-	 * Adds a new sub-path to Breadcrumb. Chainable method.
+	 * Adds a new sub-path to Breadcrumb.
 	 * 
 	 * @param	string	Title of the sub-path.
 	 * @param	string	Destination URL (default NULL).
