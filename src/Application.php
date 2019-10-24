@@ -255,7 +255,7 @@ class Application {
 				
 			default:
 				
-				$allowedProperties = ['activeMenuItem', 'currentUser', 'pageTitle', 'pageContent', 'template'];
+				$allowedProperties = ['activeMenuItem', 'currentUser', 'pageTitle', 'pageContent', 'template', 'messages'];
 				
 				// search into variable assigned to the template as first
 				if (array_key_exists($name, $this->vars)) {

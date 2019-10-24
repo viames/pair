@@ -9,39 +9,38 @@ class ErrorLog extends ActiveRecord {
 	 * @var int
 	 */
 	protected $id;
-	/**
+
+	/**
 	 * Property that binds db field created_time.
 	 * @var DateTime
 	 */
 	protected $createdTime;
-	/**
+
+	/**
 	 * Property that binds db field user_id.
 	 * @var int|NULL
 	 */
 	protected $userId;
 
 	/**
-	 * Property that binds db field module.
+	 * Property that binds db field path.
 	 * @var string
 	 */
-	protected $module;
+	protected $path;
 	
 	/**
-	 * Property that binds db field action.
-	 * @var string
-	 */
-	protected $action;
-		/**
 	 * Property that binds db field get_data.
 	 * @var array
 	 */
 	protected $getData;
-	/**
+
+	/**
 	 * Property that binds db field post_data.
 	 * @var array
 	 */
 	protected $postData;
-	/**
+
+	/**
 	 * Property that binds db field cookie_data.
 	 * @var array
 	 */
@@ -52,12 +51,14 @@ class ErrorLog extends ActiveRecord {
 	 * @var string
 	 */
 	protected $description;
-		/**
+	
+	/**
 	 * Property that binds db field user_messages.
 	 * @var string
 	 */
 	protected $userMessages;
-	/**
+
+	/**
 	 * Property that binds db field referer.
 	 * @var string
 	 */
@@ -96,8 +97,7 @@ class ErrorLog extends ActiveRecord {
 			'id'			=> 'id',
 			'createdTime'	=> 'created_time',
 			'userId'		=> 'user_id',
-			'module'		=> 'module',
-			'action'		=> 'action',
+			'path'			=> 'path',
 			'getData'		=> 'get_data',
 			'postData'		=> 'post_data',
 			'cookieData'	=> 'cookie_data',
@@ -148,8 +148,7 @@ class ErrorLog extends ActiveRecord {
 		
 		$snap->createdTime	= new \DateTime();
 		$snap->userId		= $app->currentUser->id;
-		$snap->module		= $router->module;
-		$snap->action		= $router->action;
+		$snap->path			= substr($router->url,1);
 		$snap->getData		= $_GET;
 		$snap->postData		= $_POST;
 		$snap->cookieData	= $_COOKIE;
