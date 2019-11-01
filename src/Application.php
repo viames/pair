@@ -233,7 +233,7 @@ class Application {
 	 * @param	string	Requested property’s name.
 	 * @return	mixed
 	 */
-	public function __get($name) {
+	public function __get(string $name) {
 		
 		switch ($name) {
 
@@ -288,7 +288,7 @@ class Application {
 	 * @param	string	Property’s name.
 	 * @param	mixed	Property’s value.
 	 */
-	public function __set($name, $value) {
+	public function __set(string $name, $value) {
 
 		if (property_exists($this, $name)) {
 			

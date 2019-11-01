@@ -376,10 +376,17 @@ abstract class Controller {
 		// get error list from the ActiveRecord object
 		$errors = $object->getErrors();
 		
-		$message = $this->lang('ERROR_ON_LAST_REQUEST') . ($errors ? ": \n" . implode(" \n", $errors) : '');
-		ErrorLog::keepSnapshot('Failure in ' . \get_class($object) . ' class');
+		// choose the error messages
+		$message = $errors
+			? implode(" \n", $errors)
+			: $this->lang('ERROR_ON_LAST_REQUEST');
+			
+		// enqueue error message for UI
 		$this->enqueueError($message);
 		$this->view = 'default';
+		
+		// after the message has been queued, store the error data
+		ErrorLog::keepSnapshot('Failure in ' . \get_class($object) . ' class');
 		
 	}
 	

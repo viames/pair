@@ -161,9 +161,11 @@ class ErrorLog extends ActiveRecord {
 			if (0 === strpos($_SERVER['HTTP_REFERER'], BASE_HREF)) {
 				$snap->referer = substr($_SERVER['HTTP_REFERER'], strlen(BASE_HREF));
 			} else {
-				$snap->referer = $_SERVER['HTTP_REFERER'];
+				$snap->referer = (string)$_SERVER['HTTP_REFERER'];
 			}
 			
+		} else {
+			$snap->referer = '';
 		}
 
 		return $snap->create();
