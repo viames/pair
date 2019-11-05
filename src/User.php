@@ -400,11 +400,13 @@ class User extends ActiveRecord {
 	
 	/**
 	 * Sets to 0 faults counter property.
+	 * 
+	 * @return	bool
 	 */
-	private function resetFaults() {
+	public function resetFaults(): bool {
 		
 		$this->faults = 0;
-		$this->update('faults');
+		return $this->update('faults');
 		
 	}
 	

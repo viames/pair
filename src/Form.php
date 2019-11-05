@@ -98,7 +98,7 @@ class Form {
 	 * @param	string	Control name.
 	 * @return	FormControl|NULL
 	 */
-	public function getControl($name): ?FormControl {
+	public function getControl(string $name): ?FormControl {
 		
 		if (substr($name, -2) == '[]') {
 			$name = substr($name, 0, -2);
@@ -121,7 +121,7 @@ class Form {
 	 * 
 	 * @return	bool
 	 */
-	public function removeControl($name) {
+	public function removeControl(string $name): bool {
 		
 		if (substr($name, -2) == '[]') {
 			$name = substr($name, 0, -2);
@@ -154,7 +154,7 @@ class Form {
 	 * 
 	 * @return	boolean
 	 */
-	public function controlExists($name) {
+	public function controlExists($name): bool {
 		
 		return array_key_exists($name, $this->controls);
 		
@@ -228,7 +228,7 @@ class Form {
 	 * @param	string	HTML name of the wanted control.
 	 * @return	void
 	 */
-	public function printControl($name): void {
+	public function printControl(string $name): void {
 		
 		print $this->renderControl($name);
 		
@@ -239,7 +239,7 @@ class Form {
 	 * 
 	 * @param	string	HTML name of the wanted control.
 	 */
-	public function printLabel($name) {
+	public function printLabel(string $name) {
 		
 		// gets control object
 		$control = $this->getControl($name);
@@ -255,7 +255,7 @@ class Form {
 	 *
 	 * @return	bool
 	 */
-	public function isValid() {
+	public function isValid(): bool {
 		
 		$valid = TRUE;
 		
@@ -276,7 +276,7 @@ class Form {
 	 * 
 	 * @return FormControl[]
 	 */
-	public function getUnvalidControls() {
+	public function getUnvalidControls(): array {
 		
 		$unvalids = array();
 		
@@ -299,7 +299,7 @@ class Form {
 	 * 
 	 * @return	\Pair\Form
 	 */
-	public function addControlClass($class) {
+	public function addControlClass(string $class): Form {
 		
 		$this->controlClasses[] = $class;
 		
@@ -321,7 +321,7 @@ class Form {
 	 * 
 	 * @return	string
 	 */
-	public static function buildSelect($name, $list, $valName='value', $textName='text', $value=NULL, $attributes=NULL, $prependEmpty=NULL) {
+	public static function buildSelect(string $name, array $list, string $valName='value', string $textName='text', $value=NULL, $attributes=NULL, $prependEmpty=NULL) {
 		
 		$control = new FormControlSelect($name, $attributes);
 		$control->setListByObjectArray($list, $valName, $textName)->setValue($value);
@@ -345,7 +345,7 @@ class Form {
 	 * 
 	 * @return	string
 	 */
-	public static function buildSelectFromArray($name, $list, $value=NULL, $attributes=NULL, $prependEmpty=NULL) {
+	public static function buildSelectFromArray(string $name, array $list, string $value=NULL, $attributes=NULL, $prependEmpty=NULL) {
 
 		$control = new FormControlSelect($name, $attributes);
 		$control->setListByAssociativeArray($list)->prependEmpty($prependEmpty)->setValue($value);
@@ -364,7 +364,7 @@ class Form {
 	 * 
 	 * @return	string
 	 */
-	public static function buildInput($name, $value=NULL, $type='text', $attributes=array()) {
+	public static function buildInput(string $name, string $value=NULL, string $type='text', $attributes=array()) {
 
 		$control = new FormControlInput($name, $attributes);
 		$control->setType($type)->setValue($value);
@@ -384,7 +384,7 @@ class Form {
 	 *
 	 * @return string
 	 */
-	public static function buildTextarea($name, $rows, $cols, $value=NULL, $attributes=array()) {
+	public static function buildTextarea(string $name, int $rows, int $cols, $value=NULL, $attributes=array()) {
 
 		$control = new FormControlTextarea($name, $attributes);
 		$control->setRows($rows)->setCols($cols)->setValue($value);
@@ -404,7 +404,7 @@ class Form {
 	 * 
 	 * @return	string
 	 */
-	public static function buildButton($value,  $type='submit', $name=NULL, $attributes=array(), $faIcon=NULL) {
+	public static function buildButton(string $value, string $type='submit', string $name=NULL, $attributes=array(), $faIcon=NULL) {
 
 		$control = new FormControlButton($name, $attributes);
 		$control->setValue($value)->setType($type)->setFaIcon($faIcon);
@@ -521,7 +521,7 @@ abstract class FormControl {
 	 * @throws	Exception
 	 * @return	mixed|NULL
 	 */
-	public function __get($name) {
+	public function __get(string $name) {
 	
 		try {
 	
@@ -546,7 +546,7 @@ abstract class FormControl {
 	 * @param	string	Property’s name.
 	 * @param	mixed	Property’s value.
 	 */
-	public function __set($name, $value) {
+	public function __set(string $name, $value) {
 	
 		try {
 			$this->$name = $value;
@@ -561,7 +561,7 @@ abstract class FormControl {
 	 * 
 	 * @return	string
 	 */
-	public function __toString() {
+	public function __toString(): string {
 		
 		$this->getLabel();
 		
@@ -667,6 +667,7 @@ abstract class FormControl {
 	/**
 	 * Sets placeholder text. Chainable method.
 	 * 
+	 * @param	string		Placeholder’s text.
 	 * @return	FormControl subclass
 	 */
 	public function setPlaceholder(string $text): FormControl {
@@ -683,9 +684,9 @@ abstract class FormControl {
 	 *
 	 * @return	FormControl subclass
 	 */
-	public function setMinLength($length): FormControl {
+	public function setMinLength(int $length): FormControl {
 		
-		$this->minLength = (int)$length;
+		$this->minLength = $length;
 		return $this;
 		
 	}
@@ -697,9 +698,9 @@ abstract class FormControl {
 	 *
 	 * @return	FormControl subclass
 	 */
-	public function setMaxLength($length): FormControl {
+	public function setMaxLength(int $length): FormControl {
 	
-		$this->maxLength = (int)$length;
+		$this->maxLength = $length;
 		return $this;
 	
 	}
@@ -739,8 +740,9 @@ abstract class FormControl {
 	 * Set a label for this control as text or translation key. Chainable method.
 	 * 
 	 * @param	string	The text label or the uppercase translation key.
+	 * @return	FormControl
 	 */
-	public function setLabel($label): FormControl {
+	public function setLabel(string $label): FormControl {
 		
 		$this->label = $label;
 		
@@ -838,7 +840,7 @@ abstract class FormControl {
 	 * 
 	 * @return string
 	 */
-	protected function getNameProperty() {
+	protected function getNameProperty(): string {
 		
 		return 'name="' . htmlspecialchars($this->name . ($this->arrayName ? '[]' : '')) . '"';
 		
@@ -895,7 +897,7 @@ class FormControlInput extends FormControl {
 	 * @param	string	Control name.
 	 * @param	array	Additional attributes (tag=>value).
 	 */
-	public function __construct($name, $attributes = array()) {
+	public function __construct(string $name, array $attributes = []) {
 		
 		parent::__construct($name, $attributes);
 		
@@ -919,7 +921,7 @@ class FormControlInput extends FormControl {
 	 * 
 	 * @return	FormControlInput
 	 */
-	public function setType($type) {
+	public function setType(string $type): FormControlInput {
 		
 		$this->type = $type;
 		return $this;
@@ -933,7 +935,7 @@ class FormControlInput extends FormControl {
 	 * 
 	 * @return	FormControlInput
 	 */
-	public function setAccept($fileType) {
+	public function setAccept(string $fileType): FormControlInput {
 		
 		$this->accept = $fileType;
 		return $this;
@@ -947,7 +949,7 @@ class FormControlInput extends FormControl {
 	 *
 	 * @return	FormControlInput
 	 */
-	public function setDateFormat($format) {
+	public function setDateFormat(string $format): FormControlInput {
 
 		$this->dateFormat = $format;
 		return $this;
@@ -961,7 +963,7 @@ class FormControlInput extends FormControl {
 	 *
 	 * @return	FormControlInput
 	 */
-	public function setDatetimeFormat($format) {
+	public function setDatetimeFormat(string $format): FormControlInput {
 		
 		$this->datetimeFormat = $format;
 		return $this;
@@ -971,7 +973,7 @@ class FormControlInput extends FormControl {
 	/**
 	 * Set step value for input field of number type. Chainable method.
 	 *
-	 * @param	string	Integer or decimal value for this control.
+	 * @param	mixed	Integer or decimal value for this control.
 	 *
 	 * @return	FormControlInput
 	 */
@@ -1015,7 +1017,7 @@ class FormControlInput extends FormControl {
 	 *
 	 * @return	string
 	 */
-	public function render() {
+	public function render(): string {
 	
 		$ret = '<input ' . $this->getNameProperty();
 	
@@ -1112,7 +1114,7 @@ class FormControlInput extends FormControl {
 	 *
 	 * @return	bool
 	 */
-	public function validate() {
+	public function validate(): bool {
 
 		$app	= Application::getInstance();
 		$value	= Input::get($this->name);
@@ -1220,7 +1222,7 @@ class FormControlSelect extends FormControl {
 	 * 
 	 * @return	FormControlSelect
 	 */
-	public function setListByAssociativeArray($list) {
+	public function setListByAssociativeArray(array $list): FormControlSelect {
 		
 		foreach ($list as $value=>$text) {
 				
@@ -1249,7 +1251,7 @@ class FormControlSelect extends FormControl {
 	 * 
 	 * @return	FormControlSelect
 	 */
-	public function setListByObjectArray($list, $propertyValue, $propertyText, $propertyAttributes = null) {
+	public function setListByObjectArray(array $list, string $propertyValue, string $propertyText, $propertyAttributes = null): FormControlSelect {
 
 		// for each list object, add an option
 		foreach ($list as $opt) {
@@ -1258,12 +1260,11 @@ class FormControlSelect extends FormControl {
 			$option->value	= $opt->$propertyValue;
 			$option->attributes = [];
 
-			if(is_array($propertyAttributes)) {
-				foreach($propertyAttributes as $pa) {
+			if (is_array($propertyAttributes)) {
+				foreach ($propertyAttributes as $pa) {
 					array_push($option->attributes, ['name' => $pa, 'value' => $opt->$pa]);
 				}
-			}
-			else if(is_string($propertyAttributes)) {
+			} else if (is_string($propertyAttributes)) {
 				array_push($option->attributes, ['name' => $pa, 'value' => $opt->$pa]);
 			}
 
@@ -1291,7 +1292,7 @@ class FormControlSelect extends FormControl {
 	 * 
 	 * @return	FormControlSelect
 	 */
-	public function setGroupedList($list) {
+	public function setGroupedList(array $list): FormControlSelect {
 		
 		$this->list = $list;
 
@@ -1306,7 +1307,7 @@ class FormControlSelect extends FormControl {
 	 * 
 	 * @return	FormControlSelect
 	 */
-	public function prependEmpty($text=NULL) {
+	public function prependEmpty($text=NULL): FormControlSelect {
 		
 		$t = Translator::getInstance();
 		
@@ -1325,7 +1326,7 @@ class FormControlSelect extends FormControl {
 	 *
 	 * @return	FormControlSelect
 	 */
-	public function setMultiple() {
+	public function setMultiple(): FormControlSelect {
 	
 		$this->multiple = TRUE;
 		return $this;
@@ -1337,7 +1338,7 @@ class FormControlSelect extends FormControl {
 	 *
 	 * @return string
 	 */
-	public function render() {
+	public function render(): string {
 
 		/**
 		 * Build the code of an option HTML tag.
@@ -1415,7 +1416,7 @@ class FormControlSelect extends FormControl {
 	 *
 	 * @return	bool
 	 */
-	public function validate() {
+	public function validate(): bool {
 	
 		$app = Application::getInstance();
 		
@@ -1463,9 +1464,9 @@ class FormControlTextarea extends FormControl {
 	 * 
 	 * @return	FormControlTextarea
 	 */
-	public function setRows($num) {
+	public function setRows(int $num): FormControlTextarea {
 		
-		$this->rows = (int)$num;
+		$this->rows = $num;
 		return $this;
 		
 	}
@@ -1477,9 +1478,9 @@ class FormControlTextarea extends FormControl {
 	 * 
 	 * @return	FormControlTextarea
 	 */
-	public function setCols($num) {
+	public function setCols(int $num): FormControlTextarea {
 	
-		$this->cols = (int)$num;
+		$this->cols = $num;
 		return $this;
 	
 	}
@@ -1489,7 +1490,7 @@ class FormControlTextarea extends FormControl {
 	 *
 	 * @return string
 	 */
-	public function render() {
+	public function render(): string {
 	
 		$ret  = '<textarea ' . $this->getNameProperty();
 		$ret .= ' rows="' . $this->rows . '" cols="' . $this->cols . '"';
@@ -1506,7 +1507,7 @@ class FormControlTextarea extends FormControl {
 	 *
 	 * @return	bool
 	 */
-	public function validate() {
+	public function validate(): bool {
 	
 		$app	= Application::getInstance();
 		$value	= Input::get($this->name);
@@ -1554,7 +1555,7 @@ class FormControlButton extends FormControl {
 	 *
 	 * @return	FormControlButton
 	 */
-	public function setType($type) {
+	public function setType($type): FormControlButton {
 	
 		$this->type = $type;
 		return $this;
@@ -1568,7 +1569,7 @@ class FormControlButton extends FormControl {
 	 *
 	 * @return	FormControlButton
 	 */
-	public function setFaIcon($class) {
+	public function setFaIcon($class): FormControlButton {
 	
 		$this->faIcon = $class;
 		return $this;
@@ -1580,7 +1581,7 @@ class FormControlButton extends FormControl {
 	 *
 	 * @return	string
 	 */
-	public function render() {
+	public function render(): string {
 	
 		$ret = '<button type="' . $this->type . '"' ;
 	
@@ -1609,7 +1610,7 @@ class FormControlButton extends FormControl {
 	 *
 	 * @return	bool
 	 */
-	public function validate() {
+	public function validate(): bool {
 		
 		return TRUE;
 		
