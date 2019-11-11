@@ -48,7 +48,7 @@ class Logger {
 	 * 
 	 * @return	Logger
 	 */
-	final public static function getInstance() {
+	final public static function getInstance(): Logger {
 	
 		if (NULL == self::$instance) {
 			self::$instance = new self();
@@ -73,7 +73,7 @@ class Logger {
 	 * 
 	 * @return boolean
 	 */
-	final public function isEnabled() {
+	final public function isEnabled(): bool {
 		
 		if ($this->disabled) {
 			return FALSE;
@@ -122,7 +122,7 @@ class Logger {
 	 *
 	 * @return float
 	 */
-	final private function getMicrotime() {
+	final private function getMicrotime(): float {
 	
 		list ($msec, $sec) = explode(' ', microtime());
 		$time = ((float)$msec + (float)$sec);
@@ -136,8 +136,9 @@ class Logger {
 	 * @param	string	Event description.
 	 * @param	string	Event type notice, query, api, warning or error (default is notice).
 	 * @param	string	Optional additional text.
+	 * @return	void
 	 */
-	final public function addEvent($description, $type='notice', $subtext=NULL) {
+	final public function addEvent(string $description, string $type='notice', $subtext=NULL): void {
 		
 		if (!$this->isEnabled()) return;
 		
@@ -160,7 +161,7 @@ class Logger {
 	 *
 	 * @param	string	Event description.
 	 */
-	final public function addWarning($description) {
+	final public function addWarning(string $description) {
 	
 		$this->addEvent($description, 'warning');
 	
@@ -171,7 +172,7 @@ class Logger {
 	 *
 	 * @param	string	Event description.
 	 */
-	final public function addError($description) {
+	final public function addError(string $description) {
 	
 		$this->addEvent($description, 'error');
 	
@@ -180,12 +181,11 @@ class Logger {
 	/**
 	 * Returns a formatted event list of all chrono steps.
 	 * 
-	 * @return	string	HTML code of log list.
+	 * @return	string|NULL	HTML code of log list.
 	 */
-	final public function getEventList() {
+	final public function getEventList(): ?string {
 
 		$app = Application::getInstance();
-		$router = Router::getInstance();
 		
 		if (!$this->isEnabled()) {
 			return NULL;
@@ -341,9 +341,9 @@ class Logger {
 	/**
 	 * Returns a formatted event list with no header, useful for AJAX purpose.
 	 * 
-	 * @return	string	HTML code of log list.
+	 * @return	string|NULL	HTML code of log list.
 	 */
-	final public function getEventListForAjax() {
+	final public function getEventListForAjax(): ?string {
 
 		$app		= Application::getInstance();
 		$router		= Router::getInstance();
@@ -383,7 +383,7 @@ class Logger {
 	 * @param	float	Time value to show (in seconds).
 	 * @return	string
 	 */
-	final private function formatChrono($chrono) {
+	final private function formatChrono($chrono): string {
 
 		return ($chrono >= 1) ? round($chrono, 2).' s' : round($chrono*1000) .' ms';
 		
@@ -392,15 +392,17 @@ class Logger {
 	/**
 	 * Returns count of registered error.
 	 * 
-	 *  @return	int
+	 * @return	int
 	 */
-	final public function getErrorCount() {
+	final public function getErrorCount(): int {
 		
 		$count = 0;
 		
 		foreach ($this->events as $e) {
 			if ('error' == $e->type) $count++;
 		}
+		
+		return $count;
 		
 	}
 		

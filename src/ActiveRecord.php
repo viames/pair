@@ -1443,7 +1443,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * @param	array	Optional array of query filters, array(property-name => value). 
 	 * @param	array	Optional array of order by, array(property-name) or array(property-name => 'DESC').
 	 * 
-	 * @return	array:mixed
+	 * @return	array
 	 */
 	final public static function getAllObjects($filters = array(), $orderBy = array()) {
 

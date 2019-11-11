@@ -12,7 +12,7 @@ class Session extends ActiveRecord {
 
 	/**
 	 * Property that binds db field id_user.
-	 * @var int
+	 * @var int|NULL
 	 */
 	protected $idUser;
 
@@ -24,20 +24,20 @@ class Session extends ActiveRecord {
 
 	/**
 	 * Property that binds db field timezone_offset.
-	 * @var float
+	 * @var float|NULL
 	 */
 	protected $timezoneOffset;
 
 	/**
 	 * Property that binds db field timezone_name.
-	 * @var string
+	 * @var string|NULL
 	 */
 	protected $timezoneName;
 
 	/**
 	 * Property that binds db field former_user_id.
 	 *
-	 * @var int
+	 * @var int|NULL
 	 */
 	protected $formerUserId;
 
@@ -87,17 +87,6 @@ class Session extends ActiveRecord {
 	}
 
 	/**
-	 * Only one session is allowed, deletes previous for this user.
-	 * 
-	 * @see ActiveRecord::beforeCreate()
-	 */
-	public function beforeCreate() {
-
-		// $this->db->exec('DELETE FROM `sessions` WHERE `id_user` = ?', [$this->idUser]);
-
-	}
-	
-	/**
 	 * Extends timeout updating startTime of this session, based on user’s time zone.
 	 */
 	public function extendTimeout() {
@@ -106,7 +95,7 @@ class Session extends ActiveRecord {
 		$dateTime  = new \DateTime();
 		$startTime = Utilities::convertToDbDatetime($dateTime);
 		
-		$this->db->exec('UPDATE `sessions` SET `start_time` = ? WHERE `id` = ?', array($startTime, $this->id));
+		Database::run('UPDATE `sessions` SET `start_time` = ? WHERE `id` = ?', [$startTime, $this->id]);
 		
 	}
 	
@@ -115,16 +104,13 @@ class Session extends ActiveRecord {
 	 *
 	 * @param	int		Session time in minutes.
 	 */
-	public static function cleanOlderThan($sessionTime) {
-
-		$db = Database::getInstance();
+	public static function cleanOlderThan(int $sessionTime) {
 
 		// converts to current time zone
 		$dateTime  = new \DateTime();
 		$startTime = $dateTime->format('Y-m-d H:i:s');
 
-		$query = 'DELETE FROM `sessions` WHERE `start_time` < DATE_SUB(?, INTERVAL '. (int)$sessionTime .' MINUTE)';
-		$db->exec($query, [$startTime]);
+		Database::run('DELETE FROM `sessions` WHERE `start_time` < DATE_SUB(?, INTERVAL '. (int)$sessionTime .' MINUTE)', [$startTime]);
 
 	}
 
@@ -132,10 +118,9 @@ class Session extends ActiveRecord {
 	 * Checks if a Session object is expired after sessionTime passed as parameter.
 	 * 
 	 * @param	int		Session time in minutes.
-	 * 
 	 * @return	bool
 	 */
-	public function isExpired($sessionTime) {
+	public function isExpired(int $sessionTime): bool {
 		
 		if (is_null($this->startTime)) {
 			return TRUE;
@@ -150,17 +135,34 @@ class Session extends ActiveRecord {
 	}
 	
 	/**
-	 * Return the User object of this Session, if exists.
+	 * Store the User or children object of this Session object into a cache.
+	 * 
+	 * @param	User	User to set.
+	 */
+	public function setUser(User $user) {
+		
+		$this->setCache('user', $user);
+
+	}
+
+	/**
+	 * Return the User object of this Session, if exists. Cached method.
 	 * 
 	 * @return	User|NULL 
 	 */
 	public function getUser(): ?User {
 
-		if (!$this->idUser) return NULL;
+		if (!$this->idUser) {
+			return NULL;
+		}
 
-		$user = new User($this->idUser);
+		if (!$this->issetCache('user')) {
+			$userClass = PAIR_USER_CLASS;
+			$user = new $userClass($this->idUser);
+			$this->setCache('user', $user->isLoaded() ? $user : NULL);
+		}
 
-		return ($user->isLoaded() ? $user : NULL);
+		return $this->getCache('user');
 
 	}
 
@@ -169,9 +171,10 @@ class Session extends ActiveRecord {
 	 *
 	 * @return boolean
 	 */
-	public function hasFormerUser(): bool
-	{
+	public function hasFormerUser(): bool {
+
 		return !in_array($this->formerUserId,  [null, '']);
+
 	}
 
 	/**
@@ -179,10 +182,11 @@ class Session extends ActiveRecord {
 	 *
 	 * @return User|null
 	 */
-	public function getFormerUser(): ?User
-	{
+	public function getFormerUser(): ?User {
+
 		$user = new User($this->formerUserId);
 		return $user->isLoaded() ? $user : null;
+
 	}
 
 	/**
@@ -190,9 +194,10 @@ class Session extends ActiveRecord {
 	 *
 	 * @return Session
 	 */
-	public static function getCurrent(): Session
-	{
+	public static function getCurrent(): Session {
+
 		return new Session(session_id());
+
 	}
 	
 }

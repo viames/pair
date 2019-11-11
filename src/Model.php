@@ -211,4 +211,50 @@ abstract class Model {
 		
 	}
 	
+	/**
+	 * Returns object list with pagination by running the query in getQuery() method.
+	 * 
+	 * @param	string		Active record class name.
+	 * @param	string|NULL	Optional query.
+	 * @return	array
+	 */
+	public function getItems(string $class, string $optionalQuery=NULL): array {
+
+		// class must inherit Pair\ActiveRecord
+		if (!class_exists($class) or !is_subclass_of($class, 'Pair\ActiveRecord')) {
+			return [];
+		}
+
+		$query = $optionalQuery ? $optionalQuery : $this->getQuery($class);
+		return $class::getObjectsByQuery($query . ' LIMIT ' . $this->pagination->start . ', ' . $this->pagination->limit, []);
+
+	}
+
+	/**
+	 * Returns count of available objects.
+	 * 
+	 * @param	string		Active record class name.
+	 * @param	string|NULL	Optional query.
+	 * @return	int
+	 */
+	public function countItems(string $class, string $optionalQuery=NULL): int {
+
+		$query = $optionalQuery ? $optionalQuery : $this->getQuery($class);
+		return Database::load('SELECT COUNT(1) FROM (' . $query . ') AS `result`', [], PAIR_DB_COUNT);
+
+	}
+
+	/**
+	 * Create and return the SQL to retrieve the elements of the default item list.
+	 * 
+	 * @param	string	ActiveRecord’s class name.
+	 * @return	string
+	 */
+	protected function getQuery(string $class): string {
+
+		// assembla la query
+		return 'SELECT * FROM `' . $class::TABLE_NAME . '`';
+		
+	}
+
 }

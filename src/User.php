@@ -227,7 +227,7 @@ class User extends ActiveRecord {
 	 * 
 	 * @see		http://php.net/crypt
 	 */
-	public static function getHashedPasswordWithSalt($password): string {
+	public static function getHashedPasswordWithSalt(string $password): string {
 		
 		// salt for bcrypt needs to be 22 base64 characters (only [./0-9A-Za-z])
 		$salt = substr(str_replace('+', '.', base64_encode(sha1(microtime(true), true))), 0, 22);
@@ -246,7 +246,7 @@ class User extends ActiveRecord {
 	 * @param	string	Crypted hash.
 	 * @return	boolean
 	 */
-	public static function checkPassword($password, $hash): bool {
+	public static function checkPassword(string $password, string $hash): bool {
 
 		return ($hash == crypt($password, $hash) ? TRUE : FALSE);
 		
@@ -263,8 +263,6 @@ class User extends ActiveRecord {
 	 */
 	public static function doLogin(string $username, string $password, string $timezone): \stdClass {
 	
-		$db = Database::getInstance();
-		
 		$ret = new \stdClass();
 
 		$ret->error		= FALSE;
@@ -275,14 +273,14 @@ class User extends ActiveRecord {
 		$query = 'SELECT * FROM `users` WHERE `' . (PAIR_AUTH_BY_EMAIL ? 'email' : 'username') . '` = ?';
 		
 		// load user row
-		$db->setQuery($query);
-		$row = $db->loadObject([$username]);
+		$row = Database::load($query, [$username], PAIR_DB_OBJECT);
 	
 		// track ip address for audit
 		$ipAddress = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : NULL;
 	
 		if (is_object($row)) {
 				
+			// load this user
 			$user = new static($row);
 
 			// over 9 faults
@@ -374,7 +372,7 @@ class User extends ActiveRecord {
 
 			Audit::loginFailed($user->email, $ipAddress);
 
-			// user password doesn’t match
+		// user password doesn’t match
 		} else {
 
 			// creates session for this user
@@ -386,6 +384,7 @@ class User extends ActiveRecord {
 		}
 
 		return $ret;
+		
 	}
 	
 	/**
@@ -624,9 +623,9 @@ class User extends ActiveRecord {
 	/**
 	 * Return the language code of this user. Cached.
 	 *
-	 * @return	string
+	 * @return	string|NULL
 	 */
-	public function getLanguageCode() {
+	public function getLanguageCode(): ?string {
 
 		if (!$this->issetCache('lang')) {
 	

@@ -63,7 +63,7 @@ class Application {
 
 	/**
 	 * Currently connected user.
-	 * @var User
+	 * @var User|NULL
 	 */
 	private $currentUser;
 
