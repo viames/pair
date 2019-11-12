@@ -167,7 +167,7 @@ class Session extends ActiveRecord {
 	}
 
 	/**
-	 * Returns true if the session has a former user
+	 * Returns true if the session has a former user.
 	 *
 	 * @return boolean
 	 */
@@ -202,7 +202,7 @@ class Session extends ActiveRecord {
 		if (!$this->issetCache('formerUser')) {
 			$userClass = PAIR_USER_CLASS;
 			$formerUser = new $userClass($this->formerUserId);
-			$this->setCache('user', $formerUser->isLoaded() ? $formerUser : NULL);
+			$this->setCache('formerUser', $formerUser->isLoaded() ? $formerUser : NULL);
 		}
 
 		return $this->getCache('formerUser');

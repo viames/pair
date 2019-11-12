@@ -924,7 +924,6 @@ class Application {
 	final public function startMvc() {
 		
 		$router	= Router::getInstance();
-		$tran	= Translator::getInstance();
 		
 		// make sure to have a template set
 		$template = $this->getTemplate();

@@ -94,7 +94,7 @@ class Options {
 	 *
 	 * @param	string	The option’s name.
 	 * @throws	Exception
-	 * @return	mixed|NULL
+	 * @return	bool
 	 */
 	public static function set($name, $value): bool {
 		
@@ -130,7 +130,7 @@ class Options {
 			}
 
 			// update the value into db
-			$ret = Database::run('UPDATE `options` SET `value` = ? WHERE `name` = ?', [$value, $name]);
+			$ret = (bool)Database::run('UPDATE `options` SET `value` = ? WHERE `name` = ?', [$value, $name]);
 			
 			// update value into the singleton object
 			$self->list[$name]->value = $value;

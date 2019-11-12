@@ -79,8 +79,7 @@ class Logger {
 		$router = Router::getInstance();
 		
 		if ($this->disabled or 'cli' == php_sapi_name() or 'api' == $router->module
-				or ('user' == $router->module and 'login' == $router->action)
-				or (!Options::get('show_log'))) {
+				or ('user' == $router->module and 'login' == $router->action)) {
 			return FALSE;
 		}
 
@@ -96,8 +95,17 @@ class Logger {
 	public function canBeShown(): bool {
 			
 		// user is defined, could be admin
-		if (User::current()) {
+		if (User::current() and Options::get('show_log')) {
 			
+			// get current session
+			$session = Session::current();
+
+			// if impersonating, use the former user attribs
+			if ($session->hasFormerUser()) {
+				$formerUser = $session->getFormerUser();
+				return ($formerUser ? $formerUser->admin : FALSE);
+			}
+
 			return User::current()->admin;
 		
 		} else {
