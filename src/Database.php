@@ -150,8 +150,7 @@ class Database {
 		
 		unset($this->handler);
 		
-		$logger = Logger::getInstance();
-		$logger->addEvent('Database is disconnected');
+		Logger::event('Database is disconnected');
 		
 	}
 	
@@ -1039,8 +1038,7 @@ class Database {
 		
 		$subtext = (int)$result . ' ' . (1==$result ? 'row' : 'rows');
 
-		$logger = Logger::getInstance();
-		$logger->addEvent($query, 'query', $subtext);
+		Logger::event($query, 'query', $subtext);
 		
 	}
 	

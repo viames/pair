@@ -243,11 +243,12 @@ class Plugin {
 	}
 	
 	/**
+	 * Load the manifest from a passed file.
 	 * 
-	 * @param unknown $file
-	 * @return string
+	 * @param	string				Path to the file.
+	 * @return	\SimpleXMLElement
 	 */
-	public static function getManifestByFile($file) {
+	public static function getManifestByFile(string $file): \SimpleXMLElement {
 
 		$app = Application::getInstance();
 		
@@ -351,8 +352,7 @@ class Plugin {
 		$zip->close();
 		
 		// add some log
-		$app = Application::getInstance();
-		$app->logEvent('Created ZIP file archive ' . $zipFile . ' for ' . $this->type . ' plugin');
+		Logger::event('Created ZIP file archive ' . $zipFile . ' for ' . $this->type . ' plugin');
 
 		// lets user download the ZIP file
 		header("Content-Type: application/zip");
@@ -465,9 +465,9 @@ class Plugin {
 		}
 		
 		if ($counter) {
-			$app->logEvent($counter . ' files has been deleted from ' . static::TEMP_FOLDER);
+			Logger::event($counter . ' files has been deleted from ' . static::TEMP_FOLDER);
 		} else {
-			$app->logEvent('No old files deleted from ' . static::TEMP_FOLDER);
+			Logger::event('No old files deleted from ' . static::TEMP_FOLDER);
 		}
 		
 	}
@@ -541,10 +541,10 @@ class Plugin {
 		
 		try {
 			$res = $manifest->asXML($filename);
-			$app->logEvent('Created manifest file ' . $filename . ' for ' . $this->type . ' plugin');
+			Logger::event('Created manifest file ' . $filename . ' for ' . $this->type . ' plugin');
 		} catch (\Exception $e) {
 			$res = FALSE;
-			$app->logError('Manifest file ' . $filename . ' creation failed for ' . $this->type . ' plugin: ' . $e->getMessage());
+			Logger::error('Manifest file ' . $filename . ' creation failed for ' . $this->type . ' plugin: ' . $e->getMessage());
 		}
 		
 		return $res;

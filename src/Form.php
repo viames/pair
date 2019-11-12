@@ -107,8 +107,7 @@ class Form {
 		if ($this->controlExists($name)) {
 			return $this->controls[$name];
 		} else {
-			$log = Logger::getInstance();
-			$log->addError('Field control “' . $name . '” has not been defined in Form object'); 
+			Logger::error('Field control “' . $name . '” has not been defined in Form object'); 
 			return NULL;
 		}
 		
@@ -563,7 +562,7 @@ abstract class FormControl {
 	 */
 	public function __toString(): string {
 		
-		$this->getLabel();
+		return $this->getLabel();
 		
 	}
 	
@@ -1135,28 +1134,28 @@ class FormControlInput extends FormControl {
 				case 'color':
 				case 'hidden':
 					if (''==$value) {
-						$app->logEvent('Control validation on field “' . $this->name . '” has failed (required)');
+						Logger::event('Control validation on field “' . $this->name . '” has failed (required)');
 						$valid = FALSE;
 					}
 					break;
 
 				case 'email':
 					if (!filter_var($value, FILTER_VALIDATE_EMAIL)) {
-						$app->logEvent('Control validation on field “' . $this->name . '” has failed (email required)');
+						Logger::event('Control validation on field “' . $this->name . '” has failed (email required)');
 						$valid = FALSE;
 					}
 					break;
 					
 				case 'url':
 					if (!filter_var($value, FILTER_VALIDATE_URL)) {
-						$app->logEvent('Control validation on field “' . $this->name . '” has failed (url required)');
+						Logger::event('Control validation on field “' . $this->name . '” has failed (url required)');
 						$valid = FALSE;
 					}
 					break;
 					
 				case 'number':
 					if (!is_numeric($value)) {
-						$app->logEvent('Control validation on field “' . $this->name . '” has failed (number required)');
+						Logger::event('Control validation on field “' . $this->name . '” has failed (number required)');
 						$valid = FALSE;
 					}
 					break;
@@ -1172,12 +1171,12 @@ class FormControlInput extends FormControl {
 		if (in_array($this->type, ['number','date'])) {
 			
 			if ($this->min and $value < $this->min) {
-				$app->logEvent('Control validation on field “' . $this->name . '” has failed (min=' . $this->min . ')');
+				Logger::event('Control validation on field “' . $this->name . '” has failed (min=' . $this->min . ')');
 				$valid = FALSE;
 			}
 			
 			if ($this->max and $value > $this->max) {
-				$app->logEvent('Control validation on field “' . $this->name . '” has failed (max=' . $this->max . ')');
+				Logger::event('Control validation on field “' . $this->name . '” has failed (max=' . $this->max . ')');
 				$valid = FALSE;
 			}
 			
@@ -1185,13 +1184,13 @@ class FormControlInput extends FormControl {
 
 		// check validity of minlength attribute
 		if ($this->minLength and ''!=$value and strlen($value) < $this->minLength) {
-			$app->logEvent('Control validation on field “' . $this->name . '” has failed (minLength=' . $this->minLength . ')');
+			Logger::event('Control validation on field “' . $this->name . '” has failed (minLength=' . $this->minLength . ')');
 			$valid = FALSE;
 		}
 
 		// check validity of minlength attribute
 		if ($this->maxLength and strlen($value) > $this->maxLength) {
-			$app->logEvent('Control validation on field “' . $this->name . '” has failed (maxLength=' . $this->maxLength . ')');
+			Logger::event('Control validation on field “' . $this->name . '” has failed (maxLength=' . $this->maxLength . ')');
 			$valid = FALSE;
 		}
 		
@@ -1514,17 +1513,17 @@ class FormControlTextarea extends FormControl {
 		$valid	= TRUE;
 
 		if ($this->required and ''==$value) {
-			$app->logEvent('Control validation on field “' . $this->name . '” has failed (required)');
+			Logger::event('Control validation on field “' . $this->name . '” has failed (required)');
 			$valid = FALSE;
 		}
 		
 		if ($this->minLength and ''!=$value and strlen($value) < $this->minLength) {
-			$app->logEvent('Control validation on field “' . $this->name . '” has failed (minLength=' . $this->minLength . ')');
+			Logger::event('Control validation on field “' . $this->name . '” has failed (minLength=' . $this->minLength . ')');
 			$valid = FALSE;
 		}
 
 		if ($this->maxLength and strlen($value) > $this->maxLength) {
-			$app->logEvent('Control validation on field “' . $this->name . '” has failed (maxLength=' . $this->maxLength . ')');
+			Logger::event('Control validation on field “' . $this->name . '” has failed (maxLength=' . $this->maxLength . ')');
 			$valid = FALSE;
 		}
 		

@@ -69,38 +69,40 @@ class Logger {
 	}
 
 	/**
-	 * Checks that logger is enabled by options and group of connected user.
+	 * Check that logger can be collected by checking "disabled" flag, cli,
+	 * API, router module and Options.
 	 * 
 	 * @return boolean
 	 */
 	final public function isEnabled(): bool {
 		
-		if ($this->disabled) {
-			return FALSE;
-		}
-		
-		$app = Application::getInstance();
 		$router = Router::getInstance();
 		
-		// no logs on command line and web API
-		if ('cli' == php_sapi_name() or 'api' == $router->module) {
-			
+		if ($this->disabled or 'cli' == php_sapi_name() or 'api' == $router->module
+				or ('user' == $router->module and 'login' == $router->action)
+				or (!Options::get('show_log'))) {
 			return FALSE;
+		}
+
+		return TRUE;
+		
+	}
+
+	/**
+	 * Check if the log can appear in the current session.
+	 * 
+	 * @return bool
+	 */
+	public function canBeShown(): bool {
 			
 		// user is defined, could be admin
-		} else if ($app->currentUser) {
+		if (User::current()) {
 			
-			return (Options::get('show_log') and $app->currentUser->admin);
+			return User::current()->admin;
 		
-		// no logs on login page
-		} else if ('user' == $router->module and 'login' == $router->action) {
-				
-			return FALSE;
-					
-		// no login, no user defined, collects logs
 		} else {
 			
-			return TRUE;
+			return FALSE;
 			
 		}
 		
@@ -113,7 +115,7 @@ class Logger {
 		
 		$this->timeStart = $this->lastChrono = $this->getMicrotime();
 		
-		$this->addEvent('Starting Pair framework with base timezone ' . BASE_TIMEZONE);
+		self::event('Starting Pair framework with base timezone ' . BASE_TIMEZONE);
 		
 	}
 	
@@ -138,21 +140,23 @@ class Logger {
 	 * @param	string	Optional additional text.
 	 * @return	void
 	 */
-	final public function addEvent(string $description, string $type='notice', $subtext=NULL): void {
+	final public static function event(string $description, string $type='notice', $subtext=NULL): void {
 		
-		if (!$this->isEnabled()) return;
+		$self = self::getInstance();
+
+		if (!$self->isEnabled()) return;
 		
-		$now = $this->getMicrotime();
+		$now = $self->getMicrotime();
 		
 		$event				= new \stdClass();
 		$event->description = $description;
 		$event->type		= $type;
 		$event->subtext		= $subtext;
-		$event->chrono		= abs($now - $this->lastChrono);
+		$event->chrono		= abs($now - $self->lastChrono);
 		
-		$this->events[]		= $event;
+		$self->events[]		= $event;
 		
-		$this->lastChrono	= $now;
+		$self->lastChrono	= $now;
 		
 	}
 	
@@ -161,9 +165,9 @@ class Logger {
 	 *
 	 * @param	string	Event description.
 	 */
-	final public function addWarning(string $description) {
+	final public static function warning(string $description) {
 	
-		$this->addEvent($description, 'warning');
+		self::event($description, 'warning');
 	
 	}
 	
@@ -172,9 +176,48 @@ class Logger {
 	 *
 	 * @param	string	Event description.
 	 */
+	final public static function error(string $description) {
+	
+		self::event($description, 'error');
+	
+	}
+
+	/**
+	 * Adds an event, storing its chrono time.
+	 * 
+	 * @param	string	Event description.
+	 * @param	string	Event type notice, query, api, warning or error (default is notice).
+	 * @param	string	Optional additional text.
+	 * @return	void
+	 * @deprecated		Use static method Logger::event() instead.
+	 */
+	final public function addEvent(string $description, string $type='notice', $subtext=NULL): void {
+
+		self::event($description, $type, $subtext);
+
+	}
+	
+	/**
+	 * AddEvent’s proxy for warning event creations.
+	 *
+	 * @param	string	Event description.
+	 * @deprecated		Use static method Logger::warning() instead.
+	 */
+	final public function addWarning(string $description) {
+	
+		self::event($description, 'warning');
+	
+	}
+	
+	/**
+	 * AddEvent’s proxy for error event creations.
+	 *
+	 * @param	string	Event description.
+	 * @deprecated		Use static method Logger::error() instead.
+	 */
 	final public function addError(string $description) {
 	
-		$this->addEvent($description, 'error');
+		self::event($description, 'error');
 	
 	}
 	
@@ -187,7 +230,7 @@ class Logger {
 
 		$app = Application::getInstance();
 		
-		if (!$this->isEnabled()) {
+		if (!$this->isEnabled() or !$this->canBeShown()) {
 			return NULL;
 		}
 		
@@ -345,10 +388,10 @@ class Logger {
 	 */
 	final public function getEventListForAjax(): ?string {
 
-		$app		= Application::getInstance();
-		$router		= Router::getInstance();
+		$app	= Application::getInstance();
+		$router	= Router::getInstance();
 		
-		if (!$this->isEnabled() or !$router->sendLog()) {
+		if (!$this->isEnabled() or !$this->canBeShown() or !$router->sendLog()) {
 			return NULL;
 		}
 		

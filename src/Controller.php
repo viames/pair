@@ -205,11 +205,11 @@ abstract class Controller {
 	 * @param	string	Event description.
 	 * @param	string	Event type notice or error (default notice).
 	 * @param	string	Optional additional text.
+	 * @deprecated		Use static method Logger::event() instead.
 	 */
 	final public function logEvent($description, $type='notice', $subtext=NULL) {
 		
-		$logger = Logger::getInstance();
-		$logger->addEvent($description, $type, $subtext);
+		Logger::event($description, $type, $subtext);
 		
 	}
 
@@ -217,11 +217,11 @@ abstract class Controller {
 	 * Proxy to add a warning event.
 	 *
 	 * @param	string	Event description.
+	 * @deprecated		Use static method Logger::warning() instead.
 	 */
 	final public function logWarning($description) {
 	
-		$logger = Logger::getInstance();
-		$logger->addWarning($description);
+		Logger::warning($description);
 	
 	}
 	
@@ -229,11 +229,11 @@ abstract class Controller {
 	 * Proxy to add an error event.
 	 *
 	 * @param	string	Event description.
+	 * @deprecated		Use static method Logger::error() instead.
 	 */
 	final public function logError($description) {
 	
-		$logger = Logger::getInstance();
-		$logger->addError($description);
+		Logger::error($description);
 	
 	}
 	

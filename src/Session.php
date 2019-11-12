@@ -178,23 +178,43 @@ class Session extends ActiveRecord {
 	}
 
 	/**
-	 * Returns the former user associated to the session, if present
+	 * Store the former User or children object of this Session object into a cache.
+	 * 
+	 * @param	User	User to set.
+	 */
+	public function setFormerUser(User $formerUser) {
+		
+		$this->setCache('formerUser', $formerUser);
+
+	}
+
+	/**
+	 * Returns the former user associated to the session, if present.
 	 *
 	 * @return User|null
 	 */
 	public function getFormerUser(): ?User {
 
-		$user = new User($this->formerUserId);
-		return $user->isLoaded() ? $user : null;
+		if (!$this->formerUserId) {
+			return NULL;
+		}
+
+		if (!$this->issetCache('formerUser')) {
+			$userClass = PAIR_USER_CLASS;
+			$formerUser = new $userClass($this->formerUserId);
+			$this->setCache('user', $formerUser->isLoaded() ? $formerUser : NULL);
+		}
+
+		return $this->getCache('formerUser');
 
 	}
 
 	/**
-	 * Returns the current session object
+	 * Return the current Session object.
 	 *
-	 * @return Session
+	 * @return	Session
 	 */
-	public static function getCurrent(): Session {
+	public static function current(): self {
 
 		return new Session(session_id());
 

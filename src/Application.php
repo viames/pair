@@ -496,11 +496,11 @@ class Application {
 	 * @param	string	Event description.
 	 * @param	string	Event type notice, query, api, warning or error (default is notice).
 	 * @param	string	Optional additional text.
+	 * @deprecated		Use static method Logger::event() instead.
 	 */
 	public function logEvent($description, $type='notice', $subtext=NULL) {
 		
-		$logger = Logger::getInstance();
-		$logger->addEvent($description, $type, $subtext);
+		Logger::event($description, $type, $subtext);
 		
 	}
 	
@@ -508,11 +508,11 @@ class Application {
 	 * AddEvent’s proxy for warning event creations.
 	 *
 	 * @param	string	Event description.
+	 * @deprecated		Use static method Logger::warning() instead.
 	 */
 	public function logWarning($description) {
 	
-		$logger = Logger::getInstance();
-		$logger->addWarning($description);
+		Logger::warning($description);
 	
 	}
 	
@@ -520,11 +520,11 @@ class Application {
 	 * AddEvent’s proxy for error event creations.
 	 *
 	 * @param	string	Event description.
+	 * @deprecated		Use static method Logger::error() instead.
 	 */
 	public function logError($description) {
 	
-		$logger = Logger::getInstance();
-		$logger->addError($description);
+		Logger::error($description);
 	
 	}
 	
@@ -712,7 +712,6 @@ class Application {
 		$userClass = PAIR_USER_CLASS;
 	
 		// get required singleton instances
-		$logger = Logger::getInstance();
 		$router = Router::getInstance();
 		
 		// start session or resume session started by runApi
@@ -785,10 +784,13 @@ class Application {
 				// create User object
 				$user = new $userClass($session->idUser);
 				$this->setCurrentUser($user);
+
+				$eventMessage = 'User session for ' . $user->fullName . ' is alive' .
+					', user time zone is ' . $this->currentUser->tzName .
+					' (' . sprintf('%+06.2f', (float)$this->currentUser->tzOffset) . ')';
 				
-				$logger->addEvent('User session for ' . $user->fullName . ' is alive' .
-						', user time zone is ' . $this->currentUser->tzName .
-						' (' . sprintf('%+06.2f', (float)$this->currentUser->tzOffset) . ')');
+				// add log about user session
+				Logger::event($eventMessage);
 				
 				// set defaults in case of no module
 				if (NULL == $router->module) {
@@ -803,7 +805,7 @@ class Application {
 				if ($this->currentUser->canAccess($router->module, $router->action)) {
 					
 					// access granted
-					$logger->addEvent('Access granted on resource ' . $resource);
+					Logger::event('Access granted on resource ' . $resource);
 					
 				} else {
 					
@@ -950,9 +952,6 @@ class Application {
 			// run the action
 			$controller->$action();
 			
-			// log some events
-			$logger	= Logger::getInstance();
-			
 			// set log of ajax call
 			if ($router->ajax) {
 				
@@ -960,12 +959,12 @@ class Application {
 				foreach ($router->vars as $key=>$value) {
 					$params[] = $key . '=' . Utilities::varToText($value);
 				}
-				$logger->addEvent(date('Y-m-d H:i:s') . ' AJAX call on ' . $this->module . '/' . $this->action . ' with params ' . implode(', ', $params));
+				Logger::event(date('Y-m-d H:i:s') . ' AJAX call on ' . $this->module . '/' . $this->action . ' with params ' . implode(', ', $params));
 				
 			// log controller method call
 			} else {
 				
-				$logger->addEvent('Called controller method ' . $controllerName . '->' . $action . '()');
+				Logger::event('Called controller method ' . $controllerName . '->' . $action . '()');
 				
 			}
 			
@@ -977,7 +976,8 @@ class Application {
 			// invoke the view
 			$controller->display();
 			
-			// set the event log
+			// get logger events into an object’s property
+			$logger	= Logger::getInstance();
 			$this->log = $logger->getEventList();
 			
 		}

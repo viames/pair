@@ -150,7 +150,7 @@ abstract class View {
 
 		$file = $this->modulePath .'/'. $this->scriptPath . $name .'.php';
 
-		$this->app->logEvent('Applying ' . $this->layout . ' layout');
+		Logger::event('Applying ' . $this->layout . ' layout');
 		
 		// includes layout file
 		try {
@@ -257,11 +257,11 @@ abstract class View {
 	 * @param	string	Event description.
 	 * @param	string	Event type notice or error (default notice).
 	 * @param	string	Optional additional text.
+	 * @deprecated		Use static method Logger::event() instead.
 	 */
 	public function logEvent($description, $type='notice', $subtext=NULL) {
 		
-		$logger = Logger::getInstance();
-		$logger->addEvent($description, $type, $subtext);
+		Logger::event($description, $type, $subtext);
 		
 	}
 	
@@ -269,11 +269,11 @@ abstract class View {
 	 * AddEvent’s proxy for warning event creations.
 	 *
 	 * @param	string	Event description.
+	 * @deprecated		Use static method Logger::warning() instead.
 	 */
 	public function logWarning($description) {
 	
-		$logger = Logger::getInstance();
-		$logger->addWarning($description);
+		Logger::warning($description);
 	
 	}
 	
@@ -281,11 +281,11 @@ abstract class View {
 	 * AddEvent’s proxy for error event creations.
 	 *
 	 * @param	string	Event description.
+	 * @deprecated		Use static method Logger::error() instead.
 	 */
 	public function logError($description) {
 	
-		$logger = Logger::getInstance();
-		$logger->addError($description);
+		Logger::error($description);
 	
 	}
 	

@@ -254,7 +254,7 @@ class User extends ActiveRecord {
 	
 	/**
 	 * Checks if username/password matches a record into database for local auth and returns a
-	 * stdClass with error, message and userId parameters.
+	 * \stdClass with error, message and userId parameters.
 	 *
 	 * @param	string	Username.
 	 * @param	string	Plain text password.
@@ -414,6 +414,7 @@ class User extends ActiveRecord {
 	 * Returns true if both db writing has been done succesfully. 
 	 * 
 	 * @param	string	IANA time zone identifier.
+	 * @param	int		Possible ID of the user before impersonation.
 	 * @return	bool
 	 */
 	private function createSession(string $timezone, ?int $formerUserId = null): bool {
@@ -908,12 +909,11 @@ class User extends ActiveRecord {
 		if ($this->admin) {
 			return TRUE;
 		} else {
-			$currentSession = Session::getCurrent();
 			$query =
 				'SELECT COUNT(1) FROM `users`' .
 				' INNER JOIN `sessions` AS s ON u.id = s.id_user' .
 				' WHERE s.id = ? AND u.id = ? AND admin = 1';
-			return (bool)Database::load($query, [$currentSession, $this->id], PAIR_DB_COUNT);
+			return (bool)Database::load($query, [Session::current(), $this->id], PAIR_DB_COUNT);
 		}
 
 	}

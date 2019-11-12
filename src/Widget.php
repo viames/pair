@@ -21,15 +21,13 @@ class Widget {
 	 */
 	public function render($name) {
 		
-		$logger = Logger::getInstance();
-		
-		$logger->addEvent('Rendering ' . $name . ' widget');
+		Logger::event('Rendering ' . $name . ' widget');
 		
 		$file = $this->scriptPath . $name .'.php';
 
 		// close buffer and parse file
 		ob_start();
-		$script = require $file;
+		require $file;
 		$widget = ob_get_clean();
 
 		return $widget;

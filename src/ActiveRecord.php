@@ -489,7 +489,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$this->loadFromDb($this->getSqlKeyValues());
 		
 		// log the reload 
-		$app->logEvent('Reloaded ' . $class . ' object with ' . $this->getKeyForEventlog());
+		Logger::event('Reloaded ' . $class . ' object with ' . $this->getKeyForEventlog());
 		
 	}
 	
@@ -498,7 +498,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * 
 	 * @return boolean
 	 */
-	final public function isLoaded() {
+	final public function isLoaded(): bool {
 		
 		return $this->loadedFromDb;
 		
@@ -673,7 +673,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$class = get_called_class();
 		
 		if (!$this->areKeysPopulated() and !$this->db->isAutoIncrement(static::TABLE_NAME)) {
-			$app->logEvent('The object’s ' . implode(', ', $this->keyProperties) . ' properties must be populated in order to create a ' . $class . ' record');
+			Logger::event('The object’s ' . implode(', ', $this->keyProperties) . ' properties must be populated in order to create a ' . $class . ' record');
 			return FALSE;
 		}
 		
@@ -710,7 +710,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 		
 		// log as application event
-		$app->logEvent('Created a new ' . $class . ' object with ' . implode(', ' , $keyParts));
+		Logger::event('Created a new ' . $class . ' object with ' . implode(', ' , $keyParts));
 		
 		// hook for tasks to be executed after creation
 		$this->afterCreate();
@@ -775,7 +775,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 			
 			$res = (bool)$this->db->updateObject($class::TABLE_NAME, $dbObj, $dbKey, static::getEncryptableFields());
 			
-			$app->logEvent('Updated ' . $class . ' object with ' . $logParam);
+			Logger::event('Updated ' . $class . ' object with ' . $logParam);
 
 		// object is not populated
 		} else {
@@ -1542,7 +1542,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 			
 		}
 		
-		$app->logEvent('Loaded ' . count($objects) . ' ' . $class . ' objects' . $whereLog);
+		Logger::event('Loaded ' . count($objects) . ' ' . $class . ' objects' . $whereLog);
 		
 		return $objects;
 	
@@ -1600,7 +1600,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$db->setQuery('SELECT COUNT(1) FROM `' . $class::TABLE_NAME . '`' . $where);
 		$count = $db->loadCount();
 	
-		$app->logEvent('Counted ' . $count . ' ' . $class . ' objects' . $whereLog);
+		Logger::event('Counted ' . $count . ' ' . $class . ' objects' . $whereLog);
 	
 		return $count;
 	
@@ -1653,7 +1653,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// turn on loaded-from-db flag
 		$object->loadedFromDb = TRUE;
 			
-		$app->logEvent('Loaded a ' . $class . ' object' . (count($customBinds) ? ' with custom fields ' . implode(',', $customBinds) : ''));
+		Logger::event('Loaded a ' . $class . ' object' . (count($customBinds) ? ' with custom fields ' . implode(',', $customBinds) : ''));
 		
 		return $object;
 		
@@ -1714,7 +1714,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 			
 		}
 		
-		$app->logEvent('Loaded ' . count($objects) . ' ' . $class . ' objects with custom fields ' . implode(',', $customBinds));
+		Logger::event('Loaded ' . count($objects) . ' ' . $class . ' objects with custom fields ' . implode(',', $customBinds));
 		
 		return $objects;
 		

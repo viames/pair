@@ -114,11 +114,11 @@ abstract class Model {
 	 * @param	string	Event description.
 	 * @param	string	Event type notice or error (default notice).
 	 * @param	string	Optional additional text.
+	 * @deprecated		Use static method Logger::event() instead.
 	 */
 	public function logEvent(string $description, string $type='notice', string $subtext=NULL) {
 		
-		$logger = Logger::getInstance();
-		$logger->addEvent($description, $type, $subtext);
+		Logger::event($description, $type, $subtext);
 		
 	}
 	
@@ -126,11 +126,11 @@ abstract class Model {
 	 * AddEvent’s proxy for warning event creations.
 	 *
 	 * @param	string	Event description.
+	 * @deprecated		Use static method Logger::warning() instead.
 	 */
 	public function logWarning(string $description) {
 	
-		$logger = Logger::getInstance();
-		$logger->addWarning($description);
+		Logger::warning($description);
 	
 	}
 	
@@ -138,11 +138,11 @@ abstract class Model {
 	 * AddEvent’s proxy for error event creations.
 	 *
 	 * @param	string	Event description.
+	 * @deprecated		Use static method Logger::error() instead.
 	 */
 	public function logError(string $description) {
 	
-		$logger = Logger::getInstance();
-		$logger->addError($description);
+		Logger::error($description);
 	
 	}
 	

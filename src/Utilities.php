@@ -34,16 +34,14 @@ class Utilities {
 			
 			if (Options::get('show_log')) {
 
-				$logger = Logger::getInstance();
-			
 				// start to show detailed error in log event
-				$logger->addError('Debug backtrace for “' . $errstr .  '” in ' . $errfile . ' line ' . $errline);
+				Logger::error('Debug backtrace for “' . $errstr .  '” in ' . $errfile . ' line ' . $errline);
 	
 				foreach ($backtrace as $event) {
-					$logger->addEvent($event);
+					Logger::event($event);
 				}
 	
-				$logger->addEvent('Debug backtrace finished');
+				Logger::event('Debug backtrace finished');
 	
 			// show error in app because log is disabled
 			} else {
