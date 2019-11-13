@@ -1611,18 +1611,12 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @param	string	Query to run.
 	 * @param	array	Optional bind parameters for query.
-	 *
-	 * @return	mixed|NULL
+	 * @return	static|NULL
 	 */
-	final public static function getObjectByQuery(string $query, $params=[]): ?self {
-		
-		$app	= Application::getInstance();
-		$db		= Database::getInstance();
-		$class	= get_called_class();
+	final public static function getObjectByQuery(string $query, array $params=[]): ?self {
 		
 		// run query
-		$db->setQuery($query);
-		$row = $db->loadObject($params);
+		$row = Database::load($query, $params, PAIR_DB_OBJECT);
 		
 		// initialize custom binds
 		$customBinds = [];
@@ -1631,6 +1625,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 			return NULL;
 		}
 			
+		$class = get_called_class();
 		$binds = $class::getBinds();
 		
 		// get object properties from query
@@ -1664,18 +1659,14 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @param	string	Query to run.
 	 * @param	array	Optional bind parameters for query.
-	 *
-	 * @return	array:mixed
+	 * @return	static[]
 	 */
-	final public static function getObjectsByQuery(string $query, $params=[]): ?array {
+	final public static function getObjectsByQuery(string $query, array $params=[]): array {
 		
-		$app	= Application::getInstance();
-		$db		= Database::getInstance();
-		$class	= get_called_class();
+		$class = get_called_class();
 
 		// run query
-		$db->setQuery($query);
-		$list = $db->loadObjectList((array)$params);
+		$list = Database::load($query, $params);
 		
 		// array that returns and custom binds
 		$objects = [];
@@ -1686,7 +1677,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 			$binds = $class::getBinds();
 			
 			// get object properties from query
-			$fields  = get_object_vars($list[0]);
+			$fields = get_object_vars($list[0]);
 
 			// search for custom field names
 			foreach ($fields as $field=>$value) {
