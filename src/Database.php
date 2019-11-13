@@ -44,16 +44,16 @@ class Database {
 	private $errors = array();
 	
 	/**
-	 * Private constructor.
-	 */
-	private function __construct() {}
-		
-	/**
 	 * List of temporary table structures (describe, foreignKeys, inverseForeignKeys). 
 	 * @var array
 	 */
 	private $definitions = [];
 	
+	/**
+	 * Private constructor.
+	 */
+	private function __construct() {}
+		
 	/**
 	 * Connects to db just the first time, returns singleton object everytime.
 	 * 

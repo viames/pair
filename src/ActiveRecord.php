@@ -997,9 +997,9 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * 
 	 * @param	string	Related property name.
 	 * 
-	 * @return	ActiveRecord|NULL
+	 * @return	static|NULL
 	 */
-	final public function getRelated(string $relatedProperty): ?ActiveRecord {
+	final public function getRelated(string $relatedProperty): ?self {
 		
 		$cacheName = $relatedProperty . 'RelatedObject';
 		
@@ -1007,10 +1007,26 @@ abstract class ActiveRecord implements \JsonSerializable {
 		if ($this->issetCache($cacheName)) {
 			return $this->getCache($cacheName);
 		}
-		
-		// get table foreign-keys
-		$foreignKeys = $this->db->getForeignKeys(static::TABLE_NAME);
-		
+
+		// search for a static foreign-key list in object class in order to speed-up
+		if (defined('static::FOREIGN_KEYS') and is_array(static::FOREIGN_KEYS)) {
+
+			// initialize
+			$foreignKeys = [];
+
+			// cast to \stdClass
+			foreach (static::FOREIGN_KEYS as $fk) {
+				$obj = (object)$fk;
+				$foreignKeys[] = $obj;
+			}
+
+		// get foreign-key by DB query
+		} else {
+
+			$foreignKeys = $this->db->getForeignKeys(static::TABLE_NAME);
+
+		}
+
 		// get field name by mapped property
 		$relatedField = $this->getMappedField($relatedProperty);
 		

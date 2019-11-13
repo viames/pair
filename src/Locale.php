@@ -53,6 +53,25 @@ class Locale extends ActiveRecord {
 	const TABLE_KEY = 'id';
 
 	/**
+	 * Speed up the foreign-key load because for this class they are always used.
+	 * @var array
+	 */
+	const FOREIGN_KEYS = [
+		['CONSTRAINT_NAME'			=> 'fk_locales_countries',
+		'COLUMN_NAME'				=> 'country_id',
+		'REFERENCED_TABLE_NAME'		=> 'countries',
+		'REFERENCED_COLUMN_NAME'	=> 'id',
+		'UPDATE_RULE'				=> 'CASCADE',
+		'DELETE_RULE'				=> 'RESTRICT'],
+		['CONSTRAINT_NAME'			=> 'fk_locales_languages',
+		'COLUMN_NAME'				=> 'language_id',
+		'REFERENCED_TABLE_NAME'		=> 'languages',
+		'REFERENCED_COLUMN_NAME'	=> 'id',
+		'UPDATE_RULE'				=> 'CASCADE',
+		'DELETE_RULE'				=> 'RESTRICT']
+	];
+
+	/**
 	 * Method called by constructor just after having populated the object.
 	 */
 	protected function init() {
