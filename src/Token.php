@@ -105,7 +105,7 @@ class Token extends ActiveRecord {
 	 */
 	public static function getByValue($tokenValue) {
 		
-		return self::getObjectByQuery('SELECT * FROM tokens WHERE value = ?', $tokenValue);
+		return self::getObjectByQuery('SELECT * FROM tokens WHERE value = ?', [$tokenValue]);
 		
 	}
 	
