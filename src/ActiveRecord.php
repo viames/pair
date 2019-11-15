@@ -683,6 +683,11 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// get list of class property names
 		$props = array_keys(static::getBinds());
 		
+		// populate createdAt if it exists
+		if (isset($this->createdAt) and !$this->createdAt) { 
+			$this->createdAt = new DateTime();
+		}
+		
 		// insert the object as db record
 		$dbObj = $this->prepareData($props);
 		$res = $this->db->insertObject(static::TABLE_NAME, $dbObj, static::getEncryptableFields());

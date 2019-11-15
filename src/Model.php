@@ -240,7 +240,7 @@ abstract class Model {
 	public function countItems(string $class, string $optionalQuery=NULL): int {
 
 		$query = $optionalQuery ? $optionalQuery : $this->getQuery($class);
-		return Database::load('SELECT COUNT(1) FROM (' . $query . ') AS `result`', [], PAIR_DB_COUNT);
+		return (int)Database::load('SELECT COUNT(1) FROM (' . $query . ') AS `result`', [], PAIR_DB_COUNT);
 
 	}
 

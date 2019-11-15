@@ -929,10 +929,9 @@ class Utilities {
 	 *  
 	 * @param	string	Snake case variable name.
 	 * @param	bool	Optional to have first letter capital case.
-	 * 
 	 * @return	string
 	 */
-	public static function getCamelCase($varName, $capFirst=FALSE) {
+	public static function getCamelCase(string $varName, bool $capFirst=FALSE): string {
 		
 		$camelCase = str_replace(' ', '', ucwords(str_replace('_', ' ', $varName)));
 		

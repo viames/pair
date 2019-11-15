@@ -106,7 +106,7 @@ class Logger {
 				return ($formerUser ? $formerUser->admin : FALSE);
 			}
 
-			return User::current()->admin;
+			return (bool)User::current()->admin;
 		
 		} else {
 			
