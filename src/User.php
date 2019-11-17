@@ -86,12 +86,6 @@ class User extends ActiveRecord {
 	protected $pwReset;
 	
 	/**
-	 * Token to auto-login by cookies.
-	 * @var string
-	 */
-	protected $rememberMe;
-	
-	/**
 	 * Time zone offset in hours. Cached.
 	 * @var float
 	 */
@@ -185,8 +179,7 @@ class User extends ActiveRecord {
 			'enabled'	=> 'enabled',
 			'lastLogin'	=> 'last_login',
 			'faults'	=> 'faults',
-			'pwReset'	=> 'pw_reset',
-			'rememberMe'=> 'remember_me'
+			'pwReset'	=> 'pw_reset'
 		);
 		
 		return $varFields;
@@ -476,7 +469,7 @@ class User extends ActiveRecord {
 		Audit::logout($user);
 
 		// delete session
-		$res = $db->exec('DELETE FROM `sessions` WHERE id = ?', [$sid]);
+		$res = Database::run('DELETE FROM `sessions` WHERE id = ?', [$sid]);
 
 		// unset all persistent states
 		$app->unsetAllPersistentStates();
@@ -758,7 +751,7 @@ class User extends ActiveRecord {
 	}
 	
 	/**
-	 * Set a browser’s cookie remember-me string.
+	 * Create a remember-me object, store it into DB and set the browser’s cookie.
 	 * 
 	 * @param	string	IANA time zone identifier.
 	 * @return	bool
@@ -766,14 +759,17 @@ class User extends ActiveRecord {
 	public function createRememberMe(string $timezone): bool {
 		
 		// set a random string
-		$this->rememberMe = Utilities::getRandomString(32);
+		$ur = new UserRemember();
+		$ur->userId = $this->id;
+		$ur->rememberMe = Utilities::getRandomString(32);
+		$ur->createdAt = new \DateTime('now', new \DateTimeZone($timezone));
 		
-		if (!$this->store()) {
+		if (!$ur->store()) {
 			return FALSE;
 		}
 
 		// serialize an array with timezone and RememberMe string
-		$content = serialize([$timezone, $this->rememberMe]);
+		$content = serialize([$timezone, $ur->rememberMe]);
 		
 		// expire in 30 days
 		$expire = time() + 60*60*24*30;
@@ -797,29 +793,36 @@ class User extends ActiveRecord {
 		if (!isset($_COOKIE[$cookieName])) {
 			return FALSE;
 		}
+
+		$cookieContent = static::getRememberMeCookieContent();
+		
+		// delete any DB record with the current user and remember-me
+		Database::run('UPDATE `users_remembers` SET `created_at` = NOW() WHERE `user_id` = ? AND `remember_me` = ?', [$this->id, $cookieContent->rememberMe]);
 		
 		// expire in 30 days
 		$expire = time() + 60*60*24*30;
-		
+
 		// set cookie and return the result
 		return setcookie($cookieName, $_COOKIE[$cookieName], $expire, '/');
 		
 	}
-	
+
 	/**
-	 * Return an user that matches remember_me string if logged less than 1 month ago. NULL if not found.
+	 * Return an user that matches remember_me string if created less than 1 month ago. NULL if not found.
 	 *
 	 * @param	string		RememberMe value.
 	 * @return	User|NULL
 	 */
 	private static function getByRememberMe(string $rememberMe): ?User {
 
+		// delete older remember-me DB records
+		Database::run('DELETE FROM `users_remembers` WHERE `created_at` < DATE_SUB(NOW(), INTERVAL 1 MONTH');
+
 		$query =
-			'SELECT *' .
-			' FROM `users`' .
-			' WHERE `remember_me` IS NOT NULL' .
-			' AND `remember_me` = ?' .
-			' AND `last_login` > DATE_SUB(NOW(), INTERVAL 1 MONTH)';
+			'SELECT u.*' .
+			' FROM `users` AS u' .
+			' INNER JOIN `users_remembers` AS ur ON u.`id` = ur.`user_id`' .
+			' WHERE ur.`remember_me` = ?';
 		
 		$userClass = PAIR_USER_CLASS;
 		
@@ -834,56 +837,50 @@ class User extends ActiveRecord {
 	 */
 	public static function loginByRememberMe(): bool {
 		
-		// build the cookie name
-		$cookieName = static::getRememberMeCookieName();
-
+		// get the cookie content
+		$cookieContent = static::getRememberMeCookieContent();
+	
 		// check if cookie exists
-		if (!isset($_COOKIE[$cookieName])) {
-			return FALSE;
-		}
-			
-		// try to unserialize the cookie content
-		$content = unserialize($_COOKIE[$cookieName]);
-		
-		// cookie content is not unserializable
-		if (FALSE === $content) {
+		if (is_null($cookieContent)) {
 			return FALSE;
 		}
 
-		// check if content exists and RememberMe length
-		if (isset($content[0]) and isset($content[1]) and 32==strlen($content[1])) {
-			
-			// try to load user
-			$user = static::getByRememberMe($content[1]);
-			
-			// if user exists, return it
-			if (is_a($user, 'Pair\User')) {
-				$user->createSession($content[0]);
-				$user->renewRememberMe();
-				$app = Application::getInstance();
-				$app->setCurrentUser($user);
-				return TRUE;
-			}
+		// try to load user
+		$user = static::getByRememberMe($cookieContent->rememberMe);
 		
+		// if user exists, return it
+		if (is_a($user, 'Pair\User')) {
+			$user->createSession($cookieContent->timezone);
+			$user->renewRememberMe();
+			$app = Application::getInstance();
+			$app->setCurrentUser($user);
+			return TRUE;
 		}
-		
+
 		// login unsucceded
 		return FALSE;
 	
 	}
 	
 	/**
-	 * Set deletion for browser’s cookie about RememberMe.
+	 * Delete DB record and browser’s cookie because when logout is invoked.
 	 * 
 	 * @return bool
 	 */
 	private function unsetRememberMe(): bool {
 		
-		$this->rememberMe = NULL;
-		if (!$this->store()) {
+		// build the cookie name
+		$cookieContent = $this->getRememberMeCookieContent();
+		
+		// check if cookie exists
+		if (is_null($cookieContent)) {
 			return FALSE;
 		}
+
+		// delete the current remember-me DB record
+		Database::run('DELETE FROM `users_remembers` WHERE `user_id` = ? AND `remember_me` = ?', [$this->id, $cookieContent->rememberMe]);
 		
+		// delete the current remember-me Cookie
 		return setcookie(static::getRememberMeCookieName(), '', -1, '/');
 		
 	}
@@ -927,6 +924,41 @@ class User extends ActiveRecord {
 
 		$app = Application::getInstance();
 		return $app->currentUser;
+
+	}
+
+	/**
+	 * Utility to unserialize and return the remember-me cookie content {timezone, rememberMe}.
+	 * 
+	 * @return	\stdClass|NULL
+	 */
+	private static function getRememberMeCookieContent(): ?\stdClass {
+
+		// build the cookie name
+		$cookieName = static::getRememberMeCookieName();
+
+		// check if cookie exists
+		if (!isset($_COOKIE[$cookieName])) {
+			return NULL;
+		}
+			
+		// try to unserialize the cookie content
+		$content = unserialize($_COOKIE[$cookieName]);
+		
+		// cookie content is not unserializable
+		if (FALSE === $content) {
+			return  NULL;
+		}
+
+		// check if content exists and RememberMe length
+		if (isset($content[0]) and isset($content[1]) and 32==strlen($content[1])) {
+			$obj = new \stdClass();
+			$obj->timezone = $content[0];
+			$obj->rememberMe = $content[1];
+			return $obj;
+		}
+		
+		return NULL;
 
 	}
 	
