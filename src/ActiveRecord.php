@@ -346,7 +346,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 				case 'DateTime':
 					if (is_a($this->$prop, 'DateTime')) {
 						$dt = clone($this->$prop);
-						$dt->setTimezone(new \DateTimeZone(BASE_TIMEZONE));
+						$dt->setTimezone(Application::getTimeZone());
 						$ret = $dt->format('Y-m-d H:i:s');
 					} else if (static::isNullable($field)) {
 						$ret = NULL;
@@ -669,7 +669,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	final public function create() {
 
-		$app = Application::getInstance();
 		$class = get_called_class();
 		
 		if (!$this->areKeysPopulated() and !$this->db->isAutoIncrement(static::TABLE_NAME)) {
@@ -684,8 +683,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$props = array_keys(static::getBinds());
 		
 		// populate createdAt if it exists
-		if (isset($this->createdAt) and !$this->createdAt) { 
-			$this->createdAt = new DateTime();
+		if (property_exists($class, 'createdAt') and is_null($this->createdAt)) { 
+			$this->createdAt = new \DateTime('now', Application::getTimeZone());
 		}
 		
 		// insert the object as db record
@@ -1293,14 +1292,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	final private function setDatetimeProperty(string $propertyName, $value) {
 		
-		$app = Application::getInstance();
-		
-		// in login page the currentUser doesn’t exist
-		if (is_a($app->currentUser, 'User')) {
-			$dtz = $app->currentUser->getDateTimeZone();
-		} else {
-			$dtz = new \DateTimeZone(BASE_TIMEZONE);
-		}
+		$dtz = Application::getTimeZone();
 		
 		// timestamp is acquired in UTC only, any DTZ doesn't affect its value
 		if (defined('UTC_DATE') and UTC_DATE and (is_int($value) or ctype_digit($value))) {
@@ -1337,7 +1329,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// no recognized type/format
 		} else {
 
-			//$app->logWarning('Unrecognized date variable for ' . $propertyName . ' type ' . gettype($value) . ' having value ' . Utilities::varToText($value));
 			$this->$propertyName = NULL;
 			
 		}
@@ -1824,16 +1815,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 			return NULL;
 		}
 
-		$app = Application::getInstance();
-		
 		// for guests, use default TimeZone
-		if (is_a($app->currentUser, 'User')) {
-			$dtz = $app->currentUser->getDateTimeZone();
-		} else {
-			$dtz = new \DateTimeZone(BASE_TIMEZONE);
-		}
-		
-		$this->$prop->setTimeZone($dtz);
+		$this->$prop->setTimeZone(Application::getTimeZone());
 
 		// check if format is specified
 		if (!$format) {
@@ -1872,17 +1855,10 @@ abstract class ActiveRecord implements \JsonSerializable {
 			return NULL;
 		}
 		
-		$app  = Application::getInstance();
 		$tran = Translator::getInstance();
 		
 		// for guests, use default TimeZone
-		if (is_a($app->currentUser, 'User')) {
-			$dtz = $app->currentUser->getDateTimeZone();
-		} else {
-			$dtz = new \DateTimeZone(BASE_TIMEZONE);
-		}
-		
-		$this->$prop->setTimeZone($dtz);
+		$this->$prop->setTimeZone(Application::getTimeZone());
 
 		// if is set a locale date format, use it
 		if ($tran->stringExists('LC_DATE_FORMAT')) {

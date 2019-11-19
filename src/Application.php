@@ -1116,4 +1116,18 @@ class Application {
 
 	}
 
+	/**
+	 * Return the proper TimeZone
+	 */
+	public static final function getTimeZone(): \DateTimeZone {
+
+		$app = Application::getInstance();
+		
+		// in login page the currentUser doesn’t exist
+		return is_a($app->currentUser, 'User')
+			? $app->currentUser->getDateTimeZone()
+			: new \DateTimeZone(BASE_TIMEZONE);
+
+	}
+
 }
