@@ -20,7 +20,7 @@ class UserRemember extends ActiveRecord {
 	 * This property maps “created_at” column.
 	 * @var DateTime
 	 */
-	protected $description;
+	protected $createdAt;
 
 	/**
 	 * Name of related db table.
