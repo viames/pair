@@ -54,7 +54,7 @@ class UserRemember extends ActiveRecord {
 	public static function getUserByRememberMe(string $rememberMe): ?User {
 
 		// delete older remember-me DB records
-		Database::run('DELETE FROM `users_remembers` WHERE `created_at` < DATE_SUB(NOW(), INTERVAL 1 MONTH');
+		Database::run('DELETE FROM `users_remembers` WHERE `created_at` < DATE_SUB(NOW(), INTERVAL 1 MONTH)');
 
 		$query =
 			'SELECT u.*' .

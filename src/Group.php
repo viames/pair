@@ -30,9 +30,9 @@ class Group extends ActiveRecord {
 	
 	/**
 	 * Name of primary key db field.
-	 * @var string
+	 * @var array
 	 */
-	const TABLE_KEY = 'id';
+	const TABLE_KEY = ['id'];
 	
 	/**
 	 * Set for converts from string to Datetime, integer or boolean object in two ways.
@@ -106,7 +106,8 @@ class Group extends ActiveRecord {
 			$acl->delete();
 		}
 
-		$users = User::getAllObjects(array('groupId' => $this->id));
+		$userClass = PAIR_USER_CLASS;
+		$users = $userClass::getAllObjects(array('groupId' => $this->id));
 		foreach ($users as $user) {
 			$user->delete();
 		}
@@ -118,21 +119,12 @@ class Group extends ActiveRecord {
 	 *
 	 * @return	array:user
 	 */
-	public function getUsers() {
+	public function getUsers(): array {
 	
-		$this->db->setQuery('SELECT * FROM `users` WHERE group_id=?');
-		$list = $this->db->loadObjectList($this->id);
-	
-		$users = array();
-	
+		// a subclass may have been defined for the user
 		$userClass = PAIR_USER_CLASS;
-	
-		// iterate on each page
-		foreach ($list as $row) {
-			$users[] = new $userClass($row);
-		}
-	
-		return $users;
+
+		return $userClass::loadObjectsByQuery('SELECT * FROM `users` WHERE group_id=?', [$this->id]);
 	
 	}
 	
@@ -141,7 +133,7 @@ class Group extends ActiveRecord {
 	 *
 	 * @return	Group|NULL
 	 */
-	public static function getDefault() {
+	public static function getDefault(): ?Group {
 	
 		return self::getObjectByQuery('SELECT * FROM `groups` WHERE `is_default` = 1');
 	
@@ -153,7 +145,7 @@ class Group extends ActiveRecord {
 	protected function unsetSiblingsDefaults() {
 	
 		if ($this->default) {
-			Database::run('UPDATE `groups` SET `is_default` = 0 WHERE `id` <> ?', $this->id);
+			Database::run('UPDATE `groups` SET `is_default` = 0 WHERE `id` <> ?', [$this->id]);
 		}
 	
 	}
@@ -163,9 +155,9 @@ class Group extends ActiveRecord {
 	 *
 	 * @return array:Acl
 	 */
-	public function getAcls() {
+	public function getAcls(): array {
 		
-		return Acl::getAllObjects(array('groupId'=>$this->id));
+		return Acl::getAllObjects(['groupId'=>$this->id]);
 		
 	}
 
@@ -174,7 +166,7 @@ class Group extends ActiveRecord {
 	 *
 	 * @return array:Rule
 	 */
-	public function getAllNotExistRules() {
+	public function getAllNotExistRules(): array {
 
 		$query =
 			'SELECT r.*, m.`name` AS module_name' .
@@ -183,7 +175,7 @@ class Group extends ActiveRecord {
 			' WHERE admin_only = 0' .
 			' AND r.id NOT IN(SELECT a.rule_id FROM `acl` AS a WHERE a.group_id = ?)';
 		
-		return Rule::getObjectsByQuery($query, $this->id);
+		return Rule::getObjectsByQuery($query, [$this->id]);
 		
 	}
 	
@@ -213,7 +205,7 @@ class Group extends ActiveRecord {
 	public function getDefaultAcl() {
 		
 		$query = 'SELECT * FROM `acl` WHERE `group_id` = ? AND `is_default` = 1';
-		return Acl::getObjectByQuery($query, $this->id);
+		return Acl::getObjectByQuery($query, [$this->id]);
 	
 	}
 	
