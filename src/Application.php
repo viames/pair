@@ -802,7 +802,7 @@ class Application {
 				$resource = $router->module . '/' . $router->action;
 				
 				// checking permission
-				if ($this->currentUser->canAccess($router->module, $router->action)) {
+				if ($this->currentUser->canAccess((string)$router->module, $router->action)) {
 					
 					// access granted
 					Logger::event('Access granted on resource ' . $resource);
