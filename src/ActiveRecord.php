@@ -1902,7 +1902,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 					break;
 					
 				case 'DateTime':
-					print $this->formatDateTime($this->$name);
+					print $this->formatDateTime($name);
 					break;
 					
 				case 'csv':
