@@ -412,13 +412,11 @@ class User extends ActiveRecord {
 	 */
 	private function createSession(string $timezone, ?int $formerUserId = null): bool {
 
-		// checks if time zone name is valid
-		if (!in_array($timezone, \DateTimeZone::listIdentifiers())) {
-			$timezone = date_default_timezone_get();
-		}
+		// get a valid DateTimeZone object
+		$dateTimeZone = User::getValidTimeZone($timezone);
 		
 		// gets offset by timezone name
-		$dt = new \DateTime('now', new \DateTimeZone($timezone));
+		$dt = new \DateTime('now', $dateTimeZone);
 		$diff = $dt->format('P');
 		list ($hours, $mins) = explode(':', $diff);
 		$offset = (float)$hours + ($hours > 0 ? ($mins / 60) : -($mins / 60));
@@ -752,12 +750,14 @@ class User extends ActiveRecord {
 	 * @return	bool
 	 */
 	public function createRememberMe(string $timezone): bool {
+
+		$dateTimeZone = User::getValidTimeZone($timezone);
 		
 		// set a random string
 		$ur = new UserRemember();
 		$ur->userId = $this->id;
 		$ur->rememberMe = Utilities::getRandomString(32);
-		$ur->createdAt = new \DateTime('now', new \DateTimeZone($timezone));
+		$ur->createdAt = new \DateTime('now', $dateTimeZone);
 		
 		if (!$ur->store()) {
 			return FALSE;
@@ -887,5 +887,23 @@ class User extends ActiveRecord {
 		return $app->currentUser;
 
 	}
-	
+
+	/**
+	 * Compare the past TimeZone value with the list of valid identifiers and,
+	 * if not found in this list, assign the system default. Then create the
+	 * object to be returned.
+	 * 
+	 * @param	string	IANA time zone identifier.
+	 * @return	\DateTimeZone
+	 */
+	public static function getValidTimeZone(string $timezone): \DateTimeZone {
+
+		// checks if time zone name is valid
+		if (!in_array($timezone, \DateTimeZone::listIdentifiers())) {
+			$timezone = date_default_timezone_get();
+		}
+
+		return new \DateTimeZone($timezone);
+
+	}
 }
