@@ -547,11 +547,7 @@ abstract class FormControl {
 	 */
 	public function __set(string $name, $value) {
 	
-		try {
-			$this->$name = $value;
-		} catch (\Exception $e) {
-			$this->addError('Property ' . $name . ' cannot get value ' . $value);
-		}
+		$this->$name = $value;
 	
 	}
 	
@@ -1210,9 +1206,15 @@ class FormControlSelect extends FormControl {
 	
 	/**
 	 * Flag to enable this control to multiple values.
-	 * @var boolean
+	 * @var bool
 	 */
 	private $multiple = FALSE;
+
+	/**
+	 * If populated with text, add an empty option before the list of values.
+	 * @var string|NULL
+	 */
+	private $emptyOption;
 	
 	/**
 	 * Populates select control with an associative array. Chainable method.
@@ -1302,19 +1304,13 @@ class FormControlSelect extends FormControl {
 	/**
 	 * Adds a null value as first item. Chainable method.
 	 * 
-	 * @param	string	Option text for first null value.
+	 * @param	string|NULL	Option text for first null value.
 	 * 
 	 * @return	FormControlSelect
 	 */
-	public function prependEmpty($text=NULL): FormControlSelect {
+	public function prependEmpty(string $text=NULL): FormControlSelect {
 		
-		$t = Translator::getInstance();
-		
-		$option			= new \stdClass();
-		$option->value	= '';
-		$option->text	= is_null($text) ? $t->get('SELECT_NULL_VALUE') : $text;
-
-		$this->list = array_merge(array($option), $this->list);
+		$this->emptyOption = is_null($text) ? Translator::do('SELECT_NULL_VALUE') : $text;
 		
 		return $this;
 		
@@ -1368,6 +1364,14 @@ class FormControlSelect extends FormControl {
 			return '<option value="' . htmlspecialchars($option->value) . '"' . $selected . $attributes . '>' .
 					htmlspecialchars($option->text) . "</option>\n";
 		};
+
+		// add an initial line to the options of this select
+		if (!is_null($this->emptyOption)) {
+			$option			= new \stdClass();
+			$option->value	= '';
+			$option->text	= ($this->disabled or $this->readonly) ? '' : $this->emptyOption;
+			$this->list = array_merge(array($option), $this->list);
+		}
 	
 		$ret = '<select ' . $this->getNameProperty();
 		
