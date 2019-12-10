@@ -155,7 +155,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 						break;
 						
 					case 'int':
-						if ('' === $value and $this->isNullable($this->getMappedField($name))) {
+						if ('' === $value and $this->isNullable((string)$this->getMappedField($name))) {
 							$this->$name = NULL;
 						} else {
 							$this->$name = (int)$value;
@@ -163,7 +163,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 						break;
 
 					case 'json':
-						if ('' === $value and $this->isNullable($this->getMappedField($name))) {
+						if ('' === $value and $this->isNullable((string)$this->getMappedField($name))) {
 							$this->$name = NULL;
 						} else {
 							$this->$name = json_decode($value);
@@ -227,7 +227,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 				// when found, return the related object
 				if (static::TABLE_NAME == $ifk->TABLE_NAME) {
-					$property = $this->getMappedProperty($ifk->COLUMN_NAME);
+					$property = (string)$this->getMappedProperty($ifk->COLUMN_NAME);
 					return $this->getRelated($property);
 				}
 
@@ -328,7 +328,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// properly cast a property of this object and return it
 		$cast = function($prop) {
 			
-			$field = static::getMappedField($prop);
+			$field = (string)static::getMappedField($prop);
 
 			switch ($this->getPropertyType($prop)) {
 				
@@ -2100,7 +2100,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		foreach ($properties as $propName => $value) {
 
-			$field = static::getMappedField($propName);
+			$field = (string)static::getMappedField($propName);
 
 			// primary key
 			if ($this->isKeyProperty($propName)) {

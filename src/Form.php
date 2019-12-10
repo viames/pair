@@ -1554,7 +1554,7 @@ class FormControlButton extends FormControl {
 	 *
 	 * @return	FormControlButton
 	 */
-	public function setType($type): FormControlButton {
+	public function setType(string $type): FormControlButton {
 	
 		$this->type = $type;
 		return $this;
@@ -1568,7 +1568,7 @@ class FormControlButton extends FormControl {
 	 *
 	 * @return	FormControlButton
 	 */
-	public function setFaIcon($class): FormControlButton {
+	public function setFaIcon(string $class): FormControlButton {
 	
 		$this->faIcon = $class;
 		return $this;

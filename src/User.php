@@ -518,6 +518,11 @@ class User extends ActiveRecord {
 	 */
 	public function canAccess(string $module, string $action=NULL): bool {
 
+		// patch for public folder content
+		if ('public' == $module) {
+			return TRUE;
+		}
+
 		// reveal module/action type
 		if (is_null($action) and FALSE !== strpos($module, '/')) {
 			list($module,$action) = explode('/', $module);
