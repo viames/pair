@@ -1,0 +1,139 @@
+<?php
+
+namespace Pair;
+
+use Aws\S3\S3Client;
+use Etime\Flysystem\Plugin\AWS_S3\PresignedUrl;
+use Exception;
+use League\Flysystem\AwsS3v3\AwsS3Adapter;
+use League\Flysystem\Filesystem;
+
+class AmazonS3
+{
+    /**
+     * FileSystem Variable (for internal use)
+     *
+     * @var League\FlySystem\Filesystem
+     */
+    protected $filesystem;
+
+    /**
+     * Starts S3 Driver
+     */
+    public function __construct()
+    {
+        // Creates the S3 Client
+        $client = new S3Client([
+            'credentials' => [
+                'key'    => S3_ACCESS_KEY_ID,
+                'secret' => S3_SECRET_ACCESS_KEY,
+            ],
+            'region' => S3_BUCKET_REGION,
+            'version' => 'latest',
+        ]);
+
+        // Creates the S3 adapter to cast to the filesystem object
+        $adapter = new AwsS3Adapter($client, S3_BUCKET_NAME);
+
+        // Creates the filesystem object
+        $this->filesystem = new Filesystem($adapter);
+
+        // Adds the plugin to create file URLs
+        $this->filesystem->addPlugin(new PresignedUrl());
+    }
+
+
+    /**
+     * Loads local file on S3 bucket.
+     * $filePath is the local file path
+     * $destination is the remote file path (including file name)
+     *
+     * @param string $filePath
+     * @param string $destination
+     * @return boolean
+     */
+    public function put(string $filePath, string $destination): bool
+    {
+        if(!file_exists($filePath)) return false;
+
+        $fileContents = file_get_contents($filePath);
+        $this->filesystem->put($destination, $fileContents);
+        return true;
+    }
+
+    /**
+     * Downloads the remote file on local filesystem
+     * $remoteFile is the path of the remote file
+     * $localFilePath is the path of the local file (including file name)
+     *
+     * @param string $remoteFile
+     * @param string $localFilePath
+     * @return boolean
+     */
+    public function get(string $remoteFile, string $localFilePath): bool
+    {
+        $contents = $this->read($remoteFile);
+        if(!$contents) return false;
+        
+        try {
+            file_put_contents($localFilePath, $contents);
+        } catch(Exception $e) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Reads the remote file and returns the content
+     *
+     * @param string $remoteFile
+     * @return void
+     */
+    public function read(string $remoteFile)
+    {
+        if(!$this->exists($remoteFile)) return null;
+
+        $contents = $this->filesystem->read($remoteFile);
+        return $contents;
+    }
+
+    /**
+     * Returns the file URL if file exists, null otherwise
+     *
+     * @param string $remoteFile
+     * @return string|null
+     */
+    public function getLink(string $remoteFile): ?string
+    {
+        if(!$this->exists($remoteFile)) return null;
+
+        return $this->filesystem->getPresignedUrl($remoteFile);
+    }
+
+    /**
+     * Controls if the remote file (with its path) exists
+     *
+     * @param string $remoteFile
+     * @return boolean
+     */
+    public function exists(string $remoteFile): bool
+    {
+        return $this->filesystem->has($remoteFile);
+    }
+
+    /**
+     * Deletes the remote file at the specified path
+     *
+     * @param string $remoteFile
+     * @return boolean
+     */
+    public function delete(string $remoteFile): bool
+    {
+        if($this->exists($remoteFile)) {
+            $this->filesystem->delete($remoteFile);
+        }
+
+        return true;
+    }
+}

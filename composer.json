@@ -4,7 +4,9 @@
 	"minimum-stability": "dev",
 	"require" : {
 		"php" : ">=7",
-		"ext-pdo" : "*"
+		"ext-pdo" : "*",
+		"league/flysystem-aws-s3-v3": "^1.0",
+		"sistemi-etime/flysystem-plugin-aws-s3-v3": "^1.0"
 	},
 	"repositories" : [
 		{
