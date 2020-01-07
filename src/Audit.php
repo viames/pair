@@ -70,8 +70,6 @@ class Audit extends ActiveRecord {
 			$this->userId = $app->currentUser->id;
 		}
 
-		$this->createdAt = new \DateTime();
-
 	}
 
 	/**

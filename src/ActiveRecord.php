@@ -687,6 +687,11 @@ abstract class ActiveRecord implements \JsonSerializable {
 			$this->createdAt = new \DateTime('now', Application::getTimeZone());
 		}
 		
+		// populate updatedAt if it exists
+		if (property_exists($class, 'updatedAt') and is_null($this->updatedAt)) { 
+			$this->updatedAt = new \DateTime('now', Application::getTimeZone());
+		}
+		
 		// insert the object as db record
 		$dbObj = $this->prepareData($props);
 		$res = $this->db->insertObject(static::TABLE_NAME, $dbObj, static::getEncryptableFields());
@@ -749,6 +754,11 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$app	= Application::getInstance();
 		$class	= get_called_class();
 		$binds	= static::getBinds();
+		
+		// populate updatedAt if it exists
+		if (property_exists($class, 'updatedAt') and is_null($this->updatedAt)) { 
+			$this->updatedAt = new \DateTime('now', Application::getTimeZone());
+		}
 		
 		// if property list is empty, will include all
 		$properties	= (array)$properties;
