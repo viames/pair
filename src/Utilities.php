@@ -803,11 +803,10 @@ class Utilities {
 	 * Analyzes a MimeType string and returns a FontAwesome icon class
 	 * based on its main type (image, pdf, word, excel, zip, generic).
 	 * 
-	 * @param	string	Standard mime-type.
-	 *  
+	 * @param	string	IANA Standard mime-type, RFC 6838.
 	 * @return	stdClass
 	 */
-	public static function getIconByMimeType($mimeType) {
+	public static function getIconByMimeType($mimeType): \stdClass {
 
 		// return object
 		$ret = new \stdClass();
