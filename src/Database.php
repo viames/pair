@@ -340,7 +340,7 @@ class Database {
 			
 		} catch (\PDOException $e) {
 			
-			$self->handleException($e, $params);
+			$self->handleException($e, $query, $params);
 			
 		}
 		
@@ -440,7 +440,7 @@ class Database {
 
 		} catch (\PDOException $e) {
 
-			$this->handleException($e, $params);
+			$this->handleException($e, $this->query, $params);
 		
 		}
 		
@@ -474,7 +474,7 @@ class Database {
 
 		} catch (\PDOException $e) {
 
-			$this->handleException($e, $params);
+			$this->handleException($e, $this->query, $params);
 		
 		}
 		
@@ -507,7 +507,7 @@ class Database {
 			
 		} catch (\PDOException $e) {
 
-			$this->handleException($e, $params);
+			$this->handleException($e, $this->query, $params);
 		
 		}
 		
@@ -541,7 +541,7 @@ class Database {
 		
 		} catch (\PDOException $e) {
 
-			$this->handleException($e, $params);
+			$this->handleException($e, $this->query, $params);
 
 		}
 		
@@ -574,7 +574,7 @@ class Database {
 		
 		} catch (\PDOException $e) {
 		
-			$this->handleException($e, $params);
+			$this->handleException($e, $this->query, $params);
 		
 		}
 		
@@ -677,8 +677,8 @@ class Database {
 	 * Update record of given key on the param object. Properly manage NULL values.
 	 * 
 	 * @param	string		Table name.
-	 * @param	stdClass	Object with properties of new values to update.
-	 * @param	stdClass	Object with keys and values for where clause.
+	 * @param	\stdClass	Object with properties of new values to update.
+	 * @param	\stdClass	Object with keys and values for where clause.
 	 * @param	array		Optional list of encryptable fields.
 	 * @return	int			Numbers of affected rows.
 	 */
@@ -740,7 +740,7 @@ class Database {
 	 * or Unique.
 	 *
 	 * @param	string		Table name.
-	 * @param	stdClass	Object with properties that equal columns name.
+	 * @param	\stdClass	Object with properties that equal columns name.
 	 * @param	array		Optional list of encryptable fields.
 	 * @return	bool		Execution result.
 	 */
@@ -784,7 +784,7 @@ class Database {
 	 * Require grant on “references” permissions of connected db-user. Memory cached.
 	 *
 	 * @param	string	Name of table to check.
-	 * @return	stdClass[]
+	 * @return	\stdClass[]
 	 */
 	public function getForeignKeys(string $tableName): array {
 
@@ -814,7 +814,7 @@ class Database {
 	 * Require grant on “references” permissions of connected db-user. Memory cached.
 	 * 
 	 * @param	string	Name of external table to check.
-	 * @return	stdClass[]
+	 * @return	\stdClass[]
 	 */
 	public function getInverseForeignKeys(string $tableName): array {
 		
@@ -843,7 +843,7 @@ class Database {
 	 * Return data about table scheme. Memory cached.
 	 * 
 	 * @param	string	Name of table to describe.
-	 * @return	stdClass[]
+	 * @return	\stdClass[]
 	 */
 	public function describeTable(string $tableName): array {
 	
@@ -866,7 +866,7 @@ class Database {
 	 * @param	string	Name of table to describe.
 	 * @param	string	Column name.
 	 *
-	 * @return	stdClass|NULL
+	 * @return	\stdClass|NULL
 	 */
 	public function describeColumn(string $tableName, string $column): ?\stdClass {
 		
@@ -954,9 +954,11 @@ class Database {
 	}
 
 	/**
-	 * Return the MySQL version number
+	 * Return the MySQL version number.
+	 * 
+	 * @return string|NULL
 	 */
-	public function getMysqlVersion() {
+	public function getMysqlVersion(): ?string {
 		
 		if ('mysql' == DBMS) {
 			$this->setQuery('SELECT VERSION()');
@@ -1072,14 +1074,15 @@ class Database {
 	 * Log query, switch error and add to DB class error list.
 	 *  
 	 * @param	Exception	Error object.
+	 * @param	string		SQL Query.
 	 * @param	array|NULL	Parameters.
 	 */
-	private function handleException(\Exception $e, ?array $params) {
+	private function handleException(\Exception $e, string $query, ?array $params) {
 		
 		$params = (array)$params;
 		
 		// logger
-		$this->logParamQuery($this->query, 0, $params);
+		$this->logParamQuery($query, 0, $params);
 		
 		switch ($e->getCode()) {
 		
