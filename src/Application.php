@@ -560,7 +560,7 @@ class Application {
 			if ($page > 1) {
 				
 				// removes a possible leading slash
-				if ('/'==$url{0}) {
+				if ('/'==$url[0]) {
 					$url = substr($url,1);
 				}
 				
