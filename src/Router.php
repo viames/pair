@@ -167,11 +167,11 @@ class Router {
 	/**
 	 * Remove special prefixes (ajax, raw) and return all the parameters found in the URL.
 	 * 
-	 * @return	array()
+	 * @return	array
 	 */
 	private function getParameters(): array {
 		
-		$url = '/' == $this->url[0] ? substr($this->url,1) : $this->url;
+		$url = ($this->url and '/' == $this->url[0]) ? substr($this->url,1) : $this->url;
 		
 		// split parameters by slash
 		$params = explode('/', $url);
