@@ -99,7 +99,7 @@ class Router {
 		}
 		
 		// force initial slash
-		if ($this->url and '/' != $this->url{0}) $this->url = '/' . $this->url;
+		if ($this->url and '/' != $this->url[0]) $this->url = '/' . $this->url;
 		
 	}
 	
@@ -171,7 +171,7 @@ class Router {
 	 */
 	private function getParameters(): array {
 		
-		$url = '/' == $this->url{0} ? substr($this->url,1) : $this->url;
+		$url = '/' == $this->url[0] ? substr($this->url,1) : $this->url;
 		
 		// split parameters by slash
 		$params = explode('/', $url);
@@ -654,7 +654,7 @@ class Router {
 		if ('' == $path) {
 			$path = '/';
 		// force initial slash
-		} else if ('/' != $path{0}) {
+		} else if ('/' != $path[0]) {
 			$path = '/' . $path;
 		}
 
