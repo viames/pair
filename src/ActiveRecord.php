@@ -1392,7 +1392,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @param	string	Error message’s text.
 	 */
-	final public function addError($message) {
+	public function addError(string $message) {
 	
 		$this->errors[] = $message;
 	
