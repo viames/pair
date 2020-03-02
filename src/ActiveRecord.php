@@ -2047,6 +2047,21 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 
 	/**
+	 * Load all records in a table from the DB and store them in the Application cache,
+	 * then look for the required property in this list. It is very useful for repeated
+	 * searches on small tables of the DB, eg. less than 1000 records.
+	 * 
+	 * @return	void
+	 */
+	final public static function unsetCachedList(): void {
+		
+		$app = Application::getInstance();
+		$class = get_called_class();
+		$app->unsetState($class . 'ObjectList');
+		
+	}
+
+	/**
 	 * Populates the inherited object with input vars with same name as properties.
 	 * 
 	 * @param	string	Optional list of properties to populate, comma separated. If no items,
