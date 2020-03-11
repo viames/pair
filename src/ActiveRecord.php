@@ -1460,6 +1460,29 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 	
 	/**
+	 * Return previous record object, for single, auto-increment primary key.
+	 * 
+	 * @return NULL|static
+	 */
+	public function getPrevious(): ?static {
+
+		if (!$this->db->isAutoIncrement(static::TABLE_NAME) or (is_array(static::TABLE_KEY) and count(static::TABLE_KEY)>1)) {
+			return NULL;
+		}
+		
+		$tableKey = is_array(static::TABLE_KEY) ? static::TABLE_KEY[0] : static::TABLE_KEY;
+
+		$query =
+			'SELECT *' .
+			' FROM ' . static::TABLE_NAME .
+			' WHERE `' . $tableKey . '` < ?' .
+			' ORDER BY `' . $tableKey . '` DESC';
+
+		return static::getObjectByQuery($query, [$this->$tableKey]);
+
+	}
+	
+	/**
 	 * Gets all objects of the inherited class with where conditions and order clause.
 	 * 
 	 * @param	array	Optional array of query filters, array(property-name => value). 
