@@ -952,9 +952,6 @@ class Application {
 			// set the action
 			$action = $router->action ? $router->action . 'Action' : 'defaultAction';
 
-			// run the action
-			$controller->$action();
-			
 			// set log of ajax call
 			if ($router->ajax) {
 				
@@ -970,6 +967,9 @@ class Application {
 				Logger::event('Called controller method ' . $controllerName . '->' . $action . '()');
 				
 			}
+			
+			// run the action
+			$controller->$action();
 			
 			// raw calls will jump controller->display, ob and log
 			if ($router->isRaw()) {
