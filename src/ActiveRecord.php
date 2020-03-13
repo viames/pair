@@ -1462,9 +1462,9 @@ abstract class ActiveRecord implements \JsonSerializable {
 	/**
 	 * Return previous record object, for single, auto-increment primary key.
 	 * 
-	 * @return NULL|static
+	 * @return NULL|self
 	 */
-	public function getPrevious(): ?static {
+	public function getPrevious(): ?self {
 
 		if (!$this->db->isAutoIncrement(static::TABLE_NAME) or (is_array(static::TABLE_KEY) and count(static::TABLE_KEY)>1)) {
 			return NULL;
