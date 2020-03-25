@@ -44,6 +44,12 @@ abstract class ActiveRecord implements \JsonSerializable {
 	private $errors = [];
 
 	/**
+	 * Keep track of update properties name.
+	 * @var array
+	 */
+	private $updatedProperties = [];
+
+	/**
 	 * Constructor, if param is db-row, will bind it on this object, if it’s id,
 	 * with load the object data from db, otherwise the object will be empty.
 	 * 
@@ -105,7 +111,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * 
 	 * @return	mixed|NULL
 	 */
-	public function __get($name) {
+	public function __get(string $name) {
 	
 		try {
 	
@@ -131,7 +137,12 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * @param	string	Property’s name.
 	 * @param	mixed	Property’s value.
 	 */
-	public function __set($name, $value) {
+	public function __set(string $name, $value) {
+
+		// check that’s not the initial object population
+		if (in_array(debug_backtrace()[1]['function'], ['populate'])) {
+			$currentValue = $this->$name;
+		}
 
 		try {
 			
@@ -201,6 +212,14 @@ abstract class ActiveRecord implements \JsonSerializable {
 			$app = Application::getInstance();
 			$app->logError($txt);
 
+			return;
+
+		}
+
+		// keep track of updated properties
+		if (in_array(debug_backtrace()[1]['function'], ['populate'])
+			and $currentValue != $value and !in_array($name, $this->updatedProperties)) {
+			$this->updatedProperties[] = $name;
 		}
 	
 	}
@@ -280,9 +299,9 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * field names into object properties names. DateTime, Boolean and Integer will be
 	 * properly managed.
 	 * 
-	 * @param	stdClass	Record object as extracted from db table.
+	 * @param	\stdClass	Record object as extracted from db table.
 	 */
-	final private function populate($dbRow) {
+	final private function populate(\stdClass $dbRow) {
 		
 		$this->beforePopulate($dbRow);
 		
@@ -303,9 +322,9 @@ abstract class ActiveRecord implements \JsonSerializable {
 	/**
 	 * Trigger function called before populate() method execution.
 	 * 
-	 * @param	stdClass	Object with which populate(), here passed by reference.
+	 * @param	\stdClass	Object with which populate(), here passed by reference.
 	 */
-	protected function beforePopulate(&$dbRow) {}
+	protected function beforePopulate(\stdClass &$dbRow) {}
 	
 	/**
 	 * Trigger function called after populate() method execution.
@@ -320,7 +339,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * 
 	 * @return	mixed
 	 */
-	final private function prepareData($properties) {
+	final private function prepareData(array $properties) {
 	
 		// trigger before preparing data
 		$this->beforePrepareData();
@@ -395,9 +414,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 			
 		};
 		
-		// force to array
-		$properties	= (array)$properties;
-
 		$class = get_called_class();
 		$binds = $class::getBinds();
 		
@@ -425,9 +441,9 @@ abstract class ActiveRecord implements \JsonSerializable {
 	/**
 	 * Trigger function called after prepareData() method execution.
 	 * 
-	 * @param	stdClass	PrepareData() returned variable (passed here by reference).
+	 * @param	\stdClass	PrepareData() returned variable (passed here by reference).
 	 */
-	protected function afterPrepareData(&$dbObj) {}
+	protected function afterPrepareData(\stdClass &$dbObj) {}
 	
 	/**
 	 * Load object from DB and bind with its properties. If DB record is not found,
@@ -511,7 +527,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * 
 	 * @deprecated	Use areKeysPopulated() instead.
 	 */
-	public function isPopulated() {
+	public function isPopulated(): bool {
 
 		return $this->areKeysPopulated();
 
@@ -522,7 +538,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @return boolean
 	 */
-	public function areKeysPopulated() {
+	public function areKeysPopulated(): bool {
 		
 		$populated = TRUE;
 		
@@ -610,7 +626,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * 
 	 * @return string
 	 */
-	final private function getKeyForEventlog() {
+	final private function getKeyForEventlog(): string {
 
 		// force to array
 		$properties = (array)$this->keyProperties;
@@ -631,7 +647,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * 
 	 * @return	bool
 	 */
-	final public function store() {
+	final public function store(): bool {
 		
 		// hook for tasks to be executed before store
 		$this->beforeStore();
@@ -667,7 +683,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * 
 	 * @return bool
 	 */
-	final public function create() {
+	final public function create(): bool {
 
 		$class = get_called_class();
 		
@@ -711,6 +727,9 @@ abstract class ActiveRecord implements \JsonSerializable {
 			
 		}
 
+		// reset updated-properties tracker
+		$this->updatedProperties = [];
+
 		// set logs
 		$keyParts = array();
 			
@@ -746,7 +765,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * 
 	 * @return	bool
 	 */
-	final public function update($properties=NULL) {
+	final public function update($properties=NULL): bool {
 		
 		// hook for tasks to be executed before creation
 		$this->beforeUpdate();
@@ -789,6 +808,9 @@ abstract class ActiveRecord implements \JsonSerializable {
 			
 			$res = (bool)$this->db->updateObject($class::TABLE_NAME, $dbObj, $dbKey, static::getEncryptableFields());
 			
+			// reset updated-properties tracker
+			$this->updatedProperties = [];
+			
 			Logger::event('Updated ' . $class . ' object with ' . $logParam);
 
 		// object is not populated
@@ -811,7 +833,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * 
 	 * @return	bool
 	 */
-	final public function updateNotNull() {
+	final public function updateNotNull(): bool {
 	
 		$class		= get_called_class();
 		$binds		= $class::getBinds();
@@ -846,7 +868,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * 
 	 * @return	bool
 	 */
-	final public function delete() {
+	final public function delete(): bool {
 	
 		if (!$this->getId()) return FALSE;
 		
@@ -896,7 +918,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * 
 	 * @return boolean
 	 */
-	public function isReferenced() {
+	public function isReferenced(): bool {
 		
 		// return flag
 		$exists = FALSE;
@@ -1280,7 +1302,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	final public function getPropertyType(string $name): ?string {
 
-		if (in_array($name, ['db', 'loadedFromDb', 'typeList', 'errors'])) {
+		if (in_array($name, ['db', 'loadedFromDb', 'typeList', 'errors', 'updatedProperties'])) {
 			$type = NULL;
 		} else if (array_key_exists($name, $this->typeList)) {
 			$type = $this->typeList[$name];
@@ -2259,8 +2281,34 @@ abstract class ActiveRecord implements \JsonSerializable {
 		unset($vars['typeList']);
 		unset($vars['cache']);
 		unset($vars['errors']);
+		unset($vars['updatedProperties']);
 
 		return $vars;
+
+	}
+
+	/**
+	 * Checks whether the property with the name passed as a parameter has changed with 
+	 * respect to the corresponding record in the DB.
+	 * 
+	 * @param	string	Property name.
+	 * @return	bool
+	 */
+	final protected function hasPropertyUpdated(string $name): bool {
+
+		return in_array($name, $this->updatedProperties);
+
+	}
+
+	/**
+	 * Returns the list of properties whose value has changed since the record was last
+	 * written to the DB.
+	 * 
+	 * @return array
+	 */
+	final protected function getUpdatedProperties(): array {
+
+		return $this->updatedProperties;
 
 	}
 
