@@ -500,7 +500,7 @@ class User extends ActiveRecord {
 	 */
 	private function loadTimezone() {
 		
-		if (!is_null($this->id) and (is_null($this->tzName) or is_null($this->tzOffset))) {
+		if (!is_null($this->id) and is_null($this->tzName) and is_null($this->tzOffset)) {
 			$session = Session::current();
 			$this->tzOffset	= $session->timezoneOffset;
 			$this->tzName	= $session->timezoneName;
