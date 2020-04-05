@@ -233,27 +233,55 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	public function __call(string $name, array $arguments) {
 
-		$evenClass = substr($name,3);
+		$getRelatedObject = function(string $class): ?ActiveRecord {
 
-		// check if invoked a virtual method to get a related object
-		if ('get'==substr($name,0,3) and class_exists($evenClass) and is_subclass_of($evenClass,'Pair\ActiveRecord')) {
+			// search for a static foreign-key list in object class in order to speed-up
+			if (defined('static::FOREIGN_KEYS') and is_array(static::FOREIGN_KEYS)) {
 
-			// get inverse foreign keys list
-			$inverseForeignKeys = $this->db->getInverseForeignKeys($evenClass::TABLE_NAME);
-
-			// search for the object property that matches db fk
-			foreach ($inverseForeignKeys as $ifk) {
-
-				// when found, return the related object
-				if (static::TABLE_NAME == $ifk->TABLE_NAME) {
-					$property = (string)$this->getMappedProperty($ifk->COLUMN_NAME);
-					return $this->getRelated($property);
+				foreach (static::FOREIGN_KEYS as $fk) {
+					if ($class::TABLE_NAME == $fk['REFERENCED_TABLE_NAME']) {
+						$property = (string)$this->getMappedProperty($fk['COLUMN_NAME']);
+						return $this->getRelated($property);
+					}
 				}
 
+			// get foreign-key by DB query
+			} else {
+
+				// get inverse foreign keys list
+				$inverseForeignKeys = $this->db->getInverseForeignKeys($class::TABLE_NAME);
+
+				// search for the object property that matches db fk
+				foreach ($inverseForeignKeys as $ifk) {
+	
+					// when found, return the related object
+					if (static::TABLE_NAME == $ifk->TABLE_NAME) {
+						$property = (string)$this->getMappedProperty($ifk->COLUMN_NAME);
+						return $this->getRelated($property);
+					}
+	
+				}
+				
 			}
 
 			return NULL;
-			
+
+		};
+
+		// build Pair’s and ActiveRecord’s class name
+		$evenClass = substr($name,3);
+		$evenPairClass = 'Pair\\' . $evenClass;
+
+		// check if invoked a virtual method on Pair class
+		if ('get'==substr($name,0,3) and class_exists($evenPairClass) and is_subclass_of($evenPairClass,'Pair\ActiveRecord')) {
+
+			return $getRelatedObject($evenPairClass);
+
+		// check if invoked a virtual method on other ActiveRecord’s class
+		} else if ('get'==substr($name,0,3) and class_exists($evenClass) and is_subclass_of($evenClass,'Pair\ActiveRecord')) {
+
+			return $getRelatedObject($evenClass);
+
 		// or notify the problem only to developers
 		} else if (Application::isDevelopmentHost()) {
 			
@@ -483,7 +511,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	final public function reload() {
 
-		$app = Application::getInstance();
 		$class = get_called_class();
 		
 		// properties to not reset
@@ -1027,6 +1054,21 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 	
 	}
+
+	/**
+	 * Check if a property of this inherited object is stored in common cache.
+	 * 
+	 * @param	string	Name of property of this object to check.
+	 * @return	bool
+	 */
+	final private function isCommonlyCached(string $property): bool {
+
+		// list encryptables fields
+		return (defined('static::COMMON_CACHED_PROPERTIES')
+			and is_array(static::COMMON_CACHED_PROPERTIES)
+			and in_array($property, static::COMMON_CACHED_PROPERTIES));
+
+	}
 	
 	/**
 	 * Return the Pair\ActiveRecord inherited object related to this by a ForeignKey in DB-table. Cached method.
@@ -1040,7 +1082,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$cacheName = $relatedProperty . 'RelatedObject';
 		
 		// object exists in cache, return it
-		if ($this->issetCache($cacheName)) {
+		if (!$this->isCommonlyCached($relatedProperty) and $this->issetCache($cacheName)) {
 			return $this->getCache($cacheName);
 		}
 
@@ -1117,8 +1159,30 @@ abstract class ActiveRecord implements \JsonSerializable {
 			$this->addError('Table ' . $referencedTable . ' has not any Pair-class mapping');
 			return NULL;
 		}
+
+		//  check if is managed by common cache
+		if ($this->isCommonlyCached($relatedProperty)) {
+
+			$app = Application::getInstance();
+
+			// assemble any composite key
+			$obj = $app->getActiveRecordCache($relatedClass, $this->$relatedProperty);
+
+			// if got it from common cache, return it
+			if ($obj) {
+				return $obj;
+			// otherwise load from DB, store into common cache and return it
+			} else {
+				$obj = new $relatedClass($this->$relatedProperty);
+				if ($obj->isLoaded()) {
+					$app->putActiveRecordCache($relatedClass, $obj);
+					return $obj;
+				}
+			}
+
+		}
 		
-		// create the new wanted Pair object
+		// no common cache, so proceed to load the new wanted Pair object
 		$obj = new $relatedClass($this->$relatedProperty);
 		
 		// if loaded, return it otherwise NULL

@@ -53,6 +53,12 @@ class Locale extends ActiveRecord {
 	const TABLE_KEY = 'id';
 
 	/**
+	 * Properties that are stored in common cache.
+	 * @var	array
+	 */
+	const COMMON_CACHED_PROPERTIES = ['languageId', 'countryId'];
+
+	/**
 	 * Speed up the foreign-key load because for this class they are always used.
 	 * @var array
 	 */
@@ -144,29 +150,7 @@ class Locale extends ActiveRecord {
 		return $this->getLanguage()->code . '-' . $this->getCountry()->code;
 		
 	}
-	
-	/**
-	 * Return language for this locale.
-	 * 
-	 * @return	Language
-	 */
-	public function getLanguage() {
-		
-		return $this->getRelated('languageId');
-		
-	}
-	
-	/**
-	 * Return country for this locale.
-	 *
-	 * @return	Country
-	 */
-	public function getCountry() {
-		
-		return $this->getRelated('countryId');
-		
-	}
-	
+
 	/**
 	 * Returns the Locale object by its representation.
 	 *

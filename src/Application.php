@@ -24,6 +24,12 @@ class Application {
 	 * @var mixed[]
 	 */
 	private $persistentState = [];
+
+	/**
+	 * Multi-array cache as list of class-names with list of ActiveRecord’s objects.
+	 * @var stdClass[ActiveRecord[]]
+	 */
+	private $activeRecordCache = [];
 	
 	/**
 	 * Web page title, in plain text.
@@ -259,7 +265,7 @@ class Application {
 				
 			default:
 				
-				$allowedProperties = ['activeMenuItem', 'currentUser', 'pageTitle', 'pageContent', 'template', 'messages'];
+				$allowedProperties = ['activeRecordCache', 'activeMenuItem', 'currentUser', 'pageTitle', 'pageContent', 'template', 'messages'];
 				
 				// search into variable assigned to the template as first
 				if (array_key_exists($name, $this->vars)) {
@@ -397,7 +403,39 @@ class Application {
 		return (array_key_exists($name, $this->state));
 		
 	}
-	
+
+	/**
+	 * Return an ActiveRecord object cached or NULL if not found.
+	 * 
+	 * @param	string		Name of the ActiveObject class.
+	 * @param	int|string	Unique identifier of the class.
+	 * @return	ActiveRecord|NULL
+	 */
+	final public function getActiveRecordCache(string $class, $id): ?ActiveRecord {
+
+		return (isset($this->activeRecordCache[$class][$id])
+			? $this->activeRecordCache[$class][$id]
+			: NULL);
+
+	}
+
+	/**
+	 * Store an ActiveRecord object into the common cache of Application singleton.
+	 * 
+	 * @param	string			Name of the ActiveObject class.
+	 * @param	ActiveRecord	Object to cache.
+	 * @return	void
+	 */
+	final public function putActiveRecordCache(string $class, $object): void {
+
+		// can’t manage composite key
+		if (1 == count($object->keyProperties) ) {
+			$this->activeRecordCache[$class][(string)$object->getId()] = $object;
+			Logger::event('Stored ' . get_class($object) . ' object with id=' . (string)$object->getId() . ' in common cache');
+		}
+
+	}
+
 	/**
 	 * Add script content that will be loaded by jQuery into the #scriptContainer DOM element.
 	 * 
