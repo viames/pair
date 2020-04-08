@@ -53,10 +53,10 @@ class Locale extends ActiveRecord {
 	const TABLE_KEY = 'id';
 
 	/**
-	 * Properties that are stored in common cache.
+	 * Properties that are stored in the shared cache.
 	 * @var	array
 	 */
-	const COMMON_CACHED_PROPERTIES = ['languageId', 'countryId'];
+	const SHARED_CACHE_PROPERTIES = ['languageId', 'countryId'];
 
 	/**
 	 * Speed up the foreign-key load because for this class they are always used.

@@ -1061,12 +1061,12 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * @param	string	Name of property of this object to check.
 	 * @return	bool
 	 */
-	final private function isCommonlyCached(string $property): bool {
+	final private function isInSharedCache(string $property): bool {
 
 		// list encryptables fields
-		return (defined('static::COMMON_CACHED_PROPERTIES')
-			and is_array(static::COMMON_CACHED_PROPERTIES)
-			and in_array($property, static::COMMON_CACHED_PROPERTIES));
+		return (defined('static::SHARED_CACHE_PROPERTIES')
+			and is_array(static::SHARED_CACHE_PROPERTIES)
+			and in_array($property, static::SHARED_CACHE_PROPERTIES));
 
 	}
 	
@@ -1082,7 +1082,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$cacheName = $relatedProperty . 'RelatedObject';
 		
 		// object exists in cache, return it
-		if (!$this->isCommonlyCached($relatedProperty) and $this->issetCache($cacheName)) {
+		if (!$this->isInSharedCache($relatedProperty) and $this->issetCache($cacheName)) {
 			return $this->getCache($cacheName);
 		}
 
@@ -1161,7 +1161,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 
 		//  check if is managed by common cache
-		if ($this->isCommonlyCached($relatedProperty)) {
+		if ($this->isInSharedCache($relatedProperty)) {
 
 			$app = Application::getInstance();
 
