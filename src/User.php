@@ -739,6 +739,8 @@ class User extends ActiveRecord {
 		if (!$this->store()) {
 			return FALSE;
 		}
+
+		Audit::passwordChanged($this);
 		
 		// creates session for this user
 		$this->createSession($timezone);
