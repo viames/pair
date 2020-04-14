@@ -2175,8 +2175,9 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * 
 	 * @param	string	Optional list of properties to populate, comma separated. If no items,
 	 * 					will tries to populate all fields.
+	 * @return	bool
 	 */
-	final public function populateByRequest() {
+	public function populateByRequest(): bool {
 
 		$args = func_get_args();
 
@@ -2202,6 +2203,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 			}
 
 		}
+
+		return TRUE;
 
 	}
 
