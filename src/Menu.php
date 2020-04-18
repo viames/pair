@@ -18,10 +18,11 @@ class Menu {
 	 * @param	string	Optional, can be an icon, a subtitle or icon placeholder.
 	 * @param	string	Optional, is CSS extra class definition.
 	 * @param	string	Optional, the anchor target.
+	 * @param	string	Optional, the badge type as Bootstrap class (ex. primary, info, danger etc.).
 	 */
-	public function addItem(string $url, string $title, string $badge=NULL, string $class=NULL, string $target=NULL) {
+	public function addItem(string $url, string $title, string $badge=NULL, string $class=NULL, string $target=NULL, string $badgeType=NULL) {
 
-		$this->items[]	= self::getItemObject($url, $title, $badge, $class, $target);
+		$this->items[]	= self::getItemObject($url, $title, $badge, $class, $target, $badgeType ?? 'primary');
 
 	}
 
@@ -69,10 +70,11 @@ class Menu {
 	 * @param	string	Optional, can be an icon, a subtitle or icon placeholder.
 	 * @param	string	Optional, is CSS extra class definition.
 	 * @param	string	Optional, the anchor target.
+	 * @param	string	Optional, the badge type as Bootstrap class (ex. primary, info, error etc.).
 	 * 
 	 * @return	stdClass
 	 */
-	public static function getItemObject(string $url, string $title, string $badge=NULL, string $class=NULL, string $target=NULL): \stdClass {
+	public static function getItemObject(string $url, string $title, string $badge=NULL, string $class=NULL, string $target=NULL, string $badgeType=NULL): \stdClass {
 
 		$item 			= new \stdClass();
 		$item->type		= 'single';
@@ -81,6 +83,7 @@ class Menu {
 		$item->badge	= $badge;
 		$item->class	= $class;
 		$item->target	= $target;
+		$item->badgeType= $badgeType ?? 'primary';
 
 		return $item;
 
@@ -99,12 +102,7 @@ class Menu {
 		$ret = '';
 
 		foreach ($this->items as $item) {
-			
-			// check on permissions
-			if (isset($item->url) and (!is_a($app->currentUser, 'Pair\User') or !$app->currentUser->canAccess($item->url))) {
-				continue;
-			}
-			
+
 			switch ($item->type) {
 				
 				// single menu item rendering
@@ -136,28 +134,20 @@ class Menu {
 	 * @param	\stdClass Menu item object.
 	 * @return	string
 	 */
-	private function renderSingle(\stdClass $item): string {
+	protected function renderSingle(\stdClass $item): string {
 
-		$class  = ($item->url == $app->activeMenuItem ? ' active' : '');
+		$app = Application::getInstance();
 
-		if ($item->class) {
-			$class .= ' ' . $item->class;
+		// check permissions
+		if (!isset($item->url) or (is_a($app->currentUser, 'Pair\User') and !$app->currentUser->canAccess($item->url))) {
+			return '';
 		}
-
-		// if url set <a>, otherwise set <div>
-		$render = $item->url ? '<a href="' . $item->url . '"' : '<div'; 
 		
-		$render .= ' class="item' . $class . '"' .
-			($item->target ? ' target="' . $item->target . '"' : '') .
-			(!is_null($item->badge) ? ' data-badge="' . (int)$item->badge . '" ' : '') .
-			'>' .
-			(!is_null($item->badge) ? '<span class="badge">' . $item->badge . '</span>' : '') .
-			'<span class="title">' . $item->title . '</span>';
+		$active = ($item->url == $this->activeItem ? ' class="active"' : '');
 
-		// if url close </a>, otherwise close </div>
-		$render = $item->url ? '</a>' : '</div>';
-
-		return $render;
+		return '<li><a href="' . $item->url . '"' . ($item->target ? ' target="' . $item->target . '"' : '') .
+			$active . '><i class="fal fa-lg fa-fw ' . $item->class . '"></i> <span class="nav-label">' . $item->title .'</span> ' .
+			($item->badge ? '<span class="float-right label label-' . $item->badgeType . '">' . $item->badge . '</span>' : '') . '</a></li>';
 
 	}
 
@@ -167,7 +157,7 @@ class Menu {
 	 * @param	\stdClass Menu item object.
 	 * @return	string
 	 */
-	private function renderMulti(\stdClass $item): string {
+	protected function renderMulti(\stdClass $item): string {
 
 		$app = Application::getInstance();
 
@@ -177,37 +167,39 @@ class Menu {
 		// builds each sub-item link
 		foreach ($item->list as $i) {
 
-			// check on permissions
-			if (isset($i->url) and !(is_a($app->currentUser, 'Pair\User') and !$app->currentUser->canAccess($i->url))) {
-				return '';
+			// check permissions
+			if (isset($i->url) and (!is_a($app->currentUser, 'Pair\User') or !$app->currentUser->canAccess($i->url))) {
+				continue;
 			}
-			
+
 			if ($i->url == $this->activeItem) {
-				$class		= ' active';
-				$menuClass	= ' open';
+				$active		= 'active';
+				$menuClass	= 'active';
 			} else {
-				$class		= '';
+				$active		= '';
 			}
 
-			if ($i->class) {
-				$class .= ' ' . $i->class;
-			}
+			$links .=
+				'<li class="' . $active . '"><a href="' . $i->url . '">' .
+				'<i class="fal fa-fw ' . $i->class . '"></i>' . $i->title .
+				($i->badge ? '<span class="float-right label label-' . $item->badgeType . '">' . $i->badge . '</span>' : '') .
+				'</a></li>';
 
-			$links .= '<a class="item' . $class . '" href="' . $i->url . '">' .
-				(!is_null($i->badge) ? '<span class="badge">' . $i->badge . '</span>' : '') .
-				'<span class="title">' . $i->title . '</span>' .
-				'</a>';
 		}
 		
 		// prevent empty multi-menu
 		if ('' == $links) {
 			return '';
 		}
-		
-		// assembles the multi-menu and return
-		return '<div class="dropDownMenu' . $menuClass . '">' .
-			'<div class="title">' . $item->title . '</div>' .
-			'<div class="itemGroup">' . $links . '</div></div>';
+
+		// assembles the multi-menu
+		return '<li class="has-sub ' . $menuClass . '">' .
+			'<a href="javascript: void(0);" class="waves-effect">
+					<i class="fal fa-fw ' . ($item->class ? $item->class : 'fa-th-large') . '"></i>
+					<span class="nav-label">' . $item->title . '</span>
+					<span class="fal fa-angle-down float-right"></span>
+			</a>' .
+			'<ul class="nav nav-second-level collapse">' . $links . '</ul></li>';
 
 	}
 
