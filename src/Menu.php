@@ -161,8 +161,7 @@ class Menu {
 
 		$app = Application::getInstance();
 
-		$links		= '';
-		$menuClass	= '';
+		$links = $menuLi = $menuA = '';
 
 		// builds each sub-item link
 		foreach ($item->list as $i) {
@@ -172,15 +171,17 @@ class Menu {
 				continue;
 			}
 
+			// trigger the menu open
 			if ($i->url == $this->activeItem) {
 				$active		= 'active';
-				$menuClass	= 'active';
+				$menuLi	= ' active';
+				$menuA	= ' active subdrop';
 			} else {
 				$active		= '';
 			}
 
 			$links .=
-				'<li class="' . $active . '"><a href="' . $i->url . '">' .
+				'<li class="' . $active . '"><a href="' . $i->url . '" class="' . $active . '">' .
 				'<i class="fal fa-fw ' . $i->class . '"></i>' . $i->title .
 				($i->badge ? '<span class="float-right label label-' . $item->badgeType . '">' . $i->badge . '</span>' : '') .
 				'</a></li>';
@@ -193,8 +194,8 @@ class Menu {
 		}
 
 		// assembles the multi-menu
-		return '<li class="has-sub ' . $menuClass . '">' .
-			'<a href="javascript: void(0);" class="waves-effect">
+		return '<li class="has-sub' . $menuLi . '">' .
+			'<a href="javascript: void(0);" class="waves-effect ' . $menuA . '">
 					<i class="fal fa-fw ' . ($item->class ? $item->class : 'fa-th-large') . '"></i>
 					<span class="nav-label">' . $item->title . '</span>
 					<span class="fal fa-angle-down float-right"></span>
