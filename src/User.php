@@ -69,7 +69,7 @@ class User extends ActiveRecord {
 	
 	/**
 	 * Last login’s date, properly converted when inserted into db.
-	 * @var DateTime
+	 * @var DateTime|NULL
 	 */
 	protected $lastLogin;
 
