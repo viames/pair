@@ -62,6 +62,12 @@ class Application {
 	private $cssFiles = [];
 
 	/**
+	 * Contains Manifest files to load.
+	 * @var string[]
+	 */
+	private $manifestFiles = [];
+
+	/**
 	 * Message list.
 	 * @var \stdClass[]
 	 */
@@ -502,6 +508,17 @@ class Application {
 	
 	}
 	
+	/**
+	 * Collect Manifest files and includes into the page head.
+	 * 
+	 * @param	string	Path to manifest file, absolute or relative with no trailing slash.
+	 */
+	public function loadManifest(string $href) {
+
+		$this->manifestFiles[] = $href;
+
+	}
+
 	/**
 	 * Appends a text message to queue.
 	 * 
@@ -1034,6 +1051,13 @@ class Application {
 		foreach ($this->cssFiles as $href) {
 				
 			$this->pageStyles .= '<link rel="stylesheet" href="' . $href . '">' . "\n";
+				
+		}
+		
+		// collect manifest
+		foreach ($this->manifestFiles as $href) {
+			
+			$this->pageStyles .= '<link rel="manifest" href="' . $href . '">' . "\n";
 				
 		}
 		
