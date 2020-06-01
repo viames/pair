@@ -11,6 +11,20 @@ class Menu {
 	protected $items = array();
 
 	/**
+	 * Add a Title item to menu.
+	 * 
+	 * @param	string	Title text.
+	 */
+	public function addTitle(string $title) {
+
+		$item 			= new \stdClass();
+		$item->type		= 'title';
+		$item->title	= $title;
+		$this->items[]	= $item;
+
+	}
+
+	/**
 	 * Adds a single-item menu entry. The optional badge can be a subtitle. 
 	 * 
 	 * @param	string	Url of item.
@@ -105,6 +119,11 @@ class Menu {
 
 			switch ($item->type) {
 				
+				// menu title rendering
+				case 'title':
+					$ret .= $this->renderTitle($item);
+					break;
+
 				// single menu item rendering
 				case 'single':
 					$ret .= $this->renderSingle($item);
@@ -125,6 +144,18 @@ class Menu {
 		}
 
 		return $ret;
+
+	}
+
+	/**
+	 * Menu title rendering.
+	 * 
+	 * @param	\stdClass Menu item object.
+	 * @return	string
+	 */
+	protected function renderTitle(\stdClass $item): string {
+
+		return '<li class="menu-title">' . $item->title . '</li>';
 
 	}
 
