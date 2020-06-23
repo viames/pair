@@ -802,7 +802,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$binds	= static::getBinds();
 		
 		// populate updatedAt if it exists
-		if (property_exists($class, 'updatedAt') and is_null($this->updatedAt)) { 
+		if (property_exists($class, 'updatedAt')) { 
 			$this->updatedAt = new \DateTime('now', Application::getTimeZone());
 		}
 		
