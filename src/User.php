@@ -884,11 +884,11 @@ class User extends ActiveRecord {
 	}
 	
 	/**
-	 * Return the current Application connected User object or its child.
+	 * Return the current Application connected User object or its child, NULL otherwise.
 	 * 
-	 * @return	User
+	 * @return	User|NULL
 	 */
-	public static function current(): self {
+	public static function current(): ?self {
 
 		$app = Application::getInstance();
 		return $app->currentUser;
