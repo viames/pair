@@ -86,7 +86,7 @@ class Form {
 	 * 
 	 * @param	mixed	FormControl children class object.
 	 */
-	private function addControl($control) {
+	public function addControl($control) {
 		
 		$this->controls[$control->name] = $control;
 		
@@ -406,7 +406,7 @@ class Form {
 	public static function buildButton(string $value, string $type='submit', string $name=NULL, $attributes=array(), $faIcon=NULL) {
 
 		$control = new FormControlButton($name, $attributes);
-		$control->setValue($value)->setType($type)->setFaIcon($faIcon);
+		$control->setType($type)->setFaIcon($faIcon)->setValue($value);
 		
 		return $control->render();
 
@@ -1266,7 +1266,7 @@ class FormControlSelect extends FormControl {
 					array_push($option->attributes, ['name' => $pa, 'value' => $opt->$pa]);
 				}
 			} else if (is_string($propertyAttributes)) {
-				array_push($option->attributes, ['name' => $pa, 'value' => $opt->$pa]);
+				array_push($option->attributes, ['name' => $propertyAttributes, 'value' => $opt->$propertyAttributes]);
 			}
 
 			// check wheter the propertyText is a function call
