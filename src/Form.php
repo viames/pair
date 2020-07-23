@@ -493,6 +493,12 @@ abstract class FormControl {
 	 * @var string|NULL
 	 */
 	private $label;
+
+	/**
+	 * Optional description for this control.
+	 * @var string|NULL
+	 */
+	private $description;
 	
 	/**
 	 * Build control with HTML name tag and optional attributes.
@@ -772,6 +778,31 @@ abstract class FormControl {
 		return $label;
 		
 	}
+
+	/**
+	 * Set a description for this control as text. Chainable method.
+	 * 
+	 * @param	string	The text description.
+	 * @return	FormControl
+	 */
+	public function setDescription(string $description): FormControl {
+		
+		$this->description = $description;
+		
+		return $this;
+		
+	}
+
+	/**
+	 * Return the control’s description.
+	 *
+	 * @return	string
+	 */
+	public function getDescription(): string {
+
+		return $this->description;
+
+	}
 	
 	/**
 	 * Print the control’s label even with required-field class.
@@ -785,6 +816,10 @@ abstract class FormControl {
 		// if required, add required-field css class
 		if ($this->required and !$this->readonly and !$this->disabled) {
 			$label = '<span class="required-field">' . $label . '</span>';
+		}
+
+		if ($this->description) {
+			$label .= ' <i class="fal fa-question-circle" data-toggle="tooltip" data-placement="auto" title="' . htmlspecialchars($this->description) . '"></i>';
 		}
 		
 		print $label;
