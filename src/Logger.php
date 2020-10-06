@@ -283,7 +283,7 @@ class Logger {
 		
 		// alert about risk of “out of memory”
 		if (($ratio) > 60) {
-			$this->addWarning('Memory usage is ' . round($ratio,0) . '% of limit, will reduce logs');			
+			self::warning('Memory usage is ' . round($ratio,0) . '% of limit, will reduce logs');
 		}
 		
 		foreach ($this->events as $e) {

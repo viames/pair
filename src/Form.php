@@ -1053,30 +1053,30 @@ class FormControlInput extends FormControl {
 	
 		switch ($this->type) {
 
-            default:
-            case 'text':
-            case 'email':
-            case 'tel':
-            case 'url':
-            case 'color':
-            case 'password':
-                $ret .= ' type="' . htmlspecialchars($this->type) . '" value="' . htmlspecialchars($this->value) . '"';
-                break;
-                
-            case 'number':
-            	$curr = setlocale(LC_NUMERIC, 0);
-            	setlocale(LC_NUMERIC, 'en_US');
-            	$ret .= ' type="number" value="' . htmlspecialchars($this->value) . '"';
-            	setlocale(LC_NUMERIC, $curr);
-            	break;
+			default:
+			case 'text':
+			case 'email':
+			case 'tel':
+			case 'url':
+			case 'color':
+			case 'password':
+				$ret .= ' type="' . htmlspecialchars($this->type) . '" value="' . htmlspecialchars($this->value) . '"';
+				break;
 
-            case 'bool':
-                $ret .= ' type="checkbox" value="1"';
-                if ($this->value) $ret .= ' checked="checked"';
-                break;
-                
-            case 'date':
-                $ret .= ' type="date" value="' . htmlspecialchars($this->value) . '"';
+			case 'number':
+				$curr = setlocale(LC_NUMERIC, 0);
+				setlocale(LC_NUMERIC, 'en_US');
+				$ret .= ' type="number" value="' . htmlspecialchars($this->value) . '"';
+				setlocale(LC_NUMERIC, $curr);
+				break;
+
+			case 'bool':
+				$ret .= ' type="checkbox" value="1"';
+				if ($this->value) $ret .= ' checked="checked"';
+				break;
+
+			case 'date':
+				$ret .= ' type="date" value="' . htmlspecialchars($this->value) . '"';
 				break;
 
 			case 'datetime':
@@ -1456,30 +1456,41 @@ class FormControlSelect extends FormControl {
 	 */
 	public function validate(): bool {
 	
-		$app = Application::getInstance();
-		
-		$valid = TRUE;
-	
 		$value = Input::get($this->name);
 
-		// checks if empty and required
-		if ($this->required and !$value) {
+		// check if the value is required but empty
+		if ($this->required and (''==$value or is_null($value))) {
 			
-			$app->logWarning('Control validation on field “' . $this->name . '” has failed (required)');
+			Logger::warning('Control validation on field “' . $this->name . '” has failed (required)');
 			$valid = FALSE;
 			
-		// checks if value is in allowed list
+		// check if the value is in the allowed list
 		} else if (count($this->list)) {
 			
-			$valid = FALSE;
-			
-			foreach ($this->list as $item) {
-				if ($item->value == $value) $valid = TRUE;
+			// this FormControlSelect contains an empty option as the first element
+			if (!is_null($this->emptyOption) and !$this->required and (''==$value or is_null($value))) {
+
+				$valid = TRUE;
+
+			} else {
+
+				$valid = FALSE;
+
+				// check if the value corresponds to one of the options
+				foreach ($this->list as $item) {
+					if ($item->value == $value) $valid = TRUE;
+				}
+
+				if (!$valid) {
+					Logger::warning('Control validation on field “' . $this->name . '” has failed (value “' . $value . '” is not in list)');
+				}
+
 			}
 
-			if (!$valid) {
-				$app->logWarning('Control validation on field “' . $this->name . '” has failed (value “' . $value . '” is not in list)');
-			}
+		// empty list and value not required
+		} else {
+
+			$valid = TRUE;
 
 		}
 		
