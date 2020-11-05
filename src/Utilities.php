@@ -960,13 +960,16 @@ class Utilities {
 	 *
 	 * @param	string	Path to file.
 	 *
-	 * @return	NULL|bool
+	 * @return	bool
 	 */
-	public static function isImage($file) {
+	public static function isImage($file): bool {
 		
 		$validMime = [
 			'image/png',
 			'image/jpeg',
+			'image/pjpeg',
+			'image/heif',
+			'image/heic',
 			'image/gif',
 			'image/bmp',
 			'image/vnd.microsoft.icon',
@@ -978,24 +981,20 @@ class Utilities {
 	}
 
 	/**
-	 * Check if passed file is one of passed MIME Content Type. NULL in case of MIME extension
-	 * not installed.
+	 * Check if passed file is one of passed MIME Content Type.
 	 * 
 	 * @param	string	Path to file.
 	 * @param	string	Expected MIME Content Type.
 	 * 
-	 * @return	NULL|bool
+	 * @return	bool
 	 */
-	private static function checkFileMime($file, $validMime) {
+	private static function checkFileMime($file, $validMime): bool {
 		
 		if (!function_exists('mime_content_type')) {
 			$app = Application::getInstance();
 			$app->enqueueError('The PHP extention mime_content_type is not installed');
-			return NULL;
+			return FALSE;
 		}
-		
-		$pathParts = pathinfo($file);
-		$extension = $pathParts['extension'];
 		
 		// force to array
 		$validMime = (array)$validMime;
