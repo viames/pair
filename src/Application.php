@@ -639,15 +639,6 @@ class Application {
 	}
 	
 	/**
-	 * Go back to previous page by javascript.
-	 */
-	public function backToPreviousPage() {
-		
-		header('location:javascript://history.go(-1)');
-		
-	}
-
-	/**
 	 * Store enqueued messages for next retrievement.
 	 */
 	public function makeQueuedMessagesPersistent() {
