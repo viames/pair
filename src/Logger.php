@@ -119,7 +119,7 @@ class Logger {
 	/**
 	 * Starts the time chrono.
 	 */
-	final private function startChrono() {
+	private function startChrono() {
 		
 		$this->timeStart = $this->lastChrono = $this->getMicrotime();
 		
@@ -132,7 +132,7 @@ class Logger {
 	 *
 	 * @return float
 	 */
-	final private function getMicrotime(): float {
+	private function getMicrotime(): float {
 	
 		list ($msec, $sec) = explode(' ', microtime());
 		$time = ((float)$msec + (float)$sec);
@@ -434,7 +434,7 @@ class Logger {
 	 * @param	float	Time value to show (in seconds).
 	 * @return	string
 	 */
-	final private function formatChrono($chrono): string {
+	private function formatChrono($chrono): string {
 
 		return ($chrono >= 1) ? round($chrono, 2).' s' : round($chrono*1000) .' ms';
 		

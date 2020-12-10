@@ -1102,7 +1102,7 @@ class Application {
 	 * 
 	 * @return string
 	 */
-	final private function getMessageScript() {
+	private function getMessageScript() {
 		
 		$script = '';
 		
@@ -1131,7 +1131,7 @@ class Application {
 	 * 
 	 * @return	Pair\Template
 	 */
-	final private function getTemplate() {
+	private function getTemplate() {
 		
 		if (!$this->template or !$this->template->areKeysPopulated()) {
 			$this->template = Template::getDefault();
