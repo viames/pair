@@ -670,10 +670,8 @@ class Application {
 		// require controller file
 		require (MODULE_PATH . 'controller.php');
 		
-		// get SID by both GET and POST
-		$sid = Input::get('sid');
-		
-		// get token as well
+		// get SID or token
+		$sid		= Router::get('sid');
 		$tokenValue = Router::get('token');
 
 		$ctlName = $name . 'Controller';
