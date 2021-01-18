@@ -816,8 +816,19 @@ class Utilities {
 
 		if ('image' == $type) {
 			
-			$ret->tag	= 'class="popup-image"';
-			$ret->class	= 'fa-file-image';
+			switch ($subtype) {
+
+				case 'vnd.dwg':
+					$ret->tag	= '';
+					$ret->class	= 'fa-paperclip';
+					break;
+
+				default:
+					$ret->tag	= 'class="popup-image"';
+					$ret->class	= 'fa-file-image';
+					break;
+
+			}
 
 		} else if ('video' == $type) {
 
@@ -826,7 +837,7 @@ class Utilities {
 			
 		} else if ('text' == $type) {
 
-			$ret->tag	= 'target="_attach"';
+			$ret->tag	= '';
 			$ret->class	= 'fa-file';
 
 		} else if ('application' == $type) {
@@ -834,19 +845,20 @@ class Utilities {
 			switch ($subtype) {
 
 				case 'pdf':
-					$ret->tag	= 'target="_attach"';
+					$ret->tag	= '';
 					$ret->class	= 'fa-file-pdf';
 					break;
 
 				case 'msword':
 				case 'vnd.oasis.opendocument.text':
 				case 'vnd.openxmlformats-officedocument.wordprocessingml.document':
-					$ret->tag	= 'target="_attach"';
+					$ret->tag	= '';
 					$ret->class	= 'fa-file-word';
 					break;
 
 				case 'vnd.ms-excel':
-					$ret->tag	= 'target="_attach"';
+				case 'vnd.openxmlformats-officedocument.spreadsheetml.sheet':
+					$ret->tag	= '';
 					$ret->class	= 'fa-file-excel';
 					break;
 
@@ -855,11 +867,16 @@ class Utilities {
 					$ret->class	= 'fa-file-zip';
 					break;
 
+				default:
+					$ret->tag	= '';
+					$ret->class	= 'fa-paperclip';
+					break;	
+
 			}
 
 		} else {
 
-			$ret->tag	= 'target="_attach"';
+			$ret->tag	= '';
 			$ret->class	= 'fa-paperclip';
 
 		}
