@@ -246,8 +246,6 @@ class Translator {
 	 */
 	public function get($key, $vars=NULL) {
 
-		$app = Application::getInstance();
-
 		// load translation strings
 		$this->loadStrings();
 

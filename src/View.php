@@ -195,7 +195,7 @@ abstract class View {
 		} else if (property_exists($this, $name)) {
 			return $this->$name;
 		} else {
-			$this->logError('The ' . get_called_class() . '->' . $name. ' property doesn’t exist; Null will be returned');
+			Logger::error('The ' . get_called_class() . '->' . $name. ' property doesn’t exist; Null will be returned');
 			return NULL;
 		}
 		
@@ -210,7 +210,7 @@ abstract class View {
 	public function __call($name, $arguments) {
 	
 		$backtrace = debug_backtrace();
-		$this->logError('Method '. get_called_class() . $backtrace[0]['type'] . $name .'(), which doesn’t exist, has been called by '. $backtrace[0]['file'] .' on line '. $backtrace[0]['line']);
+		Logger::error('Method '. get_called_class() . $backtrace[0]['type'] . $name .'(), which doesn’t exist, has been called by '. $backtrace[0]['file'] .' on line '. $backtrace[0]['line']);
 	
 	}
 	
@@ -297,7 +297,7 @@ abstract class View {
 	 */
 	public function lang($key, $vars=NULL) {
 		
-		return $this->translator->get($key, $vars);
+		return Translator::do($key, $vars);
 		
 	}
 	
@@ -309,8 +309,8 @@ abstract class View {
 	 */
 	public function _($key, $vars=NULL) {
 	
-		print $this->translator->get($key, $vars);
-	
+		print Translator::do($key, $vars);
+
 	}
 	
 	/**
@@ -328,7 +328,7 @@ abstract class View {
 	public function getPaginationBar() {
 		
 		if (is_null($this->pagination->count)) {
-			$this->logError('The “count” parameter needed for pagination has not been set');
+			Logger::error('The “count” parameter needed for pagination has not been set');
 		}
 		
 		return $this->pagination->render();

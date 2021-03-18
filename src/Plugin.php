@@ -446,7 +446,6 @@ class Plugin {
 			return;
 		}
 		
-		$app = Application::getInstance();
 		$counter = 0;
 
 		$files = Utilities::getDirectoryFilenames(static::TEMP_FOLDER);
@@ -479,10 +478,8 @@ class Plugin {
 	 */
 	public function createManifestFile() {
 		
-		$app = Application::getInstance();
-		
 		// lambda method to add an array to the XML
-		$addChildArray = function ($element, $list) use ($app, &$addChildArray) {
+		$addChildArray = function ($element, $list) use (&$addChildArray) {
 			
 			foreach ($list as $name => $value) {
 				
@@ -493,7 +490,7 @@ class Plugin {
 				} else if (is_int($value) or is_string($value)) {
 					$element->addChild($name, (string)$value);
 				} else {
-					$app->logError('Option item ' . $name . ' is not valid');
+					Logger::error('Option item ' . $name . ' is not valid');
 				}
 			
 			}
@@ -502,7 +499,7 @@ class Plugin {
 		
 		// prevent missing folders
 		if (!is_dir($this->baseFolder)) {
-			$app->logError('Folder ' . $this->baseFolder . ' of ' . $this->name . ' ' . $this->type . ' plugin cannot be accessed');
+			Logger::error('Folder ' . $this->baseFolder . ' of ' . $this->name . ' ' . $this->type . ' plugin cannot be accessed');
 			return FALSE;
 		}
 	

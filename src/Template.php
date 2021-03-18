@@ -171,18 +171,16 @@ class Template extends ActiveRecord implements PluginInterface {
 		$plugin = $this->getPlugin();
 		$res = Utilities::deleteFolder($plugin->baseFolder);
 		
-		$app = Application::getInstance();
-
 		if ($res) {
 			
-			$app->logEvent('Plugin folder ' . $plugin->baseFolder . ' has been deleted');
+			Logger::event('Plugin folder ' . $plugin->baseFolder . ' has been deleted');
 		
 		} else {
 			
 			if (is_dir($plugin->baseFolder)) {
-				$app->logWarning('Plugin folder ' . $plugin->baseFolder . ' has not been deleted due unexpected error');
+				Logger::warning('Plugin folder ' . $plugin->baseFolder . ' has not been deleted due unexpected error');
 			} else {
-				$app->logWarning('Plugin folder ' . $plugin->baseFolder . ' has not been found');
+				Logger::warning('Plugin folder ' . $plugin->baseFolder . ' has not been found');
 			}
 		}
 		

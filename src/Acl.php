@@ -21,7 +21,7 @@ class Acl extends ActiveRecord {
 	 * @var int
 	 */
 	protected $groupId;
-	
+
 	/**
 	 * Property that binds db field is_default.
 	 * @var bool
@@ -44,13 +44,13 @@ class Acl extends ActiveRecord {
 	 * Method called by constructor just after having populated the object.
 	 */
 	protected function init() {
-			
+
 		$this->bindAsInteger('id', 'ruleId', 'groupId');
-		
+
 		$this->bindAsBoolean('default');
-			
+
 	}
-	
+
 	/**
 	 * Returns array with matching object property name on related db fields.
 	 *
@@ -98,17 +98,16 @@ class Acl extends ActiveRecord {
 	 * @return	bool
 	 */
 	public static function checkPermission($admin, $groupId, $module, $action=NULL) {
-		
-		$app = Application::getInstance();
-		$db  = Database::getInstance();
+
+		$db = Database::getInstance();
 
 		// login and logout are always allowed
 		if ('user'==$module or $admin) {
-			
+
 			return TRUE;
-			
+
 		} else {
-		 
+
 			$query =
 				'SELECT COUNT(*)' .
 				' FROM `rules` AS r' .
@@ -117,35 +116,35 @@ class Acl extends ActiveRecord {
 				' AND r.admin_only = 0' .
 				' AND ((r.module = ? AND (r.action IS NULL OR r.action=""))' .
 				'  OR (r.module = ? AND r.action = ?))';
-			
+
 			$db->setQuery($query);
-			
+
 			$count = $db->loadCount(array($groupId, $module, $module, $action));
-			
+
 			return (bool)$count;
-			
+
 		}
 
 	}
-	
+
 	/**
 	 * Returns module name for this ACL.
 	 *
 	 * @return	string
 	 */
 	public function getModuleName() {
-	
+
 		$query =
 			' SELECT m.name' .
 			' FROM `rules` as r ' .
 			' INNER JOIN `modules` as m ON m.id = r.module_id'.
 			' WHERE r.id = ?';
-	
+
 		$this->db->setQuery($query);
 		$name = $this->db->loadResult($this->ruleId);
-	
+
 		return $name;
-	
+
 	}
 
 }
