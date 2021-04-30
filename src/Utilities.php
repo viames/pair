@@ -573,8 +573,9 @@ class Utilities {
 	 * Checks and fixes path with missing trailing slash.
 	 *
 	 * @param	string	Path.
+	 * @return	void
 	 */
-	public static function fixTrailingSlash(&$path) {
+	public static function fixTrailingSlash(string &$path): void {
 	
 		if (substr($path,strlen($path)-1, 1) != DIRECTORY_SEPARATOR) $path .= DIRECTORY_SEPARATOR;
 	
@@ -587,7 +588,7 @@ class Utilities {
 	 * @param	string	Optional separator.
 	 * @return	string	Sanitized string.
 	 */
-	public static function localCleanFilename($string, $sep=NULL) {
+	public static function localCleanFilename(string $string, $sep=NULL): string {
 	
 		$string = strtolower($string);
 		
@@ -864,7 +865,7 @@ class Utilities {
 
 				case 'zip':
 					$ret->tag	= '';
-					$ret->class	= 'fa-file-zip';
+					$ret->class	= 'fa-file-archive';
 					break;
 
 				default:
