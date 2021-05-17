@@ -506,7 +506,7 @@ abstract class FormControl {
 	 * @param	string	Control name.
 	 * @param	array	Optional attributes (tag=>value).
 	 */
-	public function __construct(string $name, array $attributes=[]) {
+	public function __construct(string $name, ?array $attributes=[]) {
 		
 		// remove [] from array and set TRUE to arrayName property
 		if (substr($name, -2) == '[]') {
