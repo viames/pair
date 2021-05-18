@@ -34,9 +34,19 @@ class Schedule {
 
 	}
 
+	/**
+	 * Assign the method to be launched and any parameters to the object.
+	 * 
+	 * @param callable $functionToRun 
+	 * @param mixed|null $params 
+	 * @return Schedule 
+	 */
 	public function command(callable $functionToRun, $params=NULL): self {
 
 		$this->params = $params;
+
+		// reset the value for next calls on the same instance object
+		$this->timeToRun = FALSE;
 
 		if (is_callable($functionToRun)) {
 			$this->functionToRun = $functionToRun;
@@ -47,7 +57,7 @@ class Schedule {
 	}
 
 	/**
-	 * Run the required raw module/action.
+	 * Run the required user function.
 	 * @return bool
 	 */
 	private function handle(): bool {
@@ -56,7 +66,9 @@ class Schedule {
 			return FALSE;
 		}
 
-		call_user_func($this->functionToRun, $this->params);
+		if (FALSE === call_user_func($this->functionToRun, $this->params)) {
+			return FALSE;
+		}
 
 		return TRUE;
 
