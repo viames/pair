@@ -1530,16 +1530,17 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// check if auto-increment key
 		$db = Database::getInstance();
 		if (!$db->isAutoIncrement($class::TABLE_NAME)) {
-			return NULL;
+			if (property_exists($class, 'createdAt')) {
+				return static::getObjectByQuery('SELECT * FROM `' . $class::TABLE_NAME . '` ORDER BY `created_at` DESC LIMIT 1');
+			} else {
+				return NULL;
+			}
 		}
 
 		// cast to string
 		$tableKey = (is_array($class::TABLE_KEY) and array_key_exists(0, $class::TABLE_KEY)) ? $class::TABLE_KEY[0] : $class::TABLE_KEY;
 
-		$db->setQuery('SELECT * FROM `' . $class::TABLE_NAME . '` ORDER BY `' . $tableKey . '` DESC LIMIT 1');
-		$obj = $db->loadObject();
-
-		return (is_a($obj, 'stdClass') ? new $class($obj) : NULL);
+		return static::getObjectByQuery('SELECT * FROM `' . $class::TABLE_NAME . '` ORDER BY `' . $tableKey . '` DESC LIMIT 1');
 
 	}
 
