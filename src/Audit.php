@@ -30,7 +30,7 @@ class Audit extends ActiveRecord {
 
 	/**
 	 * This property maps “details” column.
-	 * @var stdClass
+	 * @var \stdClass
 	 */
 	protected $details;
 	
@@ -73,7 +73,7 @@ class Audit extends ActiveRecord {
 	}
 
 	/**
-	 * Convert an object of any type into stdClass with just properties specified in second
+	 * Convert an object of any type into \stdClass with just properties specified in second
 	 * array parameter.
 	 * 
 	 * @param	mixed		The object to convert.

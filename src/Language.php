@@ -56,7 +56,7 @@ class Language extends ActiveRecord {
 	 *
 	 * @return array
 	 */
-	protected static function getBinds() {
+	protected static function getBinds(): array {
 
 		$varFields = array(
 			'id'			=> 'id',
@@ -82,7 +82,7 @@ class Language extends ActiveRecord {
 			' WHERE l.language_id = ?' .
 			' AND l.default_country = 1';
 					
-		return Country::getObjectByQuery($query, $this->id);
+		return Country::getObjectByQuery($query, [$this->id]);
 		
 	}
 	

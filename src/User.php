@@ -164,7 +164,7 @@ class User extends ActiveRecord {
 	 *
 	 * @return array
 	 */
-	protected static function getBinds() {
+	protected static function getBinds(): array {
 		
 		$varFields = array (
 			'id'		=> 'id',
@@ -338,7 +338,7 @@ class User extends ActiveRecord {
 
 	/**
 	 * Performs a login for the user passed in parameters. It returns an
-	 * stdClass with error, message and userId parameters.
+	 * \stdClass with error, message and userId parameters.
 	 *
 	 * @param	\Pair\User 	$user
 	 * @param	string		$timezone	IANA time zone identifier.
@@ -534,7 +534,7 @@ class User extends ActiveRecord {
 		$res = $router->getModuleActionFromCustomUrl($url);
 		
 		// in case, overwrite module and action
-		if (is_a($res, 'stdClass')) {
+		if (is_a($res, '\stdClass')) {
 			$module = $res->module;
 			$action = $res->action;
 		}

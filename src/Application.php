@@ -27,7 +27,7 @@ class Application {
 
 	/**
 	 * Multi-array cache as list of class-names with list of ActiveRecord’s objects.
-	 * @var stdClass[ActiveRecord[]]
+	 * @var \stdClass[ActiveRecord[]]
 	 */
 	private $activeRecordCache = [];
 

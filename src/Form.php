@@ -1234,7 +1234,7 @@ class FormControlInput extends FormControl {
 class FormControlSelect extends FormControl {
 
 	/**
-	 * Items list of stdClass objs with value and text attributes.
+	 * Items list of \stdClass objs with value and text attributes.
 	 * @var array
 	 */
 	private $list = array();
@@ -1280,10 +1280,10 @@ class FormControlSelect extends FormControl {
 	 * for value and text. If property text includes a couple of round parenthesys, will
 	 * invoke a function without parameters. It’s a chainable method.
 	 * 
-	 * @param	array:stdClass	Object with value and text properties.
-	 * @param	string			Name of property’s value.
-	 * @param	string			Name of property’s text or an existent object function.
-	 * @param 	string			Name of property's attributes (optional).
+	 * @param	\stdClass[]	Object with value and text properties.
+	 * @param	string		Name of property’s value.
+	 * @param	string		Name of property’s text or an existent object function.
+	 * @param 	string		Name of property's attributes (optional).
 	 * 
 	 * @return	FormControlSelect
 	 */
@@ -1324,7 +1324,7 @@ class FormControlSelect extends FormControl {
 	 * Populate this control through an array in which each element is the group title and
 	 * in turn contains a list of objects with the value and text properties. Chainable.
 	 * 
-	 * @param	array:array:stdClass	Two-dimensional list.
+	 * @param	array:\stdClass[]	Two-dimensional list.
 	 * 
 	 * @return	FormControlSelect
 	 */
@@ -1372,7 +1372,7 @@ class FormControlSelect extends FormControl {
 
 		/**
 		 * Build the code of an option HTML tag.
-		 * @var		stdClass
+		 * @var		\stdClass
 		 * @return	string
 		 */
 		$buildOption = function ($option) {

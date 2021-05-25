@@ -199,33 +199,6 @@ class Utilities {
 	}
 
 	/**
-	 * Crop text to length in parameter, avoiding cutting last word, removing HTML tags and entities.
-	 *
-	 * @param	string	Text content.
-	 * @param	int		Maximum text length.
-	 *
-	 * @return	string
-	 */
-	public static function cropText($text, $length): string {
-
-		// remove HTML tags
-		$text = strip_tags($text);
-
-		// remove encoded HTML entities that could be cropped
-		$text = html_entity_decode($text);
-
-		// short strings are returned with no further changes
-		if (strlen($text) <= $length) return $text;
-
-		// go to latest space
-		$text = substr($text, 0, $length);
-		if (substr($text,-1,1) != ' ') $text = substr($text, 0, strrpos($text, ' '));
-
-		return $text .'…';
-
-	}
-
-	/**
 	 * Proxy method to print a JSON error message.
 	 *
 	 * @param	string	Error message to print on user.
@@ -300,106 +273,6 @@ class Utilities {
 
 		print $data;
 		die();
-	}
-
-	/**
-	 * Convert date from DB format to W3C format.
-	 *
-	 * @param	string	String date in format 2013-01-01 12:00:00.
-	 *
-	 * @return	string
-	 */
-	public static function convertDateToIso(string $dbDate): string {
-
-		$date = new \DateTime($dbDate);
-		return $date->format(DATE_W3C);
-
-	}
-
-	/**
-	 * Converts a date from DB format to an human readable format based on current user language.
-	 *
-	 * @param	string	Date (ex. 2013-01-01 12:00:00).
-	 * @param	bool	If this flag is TRUE, removes hours from result; default is FALSE.
-	 * @return	string
-	 */
-	public static function convertDateToHuman(string $dbDate, bool $removeHours=FALSE): string {
-
-		$t = Translator::getInstance();
-
-		$date = new \DateTime($dbDate);
-		$dateFormat = $removeHours ? 'DATE_FORMAT' : 'DATETIME_FORMAT';
-
-		return $date->format($t->get($dateFormat));
-
-	}
-
-	/**
-	 * Converts a DateTime object to date field type for db query. In case of UTC_DATE parameter on,
-	 * date will be temporary converted to UTC.
-	 *
-	 * @param	DateTime	Object to convert.
-	 *
-	 * @return	string
-	 */
-	public static function convertToDbDate(\DateTime $dateTime): string {
-
-		$currentTz = $dateTime->getTimezone();
-		$dateTime->setTimezone(new \DateTimeZone(BASE_TIMEZONE));
-		$ret = $dateTime->format('Y-m-d');
-		$dateTime->setTimezone($currentTz);
-		return $ret;
-
-	}
-
-	/**
-	 * Converts a DateTime object to datetime field type for db query. In case of UTC_DATE parameter on,
-	 * date will be temporary converted to UTC.
-	 *
-	 * @param	DateTime	Object to convert.
-	 *
-	 * @return	string
-	 */
-	public static function convertToDbDatetime(\DateTime $dateTime): string {
-
-		$currentTz = $dateTime->getTimezone();
-		$dateTime->setTimezone(new \DateTimeZone(BASE_TIMEZONE));
-		$ret = $dateTime->format('Y-m-d H:i:s');
-		$dateTime->setTimezone($currentTz);
-		return $ret;
-
-	}
-
-	/**
-	 * Create timestamp of a DateTime object as returned by jQuery datepicker.
-	 *
-	 * @param	string	Date in format dd-mm-yyyy.
-	 * @param	int		Optional hours.
-	 * @param	int		Optional minutes.
-	 * @param	int		Optional seconds.
-	 *
-	 * @return	int
-	 */
-	public static function timestampFromDatepicker(string $date, int $hour=NULL, int $minute=NULL, int $second=NULL): ?int {
-
-		/*
-		 * TODO verify result with different timezones
-		$dt = DateTime::createFromFormat('!d-m-Y', $date);
-		if (is_a($dt, 'DateTime')) {
-			$dt->setTime($hour, $minute, $second);
-			$dt->getTimestamp();
-		} else {
-			return NULL;
-		}
-		*/
-
-		$d = substr($date, 0, 2);
-		$m = substr($date, 3, 2);
-		$y = substr($date, 6, 4);
-		$time = mktime($hour, $minute, $second, $m, $d, $y);
-
-		return ($time ? $time : NULL);
-
 	}
 
 	/**
@@ -505,54 +378,6 @@ class Utilities {
 	}
 
 	/**
-	 * Adds a NULL select field, with translated text - Select - on top.
-	 *
-	 * @param	array	Array to which add first NULL value (reference var).
-	 * @param	string	Optional name of id var(default is 'id').
-	 * @param 	string	Optional name of value var (default is 'name').
-	 * @param	string	Optional text label of first NULL value (default is SELECT_NULL_VALUE translated)
-	 *
-	 * @return	array
-	 */
-	public static function prependNullOption(&$list,$idField=NULL,$nameField=NULL,$text=NULL) {
-
-		$idField	= $idField	? $idField	: 'id';
-		$nameField	= $nameField? $nameField: 'name';
-		$text		= $text		? $text		: Translator::do('SELECT_NULL_VALUE');
-
-		$nullItem = new \stdClass();
-
-		$nullItem->$idField		= '';
-		$nullItem->$nameField	= $text;
-
-		array_unshift($list,$nullItem);
-
-		return $list;
-
-	}
-
-	/**
-	 * Cast to integer all array items.
-	 *
-	 * @param	array	Items to cast.
-	 *
-	 * @return	array
-	 */
-	public static function arrayToInt($array) {
-
-		$intArray = array();
-
-		foreach ($array as $item) {
-
-			$intArray[] = (int)$item;
-
-		}
-
-		return $intArray;
-
-	}
-
-	/**
 	 * Prints a message "NoData..." in a special container.
 	 *
 	 * @param	string	Custom message to print in the container.
@@ -562,15 +387,6 @@ class Utilities {
 		Router::exceedingPaginationFallback();
 
 		?><div class="messageNodata"><?php print ($customMessage ? $customMessage : Translator::do('NOTHING_TO_SHOW')) ?></div><?php
-
-	}
-
-	/**
-	 * Prints an HTML message error in a special container.
-	 */
-	public static function printHtmlErrorBox($errorMessage) {
-
-		?><div class="messageNodata"><?php print $errorMessage ?></div><?php
 
 	}
 
@@ -791,7 +607,7 @@ class Utilities {
 		$sCurrentDate = $sStartDate;
 
 		// While the current date is less than the end date
-		while($sCurrentDate < $sEndDate){
+		while ($sCurrentDate < $sEndDate){
 			// Add a day to the current date
 			$sCurrentDate = date("Y-m-d", strtotime("+1 day", strtotime($sCurrentDate)));
 
@@ -810,7 +626,7 @@ class Utilities {
 	 * based on its main type (image, pdf, word, excel, zip, generic).
 	 *
 	 * @param	string	IANA Standard mime-type, RFC 6838.
-	 * @return	stdClass
+	 * @return	\stdClass
 	 */
 	public static function getIconByMimeType($mimeType): \stdClass {
 

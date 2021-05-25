@@ -56,7 +56,7 @@ class Acl extends ActiveRecord {
 	 *
 	 * @return array
 	 */
-	protected static function getBinds() {
+	protected static function getBinds(): array {
 
 		$varFields = array(
 			'id'		=> 'id',
@@ -71,7 +71,7 @@ class Acl extends ActiveRecord {
 	/**
 	 * Trigger function called after delete() method execution.
 	 */
-	protected function afterCreate() {
+	protected function afterCreate(): void {
 
 		Audit::aclAdded($this);
 
@@ -80,7 +80,7 @@ class Acl extends ActiveRecord {
 	/**
 	 * Trigger function called after delete() method execution.
 	 */
-	protected function beforeDelete() {
+	protected function beforeDelete(): void {
 
 		Audit::aclRemoved($this);
 

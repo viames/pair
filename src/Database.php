@@ -107,23 +107,11 @@ class Database {
 			return;
 		}
 		
-		switch (DBMS) {
-			
-			default:
-			case 'mysql':
-				$dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME;
-				$options = array(
-					\PDO::ATTR_PERSISTENT			=> (bool)$persistent,
-					\PDO::MYSQL_ATTR_INIT_COMMAND	=> "SET NAMES utf8",
-					\PDO::MYSQL_ATTR_FOUND_ROWS		=> TRUE);
-				break;
-
-			case 'mssql':
-				$dsn = 'dblib:host=' . DB_HOST . ';dbname=' . DB_NAME;
-				$options = [];
-				break;
-		
-		}
+		$dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME;
+		$options = array(
+			\PDO::ATTR_PERSISTENT			=> (bool)$persistent,
+			\PDO::MYSQL_ATTR_INIT_COMMAND	=> "SET NAMES utf8",
+			\PDO::MYSQL_ATTR_FOUND_ROWS		=> TRUE);
 		
 		try {
 				
@@ -282,7 +270,7 @@ class Database {
 	 * @param	string		SQL query.
 	 * @param	array|NULL	List of parameters to bind on the sql query. 
 	 * @param	int			Returned type (see constants PAIR_DB_*). PAIR_DB_OBJECT_LIST is default.
-	 * @return	array|stdClass|int|NULL
+	 * @return	array|\stdClass|int|NULL
 	 */
 	public static function load(string $query, $params=[], int $option=NULL) {
 		
@@ -302,14 +290,14 @@ class Database {
 
 			switch (strtolower($option)) {
 				
-				// list of stdClass objects
+				// list of \stdClass objects
 				default:
 				case PAIR_DB_OBJECT_LIST:
 					$res = $stat->fetchAll(\PDO::FETCH_OBJ);
 					$count = count($res);
 					break;
 				
-				// first row as stdClass object
+				// first row as \stdClass object
 				case PAIR_DB_OBJECT:
 					$res = $stat->fetch(\PDO::FETCH_OBJ);
 					if (!$res) $res = NULL;
@@ -419,7 +407,7 @@ class Database {
 	 * doesn’t exist.
 	 * 
 	 * @param	array|NULL	Parameters to bind on sql query in array or simple value.
-	 * @return	stdClass|NULL
+	 * @return	\stdClass|NULL
 	 * @deprecated	Use Database::load($query, [], PAIR_DB_OBJECT) instead.
 	 */
 	public function loadObject($params=[]): ?\stdClass {
@@ -831,7 +819,7 @@ class Database {
 				' AND r.CONSTRAINT_SCHEMA = ? AND r.REFERENCED_TABLE_NAME = ?' .
 				' AND k.CONSTRAINT_NAME = r.CONSTRAINT_NAME';
 
-			$this->definitions[$tableName]['inverseForeignKeys'] = self::load($query, [DB_NAME, $tableName, DB_NAME, $tableName], PAIR_DB_OBJECT_LIST);
+			$this->definitions[$tableName]['inverseForeignKeys'] = self::load($query, [DB_NAME, $tableName, DB_NAME, $tableName]);
 			
 		}
 		
@@ -850,7 +838,7 @@ class Database {
 		// check if was set in the object cache property
 		if (!isset($this->definitions[$tableName]['describe'])) {
 			
-			$res = self::load('DESCRIBE `' . $tableName . '`', NULL, PAIR_DB_OBJECT_LIST);
+			$res = self::load('DESCRIBE `' . $tableName . '`', NULL);
 			$this->definitions[$tableName]['describe'] = is_null($res) ? [] : $res;
 			
 		}
@@ -960,12 +948,8 @@ class Database {
 	 */
 	public function getMysqlVersion(): ?string {
 		
-		if ('mysql' == DBMS) {
-			$this->setQuery('SELECT VERSION()');
-			return $this->loadResult();
-		}
-
-		return NULL;
+		$this->setQuery('SELECT VERSION()');
+		return $this->loadResult();
 		
 	}
 

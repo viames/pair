@@ -91,7 +91,7 @@ class Template extends ActiveRecord implements PluginInterface {
 	 * 
 	 * @deprecated
 	 */
-	public function __get($name) {
+	public function __get(string $name) {
 
 		$app = Application::getInstance();
 		
@@ -144,7 +144,7 @@ class Template extends ActiveRecord implements PluginInterface {
 	 *
 	 * @return	array
 	 */
-	protected static function getBinds() {
+	protected static function getBinds(): array {
 
 		$varFields = array(
 			'id'			=> 'id',
@@ -268,13 +268,11 @@ class Template extends ActiveRecord implements PluginInterface {
 	/**
 	 * Returns the default Template object.
 	 *
-	 * @return	Template
+	 * @return	Template|NULL
 	 */
-	public static function getDefault() {
+	public static function getDefault(): ?self {
 	
-		$db = Database::getInstance();
-		$db->setQuery('SELECT * FROM `templates` WHERE is_default=1');
-		return new Template($db->loadObject());
+		return self::getObjectByQuery('SELECT * FROM `templates` WHERE `is_default`=1');
 	
 	}
 	
@@ -282,15 +280,11 @@ class Template extends ActiveRecord implements PluginInterface {
 	 * Load and return a Template object by its name.
 	 *
 	 * @param	string	Template name.
-	 *
 	 * @return	Template|NULL
 	 */
-	public static function getPluginByName($name) {
+	public static function getPluginByName(string $name): self {
 
-		$db = Database::getInstance();
-		$db->setQuery('SELECT * FROM `templates` WHERE name=?');
-		$obj = $db->loadObject($name);
-		return (is_a($obj, 'stdClass') ? new Template($obj) : NULL);
+		return self::getObjectByQuery('SELECT * FROM `templates` WHERE `name`=?', [$name]);
 		
 	}
 	

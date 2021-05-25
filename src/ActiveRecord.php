@@ -77,7 +77,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$this->init();
 
 		// db row, will populate each property with bound field value
-		if (is_a($initParam, 'stdClass')) {
+		if (is_a($initParam, '\stdClass')) {
 
 			$this->populate($initParam);
 
@@ -301,7 +301,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @return	array
 	 */
-	protected static function getBinds() {
+	protected static function getBinds(): array {
 
 		$db = Database::getInstance();
 		$columns = $db->describeTable(static::TABLE_NAME);
@@ -327,7 +327,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @param	\stdClass	Record object as extracted from db table.
 	 */
-	final private function populate(\stdClass $dbRow) {
+	private function populate(\stdClass $dbRow) {
 
 		$this->beforePopulate($dbRow);
 
@@ -362,10 +362,9 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * save data. Datetime properties will be converted to Y-m-d H:i:s or NULL.
 	 *
 	 * @param	array	List of property name to prepare.
-	 *
 	 * @return	mixed
 	 */
-	final private function prepareData(array $properties) {
+	private function prepareData(array $properties) {
 
 		// trigger before preparing data
 		$this->beforePrepareData();
@@ -477,7 +476,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @param	int|string|array	Object primary or compound key ID to load.
 	 */
-	final private function loadFromDb($key) {
+	private function loadFromDb($key): void {
 
 		// inherited class
 		$class = get_called_class();
@@ -487,8 +486,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		// load the requested record
 		$query = 'SELECT ' . static::getQueryColumns() . ' FROM `' . $class::TABLE_NAME . '`' . $where . ' LIMIT 1';
-		$this->db->setQuery($query);
-		$obj = $this->db->loadObject((array)$key);
+		$obj = Database::load($query, (array)$key, PAIR_DB_OBJECT);
 
 		// if db record exists, will populate the object properties
 		if (is_object($obj)) {
@@ -507,7 +505,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	/**
 	 * Update this object from the current DB record with same primary key.
 	 */
-	final public function reload() {
+	final public function reload(): void {
 
 		$class = get_called_class();
 
@@ -584,7 +582,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @return bool
 	 */
-	final private static function hasCompoundKey(): bool {
+	private static function hasCompoundKey(): bool {
 
 		$class = get_called_class();
 		$res = (is_array($class::TABLE_KEY) and count($class::TABLE_KEY) > 1);
@@ -599,7 +597,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @return	bool
 	 */
-	final private function isKeyProperty(string $propertyName): bool {
+	private function isKeyProperty(string $propertyName): bool {
 
 		return (in_array($propertyName, $this->keyProperties));
 
@@ -610,7 +608,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @return string[]
 	 */
-	final private function getSqlKeyConditions(): array {
+	private function getSqlKeyConditions(): array {
 
 		$class		= get_called_class();
 		$tableKey	= (array)$class::TABLE_KEY;
@@ -630,7 +628,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @return array
 	 */
-	final private function getSqlKeyValues(): array {
+	private function getSqlKeyValues(): array {
 
 		// force to array
 		$propertyNames = (array)$this->keyProperties;
@@ -651,7 +649,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @return string
 	 */
-	final private function getKeyForEventlog(): string {
+	private function getKeyForEventlog(): string {
 
 		// force to array
 		$properties = (array)$this->keyProperties;
@@ -975,7 +973,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @param	string	List of variable names.
 	 */
-	final protected function bindAsBoolean() {
+	final protected function bindAsBoolean(): void {
 
 		foreach (func_get_args() as $name) {
 			$this->typeList[$name] = 'bool';
@@ -989,7 +987,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @param	string	List of variable names.
 	 */
-	final protected function bindAsDatetime() {
+	final protected function bindAsDatetime(): void {
 
 		foreach (func_get_args() as $name) {
 			$this->typeList[$name] = 'DateTime';
@@ -1003,7 +1001,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @param	string	List of variable names.
 	 */
-	final protected function bindAsFloat() {
+	final protected function bindAsFloat(): void {
 
 		foreach (func_get_args() as $name) {
 			$this->typeList[$name] = 'float';
@@ -1017,7 +1015,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @param	string	List of variable names.
 	 */
-	final protected function bindAsInteger() {
+	final protected function bindAsInteger(): void {
 
 		foreach (func_get_args() as $name) {
 			$this->typeList[$name] = 'int';
@@ -1031,7 +1029,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @param	string	List of variable names.
 	 */
-	final protected function bindAsCsv() {
+	final protected function bindAsCsv(): void {
 
 		foreach (func_get_args() as $name) {
 			$this->typeList[$name] = 'csv';
@@ -1045,7 +1043,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @param	string	List of variable names.
 	 */
-	final protected function bindAsJson() {
+	final protected function bindAsJson(): void {
 
 		foreach (func_get_args() as $name) {
 			$this->typeList[$name] = 'json';
@@ -1059,7 +1057,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * @param	string	Name of property of this object to check.
 	 * @return	bool
 	 */
-	final private function isInSharedCache(string $property): bool {
+	private function isInSharedCache(string $property): bool {
 
 		// list encryptables fields
 		return (defined('static::SHARED_CACHE_PROPERTIES')
@@ -1222,7 +1220,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @return	NULL|\stdClass
 	 */
-	final private static function getColumnType(string $fieldName): ?\stdClass {
+	private static function getColumnType(string $fieldName): ?\stdClass {
 
 		$db = Database::getInstance();
 		$column = $db->describeColumn(static::TABLE_NAME, $fieldName);
@@ -1384,7 +1382,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * @param	string	Property’s name.
 	 * @param	mixed	Property’s value.
 	 */
-	final private function setDatetimeProperty(string $propertyName, $value) {
+	private function setDatetimeProperty(string $propertyName, $value) {
 
 		$dtz = Application::getTimeZone();
 
@@ -1682,12 +1680,10 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * Count all objects of the inherited class with where conditions and order clause.
 	 *
 	 * @param	array	Optional array of query filters, array(property-name => value).
-	 *
 	 * @return	int
 	 */
-	final public static function countAllObjects($filters = array()) {
+	final public static function countAllObjects($filters = []): int {
 
-		$app		= Application::getInstance();
 		$db			= Database::getInstance();
 		$class		= get_called_class();
 		$binds		= $class::getBinds();
@@ -1727,8 +1723,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 
 		// runs query
-		$db->setQuery('SELECT COUNT(1) FROM `' . $class::TABLE_NAME . '`' . $where);
-		$count = $db->loadCount();
+		$query = 'SELECT COUNT(1) FROM `' . $class::TABLE_NAME . '`' . $where;
+		$count = Database::load($query, [], PAIR_DB_COUNT);
 
 		Logger::event('Counted ' . $count . ' ' . $class . ' objects' . $whereLog);
 
@@ -1751,7 +1747,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// initialize custom binds
 		$customBinds = [];
 
-		if (!is_a($row, 'stdClass')) {
+		if (!is_a($row, '\stdClass')) {
 			return NULL;
 		}
 
@@ -1910,7 +1906,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @param	string	Name of the cached variable.
 	 */
-	final public function unsetCache(string $name) {
+	final public function unsetCache(string $name): void {
 
 		if (is_array($this->cache) and isset($this->cache[$name])) {
 			unset ($this->cache[$name]);
@@ -1967,7 +1963,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @return	string|NULL
 	 */
-	final public function formatDate($prop) {
+	final public function formatDate(string $prop): ?string {
 
 		if (!is_a($this->$prop, 'DateTime')) {
 			return NULL;
@@ -1999,7 +1995,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @param	string	Property or method (with or without parentheses) name.
 	 */
-	final public function printHtml($name) {
+	final public function printHtml(string $name): void {
 
 		// print standard ascii one or a predefined icon HTML as constant
 		$printBoolean = function ($value) {
@@ -2079,16 +2075,16 @@ abstract class ActiveRecord implements \JsonSerializable {
 	/**
 	 * Utility that works like \get_object_vars() but restricted to bound properties.
 	 *
-	 * @return mixed[]
+	 * @return array
 	 */
-	final public function getAllProperties() {
+	final public function getAllProperties(): array {
 
 		$class = get_called_class();
 
 		// all subclass binds
 		$binds = $class::getBinds();
 
-		$properties = array();
+		$properties = [];
 
 		foreach ($binds as $property=>$field) {
 			$properties[$property] = $this->$property;
@@ -2212,7 +2208,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @return	Form
 	 */
-	public function getForm() {
+	public function getForm(): Form {
 
 		$form = new Form();
 
@@ -2338,7 +2334,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @return array
 	 */
-	public function jsonSerialize() {
+	public function jsonSerialize(): array {
 
 		$vars = get_object_vars($this);
 		unset($vars['keyProperties']);
@@ -2383,7 +2379,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @return boolean
 	 */
-	public function isCryptAvailable() {
+	public function isCryptAvailable(): bool {
 
 		return (defined('AES_CRYPT_KEY') and strlen(AES_CRYPT_KEY) > 0);
 

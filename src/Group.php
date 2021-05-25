@@ -50,7 +50,7 @@ class Group extends ActiveRecord {
 	 *
 	 * @return array
 	 */
-	protected static function getBinds() {
+	protected static function getBinds(): array {
 		
 		$varFields = array (
 			'id'		=> 'id',

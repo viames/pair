@@ -6,9 +6,9 @@ class Breadcrumb {
 
 	/**
 	 * List of all paths.
-	 * @var array:stdClass
+	 * @var \stdClass[]
 	 */
-	protected $paths = array();
+	protected $paths = [];
 
 	/**
 	 * Flag to remove last URL in getPaths().
@@ -43,7 +43,7 @@ class Breadcrumb {
 	 *
 	 * @return	Breadcrumb
 	 */
-	public static function getInstance() {
+	public static function getInstance(): self {
 	
 		if (is_null(self::$instance)) {
 			self::$instance = new self();
@@ -59,7 +59,7 @@ class Breadcrumb {
 	 * @param	string	Title of the sub-path.
 	 * @param	string	Destination URL (default NULL).
 	 */
-	public static function path(string $title, string $url=NULL) {
+	public static function path(string $title, string $url=NULL): void {
 
 		$self = self::getInstance();
 		
@@ -83,6 +83,7 @@ class Breadcrumb {
 	 * @param	string	Title of the sub-path.
 	 * @param	string	Destination URL (default NULL).
 	 * @return	Breadcrumb
+	 * @deprecated Use Breadcrumb::path() instead
 	 */
 	public function addPath($title, $url=NULL) {
 		
@@ -105,9 +106,9 @@ class Breadcrumb {
 	/**
 	 * Returns all paths as array.
 	 * 
-	 * @return array:stdClass
+	 * @return \stdClass[]
 	 */
-	public function getPaths() {
+	public function getPaths(): array {
 		
 		if ($this->lastUrlDisabled) {
 			$newPaths = $this->paths;
@@ -125,7 +126,7 @@ class Breadcrumb {
 	 * @param	string	Path title.
 	 * @param	string	Optional URL.
 	 */
-	public function setHome($title, $url=NULL) {
+	public function setHome($title, $url=NULL): void {
 		
 		$path			= new \stdClass();
 		$path->title	= $title;
@@ -141,20 +142,20 @@ class Breadcrumb {
 	 * 
 	 * @return	string
 	 */
-	public function getLastPathTitle() {
+	public function getLastPathTitle(): string {
 		
-		$path = end($this->paths());
+		$path = end($this->paths);
 		return $path->title;
 		
 	}
 	
-	public function disableLastUrl() {
+	public function disableLastUrl(): void {
 		
 		$this->lastUrlDisabled = TRUE;
 		
 	}
 	
-	public function getBackPath() {
+	public function getBackPath(): ?\stdClass {
 		
 		if (count($this->paths) > 2) {
 			return $this->paths[count($this->paths)-2];

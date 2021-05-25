@@ -28,7 +28,7 @@ class Logger {
 	
 	/**
 	 * Full event list.
-	 * @var array:stdClass
+	 * @var \stdClass[]
 	 */
 	private $events = array();
 	
@@ -41,7 +41,7 @@ class Logger {
 	/**
 	 * Disabled constructor.
 	 */
-	final private function __construct() {}
+	private function __construct() {}
 	
 	/**
 	 * Singleton instance method.

@@ -56,7 +56,7 @@ class Rule extends ActiveRecord {
 	 *
 	 * @return array
 	 */
-	protected static function getBinds() {
+	protected static function getBinds(): array {
 
 		$varFields = array(
 			'id'		=> 'id',
@@ -71,7 +71,7 @@ class Rule extends ActiveRecord {
 	/**
 	 * Deletes all Acl of this Rule.
 	 */
-	protected function beforeDelete() {
+	protected function beforeDelete(): void {
 	
 		$acls = Acl::getAllObjects(array('ruleId' => $this->id));
 		foreach ($acls as $acl) {
@@ -81,31 +81,13 @@ class Rule extends ActiveRecord {
 	}
 	
 	/**
-	 * Return related Module object. Cached.
-	 * 
-	 * @return	Module
-	 */
-	public function getModule() {
-		
-		$class	= 'Module';
-		$id		= $this->moduleId;
-		
-		if (!$this->issetCache($class)) {
-			$this->setCache($class, new Module($id));
-		}
-		
-		return $this->getCache($class);
-		
-	}
-	
-	/**
 	 * Returns the db-record of the current Rule object, NULL otherwise.
 	 * 
 	 * @param	int		Module ID.
 	 * @param	string	Action name.
 	 * @param	bool	Optional flag to get admin-only rules.
 	 *
-	 * @return	stdClass|NULL
+	 * @return	\stdClass|NULL
 	 */
 	public static function getRuleModuleName($module_id, $action, $adminOnly=FALSE): ?\stdClass {
 

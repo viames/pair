@@ -86,7 +86,7 @@ class Menu {
 	 * @param	string	Optional, the anchor target.
 	 * @param	string	Optional, the badge type as Bootstrap class (ex. primary, info, error etc.).
 	 * 
-	 * @return	stdClass
+	 * @return	\stdClass
 	 */
 	public static function getItemObject(string $url, string $title, string $badge=NULL, string $class=NULL, string $target=NULL, string $badgeType=NULL): \stdClass {
 

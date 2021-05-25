@@ -74,7 +74,7 @@ class Module extends ActiveRecord implements PluginInterface {
 	 *
 	 * @return	array
 	 */
-	protected static function getBinds() {
+	protected static function getBinds(): array {
 
 		$varFields = array (
 			'id'			=> 'id',
@@ -189,11 +189,9 @@ class Module extends ActiveRecord implements PluginInterface {
 	 *
 	 * @return	Module
 	 */
-	public static function getByName($name) {
+	public static function getByName(string $name): ?self {
 
-		$db = Database::getInstance();
-		$db->setQuery('SELECT * FROM `modules` WHERE name = ?');
-		return $db->loadObject($name);
+		return self::getObjectByQuery('SELECT * FROM `modules` WHERE name = ?', [$name]);
 
 	}
 

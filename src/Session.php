@@ -71,7 +71,7 @@ class Session extends ActiveRecord {
 	 *
 	 * @return	array
 	 */
-	protected static function getBinds() {
+	protected static function getBinds(): array {
 		
 		$varFields = array (
 			'id'				=> 'id',
@@ -91,11 +91,8 @@ class Session extends ActiveRecord {
 	 */
 	public function extendTimeout() {
 
-		// converts to current time zone
-		$dateTime  = new \DateTime();
-		$startTime = Utilities::convertToDbDatetime($dateTime);
-		
-		Database::run('UPDATE `sessions` SET `start_time` = ? WHERE `id` = ?', [$startTime, $this->id]);
+		$this->startTime = new \DateTime();
+		$this->store();
 		
 	}
 	
