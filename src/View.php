@@ -359,4 +359,57 @@ abstract class View {
 
 	}
 
+	/**
+	 * Returns the object of inherited class when called with id as first parameter.
+	 *
+	 * @param	string	Expected object class type.
+	 * @return	ActiveRecord|NULL
+	 */
+	protected function getObjectRequestedById(string $class, ?int $pos=NULL): ?ActiveRecord {
+
+		// reads from url requested item id
+		$itemId = Router::get($pos ? abs($pos) : 0);
+
+		if (!$itemId) {
+			$this->enqueueError($this->lang('NO_ID_OF_ITEM_TO_EDIT', $class));
+			return NULL;
+		}
+
+		$object = new $class($itemId);
+
+		if (!$object->isLoaded()) {
+
+			$this->enqueueError($this->lang('ID_OF_ITEM_TO_EDIT_IS_NOT_VALID', $class));
+			Logger::error('Object ' . $class . ' id=' . $itemId . ' has not been loaded');
+			return NULL;
+
+		}
+
+		return $object;
+
+	}
+
+	/**
+	 * Get error list from an ActiveRecord object and show it to the user.
+	 *
+	 * @param	ActiveRecord	The inherited object.
+	 */
+	protected function raiseError(ActiveRecord $object) {
+
+		// get error list from the ActiveRecord object
+		$errors = $object->getErrors();
+
+		// choose the error messages
+		$message = $errors
+			? implode(" \n", $errors)
+			: $this->lang('ERROR_ON_LAST_REQUEST');
+
+		// enqueue error message for UI
+		$this->enqueueError($message);
+
+		// after the message has been queued, store the error data
+		ErrorLog::keepSnapshot('Failure in ' . \get_class($object) . ' class');
+
+	}
+
 }

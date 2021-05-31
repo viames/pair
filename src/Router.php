@@ -687,8 +687,9 @@ class Router {
 		// then replace simple param name in path
 		$pathRegex = preg_replace('|/(:[^/]+)|', '/([^/]+)', $pathRegex);
 		
-		// compare current URL to regex
-		return preg_match('|^' . $pathRegex . '$|', $url);
+		// remove prefix and compare current URL to regex
+		$cleanUrl = preg_replace('#^([/]*raw)/|^([/]*ajax)/#','/', $url, 1);
+		return preg_match('|^' . $pathRegex . '$|', $cleanUrl);
 
 	}
 

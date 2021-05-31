@@ -435,7 +435,7 @@ class Schedule {
 	}
 
 	/**
-	 * Run the task every year on June 1st at 17:00.
+	 * Run the task every year in {$month}, on day of month {$dayOfTheMonth1} at {$time}.
 	 * @param int $month 
 	 * @param int $dayOfTheMonth 
 	 * @param string $time 
