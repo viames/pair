@@ -1023,7 +1023,7 @@ class FormControlInput extends FormControl {
 	 */
 	public function setMin($minValue): FormControlInput {
 		
-		$this->min = (string)$minValue;
+		$this->min = (int)$minValue;
 		return $this;
 		
 	}
@@ -1037,7 +1037,7 @@ class FormControlInput extends FormControl {
 	 */
 	public function setMax($maxValue): FormControlInput {
 		
-		$this->max = (string)$maxValue;
+		$this->max = (int)$maxValue;
 		return $this;
 		
 	}
@@ -1102,11 +1102,11 @@ class FormControlInput extends FormControl {
 		// set min and max value attribute for date and number only
 		if (in_array($this->type, ['number','date'])) {
 			
-			if ($this->min) {
+			if (!is_null($this->min)) {
 				$ret .= ' min="' . htmlspecialchars($this->min) . '"';
 			}
 			
-			if ($this->max) {
+			if (!is_null($this->max)) {
 				$ret .= ' max="' . htmlspecialchars($this->max) . '"';
 			}
 			
@@ -1146,7 +1146,6 @@ class FormControlInput extends FormControl {
 	 */
 	public function validate(): bool {
 
-		$app	= Application::getInstance();
 		$value	= Input::get($this->name);
 		$valid	= TRUE;
 
