@@ -121,32 +121,73 @@ class Oauth2Token extends ActiveRecord {
 
 	}
 
-	public static function badRequest(string $detail): void {
+	public static function ok(string $detail): void {
 
-		$content = [
-			'type'	=> 'http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.1',
-			'title'	=> 'Bad Request',
-			'status'=> '400',
-			'detail'=> $detail
-		];
-
-		header('Content-Type: application/json', TRUE, 400);
-		print json_encode($content);
-		die();
+		self::sendRfc2616Response('#sec10.2.1','OK','200', $detail);
 
 	}
 
+	/**
+	 * The request could not be understood by the server due to malformed syntax. The client
+	 * SHOULD NOT repeat the request without modifications. 
+	 * @param string $detail 
+	 * @return void 
+	 */
+	public static function badRequest(string $detail): void {
+
+		self::sendRfc2616Response('#sec10.4.1','Bad Request','400',$detail);
+
+	}
+
+	/**
+	 * The request requires user authentication. The response MUST include a WWW-Authenticate
+	 * header field (section 14.47) containing a challenge applicable to the requested
+	 * resource. The client MAY repeat the request with a suitable Authorization header field
+	 * (section 14.8). If the request already included Authorization credentials, then the 401
+	 * response indicates that authorization has been refused for those credentials.
+	 * @param string $detail 
+	 * @return void 
+	 */
 	public static function unauthorized(string $detail): void {
 
-		$content = [
-			'type'  => 'http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.2',
-			'title'	=> 'Unauthorized',
-			'status'=> '401',
-			'detail'=> $detail
-		];
+		self::sendRfc2616Response('#sec10.4.2','Unauthorized','401',$detail);
 
-		header('Content-Type: application/json', TRUE, 401);
-		print json_encode($content);
+	}
+
+	/**
+	 * The server understood the request, but is refusing to fulfill it. Authorization will
+	 * not help and the request SHOULD NOT be repeated. If the request method was not HEAD and
+	 * the server wishes to make public why the request has not been fulfilled, it SHOULD
+	 * describe the reason for the refusal in the entity. If the server does not wish to make
+	 * this information available to the client, the status code 404 (Not Found) can be used
+	 * instead.
+	 * @param string $detail 
+	 * @return void 
+	 */
+	public static function forbidden(string $detail): void {
+
+		self::sendRfc2616Response('#sec10.4.4','Forbidden','403', $detail);
+
+	}	
+
+	/**
+	 * Send a JSON object in HTTP response.
+	 * @see https://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html
+	 * @param string $type 
+	 * @param string $title 
+	 * @param string $status 
+	 * @param null|string $detail 
+	 * @return void
+	 */
+	private static function sendRfc2616Response(string $type, string $title, string $status, ?string $detail=NULL): void {
+
+		header('Content-Type: application/json', TRUE, (int)$status);
+		$body = [
+			'type'	=> 'http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html' . $type,
+			'title'	=> $title,
+			'status'=> $status,
+			'detail'=> $detail];
+		print json_encode($body);
 		die();
 
 	}

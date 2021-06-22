@@ -907,7 +907,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$res = $this->db->exec($query, $this->getSqlKeyValues());
 
 		// list properties to not remove
-		$activeRecordsProperties = array('db', 'loadedFromDb', 'typeList', 'errors');
+		$activeRecordsProperties = array('keyProperties', 'db', 'loadedFromDb', 'typeList', 'errors');
 
 		// unset all properties
 		foreach ($this as $key => $value) {
@@ -917,6 +917,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 
 		$this->loadedFromDb = FALSE;
+		$this->errors = [];
 
 		// trigger a custom function after deletion
 		$this->afterDelete();

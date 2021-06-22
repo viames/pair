@@ -753,7 +753,7 @@ class Application {
 		// unauthorized request
 		} else {
 
-			$apiCtl->sendError('Authentication is required for this request');
+			Oauth2Token::unauthorized(PRODUCT_NAME . '-API: Authentication failed');
 
 		}
 

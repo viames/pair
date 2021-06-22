@@ -77,7 +77,7 @@ class Oauth2Client extends ActiveRecord {
 			$ot->delete();
 		}
 
-		if (!$ot or $ot->areKeysPopulated()) {
+		if (!$ot or !$ot->areKeysPopulated()) {
 			$ot = new Oauth2Token();
 			$ot->clientId = $this->id;
 			$ot->token = bin2hex(openssl_random_pseudo_bytes(256));
@@ -93,7 +93,7 @@ class Oauth2Client extends ActiveRecord {
 	public function sendToken(): void {
 
 		// crea il token
-		$tokenObj = [
+		$body = [
 			'access_token'	=> $this->getToken(),
 			'expires_in'	=> OAUTH2_TOKEN_LIFETIME,
 			'scope'			=> NULL,
@@ -101,8 +101,8 @@ class Oauth2Client extends ActiveRecord {
 		];
 
 		// invia il token
-		header('Content-Type: application/json', TRUE);
-		print json_encode($tokenObj);
+		header('Content-Type: application/json', TRUE, 200);
+		print json_encode($body);
 		die();
 
 	}
