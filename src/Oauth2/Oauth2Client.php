@@ -77,7 +77,7 @@ class Oauth2Client extends ActiveRecord {
 			$ot->delete();
 		}
 
-		if (!$ot->areKeysPopulated()) {
+		if (!$ot or $ot->areKeysPopulated()) {
 			$ot = new Oauth2Token();
 			$ot->clientId = $this->id;
 			$ot->token = bin2hex(openssl_random_pseudo_bytes(256));
