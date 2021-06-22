@@ -753,7 +753,7 @@ class Application {
 		// unauthorized request
 		} else {
 
-			$apiCtl->sendError('Request is not valid');
+			$apiCtl->sendError('Authentication is required for this request');
 
 		}
 
