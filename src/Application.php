@@ -1008,6 +1008,7 @@ class Application {
 			$this->enqueueError(Translator::do('RESOURCE_NOT_FOUND', $router->url));
 			$this->style = '404';
 			$this->pageTitle = 'HTTP 404 error';
+			http_response_code(404);
 
 		} else {
 
