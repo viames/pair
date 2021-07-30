@@ -571,6 +571,20 @@ abstract class FormControl {
 	abstract public function render();
 	
 	abstract public function validate();
+
+	/**
+	 * Adds a single data attribute, prepending the string "data-" to the given name.
+	 * @param	string	Data attribute name.
+	 * @param	string	Value.
+	 * @return 	FormControl
+	 */
+	public function data(string $name, string $value): FormControl {
+
+		$this->attributes['data-' . $name] = $value;
+
+		return $this;
+
+	}
 	
 	/**
 	 * Sets value for this control subclass.
@@ -858,7 +872,7 @@ abstract class FormControl {
 		
 		// misc tag attributes
 		foreach ($this->attributes as $attr=>$val) {
-			$ret .= ' ' . $attr . '="' . addslashes($val) . '"';
+			$ret .= ' ' . $attr . '="' . str_replace('"','\"',$val) . '"';
 		}
 		
 		return $ret;
