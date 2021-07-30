@@ -907,7 +907,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$res = $this->db->exec($query, $this->getSqlKeyValues());
 
 		// list properties to not remove
-		$activeRecordsProperties = array('db', 'loadedFromDb', 'typeList', 'errors');
+		$activeRecordsProperties = array('keyProperties', 'db', 'loadedFromDb', 'typeList', 'errors');
 
 		// unset all properties
 		foreach ($this as $key => $value) {
@@ -917,6 +917,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 
 		$this->loadedFromDb = FALSE;
+		$this->errors = [];
 
 		// trigger a custom function after deletion
 		$this->afterDelete();
@@ -2033,18 +2034,27 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 			}
 
-		// name is a method with or without parentheses
-		} else if ('()' == substr($name, -2) or method_exists($this, $name)) {
+		} else {
+			
+			// the name is a method, with or without brackets
+			if ('()' == substr($name, -2) or method_exists($this, $name)) {
 
-			$methodName = '()' == substr($name, -2) ? substr($name, 0, -2) : $name;
+				$methodName = '()' == substr($name, -2) ? substr($name, 0, -2) : $name;
 
-			if (!method_exists($this, $methodName)) {
-				$this->addError('The ' . $methodName . '() method to printHtml was not found in the ' . get_called_class() . ' class');
-				return;
+				if (!method_exists($this, $methodName)) {
+					$this->addError('The ' . $methodName . '() method to printHtml was not found in the ' . get_called_class() . ' class');
+					return;
+				}
+
+				// run the method
+				$result = $this->$methodName();
+
+			// otherwise the requested value is handled with __get()
+			} else {
+
+				$result = $this->$name;
+
 			}
-
-			// run the method
-			$result = $this->$methodName();
 
 			switch (gettype($result)) {
 
@@ -2061,13 +2071,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 					print htmlspecialchars($result);
 					break;
 
-			}
-
-		// property not found
-		} else {
-
-			$this->addError('You can not printHtml for the ' . $name . ' property of the class ' . get_called_class());
-
+			}			
+			
 		}
 
 	}

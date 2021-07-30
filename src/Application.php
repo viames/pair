@@ -152,6 +152,7 @@ class Application {
 			'PRODUCT_NAME' => 'NewProduct',
 			'PRODUCT_VERSION' => '1.0',
 			'UTC_DATE' => TRUE,
+			'OAUTH2_TOKEN_LIFETIME' => Oauth2Token::LIFETIME,
 			'PAIR_DEVELOPMENT' => FALSE,
 			'PAIR_DEBUG' => FALSE,
 			'PAIR_AUDIT_PASSWORD_CHANGED' => FALSE,
@@ -221,7 +222,7 @@ class Application {
 		// raw calls will jump templates inclusion, so turn-out output buffer
 		if (!$router->isRaw()) {
 
-			$debug = (defined('DEBUG') and DEBUG);
+			$debug = (defined('PAIR_DEBUG') and PAIR_DEBUG);
 			$gzip  = (isset($_SERVER['HTTP_ACCEPT_ENCODING']) and substr_count($_SERVER['HTTP_ACCEPT_ENCODING'], 'gzip'));
 
 			// if supported, output is compressed with gzip
@@ -670,11 +671,22 @@ class Application {
 		// require controller file
 		require (MODULE_PATH . 'controller.php');
 
-		// get SID or token
+		// get SID or token via GET
 		$sid		= Router::get('sid');
-		$tokenValue = Router::get('token');
+		$tokenValue	= Router::get('token');
 
+		// read the Bearer token via HTTP header
+		$bearerToken = Oauth2Token::readBearerToken();
+
+		// assemble the API controller name
 		$ctlName = $name . 'Controller';
+		
+		if (!class_exists($ctlName)) {
+			print ('The API Controller class is incorrect');
+			exit();
+		}
+
+		// new API Controller instance
 		$apiCtl = new $ctlName();
 
 		// set the action function
@@ -693,6 +705,18 @@ class Application {
 			} else {
 				$apiCtl->sendError('Token is not valid');
 			}
+
+		// or check for Oauth2 Bearer token via http header
+		} else if ($bearerToken) {
+
+			if (!Oauth2Token::validate($bearerToken)) {
+				sleep(3);
+				Oauth2Token::unauthorized('Authentication failed');
+			}
+
+			// verify that the bearer token is valid
+			$apiCtl->setBearerToken($bearerToken);
+			$apiCtl->$action();
 
 		// login and logout
 		} else if ('login' == $router->action or 'logout' == $router->action) {
@@ -729,7 +753,7 @@ class Application {
 		// unauthorized request
 		} else {
 
-			$apiCtl->sendError('Request is not valid');
+			Oauth2Token::unauthorized(PRODUCT_NAME . '-API: Authentication failed');
 
 		}
 
@@ -984,6 +1008,7 @@ class Application {
 			$this->enqueueError(Translator::do('RESOURCE_NOT_FOUND', $router->url));
 			$this->style = '404';
 			$this->pageTitle = 'HTTP 404 error';
+			http_response_code(404);
 
 		} else {
 
