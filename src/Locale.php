@@ -87,6 +87,26 @@ class Locale extends ActiveRecord {
 
 	}
 
+	/**
+	 * Returns an array with the object property names and corresponding columns in the db.
+	 *
+	 * @return array
+	 */
+	protected static function getBinds(): array {
+
+		$binds = [
+			'id'				=> 'id',
+			'languageId'		=> 'language_id',
+			'countryId'			=> 'country_id',
+			'officialLanguage'	=> 'official_language',
+			'defaultCountry'	=> 'default_country',
+			'appDefault'		=> 'app_default'
+		];
+
+		return $binds;
+
+	}
+
 	protected function beforeStore() {
 
 		// only one row can be appDefault

@@ -3,7 +3,7 @@
 namespace Pair;
 
 class Country extends ActiveRecord {
-	
+
 	/**
 	 * This property maps “id” column.
 	 * @var int
@@ -15,13 +15,13 @@ class Country extends ActiveRecord {
 	 * @var string
 	 */
 	protected $code;
-	
+
 	/**
 	 * This property maps “native_name” column.
 	 * @var string
 	 */
 	protected $nativeName;
-	
+
 	/**
 	 * This property maps “english_name” column.
 	 * @var string
@@ -33,7 +33,7 @@ class Country extends ActiveRecord {
 	 * @var string
 	 */
 	const TABLE_NAME = 'countries';
-	
+
 	/**
 	 * Name of primary key db field.
 	 * @var string|array
@@ -46,6 +46,24 @@ class Country extends ActiveRecord {
 	protected function init() {
 
 		$this->bindAsInteger('id');
+
+	}
+
+	/**
+	 * Returns an array with the object property names and corresponding columns in the db.
+	 *
+	 * @return array
+	 */
+	protected static function getBinds(): array {
+
+		$binds = [
+			'id'			=> 'id',
+			'code'			=> 'code',
+			'nativeName'	=> 'native_name',
+			'englishName'	=> 'english_name'
+		];
+
+		return $binds;
 
 	}
 

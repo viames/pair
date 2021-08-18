@@ -1,5 +1,5 @@
 <?php
-		
+
 namespace Pair;
 
 class Session extends ActiveRecord {
@@ -46,44 +46,44 @@ class Session extends ActiveRecord {
 	 * @var string
 	 */
 	const TABLE_NAME = 'sessions';
-		
+
 	/**
 	 * Name of primary key db field.
 	 * @var string
 	 */
 	const TABLE_KEY = 'id';
-	
+
 	/**
 	 * Method called by constructor just after having populated the object.
 	 */
 	protected function init() {
-			
+
 		$this->bindAsDatetime('startTime');
-		
+
 		$this->bindAsFloat('timezoneOffset');
 
 		$this->bindAsInteger('idUser', 'formerUserId');
-			
+
 	}
 
 	/**
-	 * Returns array with matching object property name on related db fields.
+	 * Returns an array with the object property names and corresponding columns in the db.
 	 *
 	 * @return	array
 	 */
 	protected static function getBinds(): array {
-		
-		$varFields = array (
+
+		$binds = [
 			'id'				=> 'id',
 			'idUser'			=> 'id_user',
 			'startTime'			=> 'start_time',
 			'timezoneOffset'	=> 'timezone_offset',
 			'timezoneName'		=> 'timezone_name',
 			'formerUserId'		=> 'former_user_id'
-		);
-		
-		return $varFields;
-		
+		];
+
+		return $binds;
+
 	}
 
 	/**
@@ -93,9 +93,9 @@ class Session extends ActiveRecord {
 
 		$this->startTime = new \DateTime();
 		$this->store();
-		
+
 	}
-	
+
 	/**
 	 * Deletes expired sessions from database, based on sessionTime param and user’s time zone.
 	 *
@@ -113,12 +113,12 @@ class Session extends ActiveRecord {
 
 	/**
 	 * Checks if a Session object is expired after sessionTime passed as parameter.
-	 * 
+	 *
 	 * @param	int		Session time in minutes.
 	 * @return	bool
 	 */
 	public function isExpired(int $sessionTime): bool {
-		
+
 		if (is_null($this->startTime)) {
 			return TRUE;
 		}
@@ -126,26 +126,26 @@ class Session extends ActiveRecord {
 		// creates expiring date subtracting sessionTime interval
 		$expiring = new \DateTime(NULL, new \DateTimeZone(BASE_TIMEZONE));
 		$expiring->sub(new \DateInterval('PT' . (int)$sessionTime . 'M'));
-		
+
 		return ($this->startTime < $expiring);
 
 	}
-	
+
 	/**
 	 * Store the User or children object of this Session object into a cache.
-	 * 
+	 *
 	 * @param	User	User to set.
 	 */
 	public function setUser(User $user) {
-		
+
 		$this->setCache('user', $user);
 
 	}
 
 	/**
 	 * Return the User object of this Session, if exists. Cached method.
-	 * 
-	 * @return	User|NULL 
+	 *
+	 * @return	User|NULL
 	 */
 	public function getUser(): ?User {
 
@@ -176,11 +176,11 @@ class Session extends ActiveRecord {
 
 	/**
 	 * Store the former User or children object of this Session object into a cache.
-	 * 
+	 *
 	 * @param	User	User to set.
 	 */
 	public function setFormerUser(User $formerUser) {
-		
+
 		$this->setCache('formerUser', $formerUser);
 
 	}
@@ -216,5 +216,5 @@ class Session extends ActiveRecord {
 		return new Session(session_id());
 
 	}
-	
+
 }
