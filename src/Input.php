@@ -42,6 +42,9 @@ class Input {
 			$name = substr($name, 0, -2);
 		}
 
+		// spaces are converted by PHP to underscores
+		$name = str_replace(' ', '_', $name);
+
 		// seeking a possible name
 		if (array_key_exists($name, $request)) {
 

@@ -80,7 +80,7 @@ class Locale extends ActiveRecord {
 	/**
 	 * Method called by constructor just after having populated the object.
 	 */
-	protected function init() {
+	protected function init(): void {
 
 		$this->bindAsBoolean('officialLanguage', 'defaultCountry', 'appDefault');
 		$this->bindAsInteger('id', 'languageId', 'countryId');
@@ -107,7 +107,7 @@ class Locale extends ActiveRecord {
 
 	}
 
-	protected function beforeStore() {
+	protected function beforeStore(): void {
 
 		// only one row can be appDefault
 		if ($this->appDefault) {
@@ -126,7 +126,7 @@ class Locale extends ActiveRecord {
 	 *
 	 * @return	Locale
 	 */
-	public static function getDefault() {
+	public static function getDefault(): ?Locale {
 
 		return static::getObjectByQuery('SELECT * FROM `locales` WHERE `app_default` = 1');
 
@@ -137,7 +137,7 @@ class Locale extends ActiveRecord {
 	 *
 	 * @return	bool
 	 */
-	public function isDefault() {
+	public function isDefault(): bool {
 
 		return $this->appDefault;
 
@@ -148,7 +148,7 @@ class Locale extends ActiveRecord {
 	 *
 	 * @return	bool
 	 */
-	public function isOfficialLanguage() {
+	public function isOfficialLanguage(): bool {
 
 		return $this->officialLanguage;
 
@@ -159,13 +159,13 @@ class Locale extends ActiveRecord {
 	 *
 	 * @return	bool
 	 */
-	public function isDefaultCountry() {
+	public function isDefaultCountry(): bool {
 
 		return $this->defaultCountry;
 
 	}
 
-	public function getRepresentation() {
+	public function getRepresentation(): string {
 
 		return $this->getLanguage()->code . '-' . $this->getCountry()->code;
 
@@ -178,7 +178,7 @@ class Locale extends ActiveRecord {
 	 *
 	 * @return	Locale|NULL
 	 */
-	public static function getByRepresentation($representation) {
+	public static function getByRepresentation(string $representation): ?Locale {
 
 		list ($languageCode, $countryCode) = explode('-', $representation);
 
@@ -201,7 +201,7 @@ class Locale extends ActiveRecord {
 	 *
 	 * @return	Locale|NULL
 	 */
-	public static function getDefaultByLanguage($languageCode) {
+	public static function getDefaultByLanguage(string $languageCode): ?Locale {
 
 		$query =
 			'SELECT lc.*' .
@@ -221,7 +221,7 @@ class Locale extends ActiveRecord {
 	 *
 	 * @return	string
 	 */
-	public function getFilePath($module) {
+	public function getFilePath(string $module): string {
 
 		$folder = APPLICATION_PATH . ('common'!=$module ? '/modules/' . $module : '') . '/translations';
 		return $folder . '/' . $this->getRepresentation() . '.ini';
@@ -235,7 +235,7 @@ class Locale extends ActiveRecord {
 	 *
 	 * @return	array:string
 	 */
-	public function readTranslation($module) {
+	public function readTranslation(?Module $module): array {
 
 		// get the right translation folder
 		$file = APPLICATION_PATH . (is_a($module,'Pair\Module') ? '/modules/' . $module->name : '') . '/translations/' . $this->getRepresentation() . '.ini';
@@ -262,7 +262,7 @@ class Locale extends ActiveRecord {
 	 *
 	 * @return	bool
 	 */
-	public function isFileWritable($moduleName) {
+	public function isFileWritable(string $moduleName): bool {
 
 		$folder = APPLICATION_PATH . ('common'!=$moduleName ? '/modules/' . $moduleName : '') . '/translations';
 		$file = $folder . '/' . $this->getRepresentation() . '.ini';
@@ -283,7 +283,7 @@ class Locale extends ActiveRecord {
 	 *
 	 * @return	bool
 	 */
-	public function writeTranslation($strings, $module) {
+	public function writeTranslation(array $strings, ?Module $module): bool {
 
 		$folder = APPLICATION_PATH . (is_a($module,'Pair\Module') ? '/modules/' . $module->name : '') . '/translations/';
 		$file = $folder . $this->getRepresentation() . '.ini';
@@ -348,7 +348,7 @@ class Locale extends ActiveRecord {
 	 *
 	 * @return string
 	 */
-	public function getNativeNames() {
+	public function getNativeNames(): string {
 
 		$language = $this->getLanguage();
 		$country  = $this->getCountry();
@@ -365,7 +365,7 @@ class Locale extends ActiveRecord {
 	 *
 	 * @return string
 	 */
-	public function getEnglishNames() {
+	public function getEnglishNames(): string {
 
 		$language = $this->getLanguage();
 		$country  = $this->getCountry();
@@ -384,7 +384,7 @@ class Locale extends ActiveRecord {
 	 *
 	 * @return	Locale[]
 	 */
-	public static function getExistentTranslations($nativeNames = TRUE) {
+	public static function getExistentTranslations(?bool $nativeNames = TRUE): array {
 
 		$columnName = $nativeNames ? 'native_name' : 'english_name';
 

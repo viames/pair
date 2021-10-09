@@ -8,8 +8,7 @@ use Exception;
 use League\Flysystem\AwsS3v3\AwsS3Adapter;
 use League\Flysystem\Filesystem;
 
-class AmazonS3
-{
+class AmazonS3 {
 	/**
 	 * FileSystem Variable (for internal use)
 	 *

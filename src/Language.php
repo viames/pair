@@ -15,19 +15,19 @@ class Language extends ActiveRecord {
 	 * @var string
 	 */
 	protected $code;
-	
+
 	/**
 	 * Language native name.
 	 * @var string
 	 */
 	protected $nativeName;
-	
+
 	/**
 	 * Language name in english.
 	 * @var string
 	 */
 	protected $englishName;
-	
+
 	/**
 	 * Name of related db table.
 	 * @var string
@@ -39,16 +39,16 @@ class Language extends ActiveRecord {
 	 * @var string
 	 */
 	const TABLE_KEY = 'id';
-	
+
 	/**
 	 * Set for converts from string to Datetime, integer or boolean object in two ways.
 	 */
-	protected function init() {
-	
+	protected function init(): void {
+
 		$this->bindAsInteger('id');
-	
+
 		$this->bindAsBoolean('default');
-	
+
 	}
 
 	/**
@@ -63,27 +63,27 @@ class Language extends ActiveRecord {
 			'code'			=> 'code',
 			'englishName'	=> 'english_name',
 			'nativeName'	=> 'native_name');
-		
+
 		return $varFields;
 
 	}
-	
+
 	/**
 	 * Get the default Country object for this language based on locales table.
-	 * 
+	 *
 	 * @return	Country|NULL
 	 */
-	public function getDefaultCountry() {
-		
+	public function getDefaultCountry(): ?Country {
+
 		$query =
 			'SELECT c.*' .
 			' FROM `countries` AS c' .
 			' INNER JOIN `locales` AS l ON c.id = l.country_id' .
 			' WHERE l.language_id = ?' .
 			' AND l.default_country = 1';
-					
+
 		return Country::getObjectByQuery($query, [$this->id]);
-		
+
 	}
-	
+
 }
