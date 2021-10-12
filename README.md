@@ -38,7 +38,7 @@ A nice log bar shows all the details of the loaded objects, the system memory lo
 ### Composer
 
 ```sh
-composer require viames/pair
+composer require nexev-it/pair
 ```
 After having installed Pair framework you can get singleton object `$app` and the just start MVC. You can check any session before MVC, like in the following example.
 
@@ -61,7 +61,7 @@ $app->startMvc();
 If you want to test code that is in the master branch, which hasn’t been pushed as a release, you can use master.
 
 ```
-composer require viames/pair dev-master
+composer require nexev-it/pair dev-master
 ```
 If you don’t have Composer, you can [download it](https://getcomposer.org/download/).
 
