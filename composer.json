@@ -1,21 +1,21 @@
 {
-	"name" : "viames/pair",
+	"name" : "nexev-it/pair",
 	"description" : "lightweight PHP framework as the air",
 	"minimum-stability": "dev",
 	"require" : {
 		"php": "^7.3|^8.0",
 		"ext-pdo" : "*",
-		"league/flysystem-aws-s3-v3": "^1.0",
-		"sistemi-etime/flysystem-plugin-aws-s3-v3": "^1.0",
-		"rector/rector": "^0.11.2"
+		"league/flysystem-aws-s3-v3": "^2",
+		"sistemi-etime/flysystem-plugin-aws-s3-v3": "^1",
+		"rector/rector": "^0.11"
 	},
 	"repositories" : [
 		{
 			"type" : "composer",
-			"url" : "https://packagist.org/packages/viames/pair"
+			"url" : "https://packagist.org/packages/nexev-it/pair"
 		},{
 			"type": "vcs",
-			"url": "https://github.com/Viames/Pair"
+			"url": "https://github.com/nexev-it/pair"
 		}
 	],
 	"license" : "MIT",
@@ -35,15 +35,15 @@
 			"src"
 		],
 		"psr-4" : {
-			"Viames\\Pair\\" : ""
+			"nexev-it\\pair\\" : ""
 		}
 	},
 	"support" : {
-		"issues" : "https://github.com/Viames/Pair/issues",
-		"wiki" : "https://github.com/Viames/Pair/wiki",
-		"source" : "https://github.com/Viames/Pair/tree/master/src"
+		"issues" : "https://github.com/nexev-it/pair/issues",
+		"wiki" : "https://github.com/nexev-it/pair/wiki",
+		"source" : "https://github.com/nexev-it/pair/tree/master/src"
 	},
-	"homepage" : "https://viames.github.io/Pair/",
+	"homepage" : "https://nexev-it.github.io/pair/",
 	"authors" : [
 		{
 			"name" : "Viames Marino",
