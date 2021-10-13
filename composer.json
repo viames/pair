@@ -15,7 +15,7 @@
 			"url" : "https://packagist.org/packages/viames/pair"
 		},{
 			"type": "vcs",
-			"url": "https://github.com/Viames/Pair"
+			"url": "https://github.com/viames/pair"
 		}
 	],
 	"license" : "MIT",
@@ -35,13 +35,13 @@
 			"src"
 		],
 		"psr-4" : {
-			"Viames\\Pair\\" : ""
+			"viames\\pair\\" : ""
 		}
 	},
 	"support" : {
-		"issues" : "https://github.com/Viames/Pair/issues",
-		"wiki" : "https://github.com/Viames/Pair/wiki",
-		"source" : "https://github.com/Viames/Pair/tree/master/src"
+		"issues" : "https://github.com/viames/pair/issues",
+		"wiki" : "https://github.com/viames/pair/wiki",
+		"source" : "https://github.com/viames/pair/tree/master/src"
 	},
 	"homepage" : "https://viames.github.io/Pair/",
 	"authors" : [

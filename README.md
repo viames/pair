@@ -7,7 +7,7 @@
 
 ## Features
 
-Pair is simple and fast, few frills, maybe none. It was written with simplicity in mind, while trying to achieve the most frequent needs of web applications. It implements [Model-View-Controller](https://en.wikipedia.org/wiki/Model-View-Controller) pattern and a search friendly [route logic](https://github.com/Viames/Pair/wiki/Router) by default.
+Pair is simple and fast, few frills, maybe none. It was written with simplicity in mind, while trying to achieve the most frequent needs of web applications. It implements [Model-View-Controller](https://en.wikipedia.org/wiki/Model-View-Controller) pattern and a search friendly [route logic](https://github.com/viames/pair/wiki/Router) by default.
 
 Everyone knows that you do not need a truck to go shopping. You do not even need the car to go and buy the newspaper at the nearby newsstand. You need the right medium for everything.
 
@@ -15,7 +15,7 @@ If you’re already tired of starting a new web project due to the complexity of
 
 #### ActiveRecord
 
-Pair allows the creation of objects related to each respective database table using the [ActiveRecord class](https://github.com/Viames/Pair/wiki/ActiveRecord). Objects retrieved from the DB are cast in both directions to the required type (int, bool, DateTime, float, csv). See [Automatic properties cast](https://github.com/Viames/Pair/wiki/ActiveRecord#automatic-properties-cast) page in the wiki.
+Pair allows the creation of objects related to each respective database table using the [ActiveRecord class](https://github.com/viames/pair/wiki/ActiveRecord). Objects retrieved from the DB are cast in both directions to the required type (int, bool, DateTime, float, csv). See [Automatic properties cast](https://github.com/viames/pair/wiki/ActiveRecord#automatic-properties-cast) page in the wiki.
 
 In addition, each class inherited from ActiveRecord supports many convenient methods including those for caching data that save queries.
 
@@ -67,17 +67,17 @@ If you don’t have Composer, you can [download it](https://getcomposer.org/down
 
 ## Documentation
 
-Please consult the [Wiki](https://github.com/Viames/Pair/wiki) of this project. Below are its most interesting pages that illustrate some features of Pair.
+Please consult the [Wiki](https://github.com/viames/pair/wiki) of this project. Below are its most interesting pages that illustrate some features of Pair.
 
-* [ActiveRecord](https://github.com/Viames/Pair/wiki/ActiveRecord)
-* [Application](https://github.com/Viames/Pair/wiki/Application)
-* [Controller](https://github.com/Viames/Pair/wiki/Controller)
-* [Form](https://github.com/Viames/Pair/wiki/Form)
-* [Router](https://github.com/Viames/Pair/wiki/Router)
-* [index.php](https://github.com/Viames/Pair/wiki/index)
-* [.htaccess](https://github.com/Viames/Pair/wiki/htaccess)
-* [config.php](https://github.com/Viames/Pair/wiki/Configuration-file)
-* [classes](https://github.com/Viames/Pair/wiki/Classes-folder)
+* [ActiveRecord](https://github.com/viames/pair/wiki/ActiveRecord)
+* [Application](https://github.com/viames/pair/wiki/Application)
+* [Controller](https://github.com/viames/pair/wiki/Controller)
+* [Form](https://github.com/viames/pair/wiki/Form)
+* [Router](https://github.com/viames/pair/wiki/Router)
+* [index.php](https://github.com/viames/pair/wiki/index)
+* [.htaccess](https://github.com/viames/pair/wiki/htaccess)
+* [config.php](https://github.com/viames/pair/wiki/Configuration-file)
+* [classes](https://github.com/viames/pair/wiki/Classes-folder)
 
 ## Requirements
 
