@@ -18,55 +18,55 @@ class User extends ActiveRecord {
 	 * @var int
 	 */
 	protected $groupId;
-	
+
 	/**
 	 * Id of user locale.
 	 * @var int
 	 */
 	protected $localeId;
-	
+
 	/**
 	 * Username for local authentication
 	 * @var string
 	 */
 	protected $username;
-	
+
 	/**
 	 * Password hash.
 	 * @var string
 	 */
 	protected $hash;
-	
+
 	/**
 	 * User name.
 	 * @var string
 	 */
 	protected $name;
-	
+
 	/**
 	 * User surname.
 	 * @var string
 	 */
 	protected $surname;
-	
+
 	/**
 	 * Property that binds db field email.
 	 * @var string
 	 */
 	protected $email;
-	
+
 	/**
 	 * If TRUE, this user is admin.
 	 * @var bool
 	 */
 	protected $admin;
-	
+
 	/**
 	 * Flag for user enabled.
 	 * @var bool
 	 */
 	protected $enabled;
-	
+
 	/**
 	 * Last login’s date, properly converted when inserted into db.
 	 * @var DateTime|NULL
@@ -78,13 +78,13 @@ class User extends ActiveRecord {
 	 * @var int
 	 */
 	protected $faults;
-	
+
 	/**
 	 * Token to start password reset.
 	 * @var string
 	 */
 	protected $pwReset;
-	
+
 	/**
 	 * Time zone offset in hours. Cached.
 	 * @var float
@@ -96,19 +96,19 @@ class User extends ActiveRecord {
 	 * @var string
 	 */
 	protected $tzName;
-	
+
 	/**
 	 * Name of related db table.
 	 * @var string
 	 */
 	const TABLE_NAME = 'users';
-	
+
 	/**
 	 * Name of primary key db field.
 	 * @var string
 	 */
 	const TABLE_KEY = 'id';
-	
+
 	/**
 	 * Will returns property’s value if set. Throw an exception and returns NULL if not set.
 	 * Name will returns firstName + secondName.
@@ -128,44 +128,44 @@ class User extends ActiveRecord {
 			case 'groupName':
 				return $this->getGroup()->name;
 				break;
-				
+
 			case 'tzName':
 				$this->loadTimezone();
 				return $this->tzName;
 				break;
-				
+
 			case 'tzOffset':
 				$this->loadTimezone();
 				return $this->tzOffset;
-				
+
 			default:
 				return parent::__get($name);
 				break;
 
 		}
-	
+
 	}
-	
+
 	/**
 	 * Set for converts from string to Datetime, integer or boolean object in two ways.
 	 */
 	protected function init() {
-		
+
 		$this->bindAsBoolean('admin', 'enabled');
-		
+
 		$this->bindAsDatetime('lastLogin');
-		
+
 		$this->bindAsInteger('id', 'groupId', 'languageId', 'faults');
-		
+
 	}
-	
+
 	/**
 	 * Returns array with matching object property name on related db fields.
 	 *
 	 * @return array
 	 */
 	protected static function getBinds(): array {
-		
+
 		$varFields = array (
 			'id'		=> 'id',
 			'groupId'	=> 'group_id',
@@ -181,20 +181,20 @@ class User extends ActiveRecord {
 			'faults'	=> 'faults',
 			'pwReset'	=> 'pw_reset'
 		);
-		
+
 		return $varFields;
-		
+
 	}
 
 	/**
 	 * Track the user creation in Audit table just after record saving.
 	 */
 	protected function afterCreate() {
-	
+
 		Audit::userCreated($this);
 
 	}
-	
+
 	/**
 	 * Deletes sessions of an user before its deletion.
 	 */
@@ -202,10 +202,10 @@ class User extends ActiveRecord {
 
 		// deletes user sessions
 		Database::run('DELETE FROM `sessions` WHERE `id_user` = ?', [$this->id]);
-	
+
 		// deletes error_logs of this user
 		Database::run('DELETE FROM `error_logs` WHERE `user_id` = ?', [$this->id]);
-		
+
 		if ($this->isDeletable()) {
 			Audit::userDeleted($this);
 		}
@@ -214,27 +214,27 @@ class User extends ActiveRecord {
 
 	/**
 	 * Creates and returns an Hash for user password adding salt.
-	 * 
+	 *
 	 * @param	string	The user password.
 	 * @return	string	Hashed password
-	 * 
+	 *
 	 * @see		http://php.net/crypt
 	 */
 	public static function getHashedPasswordWithSalt(string $password): string {
-		
+
 		// salt for bcrypt needs to be 22 base64 characters (only [./0-9A-Za-z])
 		$salt = substr(str_replace('+', '.', base64_encode(sha1(microtime(true), true))), 0, 22);
-		
+
 		// 2a = bcrypt algorithm selector, 12 = the workload factor
 		$hash = crypt($password, '$2a$12$' . $salt);
-		
+
 		return $hash;
 
 	}
-	
+
 	/**
 	 * Checks if password matches hash for local auth.
-	 * 
+	 *
 	 * @param	string	Plain text password.
 	 * @param	string	Crypted hash.
 	 * @return	boolean
@@ -242,9 +242,9 @@ class User extends ActiveRecord {
 	public static function checkPassword(string $password, string $hash): bool {
 
 		return ($hash == crypt($password, $hash) ? TRUE : FALSE);
-		
+
 	}
-	
+
 	/**
 	 * Checks if username/password matches a record into database for local auth and returns a
 	 * \stdClass with error, message and userId parameters.
@@ -255,19 +255,19 @@ class User extends ActiveRecord {
 	 * @return	\stdClass
 	 */
 	public static function doLogin(string $username, string $password, string $timezone): \stdClass {
-	
+
 		$ret = new \stdClass();
 
 		$ret->error		= FALSE;
 		$ret->message	= NULL;
 		$ret->userId	= NULL;
 		$ret->sessionId	= NULL;
-		
+
 		$query = 'SELECT * FROM `users` WHERE `' . (PAIR_AUTH_BY_EMAIL ? 'email' : 'username') . '` = ?';
-		
+
 		// load user row
 		$row = Database::load($query, [$username], PAIR_DB_OBJECT);
-	
+
 		// track ip address and user_agent for audit
 		$ipAddress = $_SERVER['REMOTE_ADDR'] ?? NULL;
 		$userAgent = $_SERVER['HTTP_USER_AGENT'] ?? NULL;
@@ -307,17 +307,23 @@ class User extends ActiveRecord {
 			// login ok
 			} else {
 
+				// hook for tasks to be executed before login
+				$user->beforeLogin();
+
 				// creates session for this user
 				$user->createSession($timezone);
 				$ret->userId = $user->id;
 				$ret->sessionId = session_id();
 				$user->resetFaults();
-
+				
 				// clear any password-reset
 				if (!is_null($user->pwReset)) {
 					$user->pwReset = NULL;
 					$user->store();
 				}
+				
+				// hook for tasks to be executed after login
+				$user->afterLogin();
 
 				$userAgent = $_SERVER['HTTP_USER_AGENT'] ?? NULL;
 
@@ -372,10 +378,16 @@ class User extends ActiveRecord {
 		// user password doesn’t match
 		} else {
 
+			// hook for tasks to be executed before login
+			$user->beforeLogin();
+
 			// creates session for this user
 			$user->createSession($timezone, $formerUserId);
 			$ret->userId = $user->id;
 			$ret->sessionId = session_id();
+
+			// hook for tasks to be executed after login
+			$user->afterLogin();
 
 			Audit::loginSuccessful($user, $ipAddress, $userAgent);
 		}
@@ -383,6 +395,26 @@ class User extends ActiveRecord {
 		return $ret;
 
 	}
+
+	/**
+	 * Trigger function called before login().
+	 */
+	protected function beforeLogin() {}
+
+	/**
+	 * Trigger function called after login().
+	 */
+	protected function afterLogin() {}
+
+	/**
+	 * Trigger function called before logout().
+	 */
+	protected function beforeLogout() {}
+
+	/**
+	 * Trigger function called after logout().
+	 */
+	protected function afterLogout() {}
 
 	/**
 	 * Adds +1 to faults counter property.
@@ -459,10 +491,13 @@ class User extends ActiveRecord {
 		// get User object by Session
 		$session = new Session($sid);
 		$user = $session->getUser();
-
+		
 		if (is_null($user)) {
 			return FALSE;
 		}
+		
+		// hook for tasks to be executed before logout
+		$user->beforeLogout();
 
 		// record the logout
 		Audit::logout($user);
@@ -479,6 +514,9 @@ class User extends ActiveRecord {
 
 		// reset the user in Application object
 		$app->currentUser = NULL;
+
+		// hook for tasks to be executed after logout
+		$user->afterLogout();
 
 		return (bool)$res;
 
