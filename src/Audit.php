@@ -133,7 +133,7 @@ class Audit extends ActiveRecord {
 		
 	}
 	
-	public static function loginFailed(string $username, ?string $ipAddress): bool {
+	public static function loginFailed(string $username, ?string $ipAddress, ?string $userAgent): bool {
 
 		if (!defined('PAIR_AUDIT_LOGIN_FAILED') or !PAIR_AUDIT_LOGIN_FAILED) {
 			return FALSE;
@@ -142,6 +142,7 @@ class Audit extends ActiveRecord {
 		$obj = new \stdClass();
 		$obj->username  = $username;
 		$obj->ipAddress = $ipAddress;
+		$obj->userAgent = $userAgent;
 
 		$audit = new Audit();
 		$audit->event = 'login_failed';
@@ -151,16 +152,20 @@ class Audit extends ActiveRecord {
 
 	}
 
-	public static function loginSuccessful(User $user): bool {
+	public static function loginSuccessful(User $user, ?string $ipAddress, ?string $userAgent): bool {
 
 		if (!defined('PAIR_AUDIT_LOGIN_SUCCESSFUL') or !PAIR_AUDIT_LOGIN_SUCCESSFUL) {
 			return FALSE;
 		}
 
+		$obj = new \stdClass();
+		$obj->ipAddress = $ipAddress;
+		$obj->userAgent = $userAgent;
+
 		$audit = new Audit();
 		$audit->userId = $user->id;
 		$audit->event = 'login_successful';
-		$audit->details = NULL;
+		$audit->details = $obj;
 
 		return $audit->store();
 
