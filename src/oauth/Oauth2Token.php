@@ -1,6 +1,9 @@
 <?php
 
-namespace Pair;
+namespace Pair\Oauth;
+
+use Pair\ActiveRecord;
+use Pair\Database;
 
 class Oauth2Token extends ActiveRecord {
 

@@ -1,6 +1,8 @@
 <?php
 
-namespace Pair;
+namespace Pair\Oauth;
+
+use Pair\ActiveRecord;
 
 class Oauth2Client extends ActiveRecord {
 

@@ -2,6 +2,8 @@
 
 namespace Pair;
 
+use \Pair\Oauth\Oauth2Token;
+
 /**
  * Singleton object globally available for caching, queuing messages and render the template.
  */
@@ -680,7 +682,7 @@ class Application {
 
 		// assemble the API controller name
 		$ctlName = $name . 'Controller';
-		
+
 		if (!class_exists($ctlName)) {
 			print ('The API Controller class is incorrect');
 			exit();
