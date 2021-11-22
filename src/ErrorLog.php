@@ -5,61 +5,67 @@ namespace Pair;
 class ErrorLog extends ActiveRecord {
 
 	/**
-	 * Property that binds db field id.
+	 * This property maps “id” column.
 	 * @var int
 	 */
 	protected $id;
 
 	/**
-	 * Property that binds db field created_time.
+	 * This property maps “created_time” column.
 	 * @var DateTime
 	 */
 	protected $createdTime;
 
 	/**
-	 * Property that binds db field user_id.
+	 * This property maps “user_id” column.
 	 * @var int|NULL
 	 */
 	protected $userId;
 
 	/**
-	 * Property that binds db field path.
+	 * This property maps “path” column.
 	 * @var string
 	 */
 	protected $path;
 	
 	/**
-	 * Property that binds db field get_data.
+	 * This property maps “get_data” column.
 	 * @var array
 	 */
 	protected $getData;
 
 	/**
-	 * Property that binds db field post_data.
+	 * This property maps “post_data” column.
 	 * @var array
 	 */
 	protected $postData;
 
 	/**
-	 * Property that binds db field cookie_data.
+	 * This property maps “files_data” column.
+	 * @var array
+	 */
+	protected $filesData;
+
+	/**
+	 * This property maps “cookie_data” column.
 	 * @var array
 	 */
 	protected $cookieData;
 
 	/**
-	 * Property that binds db field description.
+	 * This property maps “description” column.
 	 * @var string
 	 */
 	protected $description;
 	
 	/**
-	 * Property that binds db field user_messages.
+	 * This property maps “user_messages” column.
 	 * @var string
 	 */
 	protected $userMessages;
 
 	/**
-	 * Property that binds db field referer.
+	 * This property maps “referer” column.
 	 * @var string
 	 */
 	protected $referer;
@@ -100,6 +106,7 @@ class ErrorLog extends ActiveRecord {
 			'path'			=> 'path',
 			'getData'		=> 'get_data',
 			'postData'		=> 'post_data',
+			'filesData'		=> 'files_data',
 			'cookieData'	=> 'cookie_data',
 			'description'	=> 'description',
 			'userMessages'	=> 'user_messages',
@@ -116,6 +123,7 @@ class ErrorLog extends ActiveRecord {
 
 		$this->getData		= serialize($this->getData);
 		$this->postData		= serialize($this->postData);
+		$this->filesData	= serialize($this->filesData);
 		$this->cookieData	= serialize($this->cookieData);
 		$this->userMessages	= serialize($this->userMessages);
 
@@ -128,6 +136,7 @@ class ErrorLog extends ActiveRecord {
 
 		$this->getData		= unserialize($this->getData);
 		$this->postData		= unserialize($this->postData);
+		$this->filesData	= unserialize($this->filesData);
 		$this->cookieData	= unserialize($this->cookieData);
 		$this->userMessages	= unserialize($this->userMessages);
 		
@@ -151,6 +160,7 @@ class ErrorLog extends ActiveRecord {
 		$snap->path			= substr($router->url,1);
 		$snap->getData		= $_GET;
 		$snap->postData		= $_POST;
+		$snap->filesData	= $_FILES;
 		$snap->cookieData	= $_COOKIE;
 		$snap->description	= $description;
 		$snap->userMessages	= $app->messages;
