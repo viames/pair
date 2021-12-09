@@ -358,7 +358,7 @@ class Form {
 	 *
 	 * @param	string	HTML name for this control.
 	 * @param	string	Default value (NULL default).
-	 * @param	string	Type (text -default-, email, tel, url, color, password, number, bool, date, datetime, file, address, hidden).
+	 * @param	string	Type (text -default-, email, tel, url, color, password, number, bool, date, datetime, file, image, address, hidden).
 	 * @param	string	More parameters as associative array tag=>value (optional).
 	 *
 	 * @return	string
@@ -907,7 +907,7 @@ abstract class FormControl {
 class FormControlInput extends FormControl {
 
 	/**
-	 * Can be text, email, tel, url, color, password, number, bool, date, datetime, file, address, hidden.
+	 * Can be text, email, tel, url, color, password, number, bool, date, datetime, file, image, address, hidden.
 	 * @var string
 	 */
 	protected $type;
@@ -972,7 +972,7 @@ class FormControlInput extends FormControl {
 	/**
 	 * Sets type for a FormControlInput. Chainable method.
 	 *
-	 * @param	string	Input type (text, password, number, bool, tel, email, url, color, date, datetime, file, address,
+	 * @param	string	Input type (text, password, number, bool, tel, email, url, color, date, datetime, file, image, address,
 	 * hidden)
 	 *
 	 * @return	FormControlInput
@@ -1114,6 +1114,10 @@ class FormControlInput extends FormControl {
 				$ret .= ' type="file"';
 				break;
 
+			case 'image':
+				$ret .= ' type="image"';
+				break;
+
 			case 'address':
 				$ret .= ' type="text" value="'. htmlspecialchars($this->value) .'" size="50" autocomplete="on" placeholder=""';
 				$this->addClass('googlePlacesAutocomplete');
@@ -1185,6 +1189,7 @@ class FormControlInput extends FormControl {
 				case 'date':
 				case 'datetime':
 				case 'file':
+				case 'image':
 				case 'tel':
 				case 'address':
 				case 'color':

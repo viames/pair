@@ -132,7 +132,7 @@ class Upload {
 	/**
 	 * Manages saving of an upload file with POST.
 	 *
-	 * @param	string	File absolute destination path, with or without trailing slash.
+	 * @param	string	Absolute destination folder for the file to be saved, with or without trailing slash.
 	 * @param	string	Optional new file name, if NULL will be the same as uploaded.
 	 * @param	bool	Optional flag to save with random file name, default FALSE.
 	 *
@@ -160,8 +160,6 @@ class Upload {
 		} else {
 			$this->filename = Utilities::uniqueFilename($this->filename,$this->path);
 		}
-
-		$this->filePrefix = substr($this->filename,0,strrpos($this->filename,'.'));
 
 		// checks that file doesn’t exists
 		if (file_exists($this->path . $this->filename)) {

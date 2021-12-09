@@ -1996,7 +1996,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @param	string	Property or method (with or without parentheses) name.
 	 */
-	final public function printHtml(string $name): void {
+	public function printHtml(string $name): void {
 
 		// print standard ascii one or a predefined icon HTML as constant
 		$printBoolean = function ($value) {
