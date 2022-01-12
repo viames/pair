@@ -325,7 +325,7 @@ class Utilities {
 		// create DateTime object with int or strings
 		if (is_int($date)) {
 			$dateTime = new \DateTime();
-			$dateTime->setTimestamp($dateTime);
+			$dateTime->setTimestamp($date);
 			$dateTime->setTimezone($app->currentUser->getDateTimeZone());
 		} else if (is_string($date)) {
 			if (0!==strpos($date, '0000-00-00 00:00:00')) {
@@ -334,7 +334,7 @@ class Utilities {
 			} else {
 				$dateTime = NULL;
 			}
-		} else if (is_a($date,'DateTime')) {
+		} else if (is_a($date,'\DateTime')) {
 			$dateTime = $date;
 			$dateTime->setTimezone($app->currentUser->getDateTimeZone());
 		} else {
@@ -342,29 +342,9 @@ class Utilities {
 		}
 
 		// if date valid, create the expected object
-		if (is_a($dateTime,'DateTime')) {
+		if (is_a($dateTime,'\DateTime')) {
 
-			$tran = Translator::getInstance();
-
-			// if is set a locale date format, use it
-			if ($tran->stringExists('LC_DATETIME_FORMAT')) {
-
-				$localeTimestamp = $dateTime->getTimestamp();
-
-				// add offset in case of UTC_DATE use
-				if (defined('UTC_DATE') and UTC_DATE) {
-					$localeTimestamp += $dateTime->getOffset();
-				}
-
-				$humanDate = strftime(Translator::do('LC_DATETIME_FORMAT'), $localeTimestamp);
-
-			// otherwise choose another format
-			} else {
-
-				$format = $tran->stringExists('DATETIME_FORMAT') ? Translator::do('DATETIME_FORMAT') : 'Y-m-d H:i:s';
-				$humanDate = $dateTime->format($format);
-
-			}
+			$humanDate = self::intlFormat(NULL, $dateTime);
 
 			return '<span class="timeago" title="' . $dateTime->format(DATE_W3C) . '">' . $humanDate . '</span>';
 
@@ -989,6 +969,38 @@ class Utilities {
 		} else {
 			return (defined('PAIR_TIMES_ICON') ? PAIR_TIMES_ICON : '<span style="color:red">×</span>');
 		}
+
+	}
+
+	/**
+	 * Check if a string is in JSON format.
+	 * @param mixed $string
+	 * @return bool
+	 */
+	public static function isJson($string): bool {
+
+		if (!is_string($string)) {
+			return FALSE;
+		}
+
+		json_decode($string);
+		return json_last_error() === JSON_ERROR_NONE;
+
+	}
+
+	/**
+	 * Return a date in the local language using the IntlDateFormatter::format() method.
+	 * @param	string		Formatting pattern, for example “dd MMMM Y hh:mm”.
+	 * @param	\DateTime	The date object to be formatted, it will be the current date if NULL.
+	 * @return	string
+	 */
+	public static function intlFormat(?string $format=NULL, ?\DateTime $dateTime=NULL): string {
+
+		$formatter = new \IntlDateFormatter(NULL, \IntlDateFormatter::MEDIUM, \IntlDateFormatter::SHORT);
+		if ($format) {
+			$formatter->setPattern($format);
+		}
+        return $formatter->format($dateTime ?? new \DateTime());
 
 	}
 

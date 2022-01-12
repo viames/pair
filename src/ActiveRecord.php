@@ -1916,78 +1916,50 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 
 	/**
-	 * Safely formats and returns a DateTime if valid. If language string LC_DATETIME_FORMAT
-	 * is set, a locale translated date is returned.
-	 *
+	 * Securely formats and returns the value of a DateTime field with the time if valid, otherwise NULL.
 	 * @param	string	Property name of DateTime object.
-	 * @param	string	Optional date format, if not passed will get format by language strings.
-	 *
+	 * @param	string	Optional pattern in the format provided by the DateTime object.
 	 * @return	string|NULL
 	 */
 	final public function formatDateTime(string $prop, string $format=NULL): ?string {
 
-		if (!is_a($this->$prop, 'DateTime')) {
+		if (!is_a($this->$prop, '\DateTime')) {
 			return NULL;
 		}
 
 		// for guests, use default TimeZone
 		$this->$prop->setTimeZone(Application::getTimeZone());
 
-		// check if format is specified
-		if (!$format) {
-
-			$tran = Translator::getInstance();
-
-			// if is set a locale date format, use it
-			if ($tran->stringExists('LC_DATETIME_FORMAT')) {
-
-				return strftime(Translator::do('LC_DATETIME_FORMAT'), $this->$prop->getTimestamp());
-
-			// otherwise choose another format
-			} else {
-
-				$format = $tran->stringExists('DATETIME_FORMAT') ? Translator::do('DATETIME_FORMAT') : 'Y-m-d H:i:s';
-
-			}
-
+		// if the format is not specified, use the default and localized formatting pattern
+		if ($format) {
+			return $this->$prop->format($format);
 		}
 
-		return $this->$prop->format($format);
+		return Utilities::intlFormat(NULL, $this->$prop);
 
 	}
 
 	/**
-	 * Safely format and return a valid DateTime into a readable date. If language string
-	 * LC_DATE_FORMAT is set, a locale translated date is returned.
-	 *
+	 * Securely formats and returns the value of a DateTime field with the date only if valid, otherwise NULL.
 	 * @param	string	Property name of DateTime object.
-	 *
+	 * @param	string	Optional pattern in the format provided by the DateTime object.
 	 * @return	string|NULL
 	 */
-	final public function formatDate(string $prop): ?string {
+	final public function formatDate(string $prop, string $format=NULL): ?string {
 
-		if (!is_a($this->$prop, 'DateTime')) {
+		if (!is_a($this->$prop, '\DateTime')) {
 			return NULL;
 		}
-
-		$tran = Translator::getInstance();
 
 		// for guests, use default TimeZone
 		$this->$prop->setTimeZone(Application::getTimeZone());
 
-		// if is set a locale date format, use it
-		if ($tran->stringExists('LC_DATE_FORMAT')) {
-
-			return strftime(Translator::do('LC_DATE_FORMAT'), $this->$prop->getTimestamp());
-
-		// otherwise choose another format
-		} else {
-
-			$format = $tran->stringExists('DATE_FORMAT') ? Translator::do('DATE_FORMAT') : 'Y-m-d';
-
-			return $this->formatDateTime($prop, $format);
-
+		// if the format is not specified, use the default and localized formatting pattern
+		if ($format) {
+			return $this->$prop->format($format);
 		}
+
+		return Utilities::intlFormat(NULL, $this->$prop);
 
 	}
 
@@ -2035,7 +2007,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 			}
 
 		} else {
-			
+
 			// the name is a method, with or without brackets
 			if ('()' == substr($name, -2) or method_exists($this, $name)) {
 
@@ -2071,8 +2043,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 					print htmlspecialchars($result);
 					break;
 
-			}			
-			
+			}
+
 		}
 
 	}
