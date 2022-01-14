@@ -510,7 +510,7 @@ class Router {
 	 */
 	public function getPage(): int {
 
-		$cookieName = Application::getCookiePrefix() . ucfirst($this->module) . ucfirst($this->action);
+		$cookieName = Application::getCookiePrefix() . ucfirst((string)$this->module) . ucfirst((string)$this->action);
 
 		if (!is_null($this->page)) {
 

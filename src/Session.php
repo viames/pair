@@ -124,7 +124,7 @@ class Session extends ActiveRecord {
 		}
 
 		// creates expiring date subtracting sessionTime interval
-		$expiring = new \DateTime(NULL, new \DateTimeZone(BASE_TIMEZONE));
+		$expiring = new \DateTime('now', new \DateTimeZone(BASE_TIMEZONE));
 		$expiring->sub(new \DateInterval('PT' . (int)$sessionTime . 'M'));
 
 		return ($this->startTime < $expiring);
