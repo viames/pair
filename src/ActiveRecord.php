@@ -2001,7 +2001,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 					break;
 
 				default:
-					print nl2br(htmlspecialchars($this->$name));
+					print nl2br(htmlspecialchars((string)$this->$name));
 					break;
 
 			}
@@ -2040,7 +2040,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 				// integer, double, string, object, resource, NULL, unknown type
 				default:
-					print htmlspecialchars($result);
+					print htmlspecialchars((string)$result);
 					break;
 
 			}
