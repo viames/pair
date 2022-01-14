@@ -833,7 +833,7 @@ abstract class FormControl {
 		}
 
 		if ($this->description) {
-			$label .= ' <i class="fal fa-question-circle" data-toggle="tooltip" data-placement="auto" title="' . htmlspecialchars($this->description) . '"></i>';
+			$label .= ' <i class="fal fa-question-circle" data-toggle="tooltip" data-placement="auto" title="' . htmlspecialchars((string)$this->description) . '"></i>';
 		}
 
 		print $label;
@@ -1086,13 +1086,13 @@ class FormControlInput extends FormControl {
 			case 'url':
 			case 'color':
 			case 'password':
-				$ret .= ' type="' . htmlspecialchars($this->type) . '" value="' . htmlspecialchars($this->value) . '"';
+				$ret .= ' type="' . htmlspecialchars((string)$this->type) . '" value="' . htmlspecialchars((string)$this->value) . '"';
 				break;
 
 			case 'number':
 				$curr = setlocale(LC_NUMERIC, 0);
 				setlocale(LC_NUMERIC, 'en_US');
-				$ret .= ' type="number" value="' . htmlspecialchars($this->value) . '"';
+				$ret .= ' type="number" value="' . htmlspecialchars((string)$this->value) . '"';
 				setlocale(LC_NUMERIC, $curr);
 				break;
 
@@ -1102,12 +1102,12 @@ class FormControlInput extends FormControl {
 				break;
 
 			case 'date':
-				$ret .= ' type="date" value="' . htmlspecialchars($this->value) . '"';
+				$ret .= ' type="date" value="' . htmlspecialchars((string)$this->value) . '"';
 				break;
 
 			case 'datetime':
 				$type = Input::usingCustomDatetimepicker() ? 'datetime' : 'datetime-local';
-				$ret .= ' type="' . $type . '" value="' . htmlspecialchars($this->value) . '"';
+				$ret .= ' type="' . $type . '" value="' . htmlspecialchars((string)$this->value) . '"';
 				break;
 
 			case 'file':
@@ -1119,12 +1119,12 @@ class FormControlInput extends FormControl {
 				break;
 
 			case 'address':
-				$ret .= ' type="text" value="'. htmlspecialchars($this->value) .'" size="50" autocomplete="on" placeholder=""';
+				$ret .= ' type="text" value="'. htmlspecialchars((string)$this->value) .'" size="50" autocomplete="on" placeholder=""';
 				$this->addClass('googlePlacesAutocomplete');
 				break;
 
 			case 'hidden':
-				$ret .= ' type="hidden" value="' . htmlspecialchars($this->value) . '"';
+				$ret .= ' type="hidden" value="' . htmlspecialchars((string)$this->value) . '"';
 				break;
 
 		}
@@ -1133,23 +1133,23 @@ class FormControlInput extends FormControl {
 		if (in_array($this->type, ['number','date'])) {
 
 			if (!is_null($this->min)) {
-				$ret .= ' min="' . htmlspecialchars($this->min) . '"';
+				$ret .= ' min="' . htmlspecialchars((string)$this->min) . '"';
 			}
 
 			if (!is_null($this->max)) {
-				$ret .= ' max="' . htmlspecialchars($this->max) . '"';
+				$ret .= ' max="' . htmlspecialchars((string)$this->max) . '"';
 			}
 
 		}
 
 		// set minlength attribute
 		if ($this->minLength) {
-			$ret .= ' minlength="' . htmlspecialchars($this->minLength) . '"';
+			$ret .= ' minlength="' . htmlspecialchars((string)$this->minLength) . '"';
 		}
 
 		// set maxlength attribute
 		if ($this->maxLength) {
-			$ret .= ' maxlength="' . htmlspecialchars($this->maxLength) . '"';
+			$ret .= ' maxlength="' . htmlspecialchars((string)$this->maxLength) . '"';
 		}
 
 		// set accept attribute
@@ -1159,7 +1159,7 @@ class FormControlInput extends FormControl {
 
 		// set step attribute
 		if ($this->step) {
-			$ret .= ' step="' . htmlspecialchars($this->step) . '"';
+			$ret .= ' step="' . htmlspecialchars((string)$this->step) . '"';
 		}
 
 		$ret .= $this->processProperties() . ' />';
@@ -1426,8 +1426,8 @@ class FormControlSelect extends FormControl {
 			}
 
 			// build the option
-			return '<option value="' . htmlspecialchars($option->value) . '"' . $selected . $attributes . '>' .
-					htmlspecialchars($option->text) . "</option>\n";
+			return '<option value="' . htmlspecialchars((string)$option->value) . '"' . $selected . $attributes . '>' .
+					htmlspecialchars((string)$option->text) . "</option>\n";
 		};
 
 		// add an initial line to the options of this select
@@ -1454,7 +1454,7 @@ class FormControlSelect extends FormControl {
 				// recognize optgroup
 				if (isset($item->list) and is_array($item->list) and count($item->list)) {
 
-					$ret .= '<optgroup label="' . htmlspecialchars(isset($item->group) ? $item->group : '') . "\">\n";
+					$ret .= '<optgroup label="' . htmlspecialchars(isset($item->group) ? (string)$item->group : '') . "\">\n";
 					foreach ($item->list as $option) {
 						$ret .= $buildOption($option);
 					}
@@ -1574,7 +1574,7 @@ class FormControlTextarea extends FormControl {
 		$ret  = '<textarea ' . $this->getNameProperty();
 		$ret .= ' rows="' . $this->rows . '" cols="' . $this->cols . '"';
 		$ret .= $this->processProperties() . '>';
-		$ret .= htmlspecialchars($this->value) . '</textarea>';
+		$ret .= htmlspecialchars((string)$this->value) . '</textarea>';
 
 		return $ret;
 
@@ -1678,7 +1678,7 @@ class FormControlButton extends FormControl {
 			$ret .= '<i class="fa ' . $this->faIcon . '"></i> ';
 		}
 
-		$ret .= trim(htmlspecialchars($this->value)) . ' </button>';
+		$ret .= trim(htmlspecialchars((string)$this->value)) . ' </button>';
 
 		return $ret;
 

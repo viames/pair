@@ -337,8 +337,8 @@ class Logger {
 			$log .=
 				'<div ' . $eventDomId . 'class="' . $class . '">' .
 				'<span class="time' . ($e->chrono>1 ? ' slow' : '') . '">' . $this->formatChrono($e->chrono) . '</span> ' .
-				htmlspecialchars($e->description) .
-				($e->subtext ? ' <span>| ' . htmlspecialchars($e->subtext) . '</span>' : '') . '</div>';
+				htmlspecialchars((string)$e->description) .
+				($e->subtext ? ' <span>| ' . htmlspecialchars((string)$e->subtext) . '</span>' : '') . '</div>';
 
 			$sum += $e->chrono;
 			
@@ -417,8 +417,8 @@ class Logger {
 				
 				$log .=
 					'<div class="' . $class . '"><span class="time">' .
-					$this->formatChrono($e->chrono) . '</span> ' . htmlspecialchars($e->description) .
-					($e->subtext ? ' <span>| ' . htmlspecialchars($e->subtext) . '</span>' : '') . '</div>';
+					$this->formatChrono($e->chrono) . '</span> ' . htmlspecialchars((string)$e->description) .
+					($e->subtext ? ' <span>| ' . htmlspecialchars((string)$e->subtext) . '</span>' : '') . '</div>';
 				
 			}
 			

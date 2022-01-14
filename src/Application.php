@@ -1085,7 +1085,7 @@ class Application {
 
 			// render each attribute based on its variable type (string or boolean)
 			foreach ($script as $tag => $value) {
-				$attribsRender .= ' ' . (is_bool($value) ? $tag : $tag . '="' . htmlspecialchars($value) . '"');
+				$attribsRender .= ' ' . (is_bool($value) ? $tag : $tag . '="' . htmlspecialchars((string)$value) . '"');
 			}
 
 			// add each script
