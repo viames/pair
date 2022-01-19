@@ -921,7 +921,7 @@ class Application {
 
 		$this->persistentState[$name] = $value;
 
-		setcookie($name, json_encode($value), NULL, '/');
+		setcookie($name, json_encode($value), 0, '/');
 
 	}
 

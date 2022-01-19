@@ -543,7 +543,7 @@ class Router {
 		$cookieName = Application::getCookiePrefix() . ucfirst($this->module) . ucfirst($this->action);
 
 		// set the persistent state
-		setcookie($cookieName, $number, NULL, '/');
+		setcookie($cookieName, $number, 0, '/');
 
 	}
 
