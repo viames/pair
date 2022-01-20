@@ -710,7 +710,9 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		$class = get_called_class();
 
-		if (!$this->areKeysPopulated() and !$this->db->isAutoIncrement(static::TABLE_NAME)) {
+		$autoIncrement = $this->db->isAutoIncrement(static::TABLE_NAME);
+
+		if (!$this->areKeysPopulated() and !$autoIncrement) {
 			Logger::event('The object’s ' . implode(', ', $this->keyProperties) . ' properties must be populated in order to create a ' . $class . ' record');
 			return FALSE;
 		}
@@ -736,7 +738,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$res = $this->db->insertObject(static::TABLE_NAME, $dbObj, static::getEncryptableFields());
 
 		// get last insert id if not compound key
-		if (!static::hasCompoundKey()) {
+		if (!static::hasCompoundKey() and $autoIncrement) {
 
 			$lastInsertId = $this->db->getLastInsertId();
 
@@ -1997,7 +1999,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 					break;
 
 				case 'json':
-					print Utilities::varToText($this->$name);
+					print '<pre>' . Utilities::varToText($this->$name, FALSE) . '</pre>';
 					break;
 
 				default:

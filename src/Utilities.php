@@ -160,7 +160,13 @@ class Utilities {
 	 * @param	bool	Flag to hide var type.
 	 * @return	string
 	 */
-	public static function varToText($var, bool $showTypes=TRUE): string {
+	public static function varToText($var, bool $showTypes=TRUE, ?int $indent=0): string {
+
+		$getIndent = function(int $incr=0) use ($indent) {
+			$indent += $incr;
+			return str_repeat("\t", $indent);
+
+		};
 
 		$type = gettype($var);
 		$text = is_null($type) ?
@@ -174,19 +180,25 @@ class Utilities {
 				break;
 
 			default:
-				$text .= $var;
+				if (self::isJson($var)) {
+					$text .= nl2br($var);
+				} else {
+					$text .= $var;
+				}
 				break;
 
 			case 'array':
-				$parts = array();
+				$parts = [];
 				foreach ($var as $k=>$v) {
-					$parts[] = $k . '=>' . self::varToText($v);
+					$parts[] = $getIndent(1) . $k . '=>' . self::varToText($v, $showTypes, $indent+1);
 				}
-				$text .= 'array:[' . implode(',', $parts) . ']';
+				$text .= $getIndent(1) . '[<br>' . implode(',<br>', $parts) . '<br>'. $getIndent(-1) . ']<br>';
 				break;
 
 			case 'object':
-				$text .= get_class($var);
+				$text .= $getIndent(0) . get_class($var) . '{<br>' .
+					self::varToText(get_object_vars($var), $showTypes, $indent+1) .
+					$getIndent(0) . '}';
 				break;
 
 			case 'NULL':
