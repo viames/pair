@@ -1016,4 +1016,56 @@ class Utilities {
 
 	}
 
+	/**
+	 * Download a CSV file with the lines passed in an array of objects.
+	 *
+	 * @param	array List of objects from which the header will be created from the first row.
+	 * @param	string Optional name for the document (with extension).
+	 * @return	bool
+	 */
+	public static function exportCsvForExcel(array $data, ?string $name=NULL): bool {
+
+		// field delimiter
+		$delimiter = ";";
+
+		// document name
+		$filename = $name ? $name : self::localCleanFilename(strtolower(PRODUCT_NAME) . '_export_' . date('YmdHis') . '.csv');
+
+		// file pointer 
+		$file = fopen('php://memory', 'w');
+
+		// add BOM to set UTF-8 in Excel
+		fputs($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+		// if there is at least one row, it writes header and data rows
+		if (isset($data[0])) {
+
+			// properties of the first object in the list
+			$headValues = array_keys(get_object_vars($data[0]));
+
+			// first line with the object keys
+			fputcsv($file, $headValues, $delimiter);
+
+			// all subsequent lines 
+			foreach ($data as $row) {
+				fputcsv($file, get_object_vars($row), $delimiter);
+			}
+
+		}
+
+		// rewinds the document
+		fseek($file, 0);
+
+		// set browser headers and force download
+		header('Content-Type: text/csv; charset=UTF-8');
+		header('Pragma: public'); // IE fix
+		header('Content-Disposition: attachment; filename="' . $filename . '";');
+
+		// writes the other data to a pointer to the file
+		fpassthru($file);
+
+		return TRUE;
+
+	}
+
 }
