@@ -164,7 +164,7 @@ class Utilities {
 
 		$getIndent = function(int $incr=0) use ($indent) {
 			$indent += $incr;
-			return str_repeat("\t", $indent);
+			return str_repeat("\t", abs($indent));
 
 		};
 

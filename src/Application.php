@@ -726,7 +726,13 @@ class Application {
 			// start the PHP session
 			session_start();
 
-			// start controller
+			// user controller
+			$apiCtl->$action();
+
+		// signup
+		} else if ('signup' == $router->action) {
+
+			// user controller
 			$apiCtl->$action();
 
 		// all the other requests with sid
