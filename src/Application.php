@@ -705,7 +705,7 @@ class Application {
 				$apiCtl->setToken($token);
 				$apiCtl->$action();
 			} else {
-				$apiCtl->sendError('Token is not valid');
+				$apiCtl->sendError(19);
 			}
 
 		// or check for Oauth2 Bearer token via http header
@@ -743,7 +743,7 @@ class Application {
 
 			// check if sid is valid
 			if (!$session->isLoaded()) {
-				$apiCtl->sendError('Session is not valid');
+				$apiCtl->sendError(27);
 			}
 
 			// if session exists, extend session timeout
