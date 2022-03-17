@@ -2354,6 +2354,30 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 
 	/**
+	 * Convert this object with hidden properties, to a stdClass. Useful, for example, to print the object as JSON.
+	 * @param	array	Optional list of the properties you want to return, as a subset of those available.
+	 * @return \stdClass
+	 */
+	public function convertToStdClass(?array $wantedProperties=NULL): \stdClass {
+
+		$stdClass = new \stdClass();
+		$binds = static::getBinds();
+
+		if (!count($wantedProperties)) {
+			$wantedProperties = NULL;
+		}
+
+		foreach (array_keys($binds) as $property) {
+			if (is_null($wantedProperties) or in_array($property, $wantedProperties)) {
+				$stdClass->$property = $this->$property;
+			}
+		}
+
+		return $stdClass;
+
+	}
+
+	/**
 	 * Check wheter options crypt key has been defined into config.php file.
 	 *
 	 * @return boolean

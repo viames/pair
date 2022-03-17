@@ -73,26 +73,6 @@ class Audit extends ActiveRecord {
 	}
 
 	/**
-	 * Convert an object of any type into \stdClass with just properties specified in second
-	 * array parameter.
-	 * 
-	 * @param	mixed		The object to convert.
-	 * @param	array		List of properties to copy into the new object.
-	 * @return	\stdClass	The resulting object.
-	 */
-	private static function convertToStdclass($source, array $wantedProperties): \stdClass {
-
-		$newObj = new \stdClass();
-
-		foreach ($wantedProperties as $p) {
-			$newObj->$p = $source->$p;
-		}
-
-		return $newObj;
-
-	}
-
-	/**
 	 * Return a current list and state of all audit items with readable “name”, coded “type” and “enabled”.
 	 * 
 	 * @return	array
@@ -125,9 +105,11 @@ class Audit extends ActiveRecord {
 			return FALSE;
 		}
 
+		$wantedProperties = ['id','username','name','surname'];
+
 		$audit = new Audit();
 		$audit->event = 'password_changed';
-		$audit->details = static::convertToStdclass($subject, ['id','username','name','surname']);
+		$audit->details = $subject->convertToStdclass($wantedProperties);
 
 		return $audit->store();
 		
@@ -226,7 +208,7 @@ class Audit extends ActiveRecord {
 
 		$audit = new Audit();
 		$audit->event = 'user_created';
-		$audit->details = static::convertToStdclass($subject, $wantedProperties);
+		$audit->details = $subject->convertToStdclass($wantedProperties);
 
 		return $audit->store();
 
@@ -242,7 +224,7 @@ class Audit extends ActiveRecord {
 
 		$audit = new Audit();
 		$audit->event = 'user_deleted';
-		$audit->details = static::convertToStdclass($subject, $wantedProperties);
+		$audit->details = $subject->convertToStdclass($wantedProperties);
 
 		return $audit->store();
 
