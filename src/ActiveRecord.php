@@ -2363,7 +2363,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$stdClass = new \stdClass();
 		$binds = static::getBinds();
 
-		if (!count($wantedProperties)) {
+		if (is_array($wantedProperties) and !count($wantedProperties)) {
 			$wantedProperties = NULL;
 		}
 
