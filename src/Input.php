@@ -226,7 +226,13 @@ class Input {
 
 			case 'bool':
 			case 'boolean':
-				$val = (bool)$val;
+				if ('true'==strtolower($val)) {
+					$val = TRUE;
+				} else if ('false'==strtolower($val)) {
+					$val = FALSE;
+				} else {
+					$val = (bool)$val;
+				}
 				break;
 
 			// creates a DateTime object from datepicker
