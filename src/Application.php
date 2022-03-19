@@ -906,7 +906,7 @@ class Application {
 			}
 
 			// redirect to login page if action is not login or password reset
-			if (!('user'==$router->module and in_array($router->action, ['login','reset','sendResetEmail','newPassword','setNewPassword']))) {
+			if (!('user'==$router->module and in_array($router->action, ['login','reset','confirm','sendResetEmail','newPassword','setNewPassword']))) {
 				$this->redirect('user/login');
 			}
 
