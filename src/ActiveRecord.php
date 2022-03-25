@@ -1578,7 +1578,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	final public static function getAllObjects($filters = array(), $orderBy = array()) {
 
-		$app		= Application::getInstance();
 		$db			= Database::getInstance();
 		$class		= get_called_class();
 		$binds		= $class::getBinds();
@@ -1598,6 +1597,11 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 				// check if filter is valid and binds really
 				if (is_string($property) and strlen($property) and array_key_exists($property, $binds)) {
+
+					// convert bool to int
+					if (is_bool($value)) {
+						$value = (int)$value;
+					}
 
 					// gets the table field name
 					$field = $binds[$property];

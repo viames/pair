@@ -720,10 +720,17 @@ class Application {
 			$apiCtl->setBearerToken($bearerToken);
 			$apiCtl->$action();
 
-		// login and logout
-		} else if ('login' == $router->action or 'logout' == $router->action) {
+		} else if ('login' == $router->action) {
 
-			// start the PHP session
+			unset($_COOKIE[session_name()]);
+			session_destroy();
+			session_start();
+
+			// user controller
+			$apiCtl->$action();
+
+		} else if ('logout' == $router->action) {
+
 			session_start();
 
 			// user controller

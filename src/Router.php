@@ -480,17 +480,13 @@ class Router {
 	 * @param	string	Value to add.
 	 * @param	bool	Flag to encode as char-only the value.
 	 */
-	public function setParam($paramIdx=NULL, $value, bool $encode=FALSE) {
+	public function setParam($paramIdx, $value, bool $encode=FALSE) {
 
 		if ($encode) {
 			$value = rtrim(strtr(base64_encode(gzdeflate(json_encode($value), 9)), '+/', '-_'), '=');
 		}
 
-		if (!is_null($paramIdx)) {
-			$this->vars[$paramIdx] = $value;
-		} else {
-			$this->vars[] = $value;
-		}
+		$this->vars[$paramIdx] = $value;
 
 	}
 
