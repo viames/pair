@@ -140,7 +140,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	public function __set(string $name, $value) {
 
 		// check that’s not the initial object population
-		if (!in_array(debug_backtrace()[1]['function'], ['populate']) and in_array($name, static::getBinds())) {
+		if (in_array($name, static::getBinds()) and isset(debug_backtrace()[1]) and !in_array(debug_backtrace()[1]['function'], ['populate'])) {
 			$previousValue = $this->$name;
 		}
 
@@ -216,8 +216,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 
 		// keep track of updated properties
-		if (!in_array(debug_backtrace()[1]['function'], ['populate']) and in_array($name, static::getBinds())
-			and $previousValue != $this->$name and !in_array($name, $this->updatedProperties)) {
+		if (!in_array($name, $this->updatedProperties) and isset(debug_backtrace()[1]) and !in_array(debug_backtrace()[1]['function'], ['populate']) and in_array($name, static::getBinds())
+			and $previousValue != $this->$name) {
 			$this->updatedProperties[] = $name;
 		}
 
