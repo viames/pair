@@ -708,6 +708,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	final public function create(): bool {
 
+		$app = Application::getInstance();
 		$class = get_called_class();
 
 		$autoIncrement = $this->db->isAutoIncrement(static::TABLE_NAME);
@@ -728,9 +729,19 @@ abstract class ActiveRecord implements \JsonSerializable {
 			$this->createdAt = new \DateTime('now', Application::getTimeZone());
 		}
 
+		// populate createdBy if it exists
+		if (isset($app->currentUser) and property_exists($class, 'createdBy') and is_null($this->createdBy)) {
+			$this->createdBy = $app->currentUser->id;
+		}
+
 		// populate updatedAt if it exists
 		if (property_exists($class, 'updatedAt') and is_null($this->updatedAt)) {
 			$this->updatedAt = new \DateTime('now', Application::getTimeZone());
+		}
+
+		// populate updatedBy if it exists
+		if (isset($app->currentUser) and property_exists($class, 'updatedBy') and is_null($this->updatedBy)) {
+			$this->updatedBy = $app->currentUser->id;
 		}
 
 		// insert the object as db record
@@ -784,7 +795,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 	/**
 	 * Store into db the current object properties with option to write only a subset of
-	 * declared properties.
+	 * declared properties. Return TRUE if success.
 	 *
 	 * @param	mixed	Optional array of subject properties or single property to update.
 	 *
@@ -802,6 +813,11 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// populate updatedAt if it exists
 		if (property_exists($class, 'updatedAt')) {
 			$this->updatedAt = new \DateTime('now', Application::getTimeZone());
+		}
+
+		// populate updatedBy if it exists
+		if (isset($app->currentUser) and property_exists($class, 'updatedBy')) {
+			$this->updatedBy = $app->currentUser->id;
 		}
 
 		// if property list is empty, will include all
