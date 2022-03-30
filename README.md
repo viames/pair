@@ -89,7 +89,7 @@ Please consult the [Wiki](https://github.com/viames/pair/wiki) of this project. 
 
 ## Examples
 
-The [Pair_example](https://github.com/viames/Pair_example) is a good starting point to build your new web project in a breeze with Pair PHP framework using the installer wizard.
+The [pair_boilerplate](https://github.com/viames/pair_boilerplate) is a good starting point to build your new web project in a breeze with Pair PHP framework using the installer wizard.
 
 ## Contributing
 
