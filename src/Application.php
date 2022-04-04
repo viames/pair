@@ -228,7 +228,7 @@ class Application {
 			$gzip  = (isset($_SERVER['HTTP_ACCEPT_ENCODING']) and substr_count($_SERVER['HTTP_ACCEPT_ENCODING'], 'gzip'));
 
 			// if supported, output is compressed with gzip
-			if (!$debug and $gzip) {
+			if (!$debug and $gzip and extension_loaded('zlib')) {
 				ob_start('ob_gzhandler');
 			} else {
 				ob_start();
