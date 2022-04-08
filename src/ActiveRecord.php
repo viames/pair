@@ -730,7 +730,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 
 		// populate createdBy if it exists
-		if (isset($app->currentUser) and property_exists($class, 'createdBy') and is_null($this->createdBy)) {
+		if (isset($app->currentUser->id) and property_exists($class, 'createdBy') and is_null($this->createdBy)) {
 			$this->createdBy = $app->currentUser->id;
 		}
 
@@ -740,7 +740,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 
 		// populate updatedBy if it exists
-		if (isset($app->currentUser) and property_exists($class, 'updatedBy') and is_null($this->updatedBy)) {
+		if (isset($app->currentUser->id) and property_exists($class, 'updatedBy') and is_null($this->updatedBy)) {
 			$this->updatedBy = $app->currentUser->id;
 		}
 
@@ -816,7 +816,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 
 		// populate updatedBy if it exists
-		if (isset($app->currentUser) and property_exists($class, 'updatedBy')) {
+		if (isset($app->currentUser->id) and property_exists($class, 'updatedBy')) {
 			$this->updatedBy = $app->currentUser->id;
 		}
 
