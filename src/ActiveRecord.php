@@ -854,6 +854,12 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 			Logger::event('Updated ' . $class . ' object with ' . $logParam);
 
+			// check and update this object in the common cache	
+			if (isset($app->activeRecordCache[$class][(string)$this->getId()])) {
+				$app->putActiveRecordCache($class, $this);
+				Logger::event('Updated ' . $class . ' object with id=' . (string)$this->getId() . ' in common cache');
+			}
+
 		// object is not populated
 		} else {
 
