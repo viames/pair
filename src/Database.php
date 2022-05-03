@@ -1046,7 +1046,7 @@ class Database {
 			
 			if (is_string($v)) $v="'$v'";
 			
-			$query = $indexed ? preg_replace('/\?/', $v, $query, 1) : str_replace($k, $v, $query);
+			$query = $indexed ? preg_replace('/\?/', (string)$v, $query, 1) : str_replace($k, $v, $query);
 		
 		}
 		
