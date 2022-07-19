@@ -1212,7 +1212,8 @@ class Application {
 	}
 
 	/**
-	 * Return the proper TimeZone
+	 * Returns the time zone of the logged in user, otherwise the default for the application.
+	 * @return \DateTimeZone
 	 */
 	public static final function getTimeZone(): \DateTimeZone {
 

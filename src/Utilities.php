@@ -843,13 +843,29 @@ class Utilities {
 	}
 
 	/**
+	 * Returns the list of all declared classes, using the cache.
+	 * @return array
+	 */
+	public static final function getDeclaredClasses(): array {
+	
+		$app = Application::getInstance();
+
+		if (!$app->issetState('declaredClasses')) {
+			$app->setState('declaredClasses', \get_declared_classes());
+		}
+
+		return $app->getState('declaredClasses');
+	
+	}
+
+	/**
 	 * Scan the whole system searching for ActiveRecord classes. These will be include_once.
 	 *
 	 * @return	array[class][file,folder,tableName,constructor,getInstance,pair]
 	 */
-	public static function getActiveRecordClasses() {
+	public static function getActiveRecordClasses(): array {
 
-		$classes = array();
+		$classes = [];
 
 		// lambda method that check a folder and add each ActiveRecord class found
 		$checkFolder = function ($folder) use(&$classes) {
@@ -1065,6 +1081,53 @@ class Utilities {
 		fpassthru($file);
 
 		return TRUE;
+
+	}
+
+	/**
+	 * Processes a plural object name and returns its name in the singular. Valid only for the English
+	 * language. Respect the case of the plural noun.
+	 * @param	string	Plural object name.
+	 * @return	string	Singular object name.
+	 */
+	public static function getSingularObjectName(string $plural): string {
+
+		$specials = [
+			'woman' => 'women', 'man' => 'men', 'child' => 'children', 'tooth' => 'teeth',
+			'foot' => 'feet', 'person' => 'people', 'leaf' => 'leaves', 'mouse' => 'mice',
+			'goose' => 'geese', 'half' => 'halves', 'knife' => 'knives', 'wife' => 'wives',
+			'life' => 'lives', 'elf' => 'elves', 'loaf' => 'loaves', 'potato' => 'potatoes',
+			'tomato' => 'tomatoes', 'cactus' => 'cacti', 'focus' => 'foci', 'fungus' => 'fungi',
+			'nucleus' => 'nuclei', 'syllabus' => 'syllabi', 'analysis' => 'analyses',
+			'diagnosis' => 'diagnoses', 'oasis' => 'oases', 'thesis' => 'theses', 'crisis' => 'crises',
+			'phenomenon' => 'phenomena', 'criterion' => 'criteria', 'datum' => 'data'
+		];
+
+		// irregular noun plurals
+		if (in_array(strtolower($plural), $specials)) {
+			$singular = array_search($plural, $specials);
+		// singular noun ending in a consonant and then y makes the plural by dropping the y and adding-ies
+		} else if ('ies' == substr($plural, -3)) {
+			$singular = substr($plural,0,-3) . 'y';
+		// a singular noun ending in s, x, z, ch, sh makes the plural by adding-es
+		} else if ('es' == substr($plural,-2) and (in_array(substr($plural,-4,-2),['ch','sh']) or
+				(in_array(substr($plural,-3,-2),['s','x','z'])))) {
+			$singular = substr($plural,0,-2);
+		// singular nouns form the plural by adding -s
+		} else if ('s' == substr($plural,-1)) {
+			$singular = substr($plural,0,-1);
+		// maybe it’s already singular
+		} else {
+			$singular = $plural;
+		}
+
+		if ($plural == strtoupper($plural)) {
+			return strtoupper($singular);
+		} else if ($plural[0] = ucfirst($plural[0])) {
+			return ucfirst($singular);
+		} else {
+			return $singular;
+		}
 
 	}
 
