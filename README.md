@@ -13,6 +13,10 @@ Everyone knows that you do not need a truck to go shopping. You do not even need
 
 If you’re already tired of starting a new web project due to the complexity of the famous frameworks used around, you should take a look at Pair. For a small or medium web project, it fits really well.
 
+Pair acquires the logical connections of the database tables and automatically uses caching functions to reuse the data that has already been retrieved. While Pair sends the ready-made web page to the browser, some of the most popular frameworks haven't even loaded all the libraries yet.
+
+Using also the advanced functions of Pair for the efficient management of the information already extracted from the DB, it is possible to create a web page of an application that reads millions of records and many related tables in an astounding time of just 10 ms.
+
 #### ActiveRecord
 
 Pair allows the creation of objects related to each respective database table using the [ActiveRecord class](https://github.com/viames/pair/wiki/ActiveRecord). Objects retrieved from the DB are cast in both directions to the required type (int, bool, DateTime, float, csv). See [Automatic properties cast](https://github.com/viames/pair/wiki/ActiveRecord#automatic-properties-cast) page in the wiki.
