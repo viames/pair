@@ -256,7 +256,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 					// when found, return the related object
 					if (static::TABLE_NAME == $ifk->TABLE_NAME) {
 						$property = (string)static::getMappedProperty($ifk->COLUMN_NAME);
-						return $this->getRelated($property);
+						return $this->getRelated($property, $class);
 					}
 
 				}
@@ -293,8 +293,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$evenPairClass = 'Pair\\' . $evenClass;
 
 		// check the opposite case, a series of objects belonging to this
-		$singular = Utilities::getSingularObjectName($name);
-		$multiClass = substr($singular,3);
+		$multiClass = Utilities::getSingularObjectName(substr($name,3));
 		$multiPairClass = 'Pair\\' . $multiClass;
 
 		// maybe call is referring to
@@ -1134,10 +1133,10 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * Return the Pair\ActiveRecord inherited object related to this by a ForeignKey in DB-table. Cached method.
 	 *
 	 * @param	string	Related property name.
-	 *
+	 * @param	string	Related object class.
 	 * @return	static|NULL
 	 */
-	final public function getRelated(string $relatedProperty): ?self {
+	final public function getRelated(string $relatedProperty, ?string $className=NULL): ?self {
 
 		$cacheName = $relatedProperty . 'RelatedObject';
 
@@ -1189,18 +1188,23 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$relatedClass = NULL;
 		$loadedClasses = Utilities::getDeclaredClasses();
 
-		// search in loaded classes
-		foreach ($loadedClasses as $c) {
-			if (is_subclass_of($c, 'Pair\ActiveRecord') and property_exists($c, 'TABLE_NAME') and $c::TABLE_NAME == $referencedTable) {
-				$relatedClass = $c;
-				break;
+		// if the class name is specified, it quickly searches the array
+		if (!is_null($className) and in_array($className, $loadedClasses) and is_subclass_of($className, 'Pair\ActiveRecord') and defined($className . '::TABLE_NAME') and $className::TABLE_NAME == $referencedTable) {
+			$relatedClass = $className;
+		// otherwise it must iterate all the loaded classes
+		} else {
+			foreach ($loadedClasses as $c) {
+				if (is_subclass_of($c, 'Pair\ActiveRecord') and defined($c . '::TABLE_NAME') and $c::TABLE_NAME == $referencedTable) {
+					$relatedClass = $c;
+					break;
+				}
 			}
 		}
 
 		// class cannot be found
 		if (!$relatedClass) {
 
-			// if not found, search in the whole application (FIXME encapsulation violated here...)
+			// if not found, search in the whole application
 			$classes = Utilities::getActiveRecordClasses();
 
 			// search for required one
