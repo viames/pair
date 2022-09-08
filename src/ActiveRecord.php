@@ -427,7 +427,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 				// should be DateTime, maybe null
 				case 'DateTime':
 					if (is_a($this->$prop, 'DateTime')) {
-						$dt = clone($this->$prop);
+						$dt = clone $this->$prop;
 						$dt->setTimezone(Application::getTimeZone());
 						$ret = $dt->format('Y-m-d H:i:s');
 					} else if (static::isNullable($field)) {

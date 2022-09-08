@@ -336,6 +336,16 @@ abstract class View {
 	}
 
 	/**
+	 * Determines whether the number of items displayed versus the number of items on the page
+	 * requires the pagination bar.
+	 */
+	public function mustUsePagination(array $itemsToShow): bool {
+
+		return (count($itemsToShow) >= $this->pagination->perPage or $this->pagination->page > 1);
+
+	}
+
+	/**
 	 * Return an A-Z list with link for build an alpha filter.
 	 *
 	 * @param	string	Current selected list item, if any.
