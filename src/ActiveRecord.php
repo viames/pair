@@ -144,6 +144,13 @@ abstract class ActiveRecord implements \JsonSerializable {
 			$previousValue = $this->$name;
 		}
 
+		// if it is a virtually generated column, it does not set the corresponding property
+		$columnName = array_search($name, static::getBinds());
+		if ($this->db->isVirtualGenerated(static::TABLE_NAME, $columnName)) {
+			$this->addError('Cannot set value for virtual generated column “'. $columnName .'”');
+			return;
+		}
+
 		try {
 
 			$type = $this->getPropertyType($name);
