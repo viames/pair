@@ -151,6 +151,7 @@ class Application {
 			'PAIR_AUTH_BY_EMAIL' => TRUE,
 			'BASE_URI' => '',
 			'DBMS' => 'mysql',
+			'DB_UTF8' => TRUE,
 			'PRODUCT_NAME' => 'NewProduct',
 			'PRODUCT_VERSION' => '1.0',
 			'UTC_DATE' => TRUE,
@@ -170,7 +171,8 @@ class Application {
 			'S3_ACCESS_KEY_ID' => FALSE,
 			'S3_SECRET_ACCESS_KEY' => FALSE,
 			'S3_BUCKET_REGION' => FALSE,
-			'S3_BUCKET_NAME' => FALSE
+			'S3_BUCKET_NAME' => FALSE,
+			'SENTRY_DSN' => NULL
 		);
 
 		// set default constants in case of missing
@@ -186,7 +188,7 @@ class Application {
 		}
 
 		// force php server date to UTC
-		if (defined('UTC_DATE') and UTC_DATE) {
+		if (UTC_DATE) {
 			ini_set('date.timezone', 'UTC');
 			define('BASE_TIMEZONE', 'UTC');
 		} else {
@@ -204,6 +206,14 @@ class Application {
 		}
 		define('BASE_HREF', $baseHref);
 
+		if (SENTRY_DSN) {
+			\Sentry\init([
+				'dsn' => SENTRY_DSN,
+				'environment' => (PAIR_DEVELOPMENT ? 'development' : 'production')
+			]);
+			Logger::event('Sentry activated');
+		};
+
 		// error management
 		set_error_handler('\Pair\Utilities::customErrorHandler');
 		register_shutdown_function('\Pair\Utilities::fatalErrorHandler');
@@ -213,7 +223,7 @@ class Application {
 		$router->parseRoutes();
 
 		// force utf8mb4
-		if (defined('DB_UTF8') and DB_UTF8) {
+		if (DB_UTF8) {
 			$db = Database::getInstance();
 			$db->setUtf8unicode();
 		}
@@ -224,11 +234,10 @@ class Application {
 		// raw calls will jump templates inclusion, so turn-out output buffer
 		if (!$router->isRaw()) {
 
-			$debug = (defined('PAIR_DEBUG') and PAIR_DEBUG);
 			$gzip  = (isset($_SERVER['HTTP_ACCEPT_ENCODING']) and substr_count($_SERVER['HTTP_ACCEPT_ENCODING'], 'gzip'));
 
 			// if supported, output is compressed with gzip
-			if (!$debug and $gzip and extension_loaded('zlib') and !ini_get('zlib.output_compression')) {
+			if (!PAIR_DEBUG and $gzip and extension_loaded('zlib') and !ini_get('zlib.output_compression')) {
 				ob_start('ob_gzhandler');
 			} else {
 				ob_start();
@@ -1192,13 +1201,8 @@ class Application {
 	 */
 	final public static function isDevelopmentHost(): bool {
 
-		if (defined('PAIR_DEVELOPMENT')) {
-			return PAIR_DEVELOPMENT;
-		} else if (Options::exists('development')) {
-			Options::get('development');
-		} else {
-			return FALSE;
-		}
+		// can be defined in config.php, default is false
+		return PAIR_DEVELOPMENT;
 
 	}
 

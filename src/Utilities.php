@@ -53,6 +53,11 @@ class Utilities {
 
 		}
 
+		if (defined('SENTRY_DSN') and SENTRY_DSN) {
+			\Sentry\captureLastError();
+			Logger::event('The error was sent to Sentry');
+		}
+
 	}
 
 	/**
@@ -113,6 +118,11 @@ class Utilities {
 
 			}
 
+		}
+
+		if (defined('SENTRY_DSN') and SENTRY_DSN) {
+			\Sentry\captureLastError();
+			Logger::event('The error was sent to Sentry');
 		}
 
 	}
@@ -847,7 +857,7 @@ class Utilities {
 	 * @return array
 	 */
 	public static final function getDeclaredClasses(): array {
-	
+
 		$app = Application::getInstance();
 
 		if (!$app->issetState('declaredClasses')) {
@@ -855,7 +865,7 @@ class Utilities {
 		}
 
 		return $app->getState('declaredClasses');
-	
+
 	}
 
 	/**
@@ -1047,7 +1057,7 @@ class Utilities {
 		// document name
 		$filename = $name ? $name : self::localCleanFilename(strtolower(PRODUCT_NAME) . '_export_' . date('YmdHis') . '.csv');
 
-		// file pointer 
+		// file pointer
 		$file = fopen('php://memory', 'w');
 
 		// add BOM to set UTF-8 in Excel
@@ -1062,7 +1072,7 @@ class Utilities {
 			// first line with the object keys
 			fputcsv($file, $headValues, $delimiter);
 
-			// all subsequent lines 
+			// all subsequent lines
 			foreach ($data as $row) {
 				fputcsv($file, get_object_vars($row), $delimiter);
 			}

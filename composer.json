@@ -1,25 +1,26 @@
 {
-	"name" : "viames/pair",
-	"description" : "lightweight PHP framework as the air",
-	"minimum-stability": "dev",
-	"require" : {
-		"php": "^7.3|^8.0",
+	"name": "viames/pair",
+	"description": "lightweight PHP framework as the air",
+	"type": "library",
+	"require": {
+		"php": ">=7.3.0",
 		"ext-pdo" : "*",
 		"league/flysystem-aws-s3-v3": "^1.0",
 		"sistemi-etime/flysystem-plugin-aws-s3-v3": "^1.0",
-		"rector/rector": "^0.11.2"
+		"rectorphp/rector": "^0.14.3",
+		"sentry/sdk": "^3.2"
 	},
-	"repositories" : [
+	"repositories": [
 		{
-			"type" : "composer",
+			"type": "composer",
 			"url" : "https://packagist.org/packages/viames/pair"
 		},{
 			"type": "vcs",
 			"url": "https://github.com/viames/pair"
 		}
 	],
-	"license" : "MIT",
-	"keywords" : [
+	"license": "MIT",
+	"keywords": [
 		"pair",
 		"php",
 		"multilingual",
@@ -30,29 +31,29 @@
 		"router",
 		"rest-api"
 	],
-	"autoload" : {
-		"classmap" : [
+	"autoload": {
+		"classmap": [
 			"src"
 		],
-		"psr-4" : {
-			"Pair\\" : "src/",
-			"Pair\\Oauth\\" : "src/oauth"
+		"psr-4": {
+			"Pair\\": "src/",
+			"Pair\\Oauth\\": "src/oauth"
 		}
 	},
-	"support" : {
-		"issues" : "https://github.com/viames/pair/issues",
-		"wiki" : "https://github.com/viames/pair/wiki",
-		"source" : "https://github.com/viames/pair/tree/master/src"
+	"support": {
+		"issues": "https://github.com/viames/pair/issues",
+		"wiki": "https://github.com/viames/pair/wiki",
+		"source": "https://github.com/viames/pair/tree/master/src"
 	},
-	"homepage" : "https://viames.github.io/Pair/",
-	"authors" : [
+	"homepage": "https://viames.github.io/Pair/",
+	"authors": [
 		{
-			"name" : "Viames Marino",
-			"homepage" : "https://www.viames.it",
-			"role" : "Developer"
+			"name": "Viames Marino",
+			"homepage": "https://viames.it"
 		}
 	],
 	"suggest": {
 		"ext-xdebug": "*"
-	}
+	},
+	"minimum-stability": "stable"
 }
