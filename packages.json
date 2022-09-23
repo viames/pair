@@ -1,0 +1,11 @@
+{
+	"repositories" : [
+		{
+			"type" : "composer",
+			"url" : "https://packagist.org/packages/viames/pair"
+		},{
+			"type": "vcs",
+			"url": "https://github.com/viames/pair"
+		}
+	]
+}
