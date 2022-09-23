@@ -7,7 +7,6 @@
 		"ext-pdo" : "*",
 		"league/flysystem-aws-s3-v3": "^1.0",
 		"sistemi-etime/flysystem-plugin-aws-s3-v3": "^1.0",
-		"rectorphp/rector": "^0.14.3",
 		"sentry/sdk": "^3.2"
 	},
 	"repositories": [
