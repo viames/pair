@@ -93,7 +93,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 				// populate this object with passed key properties
 				foreach($this->keyProperties as $index => $prop) {
-					$this->$prop = isset($initParam[$index]) ? $initParam[$index] : NULL;
+					$this->__set($prop, isset($initParam[$index]) ? $initParam[$index] : NULL);
 				}
 
 			}
@@ -139,9 +139,14 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	public function __set(string $name, $value) {
 
+		// it’s a dynamic property
+		if (!in_array($name, static::getBinds())) {
+			$this->$name = $value;
+		}
+
 		// check that’s not the initial object population
-		if (in_array($name, static::getBinds()) and isset(debug_backtrace()[1]) and !in_array(debug_backtrace()[1]['function'], ['populate'])) {
-			$previousValue = $this->$name;
+		if (isset(debug_backtrace()[1]) and !in_array(debug_backtrace()[1]['function'], ['populate'])) {
+			$previousValue = $this->__get($name);
 		}
 
 		// if it is a virtually generated column, it does not set the corresponding property
@@ -223,8 +228,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 
 		// keep track of updated properties
-		if (!in_array($name, $this->updatedProperties) and isset(debug_backtrace()[1]) and !in_array(debug_backtrace()[1]['function'], ['populate']) and in_array($name, static::getBinds())
-			and $previousValue != $this->$name) {
+		if (!in_array($name, $this->updatedProperties) and isset(debug_backtrace()[1]) and !in_array(debug_backtrace()[1]['function'], ['populate'])
+			and in_array($name, static::getBinds()) and $previousValue != $this->__get($name)) {
 			$this->updatedProperties[] = $name;
 		}
 
@@ -1868,8 +1873,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// run query
 		$row = Database::load($query, $params, PAIR_DB_OBJECT);
 
-		// initialize custom binds
-		$customBinds = [];
+		// initializes the binding of the dynamic properties
+		$dynamicBinds = [];
 
 		if (!is_a($row, '\stdClass')) {
 			return NULL;
@@ -1884,21 +1889,21 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// search for custom field names
 		foreach ($fields as $field=>$value) {
 			if (!array_search($field, $binds)) {
-				$customBinds[Utilities::getCamelCase($field)] = $field;
+				$dynamicBinds[Utilities::getCamelCase($field)] = $field;
 			}
 		}
 
 		$object = new $class($row);
 
 		// populate custom properties
-		foreach ($customBinds as $customProp=>$customField) {
-			$object->$customProp = $row->$customField;
+		foreach ($dynamicBinds as $dynamicProp=>$customField) {
+			$object->__set($dynamicProp, $row->$customField);
 		}
 
 		// turn on loaded-from-db flag
 		$object->loadedFromDb = TRUE;
 
-		Logger::event('Loaded a ' . $class . ' object' . (count($customBinds) ? ' with custom fields ' . implode(',', $customBinds) : ''));
+		Logger::event('Loaded a ' . $class . ' object' . (count($dynamicBinds) ? ' with custom fields ' . implode(',', $dynamicBinds) : ''));
 
 		return $object;
 
@@ -1918,9 +1923,11 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// run query
 		$list = Database::load($query, $params);
 
-		// array that returns and custom binds
+		// objects to be returned
 		$objects = [];
-		$customBinds = [];
+
+		// initializes the binding of the dynamic properties
+		$dynamicBinds = [];
 
 		if (is_array($list) and isset($list[0])) {
 
@@ -1932,7 +1939,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 			// search for custom field names
 			foreach ($fields as $field=>$value) {
 				if (!array_search($field, $binds)) {
-					$customBinds[Utilities::getCamelCase($field)] = $field;
+					$dynamicBinds[Utilities::getCamelCase($field)] = $field;
 				}
 			}
 
@@ -1942,8 +1949,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 				$object = new $class($row);
 
 				// populate custom properties
-				foreach ($customBinds as $customProp=>$customField) {
-					$object->$customProp = $row->$customField;
+				foreach ($dynamicBinds as $dynamicProp=>$customField) {
+					$object->__set($dynamicProp, $row->$customField);
 				}
 
 				// turn on loaded-from-db flag
@@ -1955,7 +1962,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		}
 
-		Logger::event('Loaded ' . count($objects) . ' ' . $class . ' objects with custom fields ' . implode(',', $customBinds));
+		Logger::event('Loaded ' . count($objects) . ' ' . $class . ' objects with custom fields ' . implode(',', $dynamicBinds));
 
 		return $objects;
 
@@ -2108,7 +2115,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 			switch ($this->getPropertyType($name)) {
 
 				case 'bool':
-					$printBoolean($this->$name);
+					$printBoolean($this->__get($name));
 					break;
 
 				case 'DateTime':
@@ -2116,15 +2123,15 @@ abstract class ActiveRecord implements \JsonSerializable {
 					break;
 
 				case 'csv':
-					print htmlspecialchars(implode(', ', $this->$name));
+					print htmlspecialchars(implode(', ', $this->__get($name)));
 					break;
 
 				case 'json':
-					print '<pre>' . Utilities::varToText($this->$name, FALSE) . '</pre>';
+					print '<pre>' . Utilities::varToText($this->__get($name), FALSE) . '</pre>';
 					break;
 
 				default:
-					print nl2br(htmlspecialchars((string)$this->$name));
+					print nl2br(htmlspecialchars((string)$this->__get($name)));
 					break;
 
 			}
@@ -2147,7 +2154,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 			// otherwise the requested value is handled with __get()
 			} else {
 
-				$result = $this->$name;
+				$result = $this->__get($name);
 
 			}
 
@@ -2187,7 +2194,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$properties = [];
 
 		foreach ($binds as $property=>$field) {
-			$properties[$property] = $this->$property;
+			$properties[$property] = $this->__get($property);
 		}
 
 		return $properties;
@@ -2490,7 +2497,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		foreach (array_keys($binds) as $property) {
 			if (is_null($wantedProperties) or in_array($property, $wantedProperties)) {
-				$stdClass->$property = $this->$property;
+				$stdClass->$property = $this->__get($property);
 			}
 		}
 
