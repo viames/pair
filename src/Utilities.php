@@ -1141,4 +1141,41 @@ class Utilities {
 
 	}
 
+	/**
+	 * Returns the object with the property closest to the name passed as a parameter,
+	 * searching the indicated property of the object list passed.
+	 *
+	 * @param string Name to search for.
+	 * @param array List of objects to search.
+	 * @param string Name of the property that contains the name to compare.
+	 * @return object The closest object.
+	 */
+	public static function findSimilar(string $name, array $list, string $propertyName): object {
+
+		// try direct name comparison
+		foreach ($list as $item) {
+
+			// return the object that exactly matches
+			if ($name == $item->$propertyName) {
+				return $name;
+			}
+
+		}
+
+		// temporary list to sort by similarity
+		$similarity = [];
+
+		// check for similarity on each object
+		foreach ($list as $index => $item) {
+			similar_text($name, $item->$propertyName, $perc);
+			$similarity[$index] = $perc; // assign the similarity percentage
+		}
+
+		// get the array key of the maximum similarity value found
+		$maxSimilarity = array_search(max($similarity),$similarity);
+
+		return $list[$maxSimilarity];
+
+	}
+
 }

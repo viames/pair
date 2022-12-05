@@ -55,15 +55,15 @@ class AmazonS3 {
 	 *
 	 * @param string $filePath
 	 * @param string $destination
-	 * @return boolean
+	 * @return bool
 	 */
 	public function put(string $filePath, string $destination): bool {
 
 		if (!file_exists($filePath)) return false;
 
 		$fileContents = file_get_contents($filePath);
-		$this->filesystem->put($destination, $fileContents);
-		return true;
+		return $this->filesystem->put($destination, $fileContents);
+
 	}
 
 	/**

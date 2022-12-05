@@ -218,9 +218,7 @@ class Upload {
 		$this->filename = Utilities::localCleanFilename($this->filename);
 
 		$amazonS3 = new AmazonS3();
-		$amazonS3->put($this->fileTmpname, $filePath);
-
-		return TRUE;
+		return $amazonS3->put($this->fileTmpname, $filePath);
 
 	}
 
