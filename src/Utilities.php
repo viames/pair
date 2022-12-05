@@ -1142,7 +1142,7 @@ class Utilities {
 	}
 
 	/**
-	 * Returns the object with the property closest to the name passed as a parameter,
+	 * Returns the object with the property closest to the value passed as a parameter,
 	 * searching the indicated property of the object list passed.
 	 *
 	 * @param array List of objects to search.
@@ -1150,7 +1150,7 @@ class Utilities {
 	 * @param string Value to search for.
 	 * @return object The closest object.
 	 */
-	public static function findSimilar(array $objectList, string $propertyName, string $value): object {
+	public static function findSimilar(array $objectList, string $propertyName, string $searchedValue, ?bool $caseSensitive=FALSE): object {
 
 		// temporary list to sort by similarity
 		$similarity = [];
@@ -1159,12 +1159,17 @@ class Utilities {
 		foreach ($objectList as $index => $item) {
 
 			// return the object that exactly matches
-			if ($value == $item->$propertyName) {
-				return $value;
-			}
 
 			// assign the similarity percentage
-			similar_text($value, $item->$propertyName, $percent);
+			if ($caseSensitive) {
+				if ($item->$propertyName == $searchedValue) return $item;
+				similar_text($item->$propertyName, $searchedValue, $percent);
+			} else {
+				$searchedValue = strtolower($searchedValue);
+				$propertyValue = strtolower($item->$propertyName);
+				if ($propertyValue == $searchedValue) return $item;
+				similar_text($propertyValue, $searchedValue, $percent);
+			}
 
 			$similarity[$index] = $percent;
 
