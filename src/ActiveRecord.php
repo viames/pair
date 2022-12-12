@@ -140,7 +140,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	public function __set(string $name, $value) {
 
 		// it’s a dynamic property
-		if (!in_array($name, static::getBinds())) {
+		if (!array_key_exists($name, static::getBinds())) {
 			$this->$name = $value;
 		}
 
@@ -347,7 +347,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	protected function init() {}
 
 	/**
-	 * Returns array with matching object property name on related db fields.
+	 * Returns array with matching object property name on related db columns.
 	 *
 	 * @return	array
 	 */
@@ -371,7 +371,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 
 	/**
-	 * Bind the object properties with all fields coming from database translating the
+	 * Bind the object properties with all columns coming from database translating the
 	 * field names into object properties names. DateTime, Boolean and Integer will be
 	 * properly managed.
 	 *
@@ -870,7 +870,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 			$this->updatedBy = $app->currentUser->id;
 		}
 
-		// if property list is empty, will include all
+		// if the property list is empty, it will include everything
 		$properties	= (array)$properties;
 		if (!count($properties)) {
 			$properties = array_keys($class::getBinds());
@@ -881,7 +881,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// require table primary key and force its assign
 		if ($this->areKeysPopulated()) {
 
-			// set an object with fields to update
+			// set an object with the columns to update
 			$dbObj = $this->prepareData($properties);
 
 			// force to array
@@ -1134,7 +1134,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	private function isInSharedCache(string $property): bool {
 
-		// list encryptables fields
+		// list shared properties
 		return (defined('static::SHARED_CACHE_PROPERTIES')
 			and is_array(static::SHARED_CACHE_PROPERTIES)
 			and in_array($property, static::SHARED_CACHE_PROPERTIES));
@@ -1553,22 +1553,22 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 
 	/**
-	 * Compare object properties with related DB table fields, with proper cast. Doesn’t
-	 * compare other object fields.
+	 * Compare object properties with related DB table columns, with proper cast. Doesn’t
+	 * compare other object properties.
 	 *
 	 * @return	bool
 	 */
 	final public function hasChanged(): bool {
 
 		$class = get_called_class();
-		$varFields = $class::getBinds();
+		$binds = $class::getBinds();
 
 		// create a new similar object that populates properly
 		$newObj = new $class($this->{$this->keyProperties});
 
 		if (!$newObj) return TRUE;
 
-		foreach ($varFields as $property => $field) {
+		foreach (array_keys($binds) as $property) {
 			if ($this->$property != $newObj->$property) {
 				return TRUE;
 			}
@@ -1884,26 +1884,26 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$binds = $class::getBinds();
 
 		// get object properties from query
-		$fields  = get_object_vars($row);
+		$columns  = get_object_vars($row);
 
-		// search for custom field names
-		foreach ($fields as $field=>$value) {
-			if (!array_search($field, $binds)) {
-				$dynamicBinds[Utilities::getCamelCase($field)] = $field;
+		// search for custom column names
+		foreach (array_keys($columns) as $column) {
+			if (!array_search($column, $binds)) {
+				$dynamicBinds[Utilities::getCamelCase($column)] = $column;
 			}
 		}
 
 		$object = new $class($row);
 
 		// populate custom properties
-		foreach ($dynamicBinds as $dynamicProp=>$customField) {
-			$object->__set($dynamicProp, $row->$customField);
+		foreach ($dynamicBinds as $dynamicProp=>$customColumn) {
+			$object->__set($dynamicProp, $row->$customColumn);
 		}
 
 		// turn on loaded-from-db flag
 		$object->loadedFromDb = TRUE;
 
-		Logger::event('Loaded a ' . $class . ' object' . (count($dynamicBinds) ? ' with custom fields ' . implode(',', $dynamicBinds) : ''));
+		Logger::event('Loaded a ' . $class . ' object' . (count($dynamicBinds) ? ' with custom columns ' . implode(',', $dynamicBinds) : ''));
 
 		return $object;
 
@@ -1934,12 +1934,12 @@ abstract class ActiveRecord implements \JsonSerializable {
 			$binds = $class::getBinds();
 
 			// get object properties from query
-			$fields = get_object_vars($list[0]);
+			$columns = get_object_vars($list[0]);
 
 			// search for custom field names
-			foreach ($fields as $field=>$value) {
-				if (!array_search($field, $binds)) {
-					$dynamicBinds[Utilities::getCamelCase($field)] = $field;
+			foreach (array_keys($columns) as $column) {
+				if (!array_search($column, $binds)) {
+					$dynamicBinds[Utilities::getCamelCase($column)] = $column;
 				}
 			}
 
@@ -1962,7 +1962,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		}
 
-		Logger::event('Loaded ' . count($objects) . ' ' . $class . ' objects with custom fields ' . implode(',', $dynamicBinds));
+		Logger::event('Loaded ' . count($objects) . ' ' . $class . ' objects with custom columns ' . implode(',', $dynamicBinds));
 
 		return $objects;
 
@@ -2276,7 +2276,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * Populates the inherited object with input vars with same name as properties.
 	 *
 	 * @param	string	Optional list of properties to populate, comma separated. If no items,
-	 * 					will tries to populate all fields.
+	 * 					will tries to populate all columns.
 	 * @return	bool
 	 */
 	public function populateByRequest(): bool {
@@ -2525,7 +2525,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		$encryptables = [];
 
-		// list encryptables fields
+		// list encryptables columns
 		if (defined('static::ENCRYPTABLES') and
 		 is_array(static::ENCRYPTABLES)) {
 			foreach (static::ENCRYPTABLES as $property) {
@@ -2538,7 +2538,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 
 	/**
-	 * Return the query column list, in case there are encryptable fields or just *.
+	 * Return the query column list, in case there are encryptable columns or just *.
 	 *
 	 * @return	string
 	 */
@@ -2556,7 +2556,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 
 	/**
-	 * Return the SELECT fields for encrypted columns. Empty string in case of no encrypted properties.
+	 * Return the SELECT query code for columns mapped to encrypted properties. Empty string in case of no encrypted properties.
 	 *
 	 * @param	string|NULL	Table alias.
 	 * @return	string
