@@ -67,7 +67,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$tableKey = (array)$class::TABLE_KEY;
 
 		// initialize property name
-		$this->keyProperties = array();
+		$this->keyProperties = [];
 
 		// find and assign each field of compound key as array item
 		foreach ($tableKey as $field) {
@@ -119,7 +119,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 				throw new \Exception('Property “'. $name .'” doesn’t exist for object '. get_called_class());
 			}
 
-			return $this->$name;
+			return isset($this->$name) ? $this->$name : NULL;
 
 		} catch (\Exception $e) {
 
@@ -338,6 +338,26 @@ abstract class ActiveRecord implements \JsonSerializable {
 			Logger::error('Method '. get_called_class() . $backtrace[0]['type'] . $name .'(), which doesn’t exist, has been called by '. $backtrace[0]['file'] .' on line '. $backtrace[0]['line']);
 
 		}
+
+	}
+
+	public function __clone() {
+
+		$class = get_called_class();
+
+		// reset primary key
+		foreach($this->keyProperties as $keyProperty) {
+			$this->$keyProperty = NULL;
+		}
+
+		// reset updated properties
+		$this->loadedFromDb = FALSE;
+		$this->cache = [];
+		
+		$this->resetErrors();
+
+		// log the reload
+		Logger::event('Cloned ' . $class . ' object');
 
 	}
 
@@ -572,8 +592,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 			}
 		}
 
-		$this->cache  = array();
-		$this->errors = array();
+		$this->cache  = [];
+		$this->errors = [];
 
 		$this->loadFromDb($this->getSqlKeyValues());
 
@@ -662,7 +682,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		$class		= get_called_class();
 		$tableKey	= (array)$class::TABLE_KEY;
-		$conds		= array();
+		$conds		= [];
 
 			foreach ($tableKey as $field) {
 				$conds[] = '`' . $field . '` = ?';
@@ -684,7 +704,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$propertyNames = (array)$this->keyProperties;
 
 		// list to return
-		$values = array();
+		$values = [];
 
 		foreach ($propertyNames as $name) {
 			$values[] = $this->{$name};
@@ -704,7 +724,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// force to array
 		$properties = (array)$this->keyProperties;
 
-		$keyParts = array();
+		$keyParts = [];
 
 		foreach ($properties as $propertyName) {
 			$keyParts[] = $propertyName . '=' . $this->$propertyName;
@@ -817,7 +837,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$this->updatedProperties = [];
 
 		// set logs
-		$keyParts = array();
+		$keyParts = [];
 
 		foreach ($this->keyProperties as $prop) {
 			$keyParts[] = $prop . '=' . $this->{$prop};
@@ -934,7 +954,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		$class		= get_called_class();
 		$binds		= $class::getBinds();
-		$properties	= array();
+		$properties	= [];
 
 		foreach ($binds as $objProp => $dbField) {
 
@@ -1342,7 +1362,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * doesn’t exist.
 	 *
 	 * @param	string	Field name.
-	 *
 	 * @return	NULL|\stdClass
 	 */
 	private static function getColumnType(string $fieldName): ?\stdClass {
@@ -1382,16 +1401,15 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 
 	/**
-	 * Check whether the DB-table-field is capable to store null values.
+	 * Check whether the DB-table-column is capable to store null values.
 	 *
-	 * @param	string	DB-table-field name.
-	 *
+	 * @param	string	DB-table-column name.
 	 * @return	bool|NULL
 	 */
-	final public static function isNullable(string $fieldName): ?bool {
+	final public static function isNullable(string $columnName): ?bool {
 
 		$db = Database::getInstance();
-		$column = $db->describeColumn(static::TABLE_NAME, $fieldName);
+		$column = $db->describeColumn(static::TABLE_NAME, $columnName);
 
 		if (is_null($column)) {
 			return NULL;
@@ -1402,15 +1420,14 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 
 	/**
-	 * Check whether the DB-table-field is capable to store empty strings.
+	 * Check whether the DB-table-column is capable to store empty strings.
 	 *
-	 * @param	string	DB-table-field name.
-	 *
+	 * @param	string	DB-table-column name.
 	 * @return	bool|NULL
 	 */
-	final public static function isEmptiable(string $fieldName): ?bool {
+	final public static function isEmptiable(string $columnName): ?bool {
 
-		$column = static::getColumnType($fieldName);
+		$column = static::getColumnType($columnName);
 
 		if (is_null($column)) {
 			return NULL;
@@ -1632,7 +1649,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	final public function resetErrors() {
 
-		$this->errors = array();
+		$this->errors = [];
 
 	}
 
@@ -1698,18 +1715,18 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @return	array
 	 */
-	final public static function getAllObjects($filters = array(), $orderBy = array()) {
+	final public static function getAllObjects($filters = [], $orderBy = []) {
 
 		$db			= Database::getInstance();
 		$class		= get_called_class();
 		$binds		= $class::getBinds();
 
 		$where		= '';
-		$conds		= array();
+		$conds		= [];
 		$whereLog	= '';
 
 		$order		= '';
-		$orderClause= array();
+		$orderClause= [];
 		$orderBy	= (array)$orderBy;
 
 		if (is_array($filters)) {
@@ -1786,7 +1803,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// runs query
 		$list = Database::load('SELECT ' . static::getQueryColumns() . ' FROM `' . $class::TABLE_NAME . '`' . $where . $order);
 
-		$objects = array();
+		$objects = [];
 
 		if (is_array($list)) {
 
@@ -1818,7 +1835,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$binds		= $class::getBinds();
 
 		$where		= '';
-		$conds		= array();
+		$conds		= [];
 		$whereLog	= '';
 
 		if (is_array($filters)) {
@@ -1978,9 +1995,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 	final public static function exists($keys): bool {
 
 		// initialize some vars
-		$db			= Database::getInstance();
 		$tableKey	= (array)static::TABLE_KEY;
-		$conds		= array();
+		$conds		= [];
 
 		foreach ($tableKey as $field) {
 			$conds[] = $field . ' = ?';
@@ -2193,7 +2209,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		$properties = [];
 
-		foreach ($binds as $property=>$field) {
+		foreach (array_keys($binds) as $property) {
 			$properties[$property] = $this->__get($property);
 		}
 
@@ -2426,10 +2442,12 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	final public function getId() {
 
-		$ids = array();
+		$ids = [];
 
 		foreach ($this->keyProperties as $propertyName) {
-			$ids[] = $this->{$propertyName};
+			if (isset($this->{$propertyName})) {
+				$ids[] = $this->{$propertyName};
+			}
 		}
 
 		return (static::hasCompoundKey() ? $ids : $ids[0]);
