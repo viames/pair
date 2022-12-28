@@ -449,10 +449,10 @@ abstract class ActiveRecord implements \JsonSerializable {
 				// integer or bool will cast to integer
 				case 'int':
 				case 'bool':
-					if (is_null($this->$prop) and static::isNullable($field)) {
+					if (is_null($this->__get($prop)) and static::isNullable($field)) {
 						$ret = NULL;
 					} else {
-						$ret = (int)$this->$prop;
+						$ret = (int)$this->__get($prop);
 					}
 					break;
 
@@ -496,7 +496,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 				// assign with no convertion
 				default:
-					if ((is_null($this->$prop) or (''==$this->$prop and !static::isEmptiable($field))) and static::isNullable($field)) {
+					if ((is_null($this->__get($prop)) or (''==$this->__get($prop) and !static::isEmptiable($field))) and static::isNullable($field)) {
 						$ret = NULL;
 					} else {
 						$ret = $this->$prop;
@@ -795,22 +795,22 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$props = array_keys(static::getBinds());
 
 		// populate createdAt if it exists
-		if (property_exists($class, 'createdAt') and is_null($this->createdAt)) {
+		if (property_exists($class, 'createdAt') and is_null($this->__get('createdAt'))) {
 			$this->createdAt = new \DateTime('now', Application::getTimeZone());
 		}
 
 		// populate createdBy if it exists
-		if (isset($app->currentUser->id) and property_exists($class, 'createdBy') and is_null($this->createdBy)) {
+		if (isset($app->currentUser->id) and property_exists($class, 'createdBy') and is_null($this->__get('createdBy'))) {
 			$this->createdBy = $app->currentUser->id;
 		}
 
 		// populate updatedAt if it exists
-		if (property_exists($class, 'updatedAt') and is_null($this->updatedAt)) {
+		if (property_exists($class, 'updatedAt') and is_null($this->__get('updatedAt'))) {
 			$this->updatedAt = new \DateTime('now', Application::getTimeZone());
 		}
 
 		// populate updatedBy if it exists
-		if (isset($app->currentUser->id) and property_exists($class, 'updatedBy') and is_null($this->updatedBy)) {
+		if (isset($app->currentUser->id) and property_exists($class, 'updatedBy') and is_null($this->__get('updatedBy'))) {
 			$this->updatedBy = $app->currentUser->id;
 		}
 
