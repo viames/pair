@@ -458,8 +458,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 				// should be DateTime, maybe null
 				case 'DateTime':
-					if (is_a($this->$prop, 'DateTime')) {
-						$dt = clone $this->$prop;
+					if (is_a($this->__get($prop), 'DateTime')) {
+						$dt = clone $this->__get($prop);
 						$dt->setTimezone(Application::getTimeZone());
 						$ret = $dt->format('Y-m-d H:i:s');
 					} else if (static::isNullable($field)) {
@@ -472,25 +472,25 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 				// join array strings in CSV format
 				case 'csv':
-					$ret = implode(',', array_filter((array)$this->$prop));
+					$ret = implode(',', array_filter((array)$this->__get($prop)));
 					break;
 
 				case 'float':
-					if (is_null($this->$prop) and static::isNullable($field)) {
+					if (is_null($this->__get($prop)) and static::isNullable($field)) {
 						$ret = NULL;
 					} else {
 						$curr = setlocale(LC_NUMERIC, 0);
 						setlocale(LC_NUMERIC, 'en_US');
-						$ret = (string)$this->$prop;
+						$ret = (string)$this->__get($prop);
 						setlocale(LC_NUMERIC, $curr);
 					}
 					break;
 
 				case 'json':
-					if (is_null($this->$prop) and static::isNullable($field)) {
+					if (is_null($this->__get($prop)) and static::isNullable($field)) {
 						$ret = NULL;
 					} else {
-						$ret = json_encode($this->$prop);
+						$ret = json_encode($this->__get($prop));
 					}
 					break;
 
@@ -499,7 +499,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 					if ((is_null($this->__get($prop)) or (''==$this->__get($prop) and !static::isEmptiable($field))) and static::isNullable($field)) {
 						$ret = NULL;
 					} else {
-						$ret = $this->$prop;
+						$ret = $this->__get($prop);
 					}
 					break;
 
