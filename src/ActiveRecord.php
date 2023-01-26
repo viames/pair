@@ -2450,7 +2450,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 			}
 		}
 
-		return (static::hasCompoundKey() ? $ids : $ids[0]);
+		return ((static::hasCompoundKey() or !isset($ids[0])) ? $ids : $ids[0]);
 
 	}
 
