@@ -655,8 +655,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	private static function hasCompoundKey(): bool {
 
 		$class = get_called_class();
-		$res = (is_array($class::TABLE_KEY) and count($class::TABLE_KEY) > 1);
-		return $res;
+		return (is_array($class::TABLE_KEY) and count($class::TABLE_KEY) > 1);
 
 	}
 
@@ -925,9 +924,10 @@ abstract class ActiveRecord implements \JsonSerializable {
 			Logger::event('Updated ' . $class . ' object with ' . $logParam);
 
 			// check and update this object in the common cache
-			if (isset($app->activeRecordCache[$class][(string)$this->getId()])) {
+			$uniqueId = is_array($this->getId()) ? implode('-', $this->getId()) : (string)$this->getId();
+			if (isset($app->activeRecordCache[$class][$uniqueId])) {
 				$app->putActiveRecordCache($class, $this);
-				Logger::event('Updated ' . $class . ' object with id=' . (string)$this->getId() . ' in common cache');
+				Logger::event('Updated ' . $class . ' object with id=' . $uniqueId . ' in common cache');
 			}
 
 		// object is not populated
@@ -956,7 +956,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$binds		= $class::getBinds();
 		$properties	= [];
 
-		foreach ($binds as $objProp => $dbField) {
+		foreach (array_keys($binds) as $objProp) {
 
 			if (!is_null($this->$objProp))  {
 				$properties[] = $objProp;
@@ -2438,7 +2438,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	/**
 	 * Returns unique ID of inherited object or in case of compound key, an indexed array.
 	 *
-	 * @return int|string|array
+	 * @return int|string|array|NULL
 	 */
 	final public function getId() {
 
@@ -2450,7 +2450,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 			}
 		}
 
-		return ((static::hasCompoundKey() or !isset($ids[0])) ? $ids : $ids[0]);
+		return (static::hasCompoundKey() ? $ids : ($ids[0] ?? NULL));
 
 	}
 
