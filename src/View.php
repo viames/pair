@@ -314,6 +314,30 @@ abstract class View {
 	}
 
 	/**
+	 * Prints a column header with sorting link.
+	 */
+	public function printSortableColumn(string $title, int $ascSort, int $descSort): void {
+
+		$router = Router::getInstance();
+
+		// ordinamento ascendente
+		if ($ascSort == $router->order) {
+
+			print '<a href="' . $router->getOrderUrl($descSort) . '">' . $title . '</a> <i class="fa fa-arrow-up"></i>';
+
+		} else if ($descSort == $router->order) {
+
+			print '<a href="' . $router->getOrderUrl(0) . '">' . $title . '</a> <i class="fa fa-arrow-down"></i>';
+
+		} else {
+
+			print '<a href="' . $router->getOrderUrl($ascSort) . '">' . $title . '</a>';
+
+		}
+
+	}
+
+	/**
 	 * Computes data and assigns values to layout.
 	 *
 	 * @return	string

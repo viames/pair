@@ -224,9 +224,10 @@ abstract class Model {
 		if (!class_exists($class) or !is_subclass_of($class, 'Pair\ActiveRecord')) {
 			return [];
 		}
+		
+		$query = $optionalQuery ?? $this->getQuery($class) . $this->getOrderLimitSql();
 
-		$query = $optionalQuery ? $optionalQuery : $this->getQuery($class);
-		return $class::getObjectsByQuery($query . ' LIMIT ' . $this->pagination->start . ', ' . $this->pagination->limit, []);
+		return $class::getObjectsByQuery($query, []);
 
 	}
 
