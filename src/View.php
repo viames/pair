@@ -320,7 +320,8 @@ abstract class View {
 
 		$router = Router::getInstance();
 
-		// ordinamento ascendente
+		print '<div style="white-space:nowrap">';
+
 		if ($ascSort == $router->order) {
 
 			print '<a href="' . $router->getOrderUrl($descSort) . '">' . $title . '</a> <i class="fa fa-arrow-up"></i>';
@@ -334,6 +335,8 @@ abstract class View {
 			print '<a href="' . $router->getOrderUrl($ascSort) . '">' . $title . '</a>';
 
 		}
+
+		print '</div>';
 
 	}
 
