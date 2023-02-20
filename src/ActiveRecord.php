@@ -2302,7 +2302,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// all subclass binds
 		$binds = static::getBinds();
 
-		foreach ($binds as $property => $field) {
+		foreach (array_keys($binds) as $property) {
 
 			// check that property is in the args or that args is not defined at all
 			if (!count($args) or in_array($property, $args)) {
