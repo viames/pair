@@ -9,50 +9,47 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 	/**
 	 * Db handler object.
-	 * @var Database
 	 */
-	protected $db;
+	protected Database $db;
 
 	/**
 	 * List of properties that maps db primary keys.
-	 * @var string[]
 	 */
-	protected $keyProperties;
+	protected array $keyProperties = [];
 
 	/**
 	 * TRUE if object has been loaded from database.
-	 * @var bool
 	 */
-	private $loadedFromDb = FALSE;
+	private bool $loadedFromDb = FALSE;
 
 	/**
 	 * List of special properties that will be cast (name => type).
-	 * @var string[]
 	 */
-	private $typeList = [];
+	private array $typeList = [];
 
 	/**
 	 * Cache for any variable type.
-	 * @var mixed[]
 	 */
-	private $cache = [];
+	private array $cache = [];
 
 	/**
 	 * List of all errors tracked.
-	 * @var array
 	 */
-	private $errors = [];
+	private array $errors = [];
 
 	/**
 	 * Keep track of update properties name.
-	 * @var array
 	 */
-	private $updatedProperties = [];
+	private array $updatedProperties = [];
+
+	/**
+	 * List of dynamic properties, deprecated by PHP 8.2 onwards.
+	 */
+	private array $dynamicProperties = [];
 
 	/**
 	 * Constructor, if param is db-row, will bind it on this object, if it’s id,
 	 * with load the object data from db, otherwise the object will be empty.
-	 *
 	 * @param	mixed	Record object from db table or just table key value (int, string or array, optional).
 	 */
 	final public function __construct($initParam=NULL) {
@@ -83,7 +80,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		// primary or compound key, loads the whole object from db
 		} else if (is_int($initParam) or (is_string($initParam) and strlen($initParam)>0)
-				or (static::hasCompoundKey() and is_array($initParam) and count($this->keyProperties) == count($initParam))) {
+				or (static::hasCompoundKey() and is_array($initParam) and count((array)$this->keyProperties) == count($initParam))) {
 
 			// try to load the object from db
 			if (!$this->loadFromDb($initParam)) {
@@ -92,7 +89,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 				$initParam = (array)$initParam;
 
 				// populate this object with passed key properties
-				foreach($this->keyProperties as $index => $prop) {
+				foreach((array)$this->keyProperties as $index => $prop) {
 					$this->__set($prop, isset($initParam[$index]) ? $initParam[$index] : NULL);
 				}
 
@@ -104,19 +101,29 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 	/**
 	 * Return property’s value if set. Throw an exception and return NULL if not set.
-	 *
 	 * @param	string	Property’s name.
-	 *
-	 * @throws	Exception
-	 *
 	 * @return	mixed|NULL
+	 * @throws	Exception
 	 */
 	public function __get(string $name) {
 
 		try {
 
-			if (!property_exists($this, $name)) {
-				throw new \Exception('Property “'. $name .'” doesn’t exist for object '. get_called_class());
+			if (array_key_exists($name, static::getBinds()) or in_array($name, ['keyProperties', 'db', 'loadedFromDb', 'typeList', 'cache', 'errors'])) {
+				
+				if (!property_exists($this, $name)) {
+					throw new \Exception('Property “'. $name .'” doesn’t exist for object '. get_called_class());
+				}
+				
+			// it’s a dynamic property
+			} else {
+
+				if (!array_key_exists($name, $this->dynamicProperties)) {
+					throw new \Exception('Dynamic property “'. $name .'” doesn’t exist for object '. get_called_class());
+				}
+				
+				return $this->dynamicProperties[$name];
+			
 			}
 
 			return isset($this->$name) ? $this->$name : NULL;
@@ -133,17 +140,17 @@ abstract class ActiveRecord implements \JsonSerializable {
 	/**
 	 * Magic method to set an object property value. If DateTime property, will properly
 	 * manage integer or string date.
-	 *
 	 * @param	string	Property’s name.
 	 * @param	mixed	Property’s value.
 	 */
 	public function __set(string $name, $value) {
 
-		// it’s a dynamic property
+		// it’s a dynamic property, deprecated since PHP 8.2
 		if (!array_key_exists($name, static::getBinds())) {
-			$this->$name = $value;
-		}
-
+			$this->dynamicProperties[$name] = @$value;
+			return;
+		}		
+		
 		// check that’s not the initial object population
 		if (isset(debug_backtrace()[1]) and !in_array(debug_backtrace()[1]['function'], ['populate'])) {
 			$previousValue = $this->__get($name);
@@ -163,7 +170,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 			if (is_null($value)) {
 
 				// CSV NULL becomes empty array
-				$this->$name = $type == 'csv' ? array() : NULL;
+				$this->$name = $type == 'csv' ? [] : NULL;
 
 			} else {
 
@@ -200,7 +207,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 					// split string parts by comma in array
 					case 'csv':
 						if (is_string($value)) {
-							$this->$name = '' == $value ? array() : explode(',', $value);
+							$this->$name = '' == $value ? [] : explode(',', $value);
 						} else {
 							$this->$name = (array)$value;
 						}
@@ -346,7 +353,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$class = get_called_class();
 
 		// reset primary key
-		foreach($this->keyProperties as $keyProperty) {
+		foreach((array)$this->keyProperties as $keyProperty) {
 			$this->$keyProperty = NULL;
 		}
 
@@ -394,7 +401,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * Bind the object properties with all columns coming from database translating the
 	 * field names into object properties names. DateTime, Boolean and Integer will be
 	 * properly managed.
-	 *
 	 * @param	\stdClass	Record object as extracted from db table.
 	 */
 	private function populate(\stdClass $dbRow) {
@@ -580,10 +586,10 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$class = get_called_class();
 
 		// properties to not reset
-		$propertiesToSave = array('keyProperties', 'db', 'loadedFromDb', 'typeList', 'cache', 'errors');
+		$propertiesToSave = ['keyProperties', 'db', 'loadedFromDb', 'typeList', 'cache', 'errors'];
 
 		// save key from being unset
-		$propertiesToSave = array_merge($propertiesToSave, $this->keyProperties);
+		$propertiesToSave = array_merge($propertiesToSave, (array)$this->keyProperties);
 
 		// unset all the other properties
 		foreach ($this as $key => $value) {
@@ -668,7 +674,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	private function isKeyProperty(string $propertyName): bool {
 
-		return (in_array($propertyName, $this->keyProperties));
+		return (in_array($propertyName, (array)$this->keyProperties));
 
 	}
 
@@ -1001,7 +1007,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$res = $this->db->exec($query, $this->getSqlKeyValues());
 
 		// list properties to not remove
-		$activeRecordsProperties = array('keyProperties', 'db', 'loadedFromDb', 'typeList', 'errors');
+		$activeRecordsProperties = ['keyProperties', 'db', 'loadedFromDb', 'typeList', 'errors'];
 
 		// unset all properties
 		foreach ($this as $key => $value) {
@@ -1710,8 +1716,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 	/**
 	 * Gets all objects of the inherited class with where conditions and order clause.
 	 *
-	 * @param	array	Optional array of query filters, array(property-name => value).
-	 * @param	array	Optional array of order by, array(property-name) or array(property-name => 'DESC').
+	 * @param	array	Optional array of query filters, [property_name => value].
+	 * @param	array	Optional array of order by, [property_name] or [property_name => 'DESC'].
 	 *
 	 * @return	array
 	 */
@@ -1781,7 +1787,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 					$field = $binds[$property];
 
 					// validates direction
-					if (!$direction or !in_array(strtolower($direction), array('asc','desc'))) {
+					if (!$direction or !in_array(strtolower($direction), ['asc','desc'])) {
 						$direction = '';
 					}
 
@@ -1825,7 +1831,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	/**
 	 * Count all objects of the inherited class with where conditions and order clause.
 	 *
-	 * @param	array	Optional array of query filters, array(property-name => value).
+	 * @param	array	Optional array of query filters, [property-name => value].
 	 * @return	int
 	 */
 	final public static function countAllObjects($filters = []): int {
@@ -2469,6 +2475,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		unset($vars['cache']);
 		unset($vars['errors']);
 		unset($vars['updatedProperties']);
+		unset($vars['dynamicProperties']);
 
 		return $vars;
 

@@ -447,7 +447,7 @@ class Application {
 	final public function putActiveRecordCache(string $class, $object): void {
 
 		// can’t manage composite key
-		if (1 == count($object->keyProperties) ) {
+		if (1 == count((array)$object->keyProperties) ) {
 			$this->activeRecordCache[$class][(string)$object->getId()] = $object;
 			Logger::event('Stored ' . get_class($object) . ' object with id=' . (string)$object->getId() . ' in common cache');
 		}

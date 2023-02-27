@@ -14,12 +14,6 @@ define ('PAIR_DB_COUNT',		5);
 class Database {
 
 	/**
-	 * Application object.
-	 * @var Application
-	 */
-	private $app;
-
-	/**
 	 * Singleton object for database.
 	 * @var Database|NULL
 	 */
@@ -29,25 +23,25 @@ class Database {
 	 * DB Handler.
 	 * @var PDO
 	 */
-	private $handler;
+	private ?\PDO $handler = NULL;
 
 	/**
 	 * Temporary store for the SQL Query.
 	 * @var string
 	 */
-	private $query;
+	private ?string $query;
 
 	/**
 	 * Registered error list.
 	 * @var array
 	 */
-	private $errors = [];
+	private array $errors = [];
 
 	/**
 	 * List of temporary table structures (describe, foreignKeys, inverseForeignKeys).
 	 * @var array
 	 */
-	private $definitions = [];
+	private array $definitions = [];
 
 	/**
 	 * Private constructor.
@@ -61,7 +55,7 @@ class Database {
 	 *
 	 * @throws	Exception
 	 */
-	public static function getInstance() {
+	public static function getInstance(): self {
 
 		if (is_null(self::$instance)) {
 			self::$instance = new self();
@@ -76,7 +70,7 @@ class Database {
 	 *
 	 * @throws	PDOException
 	 */
-	public function connectPersistent() {
+	public function connectPersistent(): void {
 
 		$this->openConnection(TRUE);
 
@@ -87,7 +81,7 @@ class Database {
 	 *
 	 * @throws	PDOException
 	 */
-	public function connect() {
+	public function connect(): void {
 
 		$this->openConnection(FALSE);
 
@@ -100,7 +94,7 @@ class Database {
 	 *
 	 * @throws	PDOException
 	 */
-	private function openConnection(bool $persistent=FALSE) {
+	private function openConnection(bool $persistent=FALSE): void {
 
 		// continue only if not already connected
 		if (is_a($this->handler, 'PDO')) {
@@ -134,7 +128,7 @@ class Database {
 	/**
 	 * Close PDO connection explicitly.
 	 */
-	public function disconnect() {
+	public function disconnect(): void {
 
 		unset($this->handler);
 
@@ -147,7 +141,7 @@ class Database {
 	 *
 	 * @param	string	SQL query.
 	 */
-	public function setQuery(string $query) {
+	public function setQuery(string $query): void {
 
 		$this->query = $query;
 
@@ -213,7 +207,7 @@ class Database {
 	/**
 	 * Starts a transaction.
 	 */
-	public static function start() {
+	public static function start(): void {
 
 		static::run('START TRANSACTION');
 
@@ -222,7 +216,7 @@ class Database {
 	/**
 	 * Commits a transaction.
 	 */
-	public static function commit() {
+	public static function commit(): void {
 
 		static::run('COMMIT');
 
@@ -231,7 +225,7 @@ class Database {
 	/**
 	 * Does the rollback of the transaction.
 	 */
-	public static function rollback() {
+	public static function rollback(): void {
 
 		static::run('ROLLBACK');
 
