@@ -374,21 +374,19 @@ abstract class View {
 
 	/**
 	 * Return an A-Z list with link for build an alpha filter.
-	 *
 	 * @param	string	Current selected list item, if any.
-	 *
 	 * @return	Generator
 	 */
-	public function getAlphaFilter($selected=NULL) {
+	public function getAlphaFilter(?string $selected=NULL): \Generator {
 
 		$router = Router::getInstance();
 
 		foreach (range('A', 'Z') as $a) {
 
 			$filter = new \stdClass();
-			$filter->href	= $router->module . '/' . $router->action . '/' . strtolower($a) . '/page-1';
+			$filter->href	= $router->module . '/' . $router->action . '/' . strtolower($a);
 			$filter->text	= $a;
-			$filter->active	= ($a == $selected);
+			$filter->active	= (strtolower($a) == strtolower($selected));
 
 			yield $filter;
 
@@ -423,6 +421,21 @@ abstract class View {
 		}
 
 		return $object;
+
+	}
+
+	/**
+	 * Prints the alpha filter bar.
+	 */
+	public function printAlphaFilter(?string $selected=NULL): void {
+
+		$router = Router::getInstance();
+		$letters = $this->getAlphaFilter($selected);
+
+		?><a href="<?php print $router->module ?>/<?php print $router->action ?>"><?php $this->_('ALL') ?></a><?php
+		foreach ($letters as $letter) {
+			?><a href="<?php print $letter->href ?>"<?php print ($letter->active ? ' class="active"' : '') ?>><?php print $letter->text ?></a><?php
+		}
 
 	}
 
