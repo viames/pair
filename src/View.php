@@ -386,7 +386,7 @@ abstract class View {
 			$filter = new \stdClass();
 			$filter->href	= $router->module . '/' . $router->action . '/' . strtolower($a);
 			$filter->text	= $a;
-			$filter->active	= (strtolower($a) == strtolower($selected));
+			$filter->active	= ($selected and strtolower((string)$a) == strtolower((string)$selected));
 
 			yield $filter;
 
