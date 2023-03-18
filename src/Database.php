@@ -7,6 +7,7 @@ define ('PAIR_DB_OBJECT',		2);
 define ('PAIR_DB_RESULT_LIST',	3);
 define ('PAIR_DB_RESULT',		4);
 define ('PAIR_DB_COUNT',		5);
+define ('PAIR_DB_DICTIONARY',	6);
 
 /**
  * Manages a PDO DB connection using the singleton pattern.
@@ -314,6 +315,12 @@ class Database {
 				case PAIR_DB_COUNT:
 					$res = (int)$stat->fetch(\PDO::FETCH_COLUMN);
 					$count = $res;
+					break;
+
+				// associative array
+				case PAIR_DB_DICTIONARY:
+					$res = $stat->fetchAll(\PDO::FETCH_ASSOC);
+					$count = count($res);
 					break;
 
 			}
