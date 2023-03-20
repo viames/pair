@@ -38,6 +38,12 @@ class Upload {
 	protected $fileTmpname;
 
 	/**
+	 * Array key type as coming by $_FILE variable.
+	 * @var string
+	 */
+	protected $fileType;
+
+	/**
 	 * MIME data for this file.
 	 * @var string
 	 */

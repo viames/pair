@@ -77,111 +77,11 @@ abstract class Report {
 	}
 
 	/**
-	 * Generic method for creating an Excel document from an array of data.
-	 * @deprecated
+	 * Return the number of rows of this Report.
 	 */
-	protected function createSpreadsheetFromData(string $documentTitle, array $data, array $columnsDef): Spreadsheet {
+	protected function countRows(): int {
 
-		$spreadsheet = new Spreadsheet();
-		$spreadsheet->setActiveSheetIndex(0);
-		$activeSheet = $spreadsheet->getActiveSheet();
-
-		foreach ($columnsDef as $col => $def) {
-			if (!isset($def->title)) {
-				throw new \Exception('Titolo colonna [' . $col . '] non definito');
-			}
-			$activeSheet->getCell([$col+1, 1])->setValue($def->title)->getStyle()->getFont()->setBold(TRUE);
-		}
-
-		$row = 2;
-
-		foreach ($data as $o) {
-
-			foreach ($columnsDef as $col => $def) {
-
-				$propertyName = $def->property ?? $def->title;
-				$value = $o->$propertyName;
-
-				$cell = $activeSheet->getCell([$col+1, $row]);
-
-				if (isset($def->format)) {
-
-					switch ($def->format) {
-
-						case 'numeric':
-							$cell->setValueExplicit($value, DataType::TYPE_NUMERIC);
-							break;
-
-						case 'currency':
-							$cell->setValueExplicit($value, DataType::TYPE_NUMERIC);
-							$cell->getStyle()->getNumberFormat()->setFormatCode('#,##0.00');
-							break;
-
-						case 'stringDate':
-							$dt = \DateTime::createFromFormat('Y-m-d', $value);
-							if (is_a($dt,'DateTime')) {
-								$cell->getStyle()->getNumberFormat()->setFormatCode('DD/MM/YYYY');
-								$cell->setValue($dt->format('d/m/Y'));
-							}
-							break;
-
-						case 'stringDateTime':
-							$dt = \DateTime::createFromFormat('Y-m-d H:i:s', $value);
-							if (is_a($dt,'DateTime')) {
-								$cell->getStyle()->getNumberFormat()->setFormatCode('DD/MM/YYYY HH:MM:SS');
-								$cell->setValue($dt->format('d/m/Y H:i:s'));
-							}
-							break;
-
-						case 'DateTime':
-							$cell->getStyle()->getNumberFormat()->setFormatCode('DD/MM/YYYY HH:MM:SS');
-							$cell->setValue($value->format('d/m/Y H:i:s'));
-							break;
-
-						case 'string':
-						default:
-							$cell->setValueExplicit($value, DataType::TYPE_STRING);
-							break;
-
-					}
-
-				} else  {
-
-					$cell->setValue($value);
-
-				}
-
-			}
-
-			$row++;
-
-		}
-
-		$spreadsheet->getProperties()
-			->setCreator(PRODUCT_NAME . ' ' . PRODUCT_VERSION)
-			->setLastModifiedBy(PRODUCT_NAME . ' ' . PRODUCT_VERSION)
-			->setTitle($documentTitle)
-			->setSubject($documentTitle);
-
-		return $spreadsheet;
-
-	}
-
-	/**
-	 * Old function to download the past Excel file.
-	 * @deprecated
-	 */
-	public function downloadLegacy(Spreadsheet $spreadsheet): void {
-
-		$filename = Utilities::localCleanFilename($spreadsheet->getProperties()->getTitle() . '.xls');
-
-		header('Content-Type: application/vnd.ms-excel');
-		header('Content-Disposition: attachment;filename="' . $filename);
-		header('Cache-Control: max-age=0');
-
-		// output the file to the browser
-		$xlsWriter = new Xls($spreadsheet);
-		$xlsWriter->save('php://output');
+		return count($this->data);
 
 	}
 
@@ -341,6 +241,9 @@ abstract class Report {
 
 	}
 
+	/**
+	 * Set column headers and cell values using an associative array.
+	 */
 	protected function setDataAndColumnsFromDictionary(array $dictionary): self {
 
 		// empty list
