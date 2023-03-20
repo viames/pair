@@ -6,14 +6,16 @@ class Menu {
 
 	/**
 	 * Item object list.
-	 * @var array
 	 */
-	protected $items = array();
+	protected $items = [];
+
+	/**
+	 * URL of the active menu item.
+	 */
+	protected ?string $activeItem = NULL;
 
 	/**
 	 * Add a Title item to menu.
-	 * 
-	 * @param	string	Title text.
 	 */
 	public function addTitle(string $title) {
 
