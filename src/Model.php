@@ -17,6 +17,12 @@ abstract class Model {
 	private $pagination;
 
 	/**
+	 * Database handler object.
+	 * @var Database
+	 */
+	private $db;
+
+	/**
 	 * List of all errors tracked.
 	 * @var array
 	 */
@@ -29,6 +35,8 @@ abstract class Model {
 
 		// singleton objects
 		$this->app	= Application::getInstance();
+
+		$this->db	= Database::getInstance();
 
 		$this->init();
 
