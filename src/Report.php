@@ -77,6 +77,15 @@ abstract class Report {
 	}
 
 	/**
+	 * Return the number of rows of this Report.
+	 */
+	protected function countRows(): int {
+
+		return count($this->data);
+
+	}
+
+	/**
 	 * Generic function to process and download the Excel file.
 	 */
 	public function download(): void {
