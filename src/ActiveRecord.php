@@ -823,6 +823,12 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$dbObj = $this->prepareData($props);
 		$res = $this->db->insertObject(static::TABLE_NAME, $dbObj, static::getEncryptableFields());
 
+		if (!$res) {
+			Logger::event('Failed to create a new ' . $class . ' object');
+			$this->addError($this->db->getLastError());
+			return FALSE;
+		}
+
 		// get last insert id if not compound key
 		if (!static::hasCompoundKey() and $autoIncrement) {
 
@@ -854,7 +860,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// hook for tasks to be executed after creation
 		$this->afterCreate();
 
-		return (bool)$res;
+		return $res;
 
 	}
 
@@ -923,6 +929,12 @@ abstract class ActiveRecord implements \JsonSerializable {
 			}
 
 			$res = (bool)$this->db->updateObject($class::TABLE_NAME, $dbObj, $dbKey, static::getEncryptableFields());
+
+			if (!$res) {
+				Logger::event('Failed to update ' . $class . ' object');
+				$this->addError($this->db->getLastError());
+				return FALSE;
+			}	
 
 			// reset updated-properties tracker
 			$this->updatedProperties = [];
