@@ -80,7 +80,7 @@ class Utilities {
 			} else {
 
 				print '<div style="background-color:#f1f1f1;border:2px solid red;margin:10px 0;padding:12px 16px">' .
-						PRODUCT_NAME . ' fatal error: ' . $error['message'] . '</div>';
+						PRODUCT_NAME . ' fatal error: ' . htmlspecialchars($error['message']) . '</div>';
 
 			}
 

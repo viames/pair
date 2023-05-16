@@ -109,7 +109,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		try {
 
-			if (array_key_exists($name, static::getBinds()) or in_array($name, ['keyProperties', 'db', 'loadedFromDb', 'typeList', 'cache', 'errors'])) {
+			if (array_key_exists($name, static::getBinds()) or in_array($name, ['keyProperties', 'db', 'loadedFromDb', 'typeList', 'cache', 'errors', 'updatedProperties', 'dynamicProperties'])) {
 				
 				if (!property_exists($this, $name)) {
 					throw new \Exception('Property “'. $name .'” doesn’t exist for object '. get_called_class());
