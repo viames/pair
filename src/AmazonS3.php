@@ -159,6 +159,18 @@ class AmazonS3 {
 	}
 
 	/**
+	 * Deletes the remote directory at the specified path.
+	 */
+	public function deleteDir(string $remoteDir): bool {
+
+		if ($this->exists($remoteDir)) {
+			$this->filesystem->deleteDir($remoteDir);
+		}
+
+		return true;
+	}
+
+	/**
 	 * Add an error to object’s error list.
 	 *
 	 * @param	string	Error message’s text.

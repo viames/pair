@@ -80,7 +80,7 @@ class Utilities {
 			} else {
 
 				print '<div style="background-color:#f1f1f1;border:2px solid red;margin:10px 0;padding:12px 16px">' .
-						PRODUCT_NAME . ' fatal error: ' . $error['message'] . '</div>';
+						PRODUCT_NAME . ' fatal error: ' . htmlspecialchars($error['message']) . '</div>';
 
 			}
 
@@ -186,21 +186,26 @@ class Utilities {
 		switch ($type) {
 
 			case 'boolean':
-				$text .= $var ? 'TRUE' : 'FALSE';
+				$text .= $var ? 'true' : 'false';
+				break;
+
+			case 'integer':
+			case 'double':
+				$text .= $var;
 				break;
 
 			default:
 				if (self::isJson($var)) {
-					$text .= nl2br($var);
+					$text .= '"' . nl2br($var) . '"';
 				} else {
-					$text .= $var;
+					$text .= '"' . $var . '"';
 				}
 				break;
 
 			case 'array':
 				$parts = [];
 				foreach ($var as $k=>$v) {
-					$parts[] = $getIndent(1) . $k . '=>' . self::varToText($v, $showTypes, $indent+1);
+					$parts[] = $getIndent(1) . '"' . $k . '"=' . self::varToText($v, $showTypes, $indent+1);
 				}
 				$text .= $getIndent(1) . '[<br>' . implode(',<br>', $parts) . '<br>'. $getIndent(-1) . ']<br>';
 				break;
@@ -212,6 +217,7 @@ class Utilities {
 				break;
 
 			case 'NULL':
+				$text .= 'null';
 				break;
 
 		}
