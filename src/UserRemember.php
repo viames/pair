@@ -3,7 +3,7 @@
 namespace Pair;
 
 class UserRemember extends ActiveRecord {
-	
+
 	/**
 	 * This property maps “user_id” column.
 	 * @var int
@@ -15,10 +15,10 @@ class UserRemember extends ActiveRecord {
 	 * @var string
 	 */
 	protected $rememberMe;
-	
+
 	/**
 	 * This property maps “created_at” column.
-	 * @var DateTime
+	 * @var DateTime|NULL
 	 */
 	protected $createdAt;
 
@@ -27,7 +27,7 @@ class UserRemember extends ActiveRecord {
 	 * @var string
 	 */
 	const TABLE_NAME = 'users_remembers';
-	
+
 	/**
 	 * Name of primary key db field.
 	 * @var array
@@ -61,16 +61,16 @@ class UserRemember extends ActiveRecord {
 			' FROM `users` AS u' .
 			' INNER JOIN `users_remembers` AS ur ON u.`id` = ur.`user_id`' .
 			' WHERE ur.`remember_me` = ?';
-		
+
 		$userClass = PAIR_USER_CLASS;
-		
+
 		return $userClass::getObjectByQuery($query, [$rememberMe]);
-		
+
 	}
 
 	/**
 	 * Utility to unserialize and return the remember-me cookie content {timezone, rememberMe}.
-	 * 
+	 *
 	 * @return	\stdClass|NULL
 	 */
 	public static function getCookieContent(): ?\stdClass {
@@ -82,36 +82,39 @@ class UserRemember extends ActiveRecord {
 		if (!isset($_COOKIE[$cookieName])) {
 			return NULL;
 		}
-			
+
 		// try to unserialize the cookie content
 		$content = unserialize($_COOKIE[$cookieName]);
-		
+
 		// cookie content is not unserializable
 		if (FALSE === $content) {
 			return  NULL;
 		}
 
+		$regex = "#^[123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVXYWZ]{32}$#";
+
 		// check if content exists and RememberMe length
-		if (isset($content[0]) and isset($content[1]) and 32==strlen($content[1])) {
+		if (is_array($content) and isset($content[0]) and isset($content[1]) and preg_match($regex, (string)$content[1])) {
 			$obj = new \stdClass();
-			$obj->timezone = $content[0];
-			$obj->rememberMe = $content[1];
+			$obj->timezone = ($content[0] and in_array($content[0], \DateTimeZone::listIdentifiers()))
+				? $content[0] : 'UTC';
+			$obj->rememberMe = (string)$content[1];
 			return $obj;
 		}
-		
+
 		return NULL;
 
 	}
 
 	/**
 	 * Build and return the cookie name.
-	 * 
+	 *
 	 * @return string
 	 */
 	public static function getCookieName(): string {
-		
+
 		return Application::getCookiePrefix() . 'RememberMe';
-		
+
 	}
 
 }

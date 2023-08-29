@@ -609,11 +609,11 @@ class User extends ActiveRecord {
 		if (!$this->issetCache('acl')) {
 
 			$query =
-				'SELECT r.*, m.name AS module_name' .
-				' FROM `rules` AS r' .
-				' INNER JOIN `acl` AS a ON a.rule_id = r.id'.
-				' INNER JOIN `modules` AS m ON r.module_id = m.id'.
-				' WHERE a.group_id = ?';
+				'SELECT r.*, m.`name` AS `module_name`
+				FROM `rules` AS r
+				INNER JOIN `acl` AS a ON a.`rule_id` = r.`id`
+				INNER JOIN `modules` AS m ON r.`module_id` = m.`id`
+				WHERE a.`group_id` = ?';
 
 			$this->setCache('acl', Rule::getObjectsByQuery($query, [$this->groupId]));
 
@@ -631,12 +631,12 @@ class User extends ActiveRecord {
 	public function getLanding(): ?\stdClass {
 
 		$query =
-			' SELECT m.`name` AS module, r.action' .
-			' FROM `acl` AS a' .
-			' INNER JOIN `rules` AS r ON r.id = a.rule_id' .
-			' INNER JOIN `modules` AS m ON m.id = r.module_id' .
-			' WHERE a.is_default = 1' .
-			' AND a.group_id = ?';
+			'SELECT m.`name` AS `module`, r.`action`
+			FROM `acl` AS a
+			INNER JOIN `rules` AS r ON r.id = a.`rule_id`
+			INNER JOIN `modules` AS m ON m.`id` = r.`module_id`
+			WHERE a.`is_default` = 1
+			AND a.`group_id` = ?';
 
 		return Database::load($query, [$this->groupId], PAIR_DB_OBJECT);
 
@@ -664,11 +664,11 @@ class User extends ActiveRecord {
 		if (!$this->issetCache('lang')) {
 
 			$query =
-				'SELECT l.code' .
-				' FROM `languages` AS l' .
-				' INNER JOIN `locales` AS lc ON l.id = lc.language_id' .
-				' INNER JOIN `users` AS u ON u.locale_id = lc.id' .
-				' WHERE u.id = ?';
+				'SELECT l.`code`
+				FROM `languages` AS l
+				INNER JOIN `locales` AS lc ON l.`id` = lc.`language_id`
+				INNER JOIN `users` AS u ON u.`locale_id` = lc.`id`
+				WHERE u.`id` = ?';
 
 			$this->setCache('lang', Database::load($query, [$this->id], PAIR_DB_RESULT));
 
@@ -756,11 +756,7 @@ class User extends ActiveRecord {
 	 */
 	public static function getByPwReset(string $pwReset): ?User {
 
-		$query =
-			'SELECT *' .
-			' FROM `users`' .
-			' WHERE `pw_reset` IS NOT NULL' .
-			' AND `pw_reset` = ?';
+		$query = 'SELECT * FROM `users` WHERE `pw_reset` IS NOT NULL AND `pw_reset` = ?';
 
 		return static::getObjectByQuery($query, [$pwReset]);
 
@@ -917,9 +913,9 @@ class User extends ActiveRecord {
 			return TRUE;
 		} else {
 			$query =
-				'SELECT COUNT(1) FROM `users`' .
-				' INNER JOIN `sessions` AS s ON u.id = s.id_user' .
-				' WHERE s.id = ? AND u.id = ? AND admin = 1';
+				'SELECT COUNT(1) FROM `users`
+				INNER JOIN `sessions` AS s ON u.`id` = s.`id_user`
+				WHERE s.`id` = ? AND u.`id` = ? AND `admin` = 1';
 			return (bool)Database::load($query, [Session::current(), $this->id], PAIR_DB_COUNT);
 		}
 
