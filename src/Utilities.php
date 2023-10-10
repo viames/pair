@@ -8,6 +8,11 @@ namespace Pair;
 class Utilities {
 
 	/**
+	 * List of characters allowed for the composition of a random string.
+	 */
+	const RANDOM_STRING_CHARS = '123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+	/**
 	 * Custom error handler.
 	 *
 	 * @param	int		Error number.
@@ -992,11 +997,8 @@ class Utilities {
 	 */
 	public static function getRandomString(int $length): string {
 
-		// list of available chars for random string
-		$availableChars = '123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVXYWZ';
-
 		// create a random string
-		return substr(str_shuffle($availableChars . $availableChars), 0, $length);
+		return substr(str_shuffle(self::RANDOM_STRING_CHARS . self::RANDOM_STRING_CHARS), 0, $length);
 
 	}
 

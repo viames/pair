@@ -316,7 +316,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$multiPairClass = 'Pair\\' . $multiClass;
 
 		// maybe call is referring to
-		if ('get'==substr($name,0,3)) {
+		if ($this->areKeysPopulated() and 'get'==substr($name,0,3)) {
 
 			// check if invoked a virtual method on Pair class
 			if (class_exists($evenPairClass) and is_subclass_of($evenPairClass,'Pair\ActiveRecord')) {

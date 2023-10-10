@@ -91,7 +91,7 @@ class UserRemember extends ActiveRecord {
 			return  NULL;
 		}
 
-		$regex = "#^[123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVXYWZ]{32}$#";
+		$regex = '#^[' . Utilities::RANDOM_STRING_CHARS . ']{32}$#';
 
 		// check if content exists and RememberMe length
 		if (is_array($content) and isset($content[0]) and isset($content[1]) and preg_match($regex, (string)$content[1])) {
