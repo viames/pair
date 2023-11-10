@@ -126,7 +126,7 @@ class Application {
 		}
 
 		// application folder without trailing slash
-		define('APPLICATION_PATH',	dirname(dirname(dirname(dirname(dirname(__FILE__))))));
+		define('APPLICATION_PATH', dirname(dirname(dirname(dirname(dirname(__FILE__))))));
 
 		// Pair folder
 		define('PAIR_FOLDER', substr(dirname(__FILE__), strlen(APPLICATION_PATH)+1));
@@ -1024,7 +1024,7 @@ class Application {
 		// make sure to have a template set
 		$template = $this->getTemplate();
 
-		$controllerFile = 'modules/' . $router->module . '/controller.php';
+		$controllerFile = APPLICATION_PATH . '/modules/' . $router->module . '/controller.php';
 
 		// check controller file existence
 		if (!file_exists($controllerFile) or '404' == $router->url) {

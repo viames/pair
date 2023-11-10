@@ -348,7 +348,7 @@ class Translator {
 		$this->checkLocaleSet();
 
 		// common strings in current language
-		$common = 'translations/' . $this->currentLocale->getRepresentation() . '.ini';
+		$common = APPLICATION_PATH . '/translations/' . $this->currentLocale->getRepresentation() . '.ini';
 		if (file_exists($common)) {
 			try {
 				$this->strings = @parse_ini_file($common);
@@ -364,7 +364,7 @@ class Translator {
 		if ($this->module) {
 
 			// module strings in current language
-			$file1 = 'modules/' . strtolower($this->module) . '/translations/' . $this->currentLocale->getRepresentation() . '.ini';
+			$file1 = APPLICATION_PATH . '/modules/' . strtolower($this->module) . '/translations/' . $this->currentLocale->getRepresentation() . '.ini';
 			if (file_exists($file1)) {
 				try {
 					$moduleStrings = @parse_ini_file($file1);
@@ -383,7 +383,7 @@ class Translator {
 		if ($this->currentLocale->getRepresentation() != $this->defaultLocale->getRepresentation()) {
 
 			// common strings in default language
-			$common = 'translations/' . $this->defaultLocale->getRepresentation() . '.ini';
+			$common = APPLICATION_PATH . '/translations/' . $this->defaultLocale->getRepresentation() . '.ini';
 			if (file_exists($common)) {
 				try {
 					$this->defaultStrings = @parse_ini_file($common);

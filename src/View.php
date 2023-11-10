@@ -124,8 +124,8 @@ abstract class View {
 
 			// load files as script and add timestamp to ignore browser caching
 			foreach ($files as $file) {
-				$fullPath = $this->moduleUrl . '/css/' . $file;
-				$this->app->loadCss($fullPath . '?' . filemtime($fullPath));
+				$subPath = '/css/' . $file;
+				$this->app->loadCss($this->moduleUrl . $subPath . '?' . filemtime($this->modulePath . $subPath));
 			}
 
 		}
@@ -138,8 +138,8 @@ abstract class View {
 
 			// load files as script and add timestamp to ignore browser caching
 			foreach ($files as $file) {
-				$fullPath = $this->moduleUrl . '/js/' . $file;
-				$this->app->loadScript($fullPath . '?' . filemtime($fullPath), TRUE);
+				$subPath = '/js/' . $file;
+				$this->app->loadScript($this->moduleUrl . $subPath . '?' . filemtime($this->modulePath . $subPath));
 			}
 
 		}

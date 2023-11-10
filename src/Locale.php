@@ -167,7 +167,9 @@ class Locale extends ActiveRecord {
 
 	public function getRepresentation(): string {
 
-		return $this->getLanguage()->code . '-' . $this->getCountry()->code;
+		$country = new Country($this->countryId);
+
+		return $this->getLanguage()->code . '-' . $country->code;
 
 	}
 

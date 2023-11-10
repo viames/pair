@@ -943,7 +943,7 @@ class Utilities {
 		$checkFolder('classes');
 
 		// modules classes
-		$modules = array_diff(scandir('modules'), array('..', '.', '.DS_Store'));
+		$modules = array_diff(scandir(APPLICATION_PATH . '/modules'), array('..', '.', '.DS_Store'));
 		foreach ($modules as $module) {
 			$checkFolder('modules/' . $module . '/classes');
 		}

@@ -11,7 +11,7 @@ class Widget {
 	 * Path to the file with a trailing slash.
 	 * @var string
 	 */
-	private $scriptPath = 'widgets/';
+	private $scriptPath = APPLICATION_PATH . '/widgets/';
 
 	/**
 	 * Renders the widget layout and returns it.
