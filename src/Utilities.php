@@ -512,13 +512,19 @@ class Utilities {
 	 */
 	public static function getDirectoryFilenames(string $path, string $subfolder=NULL, array $fileList=[]): array {
 
-		// list of files to exclude
-		$excludes = array('..', '.', '.DS_Store', 'thumbs.db', '.htaccess');
+		// usually insignificant files
+		$excludes = ['..', '.', '.DS_Store', 'thumbs.db', '.htaccess'];
 
 		try {
 
 			// reads folders file and dirs as plain array
-			$filenames = array_diff(scandir($path, 0), $excludes);
+			$filelist = scandir($path, 0);
+
+			if (!$filelist) {
+				throw new \Exception('Unable to scan directory ' . $path);
+			}
+
+			$filenames = array_diff($filelist, $excludes);
 
 			// we look at each file/dir
 			foreach ($filenames as $filename) {
@@ -544,7 +550,7 @@ class Utilities {
 		} catch (\Exception $e) {
 
 			trigger_error($e->getMessage());
-			return array();
+			return [];
 
 		}
 
