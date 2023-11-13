@@ -316,7 +316,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$multiPairClass = 'Pair\\' . $multiClass;
 
 		// maybe call is referring to
-		if ($this->areKeysPopulated() and 'get'==substr($name,0,3)) {
+		if ('get'==substr($name,0,3)) {
 
 			// check if invoked a virtual method on Pair class
 			if (class_exists($evenPairClass) and is_subclass_of($evenPairClass,'Pair\ActiveRecord')) {
@@ -1274,20 +1274,22 @@ abstract class ActiveRecord implements \JsonSerializable {
 			return NULL;
 		}
 
+		$relatedValue = $this->__get($relatedProperty);
+
 		//  check if is managed by common cache
 		if ($this->isInSharedCache($relatedProperty)) {
 
 			$app = Application::getInstance();
 
 			// assemble any composite key
-			$obj = $app->getActiveRecordCache($relatedClass, $this->$relatedProperty);
+			$obj = $app->getActiveRecordCache($relatedClass, $relatedValue);
 
 			// if got it from common cache, return it
 			if ($obj) {
 				return $obj;
 			// otherwise load from DB, store into common cache and return it
 			} else {
-				$obj = new $relatedClass($this->$relatedProperty);
+				$obj = new $relatedClass($relatedValue);
 				if ($obj->isLoaded()) {
 					$app->putActiveRecordCache($relatedClass, $obj);
 					return $obj;
@@ -1297,7 +1299,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 
 		// no common cache, so proceed to load the new wanted Pair object
-		$obj = new $relatedClass($this->$relatedProperty);
+		$obj = new $relatedClass($relatedValue);
 
 		// if loaded, return it otherwise NULL
 		$ret = ($obj->isLoaded() ? $obj : NULL);
