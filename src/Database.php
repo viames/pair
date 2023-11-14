@@ -1084,11 +1084,17 @@ class Database {
 		// indexed is binding with "?"
 		$indexed = $params==array_values($params);
 
-		foreach ($params as $column=>$v) {
+		foreach ($params as $column=>$value) {
 
-			if (is_string($v)) $v="'$v'";
+			if (is_string($value)) {
+				$value = "'$value'";
+			} else if (is_null($value)) {
+				$value = 'NULL';
+			} else {
+				$value = (string)$value;
+			}
 
-			$query = $indexed ? preg_replace('/\?/', (string)$v, $query, 1) : str_replace($column, $v, $query);
+			$query = $indexed ? preg_replace('/\?/', $value, $query, 1) : str_replace($column, $value, $query);
 
 		}
 
