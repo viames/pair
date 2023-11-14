@@ -3,11 +3,9 @@
 	"description": "lightweight PHP framework as the air",
 	"type": "library",
 	"require": {
-		"php": ">=7.3.0",
-		"ext-pdo" : "*",
-		"league/flysystem-aws-s3-v3": "^1.0",
-		"sistemi-etime/flysystem-plugin-aws-s3-v3": "^1.0",
-		"sentry/sdk": "^3.2",
+		"league/flysystem-aws-s3-v3": "^3",
+		"sistemi-etime/flysystem-plugin-aws-s3-v3": "^1",
+		"sentry/sdk": "^4",
 		"phpoffice/phpspreadsheet": "^1"
 	},
 	"repositories": [
@@ -52,6 +50,11 @@
 			"homepage": "https://viames.it"
 		}
 	],
+	"config": {
+		"platform": {
+			"php": "8"
+		}
+	},
 	"suggest": {
 		"ext-xdebug": "*"
 	},
