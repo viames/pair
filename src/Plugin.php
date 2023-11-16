@@ -448,11 +448,13 @@ class Plugin {
 		
 		$counter = 0;
 
-		$files = Utilities::getDirectoryFilenames(static::TEMP_FOLDER);
+		$baseFolder = APPLICATION_PATH . '/' . static::TEMP_FOLDER;
+
+		$files = Utilities::getDirectoryFilenames($baseFolder);
 
 		foreach ($files as $file) {
 
-			$pathFile	= APPLICATION_PATH . '/' .static::TEMP_FOLDER . '/' . $file;
+			$pathFile	= $baseFolder . '/' . $file;
 			$fileLife	= time() - filemtime($pathFile);
 			$maxLife	= static::FILE_EXPIRE * 60;
 			

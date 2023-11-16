@@ -402,7 +402,7 @@ class Locale extends ActiveRecord {
 		$locales = Locale::getObjectsByQuery($query);
 
 		// list all common translation files
-		$files = Utilities::getDirectoryFilenames('translations');
+		$files = Utilities::getDirectoryFilenames(APPLICATION_PATH . '/translations');
 
 		$existents = array();
 
