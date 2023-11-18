@@ -669,7 +669,7 @@ class Application {
 		$router = Router::getInstance();
 
 		// check if API has been called
-		if (!trim($name) or $name != $router->module or !file_exists(MODULE_PATH . 'controller.php')) {
+		if (!trim($name) or $name != $router->module or !file_exists(APPLICATION_PATH . '/' . MODULE_PATH . 'controller.php')) {
 			return;
 		}
 
@@ -680,7 +680,7 @@ class Application {
 		$logger->disable();
 
 		// require controller file
-		require (MODULE_PATH . 'controller.php');
+		require (APPLICATION_PATH . '/' . MODULE_PATH . 'controller.php');
 
 		// get SID or token via GET
 		$sid		= Router::get('sid');
