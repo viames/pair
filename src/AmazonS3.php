@@ -2,11 +2,10 @@
 
 namespace Pair;
 
-use Aws\S3\S3Client;
-use Etime\Flysystem\Plugin\AWS_S3\PresignedUrl;
-use Exception;
-use League\Flysystem\AwsS3v3\AwsS3Adapter;
-use League\Flysystem\Filesystem;
+use \Aws\S3\S3Client;
+use \Etime\Flysystem\Plugin\AWS_S3\PresignedUrl;
+use \League\Flysystem\AwsS3v3\AwsS3Adapter;
+use \League\Flysystem\Filesystem;
 
 class AmazonS3 {
 	/**
@@ -59,10 +58,18 @@ class AmazonS3 {
 	 */
 	public function put(string $filePath, string $destination): bool {
 
-		if (!file_exists($filePath)) return false;
+		if (!file_exists($filePath)) return FALSE;
 
 		$fileContents = file_get_contents($filePath);
-		return $this->filesystem->put($destination, $fileContents);
+
+		try {
+			$result = $this->filesystem->put($destination, $fileContents);
+		} catch(\Exception $e) {
+			$this->addError($e->getMessage());
+			return FALSE;
+		}
+
+		return $result;
 
 	}
 
@@ -78,16 +85,16 @@ class AmazonS3 {
 	public function get(string $remoteFile, string $localFilePath): bool {
 
 		$contents = $this->read($remoteFile);
-		if (!$contents) return false;
+		if (!$contents) return FALSE;
 
 		try {
 			file_put_contents($localFilePath, $contents);
-		} catch(Exception $e) {
+		} catch(\Exception $e) {
 			$this->addError($e->getMessage());
-			return false;
+			return FALSE;
 		}
 
-		return true;
+		return TRUE;
 	}
 
 	/**
@@ -115,7 +122,7 @@ class AmazonS3 {
 
 		try {
 			if (!$this->exists($remoteFile)) return null;
-		} catch(Exception $e) {
+		} catch(\Exception $e) {
 			$this->addError($e->getMessage());
 		}
 
@@ -135,7 +142,7 @@ class AmazonS3 {
 
 		try {
 			if ($this->filesystem->has($remoteFile)) $res = TRUE;
-		} catch(Exception $e) {
+		} catch(\Exception $e) {
 			$this->addError($e->getMessage());
 		}
 
@@ -151,11 +158,16 @@ class AmazonS3 {
 	 */
 	public function delete(string $remoteFile): bool {
 
-		if ($this->exists($remoteFile)) {
-			$this->filesystem->delete($remoteFile);
+		try {
+			if ($this->exists($remoteFile)) {
+				$this->filesystem->delete($remoteFile);
+			}
+		} catch(\Exception $e) {
+			$this->addError($e->getMessage());
+			return FALSE;
 		}
 
-		return true;
+		return TRUE;
 	}
 
 	/**
@@ -167,7 +179,7 @@ class AmazonS3 {
 			$this->filesystem->deleteDir($remoteDir);
 		}
 
-		return true;
+		return TRUE;
 	}
 
 	/**
