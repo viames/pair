@@ -3,7 +3,7 @@
 namespace Pair;
 
 class Token extends ActiveRecord {
-	
+
 	/**
 	 * This property maps “id” column.
 	 * @var int
@@ -15,7 +15,7 @@ class Token extends ActiveRecord {
 	 * @var string
 	 */
 	protected $code;
-	
+
 	/**
 	 * This property maps “description” column.
 	 * @var string
@@ -33,7 +33,7 @@ class Token extends ActiveRecord {
 	 * @var string
 	 */
 	protected $enabled;
-	
+
 	/**
 	 * This property maps “created_by” column.
 	 * @var int
@@ -48,16 +48,16 @@ class Token extends ActiveRecord {
 
 	/**
 	 * This property maps “last_use” column.
-	 * @var DateTime
+	 * @var DateTime|NULL
 	 */
 	protected $lastUse;
-	
+
 	/**
 	 * Name of related db table.
 	 * @var string
 	 */
 	const TABLE_NAME = 'tokens';
-	
+
 	/**
 	 * Name of primary key db field.
 	 * @var string|array
@@ -70,53 +70,53 @@ class Token extends ActiveRecord {
 	protected function init() {
 
 		$this->bindAsBoolean('enabled');
-		
+
 		$this->bindAsDatetime('creationDate', 'lastUse');
 
 		$this->bindAsInteger('id', 'createdBy');
 
 	}
-	
+
 	/**
 	 * Generate a random token.
-	 * 
+	 *
 	 * @param	int		Token length, default 16.
-	 * 
+	 *
 	 * @return	string
 	 */
 	public static function generate($length=16) {
-		
+
 		// PHP 7
 		if (version_compare(PHP_VERSION, '7.0.0') >= 0) {
 			$token = bin2hex(random_bytes($length));
 		} else {
 			$token = bin2hex(openssl_random_pseudo_bytes($length));
 		}
-		
+
 		return $token;
-		
+
 	}
-	
+
 	/**
 	 * Load a Token object from DB by its code and return it.
-	 * 
+	 *
 	 * @param	string	Token identifier code.
 	 * @return	Token|NULL
 	 */
-	public static function getByValue($tokenValue) {
-		
-		return self::getObjectByQuery('SELECT * FROM tokens WHERE value = ?', [$tokenValue]);
-		
+	public static function getByValue(string $tokenValue): ?self {
+
+		return self::getObjectByQuery('SELECT * FROM `tokens` WHERE `value` = ? AND `enabled` = 1', [$tokenValue]);
+
 	}
-	
+
 	/**
 	 * Set to now() the lastUse object property.
 	 */
-	public function updateLastUse() {
-		
+	public function updateLastUse(): void {
+
 		$this->lastUse = new \DateTime();
 		$this->update('lastUse');
-		
+
 	}
 
 }

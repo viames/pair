@@ -706,7 +706,7 @@ class Application {
 		// check token as first
 		if ($tokenValue) {
 
-			$token = Token::getByValue($tokenValue);
+			$token = Token::getByValue((string)$tokenValue);
 
 			// set token and start controller
 			if ($token) {
