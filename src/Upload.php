@@ -154,7 +154,7 @@ class Upload {
 
 		// fixes path if not containing trailing slash
 		Utilities::fixTrailingSlash($path);
-		$this->path = APPLICATION_PATH . '/' . $path;  
+		$this->path = $path;  
 
 		// sanitize file-name
 		$this->filename = Utilities::localCleanFilename($this->filename);
