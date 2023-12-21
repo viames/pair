@@ -228,7 +228,7 @@ class Input {
 			case 'boolean':
 				if ('true'==strtolower($val)) {
 					$val = TRUE;
-				} else if ('false'==strtolower($val)) {
+				} else if ('false'==strtolower((string)$val)) {
 					$val = FALSE;
 				} else {
 					$val = (bool)$val;

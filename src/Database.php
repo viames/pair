@@ -859,7 +859,7 @@ class Database {
 		// check if was set in the object cache property
 		if (!isset($this->definitions[$tableName]['describe'])) {
 
-			$res = self::load('DESCRIBE `' . $tableName . '`', NULL);
+			$res = self::load('DESCRIBE `' . $tableName . '`');
 			$this->definitions[$tableName]['describe'] = is_null($res) ? [] : $res;
 
 		}
@@ -1092,6 +1092,11 @@ class Database {
 				$value = 'NULL';
 			} else {
 				$value = (string)$value;
+			}
+
+			// fix omitted ":" on named parameters
+			if (':'!=substr($column,0,1)) {
+				$column = ':'.$column;
 			}
 
 			$query = $indexed ? preg_replace('/\?/', $value, $query, 1) : str_replace($column, $value, $query);
