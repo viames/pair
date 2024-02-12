@@ -103,10 +103,11 @@ class Database {
 		}
 
 		$dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME;
-		$options = array(
+		$options = [
 			\PDO::ATTR_PERSISTENT			=> (bool)$persistent,
 			\PDO::MYSQL_ATTR_INIT_COMMAND	=> "SET NAMES utf8",
-			\PDO::MYSQL_ATTR_FOUND_ROWS		=> TRUE);
+			\PDO::MYSQL_ATTR_FOUND_ROWS		=> TRUE
+		];
 
 		try {
 

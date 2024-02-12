@@ -30,7 +30,7 @@ class Logger {
 	 * Full event list.
 	 * @var \stdClass[]
 	 */
-	private $events = array();
+	private $events = [];
 	
 	/**
 	 * Flag force log disabled.
@@ -462,7 +462,7 @@ class Logger {
 	 */
 	final public function reset() {
 		
-		$this->events = array();
+		$this->events = [];
 		$this->startChrono();
 		
 	}

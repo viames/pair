@@ -51,7 +51,7 @@ class Input {
 			// evaluates whether it’s an array
 			if (is_array($request[$name])) {
 
-				$values = array();
+				$values = [];
 
 				foreach ($request[$name] as $val) {
 					$values[] = self::castTo($val, $type);
@@ -171,7 +171,7 @@ class Input {
 	 */
 	public static function getInputsByRegex($pattern, $type='string', $default=NULL): array {
 
-		$list = array();
+		$list = [];
 
 		foreach ($_POST as $name=>$value) {
 

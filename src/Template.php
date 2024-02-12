@@ -102,6 +102,9 @@ class Template extends ActiveRecord implements PluginInterface {
 		
 		switch ($name) {
 			
+			/**
+			 * @deprecated use Template::getPath() instead.
+			 */
 			case 'templatePath':
 				return $this->getPath();
 				break;
@@ -146,7 +149,7 @@ class Template extends ActiveRecord implements PluginInterface {
 	 */
 	protected static function getBinds(): array {
 
-		$varFields = array(
+		$varFields = [
 			'id'			=> 'id',
 			'name'			=> 'name',
 			'version'		=> 'version',
@@ -156,7 +159,8 @@ class Template extends ActiveRecord implements PluginInterface {
 			'installedBy'	=> 'installed_by',
 			'dateInstalled'	=> 'date_installed',
 			'derived'		=> 'derived',
-			'palette'		=> 'palette');
+			'palette'		=> 'palette'
+		];
 		
 		return $varFields;
 
@@ -225,7 +229,7 @@ class Template extends ActiveRecord implements PluginInterface {
 	 */
 	public function getPlugin() {
 	
-		$folder = $this->getBaseFolder() . '/' . strtolower(str_replace(array(' ', '_'), '', $this->name));
+		$folder = $this->getBaseFolder() . '/' . strtolower(str_replace([' ', '_'], '', $this->name));
 		$dateReleased = $this->dateReleased->format('Y-m-d');
 		
 		// special parameters for Template plugin
@@ -325,7 +329,7 @@ class Template extends ActiveRecord implements PluginInterface {
 	public function getPath() {
 		
 		$templateName = $this->derived ? $this->base->name : $this->name;
-		return 'templates/' . strtolower($templateName) . '/';
+		return APPLICATION_PATH . '/templates/' . strtolower($templateName) . '/';
 		
 	}
 

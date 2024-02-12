@@ -44,7 +44,7 @@ class Plugin {
 	 * A list of plugin option fields.
 	 * @var array
 	 */
-	protected $options = array();
+	protected $options = [];
 	
 	/**
 	 * Cache folder’s name on relative path.
@@ -69,7 +69,7 @@ class Plugin {
 	 * @param	string	Absolute path to plugin folder, without trailing slash.
 	 * @param	array	List of option fields (optional, specific to each plugin type).
 	 */
-	public function __construct($type = NULL, $name = NULL, $version = NULL, $dateReleased = NULL, $appVersion = NULL, $baseFolder = NULL, $options = array()) {
+	public function __construct($type = NULL, $name = NULL, $version = NULL, $dateReleased = NULL, $appVersion = NULL, $baseFolder = NULL, $options = []) {
 		
 		$this->type			= $type;
 		$this->name			= $name;
@@ -290,7 +290,7 @@ class Plugin {
 		$class = ucfirst($mAttributes->type);
 		
 		// add namespace for Pair classes
-		if (in_array($class, array('Module', 'Template'))) {
+		if (in_array($class, ['Module', 'Template'])) {
 			$class = 'Pair\\' . $class;
 		}
 		
@@ -379,7 +379,7 @@ class Plugin {
 		while (false !== $f = readdir($handle)) {
 			
 			// list of unwanted files
-			$excluded = array('.', '..', '.DS_Store', 'thumbs.db');
+			$excluded = ['.', '..', '.DS_Store', 'thumbs.db'];
 			
 			if (!in_array($f, $excluded)) {
 				

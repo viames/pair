@@ -58,11 +58,12 @@ class Language extends ActiveRecord {
 	 */
 	protected static function getBinds(): array {
 
-		$varFields = array(
+		$varFields = [
 			'id'			=> 'id',
 			'code'			=> 'code',
 			'englishName'	=> 'english_name',
-			'nativeName'	=> 'native_name');
+			'nativeName'	=> 'native_name'
+		];
 
 		return $varFields;
 

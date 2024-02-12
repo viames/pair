@@ -72,7 +72,7 @@ class Form {
 	 * @param	array	List of attributes.
 	 * @return	FormControlButton
 	 */
-	public function addButton(string $name, array $attributes = array()): FormControlButton {
+	public function addButton(string $name, array $attributes = []): FormControlButton {
 
 		$control = new FormControlButton($name, $attributes);
 		$this->addControl($control);
@@ -277,7 +277,7 @@ class Form {
 	 */
 	public function getUnvalidControls(): array {
 
-		$unvalids = array();
+		$unvalids = [];
 
 		foreach ($this->controls as $control) {
 
@@ -347,7 +347,11 @@ class Form {
 	public static function buildSelectFromArray(string $name, array $list, string $value=NULL, $attributes=NULL, $prependEmpty=NULL) {
 
 		$control = new FormControlSelect($name, $attributes);
-		$control->setListByAssociativeArray($list)->prependEmpty($prependEmpty)->setValue($value);
+		$control->setListByAssociativeArray($list)->setValue($value);
+
+		if ($prependEmpty) {
+			$control->prependEmpty($prependEmpty);
+		}
 
 		return $control->render();
 
@@ -363,7 +367,7 @@ class Form {
 	 *
 	 * @return	string
 	 */
-	public static function buildInput(string $name, string $value=NULL, string $type='text', $attributes=array()) {
+	public static function buildInput(string $name, string $value=NULL, string $type='text', $attributes=[]) {
 
 		$control = new FormControlInput($name, $attributes);
 		$control->setType($type)->setValue($value);
@@ -383,7 +387,7 @@ class Form {
 	 *
 	 * @return string
 	 */
-	public static function buildTextarea(string $name, int $rows, int $cols, $value=NULL, $attributes=array()) {
+	public static function buildTextarea(string $name, int $rows, int $cols, $value=NULL, $attributes=[]) {
 
 		$control = new FormControlTextarea($name, $attributes);
 		$control->setRows($rows)->setCols($cols)->setValue($value);
@@ -403,7 +407,7 @@ class Form {
 	 *
 	 * @return	string
 	 */
-	public static function buildButton(string $value, string $type='submit', string $name=NULL, $attributes=array(), $faIcon=NULL) {
+	public static function buildButton(string $value, string $type='submit', string $name=NULL, $attributes=[], $faIcon=NULL) {
 
 		$control = new FormControlButton($name, $attributes);
 		$control->setType($type)->setFaIcon($faIcon)->setValue($value);
@@ -775,7 +779,7 @@ abstract class FormControl {
 		// no label, get it by the control’s name
 		if (!$this->label) {
 
-			$label = ucwords(preg_replace(array('/(?<=[^A-Z])([A-Z])/', '/(?<=[^0-9])([0-9])/'), ' $0', $this->name));
+			$label = ucwords(preg_replace(['/(?<=[^A-Z])([A-Z])/', '/(?<=[^0-9])([0-9])/'], ' $0', $this->name));
 
 		// check if it’s a translation key, uppercase over 3 chars
 		} else if (strtoupper($this->label) == $this->label and strlen($this->label) > 3) {
@@ -1267,7 +1271,7 @@ class FormControlSelect extends FormControl {
 	 * Items list of \stdClass objs with value and text attributes.
 	 * @var array
 	 */
-	private $list = array();
+	private $list = [];
 
 	/**
 	 * Flag to enable this control to multiple values.
@@ -1435,7 +1439,7 @@ class FormControlSelect extends FormControl {
 			$option			= new \stdClass();
 			$option->value	= '';
 			$option->text	= ($this->disabled or $this->readonly) ? '' : $this->emptyOption;
-			$this->list = array_merge(array($option), $this->list);
+			$this->list = array_merge([$option], $this->list);
 		}
 
 		$ret = '<select ' . $this->getNameProperty();

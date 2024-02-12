@@ -200,7 +200,7 @@ class Options {
 
 		$res = Database::load('SELECT * FROM `options` ORDER BY `group`');
 
-		$this->list = array();
+		$this->list = [];
 
 		foreach ($res as $o) {
 

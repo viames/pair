@@ -101,13 +101,13 @@ class Group extends ActiveRecord {
 	 */
 	protected function beforeDelete() {
 
-		$acls = Acl::getAllObjects(array('groupId' => $this->id));
+		$acls = Acl::getAllObjects(['groupId' => $this->id]);
 		foreach ($acls as $acl) {
 			$acl->delete();
 		}
 
 		$userClass = PAIR_USER_CLASS;
-		$users = $userClass::getAllObjects(array('groupId' => $this->id));
+		$users = $userClass::getAllObjects(['groupId' => $this->id]);
 		foreach ($users as $user) {
 			$user->delete();
 		}

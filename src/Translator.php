@@ -52,10 +52,8 @@ class Translator {
 
 	/**
 	 * Return the singleton object.
-	 *
-	 * @return object
 	 */
-	public static function getInstance() {
+	public static function getInstance(): Translator {
 
 		if (is_null(static::$instance)) {
 			static::$instance = new static();
@@ -220,7 +218,7 @@ class Translator {
 
 			// force a single string to be the expected array
 			if (!is_array($vars)) {
-				$vars = array((string)$vars);
+				$vars = [(string)$vars];
 			}
 
 			// binds of parameters on %s placeholders
@@ -272,7 +270,7 @@ class Translator {
 
 			// force a single string to be the expected array
 			if (!is_array($vars)) {
-				$vars = array((string)$vars);
+				$vars = [(string)$vars];
 			}
 
 			// binds of parameters on %s placeholders
@@ -323,7 +321,7 @@ class Translator {
 	/**
 	 * Load translation strings from current and default (if different) language ini file.
 	 */
-	private function loadStrings() {
+	private function loadStrings(): void {
 
 		// load strings just once
 		if (is_array($this->strings)) {
@@ -331,7 +329,7 @@ class Translator {
 		}
 
 		// avoid failures
-		$this->strings = array();
+		$this->strings = [];
 
 		// useful for landing page
 		if (!$this->module) {
@@ -356,7 +354,7 @@ class Translator {
 					throw new \Exception('File parsing failed: ' . $common);
 				}
 			} catch (\Exception $e) {
-				$this->strings = array();
+				$this->strings = [];
 			}
 		}
 
@@ -372,7 +370,7 @@ class Translator {
 						throw new \Exception('File parsing failed: ' . $file1);
 					}
 				} catch (\Exception $e) {
-					$moduleStrings = array();
+					$moduleStrings = [];
 				}
 				$this->strings = array_merge($this->strings, $moduleStrings);
 			}
@@ -388,7 +386,7 @@ class Translator {
 				try {
 					$this->defaultStrings = @parse_ini_file($common);
 				} catch (\Exception $e) {
-					$this->defaultStrings = array();
+					$this->defaultStrings = [];
 				}
 			}
 
@@ -401,7 +399,7 @@ class Translator {
 					try {
 						$moduleStrings = @parse_ini_file($file2);
 					} catch (\Exception $e) {
-						$moduleStrings = array();
+						$moduleStrings = [];
 					}
 					$this->defaultStrings = array_merge($this->defaultStrings, $moduleStrings);
 				}

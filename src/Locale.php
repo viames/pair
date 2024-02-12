@@ -247,11 +247,11 @@ class Locale extends ActiveRecord {
 
 			// scans file and gets translation strings
 			$strings = parse_ini_file($file);
-			return (is_array($strings) ? $strings : array());
+			return (is_array($strings) ? $strings : []);
 
 		} else {
 
-			return array();
+			return [];
 
 		}
 
@@ -319,7 +319,7 @@ class Locale extends ActiveRecord {
 
 		}
 
-		$lines = array();
+		$lines = [];
 
 		// translated lines only if not empty
 		foreach ($strings as $key=>$value) {
@@ -404,7 +404,7 @@ class Locale extends ActiveRecord {
 		// list all common translation files
 		$files = Utilities::getDirectoryFilenames(APPLICATION_PATH . '/translations');
 
-		$existents = array();
+		$existents = [];
 
 		foreach ($files as $file) {
 

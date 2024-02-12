@@ -50,13 +50,13 @@ class Router {
 	 * Extended variables.
 	 * @var array
 	 */
-	private $vars = array();
+	private $vars = [];
 
 	/**
 	 * Defautls value when empty URL.
 	 * @var array
 	 */
-	private $defaults = array('module'=>NULL,'action'=>NULL);
+	private $defaults = ['module'=>NULL,'action'=>NULL];
 
 	/**
 	 * Current page number.
@@ -74,7 +74,7 @@ class Router {
 	 * List of custom routing paths.
 	 * @var array
 	 */
-	private $routes = array();
+	private $routes = [];
 
 	/**
 	 * Flag for show log informations on AJAX calls.
@@ -254,7 +254,7 @@ class Router {
 				$parts = array_values(array_filter(explode('/', $r->path)));
 
 				// initialize array of temporary variables
-				$variables = array();
+				$variables = [];
 
 				// store the variables found with name and position
 				foreach ($parts as $pos => $part) {
@@ -495,7 +495,7 @@ class Router {
 	 */
 	public function resetParams() {
 
-		$this->vars = array();
+		$this->vars = [];
 
 	}
 
@@ -539,7 +539,12 @@ class Router {
 		$cookieName = Application::getCookiePrefix() . ucfirst($this->module) . ucfirst($this->action);
 
 		// set the persistent state
-		setcookie($cookieName, $number, 0, '/');
+		setcookie($cookieName, $number, [
+			'expires' => time() + 2592000, // 30 days
+			'path' => '/',
+			'samesite' => 'Lax',
+			'secure' => !Application::isDevelopmentHost()
+		]);
 
 	}
 
@@ -556,7 +561,12 @@ class Router {
 		// unset the persistent state
 		if (isset($_COOKIE[$cookieName])) {
 			unset($_COOKIE[$cookieName]);
-			setcookie($cookieName, '', -1, '/');
+			setcookie($cookieName, '', [
+				'expires' => -1,
+				'path' => '/',
+				'samesite' => 'Lax',
+				'secure' => !Application::isDevelopmentHost()
+			]);
 		}
 
 	}
@@ -720,8 +730,8 @@ class Router {
 	 */
 	public function getUrl(): string {
 
-		$sefParams = array();
-		$cgiParams = array();
+		$sefParams = [];
+		$cgiParams = [];
 
 		// queue all parameters
 		foreach ($this->vars as $key=>$val) {

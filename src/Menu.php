@@ -55,7 +55,7 @@ class Menu {
 		$multi->type	= 'multi';
 		$multi->title	= $title;
 		$multi->class	= $class;
-		$multi->list	= array();
+		$multi->list	= [];
 		foreach ($list as $i) {
 			$multi->list[]	= $i;
 		}

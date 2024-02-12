@@ -22,7 +22,7 @@ abstract class View {
 	 * Content variables for layout.
 	 * @var array
 	 */
-	private $vars = array();
+	private $vars = [];
 
 	/**
 	 * Pagination variable.

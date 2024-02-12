@@ -112,7 +112,7 @@ class Module extends ActiveRecord implements PluginInterface {
 		}
 
 		// deletes object dependances
-		$rules = Rule::getAllObjects(array('moduleId' => $this->id));
+		$rules = Rule::getAllObjects(['moduleId' => $this->id]);
 		foreach ($rules as $rule) {
 			$rule->delete();
 		}
@@ -158,7 +158,7 @@ class Module extends ActiveRecord implements PluginInterface {
 	 */
 	public function getPlugin() {
 
-		$folder = $this->getBaseFolder() . '/' . strtolower(str_replace(array(' ', '_'), '', $this->name));
+		$folder = $this->getBaseFolder() . '/' . strtolower(str_replace([' ', '_'], '', $this->name));
 		$dateReleased = $this->dateReleased->format('Y-m-d');
 
 		$plugin = new Plugin('Module', $this->name, $this->version, $dateReleased, $this->appVersion, $folder);

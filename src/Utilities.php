@@ -20,7 +20,7 @@ class Utilities {
 	 * @param	string	Error full file path.
 	 * @param	string	Error line.
 	 */
-	public static function customErrorHandler($errno, $errstr, $errfile, $errline) {
+	public static function customErrorHandler(int $errno, string $errstr, string $errfile, string $errline): void {
 
 		$backtrace = self::getDebugBacktrace();
 
@@ -68,7 +68,7 @@ class Utilities {
 	/**
 	 * Manages fatal errors (out of memory etc.) sending email to all address in options.
 	 */
-	public static function fatalErrorHandler() {
+	public static function fatalErrorHandler(): void {
 
 		// get fatal error array
 		$error = error_get_last();
@@ -143,11 +143,11 @@ class Utilities {
 		$backtrace = debug_backtrace();
 		array_shift($backtrace);
 
-		$ret = array();
+		$ret = [];
 
 		foreach ($backtrace as $event) {
 
-			$args = array();
+			$args = [];
 
 			if (array_key_exists('args', $event)) {
 				foreach ($event['args'] as $arg) {
@@ -251,7 +251,7 @@ class Utilities {
 	 * @param	bool	Error flag, set TRUE to notice about error (optional).
 	 * @param	bool	Error code (optional).
 	 */
-	public static function printJsonMessage(string $message, $error=FALSE, $code=NULL) {
+	public static function printJsonMessage(string $message, $error=FALSE, $code=NULL): void {
 
 		$logger = Logger::getInstance();
 
@@ -276,7 +276,7 @@ class Utilities {
 	 * @param	bool	Error flag, set TRUE to notice about error (optional).
 	 * @param	bool	Error code (optional).
 	 */
-	public static function printJsonData($data, $message='', $error=FALSE, $code=NULL) {
+	public static function printJsonData($data, $message='', $error=FALSE, $code=NULL): void {
 
 		$logger = Logger::getInstance();
 
@@ -299,13 +299,14 @@ class Utilities {
 	 * @param	string	string containing XML data.
 	 * @param	string	name that the downloaded file will have on client.
 	 */
-	public static function printXmlData(string $data, string $filename)
-	{
+	public static function printXmlData(string $data, string $filename): void {
+
 		header('Content-type: text/xml');
 		header('Content-Disposition: attachment; filename="' . $filename . '"');
 
 		print $data;
 		die();
+
 	}
 
 	/**
@@ -332,7 +333,7 @@ class Utilities {
 	 */
 	public static function getJsMessage(string $title, string $message, string $type='info'): string {
 
-		$types = array('info', 'warning', 'error');
+		$types = ['info', 'warning', 'error'];
 		if (!in_array($type, $types)) $type = 'info';
 
 		$message = '<script>$(document).ready(function(){$.showMessage("'.
@@ -348,7 +349,6 @@ class Utilities {
 	 * Will returns a div tag with timeago content.
 	 *
 	 * @param	mixed	DateTime, integer-timestamp or string date.
-	 *
 	 * @return	string
 	 */
 	public static function getTimeago($date): string {
@@ -395,7 +395,7 @@ class Utilities {
 	 *
 	 * @param	string	Custom message to print in the container.
 	 */
-	public static function printNoDataMessageBox($customMessage=NULL) {
+	public static function printNoDataMessageBox(?string $customMessage=NULL) {
 
 		Router::exceedingPaginationFallback();
 
@@ -427,8 +427,8 @@ class Utilities {
 		$string = strtolower($string);
 
 		// cleans accents and unify separators -
-		$pattern = array ('_',' ','\'','à','è','é','ì','ò','ù');
-		$replace = array ('-','-','-', 'a','e','e','i','o','u');
+		$pattern = ['_',' ','\'','à','è','é','ì','ò','ù'];
+		$replace = ['-','-','-', 'a','e','e','i','o','u'];
 		$string	= str_replace($pattern,$replace,$string);
 
 		// deletes everything is not words, numbers, dots and minus
@@ -456,7 +456,7 @@ class Utilities {
 	 *
 	 * @return	string
 	 */
-	public static function uniqueFilename($filename, $path) {
+	public static function uniqueFilename(string $filename, string $path): string {
 
 		// fixes path if not containing trailing slash
 		self::fixTrailingSlash($path);
@@ -481,7 +481,7 @@ class Utilities {
 	 *
 	 * @return	string
 	 */
-	public static function randomFilename($extension, $path) {
+	public static function randomFilename(string $extension, string $path): string {
 
 		// fixes path if not containing trailing slash
 		self::fixTrailingSlash($path);
@@ -593,17 +593,19 @@ class Utilities {
 	 * @param	string	Text to clean.
 	 * @return	string
 	 */
-	public static function convertDiacritics($text) {
+	public static function convertDiacritics(string $text): string {
 
-		$search = array(
-				'à', 'á', 'â', 'ã', 'ä', 'å', 'æ', 'ß', 'ç', 'ð', 'è', 'é', 'ê', 'ë',
-				'ì', 'í', 'î', 'ï', 'ñ', 'ò', 'ó', 'ô', 'õ', 'ö', 'ø', 'œ', 'ù', 'ú',
-				'û', 'ü', 'Þ', 'þ', 'ÿ');
+		$search = [
+			'à', 'á', 'â', 'ã', 'ä', 'å', 'æ', 'ß', 'ç', 'ð', 'è', 'é', 'ê', 'ë',
+			'ì', 'í', 'î', 'ï', 'ñ', 'ò', 'ó', 'ô', 'õ', 'ö', 'ø', 'œ', 'ù', 'ú',
+			'û', 'ü', 'Þ', 'þ', 'ÿ'
+		];
 
-		$replace = array(
-				'a', 'a', 'a', 'a','ae', 'a','ae','ss', 'c', 'd', 'e', 'e', 'e', 'e',
-				'i', 'i', 'i', 'i', 'n', 'o', 'o', 'o', 'o','oe', 'o','oe', 'u', 'u',
-				'u','ue', 't', 't','yu');
+		$replace = [
+			'a', 'a', 'a', 'a','ae', 'a','ae','ss', 'c', 'd', 'e', 'e', 'e', 'e',
+			'i', 'i', 'i', 'i', 'n', 'o', 'o', 'o', 'o','oe', 'o','oe', 'u', 'u',
+			'u','ue', 't', 't','yu'
+		];
 
 		return str_replace($search, $replace, $text);
 
@@ -737,12 +739,13 @@ class Utilities {
 	public static function getDateTimeFromRfc($date) {
 
 		// various date formats
-		$formats = array(
+		$formats = [
 				'RFC2822' => \DateTime::RFC2822,	// Fri, 06 Nov 2015 09:23:05 +0100
 				'RFC2046' => 'D, d M Y H:i:s O T',	// Fri, 06 Nov 2015 09:23:05 +0100 (CET)
 				'CUSTOM1' => 'D, j M Y H:i:s O',	// Fri, 6 Feb 2015 09:23:05 +0100
 				'CUSTOM2' => 'd M Y H:i:s O',		// 06 Nov 2015 09:23:05 +0100
-				'RSS2'    => 'D, d M Y H:i:s T');	// Tue, 10 May 2016 15:33:54 GMT
+				'RSS2'    => 'D, d M Y H:i:s T'		// Tue, 10 May 2016 15:33:54 GMT
+		];
 
 		// tries each date format
 		foreach ($formats as $format) {
@@ -768,10 +771,10 @@ class Utilities {
 
 		$user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? strtolower($_SERVER['HTTP_USER_AGENT']) : '';
 
-		$devices = array('phone', 'iphone', 'itouch', 'ipod', 'symbian', 'android', 'htc_', 'htc-',
+		$devices = ['phone', 'iphone', 'itouch', 'ipod', 'symbian', 'android', 'htc_', 'htc-',
 				'palmos', 'blackberry', 'opera mini', 'iemobile', 'windows ce', 'nokia', 'fennec',
 				'hiptop', 'kindle', 'mot ', 'mot-', 'webos\/', 'samsung', 'sonyericsson', '^sie-',
-				'nintendo');
+				'nintendo'];
 
 		if (preg_match('/' . implode('|', $devices) . '/', $user_agent)) {
 			return TRUE;
@@ -899,7 +902,7 @@ class Utilities {
 
 			if (!is_dir($folder)) return;
 
-			$files = array_diff(scandir($folder), array('..', '.', '.DS_Store'));
+			$files = array_diff(scandir($folder), ['..', '.', '.DS_Store']);
 
 			foreach ($files as $file) {
 
@@ -949,7 +952,7 @@ class Utilities {
 		$checkFolder('classes');
 
 		// modules classes
-		$modules = array_diff(scandir(APPLICATION_PATH . '/modules'), array('..', '.', '.DS_Store'));
+		$modules = array_diff(scandir(APPLICATION_PATH . '/modules'), ['..', '.', '.DS_Store']);
 		foreach ($modules as $module) {
 			$checkFolder('modules/' . $module . '/classes');
 		}

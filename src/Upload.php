@@ -77,7 +77,7 @@ class Upload {
 	 * List of all errors tracked.
 	 * @var array
 	 */
-	private $errors = array();
+	private $errors = [];
 
 	/**
 	 * Constructor, sets file uploaded variables as object properties.

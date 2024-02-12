@@ -138,6 +138,15 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 
 	/**
+	 * Magic method required by array_columns().
+	 */
+	public function __isset($name) : bool {
+
+        return isset($this->$name);
+
+    }
+
+	/**
 	 * Magic method to set an object property value. If DateTime property, will properly
 	 * manage integer or string date.
 	 * @param	string	Property’s name.

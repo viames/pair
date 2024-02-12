@@ -147,7 +147,7 @@ class Application {
 		require $config;
 
 		// default constants
-		$defaults = array(
+		$defaults = [
 			'PAIR_AUTH_BY_EMAIL' => TRUE,
 			'BASE_URI' => '',
 			'DBMS' => 'mysql',
@@ -173,7 +173,7 @@ class Application {
 			'S3_BUCKET_REGION' => FALSE,
 			'S3_BUCKET_NAME' => FALSE,
 			'SENTRY_DSN' => NULL
-		);
+		];
 
 		// set default constants in case of missing
 		foreach ($defaults as $key=>$val) {
@@ -267,7 +267,7 @@ class Application {
 
 			/**
 			 * for login page we need a default template
-			 * @deprecated
+			 * @deprecated use Template::getPath() instead.
 			 */
 			case 'templatePath':
 
@@ -943,7 +943,12 @@ class Application {
 
 		$this->persistentState[$name] = $value;
 
-		setcookie($name, json_encode($value), 0, '/');
+		setcookie($name, json_encode($value), [
+			'expires' => time() + 2592000, // 30 days
+			'path' => '/',
+			'samesite' => 'Lax',
+			'secure' => !self::isDevelopmentHost()
+		]);
 
 	}
 
@@ -981,7 +986,12 @@ class Application {
 
 		if (isset($_COOKIE[$name])) {
 			unset($_COOKIE[$name]);
-			setcookie($name, '', -1, '/');
+			setcookie($name, '', [
+				'expires' => -1,
+				'path' => '/',
+				'samesite' => 'Lax',
+				'secure' => !self::isDevelopmentHost()
+			]);
 		}
 
 	}
@@ -1048,7 +1058,7 @@ class Application {
 			// set log of ajax call
 			if ($router->ajax) {
 
-				$params = array();
+				$params = [];
 				foreach ($router->vars as $key=>$value) {
 					$params[] = $key . '=' . Utilities::varToText($value);
 				}
@@ -1157,7 +1167,7 @@ class Application {
 
 			foreach ($this->messages as $m) {
 
-				$types = array('info', 'warning', 'error');
+				$types = ['info', 'warning', 'error'];
 				if (!in_array($m->type, $types)) $m->type = 'info';
 				$script .= '$.showMessage("' .
 					addslashes($m->title) . '","' .

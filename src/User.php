@@ -815,7 +815,12 @@ class User extends ActiveRecord {
 		$expire = time() + 60*60*24*30;
 
 		// set cookie and return the result
-		return setcookie(UserRemember::getCookieName(), $content, $expire, '/');
+		return setcookie(UserRemember::getCookieName(), $content, [
+			'expires' => $expire,
+			'path' => '/',
+			'samesite' => 'Lax',
+			'secure' => !Application::isDevelopmentHost()
+		]);
 
 	}
 
@@ -843,7 +848,12 @@ class User extends ActiveRecord {
 		$expire = time() + 60*60*24*30;
 
 		// set cookie and return the result
-		return setcookie($cookieName, $_COOKIE[$cookieName], $expire, '/');
+		return setcookie($cookieName, $_COOKIE[$cookieName], [
+			'expires' => $expire,
+			'path' => '/',
+			'samesite' => 'Lax',
+			'secure' => !Application::isDevelopmentHost()
+		]);
 
 	}
 
@@ -898,7 +908,12 @@ class User extends ActiveRecord {
 		Database::run('DELETE FROM `users_remembers` WHERE `user_id` = ? AND `remember_me` = ?', [$this->id, $cookieContent->rememberMe]);
 
 		// delete the current remember-me Cookie
-		return setcookie(UserRemember::getCookieName(), '', -1, '/');
+		return setcookie(UserRemember::getCookieName(), '', [
+			'expires' => -1,
+			'path' => '/',
+			'samesite' => 'Lax',
+			'secure' => !Application::isDevelopmentHost()
+		]);
 
 	}
 

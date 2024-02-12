@@ -159,7 +159,7 @@ abstract class Model {
 	public function getActiveRecordObjects(string $class, string $orderBy=NULL, bool $descOrder=FALSE): array {
 
 		if (!class_exists($class) or !is_subclass_of($class, 'Pair\ActiveRecord')) {
-			return array();
+			return [];
 		}
 
 		// set pagination count

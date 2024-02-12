@@ -58,11 +58,12 @@ class Rule extends ActiveRecord {
 	 */
 	protected static function getBinds(): array {
 
-		$varFields = array(
+		$varFields = [
 			'id'		=> 'id',
 			'action'	=> 'action',
 			'adminOnly'	=> 'admin_only',
-			'moduleId'	=> 'module_id');
+			'moduleId'	=> 'module_id'
+		];
 
 		return $varFields;
 
@@ -73,7 +74,7 @@ class Rule extends ActiveRecord {
 	 */
 	protected function beforeDelete(): void {
 	
-		$acls = Acl::getAllObjects(array('ruleId' => $this->id));
+		$acls = Acl::getAllObjects(['ruleId' => $this->id]);
 		foreach ($acls as $acl) {
 			$acl->delete();
 		}

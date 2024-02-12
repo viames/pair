@@ -58,11 +58,12 @@ class Acl extends ActiveRecord {
 	 */
 	protected static function getBinds(): array {
 
-		$varFields = array(
+		$varFields = [
 			'id'		=> 'id',
 			'ruleId'	=> 'rule_id',
 			'groupId'	=> 'group_id',
-			'default'	=> 'is_default');
+			'default'	=> 'is_default'
+		];
 
 		return $varFields;
 
@@ -119,7 +120,7 @@ class Acl extends ActiveRecord {
 
 			$db->setQuery($query);
 
-			$count = $db->loadCount(array($groupId, $module, $module, $action));
+			$count = $db->loadCount([$groupId, $module, $module, $action]);
 
 			return (bool)$count;
 

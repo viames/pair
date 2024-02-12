@@ -3,10 +3,10 @@
 	"description": "lightweight PHP framework as the air",
 	"type": "library",
 	"require": {
-		"league/flysystem-aws-s3-v3": "^1",
+		"league/flysystem-aws-s3-v3": "^3",
 		"sistemi-etime/flysystem-plugin-aws-s3-v3": "^1",
 		"sentry/sdk": "^4",
-		"phpoffice/phpspreadsheet": "^1"
+		"phpoffice/phpspreadsheet": "^2"
 	},
 	"repositories": [
 		{
