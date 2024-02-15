@@ -946,15 +946,15 @@ class Utilities {
 		};
 
 		// Pair framework
-		$checkFolder(PAIR_FOLDER);
+		$checkFolder(APPLICATION_PATH . '/' . PAIR_FOLDER);
 
 		// custom classes
-		$checkFolder('classes');
+		$checkFolder(APPLICATION_PATH . '/classes');
 
 		// modules classes
 		$modules = array_diff(scandir(APPLICATION_PATH . '/modules'), ['..', '.', '.DS_Store']);
 		foreach ($modules as $module) {
-			$checkFolder('modules/' . $module . '/classes');
+			$checkFolder(APPLICATION_PATH . '/modules/' . $module . '/classes');
 		}
 
 		return $classes;
