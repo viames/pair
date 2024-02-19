@@ -1462,7 +1462,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 			return NULL;
 		}
 
-		$emptiables = ['CHAR','VARCHAR','TINYTEXT','TEXT','MEDIUMTEXT','BIGTEXT'];
+		$emptiables = ['char','varchar','tinytext','text','mediumtext','bigtext'];
 
 		if (in_array($column->type, $emptiables) or ('ENUM' == $column->type and in_array('', $column->length))) {
 			return TRUE;
