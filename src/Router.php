@@ -137,7 +137,7 @@ class Router {
 	 */
 	private function parseCgiParameters() {
 
-		if (!$this->url or FALSE===strpos($this->url, '?')) {
+		if (FALSE===strpos((string)$this->url, '?')) {
 			return;
 		}
 
