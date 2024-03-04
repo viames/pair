@@ -171,7 +171,7 @@ class Router {
 	 */
 	private function getParameters(): array {
 
-		$url = ($this->url and '/' == $this->url[0]) ? substr($this->url,1) : $this->url;
+		$url = ($this->url and '/' == $this->url[0]) ? substr($this->url,1) : (string)$this->url;
 
 		// split parameters by slash
 		$params = explode('/', $url);
