@@ -109,9 +109,9 @@ abstract class Report {
 
 		$this->save($filePath);
 
-		header('Content-Type: application/vnd.ms-excel');
+		header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 		header('Content-Length: ' . filesize($filePath));
-		header('Content-Disposition: attachment; filename="' . basename($filePath));
+		header('Content-Disposition: attachment; filename="' . basename($filePath) . '"');
 		header('Cache-Control: max-age=0');
 		readfile($filePath);
 
