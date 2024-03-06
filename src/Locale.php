@@ -89,8 +89,6 @@ class Locale extends ActiveRecord {
 
 	/**
 	 * Returns an array with the object property names and corresponding columns in the db.
-	 *
-	 * @return array
 	 */
 	protected static function getBinds(): array {
 
@@ -111,20 +109,18 @@ class Locale extends ActiveRecord {
 
 		// only one row can be appDefault
 		if ($this->appDefault) {
-			$this->db->exec('UPDATE `' . self::TABLE_NAME . '` SET `app_default` = 0');
+			Database::run('UPDATE `' . self::TABLE_NAME . '` SET `app_default` = 0');
 		}
 
 		// only one country can be default for a language
 		if ($this->defaultCountry) {
-			$this->db->exec('UPDATE `' . self::TABLE_NAME . '` SET `default_country` = 0 WHERE `language_id` = ?', [$this->languageId]);
+			Database::run('UPDATE `' . self::TABLE_NAME . '` SET `default_country` = 0 WHERE `language_id` = ?', [$this->languageId]);
 		}
 
 	}
 
 	/**
 	 * Returns the default Locale object.
-	 *
-	 * @return	Locale
 	 */
 	public static function getDefault(): ?Locale {
 
@@ -134,8 +130,6 @@ class Locale extends ActiveRecord {
 
 	/**
 	 * Returns TRUE if language of this locale is the application default.
-	 *
-	 * @return	bool
 	 */
 	public function isDefault(): bool {
 
@@ -145,8 +139,6 @@ class Locale extends ActiveRecord {
 
 	/**
 	 * Returns TRUE if language of this locale is official one for its country.
-	 *
-	 * @return	bool
 	 */
 	public function isOfficialLanguage(): bool {
 
@@ -156,8 +148,6 @@ class Locale extends ActiveRecord {
 
 	/**
 	 * Returns TRUE if the country of this locale is the default for its language.
-	 *
-	 * @return	bool
 	 */
 	public function isDefaultCountry(): bool {
 
@@ -185,12 +175,12 @@ class Locale extends ActiveRecord {
 		list ($languageCode, $countryCode) = explode('-', $representation);
 
 		$query =
-			'SELECT lc.*' .
-			' FROM `locales` as lc' .
-			' INNER JOIN `languages` AS l ON lc.language_id = l.id' .
-			' INNER JOIN `countries` AS c ON lc.country_id = c.id' .
-			' WHERE c.code = ?' .
-			' AND l.code = ?';
+			'SELECT lc.*
+			FROM `locales` as lc
+			INNER JOIN `languages` AS l ON lc.`language_id` = l.`id`
+			INNER JOIN `countries` AS c ON lc.`country_id` = c.`id`
+			WHERE c.`code` = ?
+			AND l.`code` = ?';
 
 		return static::getObjectByQuery($query, [$countryCode, $languageCode]);
 
@@ -206,11 +196,11 @@ class Locale extends ActiveRecord {
 	public static function getDefaultByLanguage(string $languageCode): ?Locale {
 
 		$query =
-			'SELECT lc.*' .
-			' FROM `locales` as lc' .
-			' INNER JOIN `languages` AS l ON lc.language_id = l.id' .
-			' WHERE lc.default_country = 1' .
-			' AND l.code = ?';
+			'SELECT lc.*
+			FROM `locales` as lc
+			INNER JOIN `languages` AS l ON lc.`language_id` = l.`id`
+			WHERE lc.`default_country` = 1
+			AND l.`code` = ?';
 
 		return static::getObjectByQuery($query, [$languageCode]);
 
@@ -301,9 +291,6 @@ class Locale extends ActiveRecord {
 					touch($file);
 					chmod($file, 0777);
 
-					// sets standard file head
-					$head = "; \$Id\$\r\n";
-
 				} catch (\Exception $e) {
 
 					trigger_error($e->getMessage());
@@ -347,8 +334,6 @@ class Locale extends ActiveRecord {
 
 	/**
 	 * Return the native language and country names if available, english name otherwise.
-	 *
-	 * @return string
 	 */
 	public function getNativeNames(): string {
 
@@ -364,8 +349,6 @@ class Locale extends ActiveRecord {
 
 	/**
 	 * Return the english language and country names if available, native name otherwise.
-	 *
-	 * @return string
 	 */
 	public function getEnglishNames(): string {
 

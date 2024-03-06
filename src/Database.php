@@ -1019,10 +1019,10 @@ class Database {
 			if (in_array($privilegeType, ['SUPER', 'SYSTEM_VARIABLES_ADMIN', 'SESSION_VARIABLES_ADMIN'])) {
 
 				$this->handler->exec(
-					'SET character_set_client = "utf8mb4", character_set_connection = "utf8mb4",' .
-					' character_set_database = "utf8mb4", character_set_results = "utf8mb4",' .
-					' character_set_server = "utf8mb4", collation_connection = "utf8mb4_unicode_ci",' .
-					' collation_database = "utf8mb4_unicode_ci", collation_server = "utf8mb4_unicode_ci"');
+					'SET character_set_client = "utf8mb4", character_set_connection = "utf8mb4",
+					character_set_database = "utf8mb4", character_set_results = "utf8mb4",
+					character_set_server = "utf8mb4", collation_connection = "utf8mb4_unicode_ci",
+					collation_database = "utf8mb4_unicode_ci", collation_server = "utf8mb4_unicode_ci"');
 
 			}
 

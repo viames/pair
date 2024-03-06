@@ -1025,7 +1025,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$where = ' WHERE ' . implode(' AND ', $this->getSqlKeyConditions());
 
 		$query = 'DELETE FROM `' . $class::TABLE_NAME . '`' . $where . ' LIMIT 1';
-		$res = $this->db->exec($query, $this->getSqlKeyValues());
+		$res = Database::run($query, $this->getSqlKeyValues());
 
 		// list properties to not remove
 		$activeRecordsProperties = ['keyProperties', 'db', 'loadedFromDb', 'typeList', 'errors'];

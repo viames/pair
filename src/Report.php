@@ -5,9 +5,12 @@ namespace Pair;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Cell\Cell;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\Settings;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
-use PhpOffice\PhpSpreadsheet\Writer\Xls;
-
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+/**
+ * This class is a base for creating Excel reports.
+ */
 abstract class Report {
 
 	/**
@@ -34,6 +37,11 @@ abstract class Report {
 	 * Rows of cell data, for each row an array with zero-based numeric index.
 	 */
 	private array $data = [];
+
+	/**
+	 * Contains the name of the builder class.
+	 */
+	private string $builder = 'PhpSpreadsheet';
 
 	/**
 	 * Populates the title and subject defaults of the Report document.
@@ -77,6 +85,11 @@ abstract class Report {
 	}
 
 	/**
+	 * Hook for custom processing.
+	 */
+	protected function beforeProcessSpreadsheet(): void {}
+
+	/**
 	 * Return the number of rows of this Report.
 	 */
 	protected function countRows(): int {
@@ -86,23 +99,23 @@ abstract class Report {
 	}
 
 	/**
-	 * Generic function to process and download the Excel file.
+	 * Public function to process the Excel document, save it to disk in a temporary file
+	 * and send it to the browser for download.
 	 */
 	public function download(): void {
 
-		// process the Excel file
-		$spreadsheet = $this->getSpreadsheet();
-
 		// gets the filename from the document title
-		$filename = Utilities::localCleanFilename($spreadsheet->getProperties()->getTitle() . '.xls');
+		$filePath = TEMP_PATH . Utilities::localCleanFilename($this->title . '.xlsx');
+
+		$this->save($filePath);
 
 		header('Content-Type: application/vnd.ms-excel');
-		header('Content-Disposition: attachment;filename="' . $filename);
+		header('Content-Length: ' . filesize($filePath));
+		header('Content-Disposition: attachment; filename="' . basename($filePath));
 		header('Cache-Control: max-age=0');
+		readfile($filePath);
 
-		// output the file to the browser
-		$xlsWriter = new Xls($spreadsheet);
-		$xlsWriter->save('php://output');
+		unlink($filePath);
 
 	}
 
@@ -130,34 +143,11 @@ abstract class Report {
 				$cell->getStyle()->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_CURRENCY_EUR);
 				break;
 
-			// format the field as a date using a Y-m-d string value
 			case 'stringDate':
-				$dt = \DateTime::createFromFormat('Y-m-d', substr($value, 0, 10));
-				if (is_a($dt,'DateTime')) {
-					$cell->getStyle()->getNumberFormat()->setFormatCode('DD/MM/YYYY');
-					$cell->setValue($dt->format('d/m/Y'));
-				}
-				break;
-
-			// format the field as date-time using a string Y-m-d H:i:s
 			case 'stringDateTime':
-				$dt = \DateTime::createFromFormat('Y-m-d H:i:s', $value);
-				if (is_a($dt,'DateTime')) {
-					$cell->getStyle()->getNumberFormat()->setFormatCode('DD/MM/YYYY HH:MM:SS');
-					$cell->setValue($dt->format('d/m/Y H:i:s'));
-				}
-				break;
-
-			// format the field as a date using a DateTime object
 			case 'Date':
-				$cell->getStyle()->getNumberFormat()->setFormatCode('DD/MM/YYYY');
-				$cell->setValue(is_a($value,'DateTime') ? $value->format('d/m/Y') : NULL);
-				break;
-
-			// format the field as a date-time using a DateTime object
 			case 'DateTime':
-				$cell->getStyle()->getNumberFormat()->setFormatCode('DD/MM/YYYY HH:MM:SS');
-				$cell->setValue(is_a($value,'DateTime') ? $value->format('d/m/Y H:i:s') : NULL);
+				$cell->setValue($this->formatDateCell($value, $format));
 				break;
 
 			case 'string':
@@ -166,6 +156,38 @@ abstract class Report {
 				break;
 
 		}
+
+	}
+
+	private function formatDateCell($value, string $format): ?string {
+
+		switch ($format) {
+
+			case 'stringDate':
+				$dt = \DateTime::createFromFormat('Y-m-d', substr($value, 0, 10));
+				if (is_a($dt,'DateTime')) {
+					return $dt->format('d/m/Y');
+				}
+				break;
+
+			case 'stringDateTime':
+				$dt = \DateTime::createFromFormat('Y-m-d H:i:s', $value);
+				if (is_a($dt,'DateTime')) {
+					return $dt->format('d/m/Y H:i:s');
+				}
+				break;
+
+			case 'Date':
+				return is_a($value,'DateTime') ? $value->format('d/m/Y') : NULL;
+				break;
+
+			case 'DateTime':
+				return is_a($value,'DateTime') ? $value->format('d/m/Y H:i:s') : NULL;
+				break;
+
+		}
+
+		return NULL;
 
 	}
 
@@ -179,10 +201,20 @@ abstract class Report {
 			$this->setDataAndColumnsFromDictionary(Database::load($this->query, [], PAIR_DB_DICTIONARY));
 		}
 
+		// hook for custom processing
+		$this->beforeProcessSpreadsheet();
+
 		// create the document and set up the sheet
 		$spreadsheet = new Spreadsheet();
-		$spreadsheet->setActiveSheetIndex(0);
-		$activeSheet = $spreadsheet->getActiveSheet();
+		$activeSheet = $spreadsheet->setActiveSheetIndex(0);
+
+		// set the locale
+		$app = Application::getInstance();
+		$cUser = $app->currentUser;
+		$locale = $cUser
+			? $cUser->getLocale()->getRepresentation()
+			: Locale::getDefault()->getRepresentation();
+		Settings::setLocale(str_replace('-','_',$locale));
 
 		// set column names (header)
 		foreach ($this->columns as $col => $def) {
@@ -219,6 +251,37 @@ abstract class Report {
 			->setSubject($this->subject);
 
 		return $spreadsheet;
+
+	}
+
+	/**
+	 * Set the builder library to use (CSV or PhpSpreadsheet).
+	 */
+	public function setBuilder(string $builder): self {
+
+		$this->builder = $builder;
+
+		return $this;
+
+	}
+
+	/**
+	 * Save the Excel file to disk on the specified absolute path.
+	 */
+	public function save(string $filePath): bool {
+
+		if ('CSV' == $this->builder and defined('CSV2XLSX_PATH') and is_executable(CSV2XLSX_PATH)) {
+
+			$this->saveCsvAndConvert($filePath);
+
+		} else {
+
+			$writer = new Xlsx($this->getSpreadsheet());
+			$writer->save($filePath);
+
+		}
+
+		return file_exists($filePath);
 
 	}
 
@@ -261,7 +324,7 @@ abstract class Report {
 
 		// populates all cells in all rows
 		foreach ($dictionary as $line) {
-			
+
 			$this->addRow(array_values($line));
 
 		}
@@ -279,7 +342,7 @@ abstract class Report {
 		if (!isset($objectList[0])) {
 			return $this;
 		}
-		
+
 		// extracts the property names of the first object
 		$varNames = array_keys(get_object_vars($objectList[0]));
 
@@ -328,6 +391,45 @@ abstract class Report {
 		$this->query = $query;
 
 		return $this;
+
+	}
+
+	private function saveCsvAndConvert(string $filePath): void {
+
+		$csvFile = $filePath . '.csv';
+
+		$fp = fopen($csvFile, 'w');
+
+		// write the header
+		fputcsv($fp, array_map(function($o) { return $o->head; }, $this->columns));
+
+		$dateFormats = ['stringDate', 'stringDateTime', 'Date', 'DateTime'];
+
+		// write the data
+		foreach ($this->data as $row) {
+
+			foreach ($row as $key => $value) {
+
+				if (in_array($this->columns[$key]->format, $dateFormats)) {
+					$row[$key] = $this->formatDateCell($value, $this->columns[$key]->format);
+				} else if (in_array($this->columns[$key]->format, ['currency','numeric'])) {
+					$row[$key] = $value;
+				} else {
+					$row[$key] = '\'' . $value; // forced to string in converter
+				}
+
+			}
+
+			fputcsv($fp, $row);
+		}
+
+		fclose($fp);
+
+		// convert to Excel
+		$command = CSV2XLSX_PATH . ' -d "," -o ' . $filePath . ' ' . $csvFile;
+		shell_exec($command);
+
+		unlink($csvFile);
 
 	}
 
