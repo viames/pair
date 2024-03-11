@@ -85,9 +85,14 @@ abstract class Report {
 	}
 
 	/**
-	 * Hook for custom processing.
+	 * Hook for custom processing before saving the Excel document.
 	 */
-	protected function beforeProcessSpreadsheet(): void {}
+	protected function beforeSave(): void {}
+
+	/**
+	 * Hook for custom processing after saving the Excel document.
+	 */
+	protected function afterSave(): void {}
 
 	/**
 	 * Return the number of rows of this Report.
@@ -201,9 +206,6 @@ abstract class Report {
 			$this->setDataAndColumnsFromDictionary(Database::load($this->query, [], PAIR_DB_DICTIONARY));
 		}
 
-		// hook for custom processing
-		$this->beforeProcessSpreadsheet();
-
 		// create the document and set up the sheet
 		$spreadsheet = new Spreadsheet();
 		$activeSheet = $spreadsheet->setActiveSheetIndex(0);
@@ -270,6 +272,9 @@ abstract class Report {
 	 */
 	public function save(string $filePath): bool {
 
+		// hook for custom processing
+		$this->beforeSave();
+
 		if ('CSV' == $this->builder and defined('CSV2XLSX_PATH') and is_executable(CSV2XLSX_PATH)) {
 
 			$this->saveCsvAndConvert($filePath);
@@ -280,6 +285,9 @@ abstract class Report {
 			$writer->save($filePath);
 
 		}
+
+		// hook for custom processing
+		$this->afterSave();
 
 		return file_exists($filePath);
 
