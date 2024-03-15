@@ -898,7 +898,7 @@ class Utilities {
 		$classes = [];
 
 		// lambda method that check a folder and add each ActiveRecord class found
-		$checkFolder = function ($folder) use(&$classes) {
+		$checkFolder = function (string $folder, ?string $pairPrefix) use(&$classes) {
 
 			if (!is_dir($folder)) return;
 
@@ -906,21 +906,23 @@ class Utilities {
 
 			foreach ($files as $file) {
 
-				// only .php files are included
-				if ('.php' != substr($file,-4)) continue;
+				$pathParts = pathinfo($file);
+
+				// avoid folders and hidden files
+				if (is_dir($file) or !isset($pathParts['extension']) or 'php' != $pathParts['extension']) continue;
 
 				// include the file code
 				include_once ($folder . '/' . $file);
 
 				// cut .php from file name
-				$class = substr($file, 0, -4);
+				$class = $pathParts['filename'];
 
 				// Pair classes must prefix with namespace
-				if (PAIR_FOLDER == $folder) {
-					$class = 'Pair\\' . $class;
-					$pair = TRUE;
-				} else {
+				if (is_null($pairPrefix)) {
 					$pair = FALSE;
+				} else {
+					$class = $pairPrefix . $class;
+					$pair = TRUE;
 				}
 
 				// check on class exists
@@ -946,15 +948,16 @@ class Utilities {
 		};
 
 		// Pair framework
-		$checkFolder(APPLICATION_PATH . '/' . PAIR_FOLDER);
+		$checkFolder(APPLICATION_PATH . '/' . PAIR_FOLDER, 'Pair\\');
+		$checkFolder(APPLICATION_PATH . '/' . PAIR_FOLDER . '/oauth', 'Pair\\Oauth\\');
 
 		// custom classes
-		$checkFolder(APPLICATION_PATH . '/classes');
+		$checkFolder(APPLICATION_PATH . '/classes', NULL);
 
 		// modules classes
 		$modules = array_diff(scandir(APPLICATION_PATH . '/modules'), ['..', '.', '.DS_Store']);
 		foreach ($modules as $module) {
-			$checkFolder(APPLICATION_PATH . '/modules/' . $module . '/classes');
+			$checkFolder(APPLICATION_PATH . '/modules/' . $module . '/classes', NULL);
 		}
 
 		return $classes;
