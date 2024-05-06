@@ -69,7 +69,7 @@ abstract class View {
 	/**
 	 * Constructor.
 	 */
-	final public function __construct() {
+	final public function __construct(Model $model) {
 
 		// singleton objects
 		$this->app		= Application::getInstance();
@@ -93,11 +93,8 @@ abstract class View {
 		$this->pagination->perPage	= Options::get('pagination_pages');
 		$this->pagination->page		= $router->getPage();
 
-		// includes and instance default model
-		include_once ($this->modulePath .'/model.php');
-		$modelName = $this->name . 'Model';
-		$this->model = new $modelName();
-
+		// copy the model object
+		$this->model = $model;
 		$this->model->pagination = $this->pagination;
 
 		// sets the default menu item -- can be overwritten if needed
@@ -352,7 +349,7 @@ abstract class View {
 	 *
 	 * @return string
 	 */
-	public function getPaginationBar() {
+	public function getPaginationBar(): string {
 
 		if (is_null($this->pagination->count)) {
 			Logger::error('The “count” parameter needed for pagination has not been set');

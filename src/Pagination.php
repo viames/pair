@@ -84,7 +84,7 @@ class Pagination {
 	 * 
 	 * @return	string
 	 */
-	public function render() {
+	public function render(): string {
 		
 		$router = Router::getInstance();
 		

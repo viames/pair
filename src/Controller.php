@@ -61,11 +61,6 @@ abstract class Controller {
 		$ref = new \ReflectionClass($this);
 		$this->modulePath = dirname($ref->getFileName());
 
-		// new instance to the default model
-		include ($this->modulePath .'/model.php');
-		$modelName = $this->name . 'Model';
-		$this->model = new $modelName();
-
 		// sets language subfolder’s name
 		$this->translator->setModuleName($this->name);
 
@@ -73,6 +68,13 @@ abstract class Controller {
 		$this->view = $this->router->action ? $this->router->action : 'default';
 
 		$this->init();
+
+		// if a model is not specified, load the default one
+		if (!isset($this->model) or is_null($this->model)) {
+			include ($this->modulePath .'/model.php');
+			$modelName = $this->name . 'Model';
+			$this->model = new $modelName();
+		}
 
 		// look for extended classes
 		if (is_dir($this->modulePath . '/classes')) {
@@ -200,6 +202,32 @@ abstract class Controller {
 	}
 
 	/**
+	 * Load a custom model.
+	 */
+	public function loadModel(string $modelName): void {
+
+		if (!file_exists($this->modulePath .'/'. $modelName .'.php')) {
+			throw new \Exception('Model file '. $this->modulePath .'/'. $modelName .'.php has not been found');
+		}
+
+		include ($this->modulePath .'/'. $modelName .'.php');
+		$modelClass = $this->name . ucfirst($modelName);
+		$this->model = new $modelClass();
+
+	}
+
+	/**
+	 * Load a custom model for a list of actions.
+	 */
+	public function loadModelForActions(string $modelName, array $actions): void {
+
+		if (in_array($this->router->action, $actions)) {
+			$this->loadModel($modelName);
+		}
+
+	}
+
+	/**
 	 * Proxy to add an event to framework’s logger, storing its chrono time.
 	 *
 	 * @param	string	Event description.
@@ -280,7 +308,7 @@ abstract class Controller {
 					throw new \Exception('Class ' . $viewName . ' was not found in file ' . $file);
 				}
 
-				return new $viewName();
+				return new $viewName($this->model);
 
 			} else {
 
