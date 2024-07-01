@@ -156,6 +156,7 @@ class Application {
 			'PRODUCT_VERSION' => '1.0',
 			'UTC_DATE' => TRUE,
 			'OAUTH2_TOKEN_LIFETIME' => Oauth2Token::LIFETIME,
+			'PAIR_SINGLE_SESSION' => FALSE,
 			'PAIR_DEVELOPMENT' => FALSE,
 			'PAIR_DEBUG' => FALSE,
 			'PAIR_AUDIT_PASSWORD_CHANGED' => FALSE,
@@ -802,7 +803,7 @@ class Application {
 	 * Start the session and set the User class (Pair/User or a custom one that inherites
 	 * from Pair/User). Must use only for command-line and web application access.
 	 */
-	public function manageSession() {
+	public function manageSession(): void {
 
 		// can be customized before Application is initialized
 		$userClass = PAIR_USER_CLASS;

@@ -1286,6 +1286,15 @@ class FormControlSelect extends FormControl {
 	private $emptyOption;
 
 	/**
+	 * Check whether this select control has options.
+	 */
+	public function hasOptions(): bool {
+
+		return count($this->list) > 0;
+
+	}
+
+	/**
 	 * Populates select control with an associative array. Chainable method.
 	 *
 	 * @param	array	Associative array (value=>text).

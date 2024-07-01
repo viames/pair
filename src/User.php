@@ -469,6 +469,11 @@ class User extends ActiveRecord {
 
 		$res1 = $session->create();
 
+		// deletes all other sessions for this user
+		if (defined('PAIR_SINGLE_SESSION') and PAIR_SINGLE_SESSION) {
+			Database::run('DELETE FROM `sessions` WHERE `id_user` = ? AND `id` != ?', [$this->id, session_id()]);
+		}
+
 		// updates last user login
 		$this->lastLogin	= new \DateTime();
 		$this->tzOffset		= $offset;
@@ -841,8 +846,9 @@ class User extends ActiveRecord {
 
 		$cookieContent = UserRemember::getCookieContent();
 
-		// delete any DB record with the current user and remember-me
+		// update created_at date and delete older remember-me records
 		Database::run('UPDATE `users_remembers` SET `created_at` = NOW() WHERE `user_id` = ? AND `remember_me` = ?', [$this->id, $cookieContent->rememberMe]);
+		Database::run('DELETE FROM `users_remembers` WHERE `user_id` = ? AND `remember_me` != ?', [$this->id, $cookieContent->rememberMe]);
 
 		// expire in 30 days
 		$expire = time() + 60*60*24*30;

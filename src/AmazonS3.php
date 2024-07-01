@@ -120,10 +120,8 @@ class AmazonS3 {
 	 */
 	public function getLink(string $remoteFile): ?string {
 
-		try {
-			if (!$this->exists($remoteFile)) return null;
-		} catch(\Exception $e) {
-			$this->addError($e->getMessage());
+		if (!$this->exists($remoteFile)) {
+			return NULL;
 		}
 
 		return $this->filesystem->getPresignedUrl($remoteFile);
