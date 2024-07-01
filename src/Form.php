@@ -94,20 +94,17 @@ class Form {
 
 	/**
 	 * Return the control object by its name.
-	 *
-	 * @param	string	Control name.
-	 * @return	FormControl|NULL
 	 */
-	public function getControl(string $name): ?FormControl {
+	public function getControl(string $controlName): FormControlSelect|FormControlInput|FormControlTextarea|FormControlButton|NULL {
 
-		if (substr($name, -2) == '[]') {
-			$name = substr($name, 0, -2);
+		if (substr($controlName, -2) == '[]') {
+			$controlName = substr($controlName, 0, -2);
 		}
 
-		if ($this->controlExists($name)) {
-			return $this->controls[$name];
+		if ($this->controlExists($controlName)) {
+			return $this->controls[$controlName];
 		} else {
-			Logger::error('Field control “' . $name . '” has not been defined in Form object');
+			Logger::error('Field control “' . $controlName . '” has not been defined in Form object');
 			return NULL;
 		}
 
@@ -138,7 +135,7 @@ class Form {
 	/**
 	 * Set all registered controls as readonly.
 	 */
-	public function setAllReadonly() {
+	public function setAllReadonly(): void {
 
 		foreach ($this->controls as $control) {
 			$control->setReadonly();
@@ -580,9 +577,8 @@ abstract class FormControl {
 	 * Adds a single data attribute, prepending the string "data-" to the given name.
 	 * @param	string	Data attribute name.
 	 * @param	string	Value.
-	 * @return 	FormControl
 	 */
-	public function data(string $name, string $value): FormControl {
+	public function data(string $name, string $value): FormControlSelect|FormControlInput|FormControlTextarea|FormControlButton {
 
 		$this->attributes['data-' . $name] = $value;
 
@@ -594,9 +590,8 @@ abstract class FormControl {
 	 * Sets value for this control subclass.
 	 *
 	 * @param	mixed		Value for this control.
-	 * @return	FormControl
 	 */
-	public function setValue($value): FormControl {
+	public function setValue($value): FormControlSelect|FormControlInput|FormControlTextarea|FormControlButton {
 
 		// special behavior for DateTime
 		if (is_a($value, 'DateTime') and is_a($this, 'Pair\FormControlInput')) {
@@ -625,9 +620,8 @@ abstract class FormControl {
 	 * Set the control ID.
 	 *
 	 * @param	string	Control identifier.
-	 * @return	FormControl
 	 */
-	public function setId(string $id): FormControl {
+	public function setId(string $id): FormControlSelect|FormControlInput|FormControlTextarea|FormControlButton {
 
 		$this->id = $id;
 		return $this;
