@@ -631,10 +631,8 @@ abstract class FormControl {
 	/**
 	 * Sets this field as required (enables JS client-side and PHP server-side validation).
 	 * Chainable method.
-	 *
-	 * @return	FormControl subclass
 	 */
-	public function setRequired(): FormControl {
+	public function setRequired(): FormControlSelect|FormControlInput|FormControlTextarea|FormControlButton {
 
 		$this->required = TRUE;
 		return $this;
@@ -643,10 +641,8 @@ abstract class FormControl {
 
 	/**
 	 * Sets this field as disabled only. Chainable method.
-	 *
-	 * @return	FormControl
 	 */
-	public function setDisabled(): FormControl {
+	public function setDisabled(): FormControlSelect|FormControlInput|FormControlTextarea|FormControlButton {
 
 		$this->disabled = TRUE;
 		return $this;
@@ -655,10 +651,8 @@ abstract class FormControl {
 
 	/**
 	 * Sets this field as read only. Chainable method.
-	 *
-	 * @return	FormControl subclass
 	 */
-	public function setReadonly(): FormControl {
+	public function setReadonly(): FormControlSelect|FormControlInput|FormControlTextarea|FormControlButton {
 
 		$this->readonly = TRUE;
 		return $this;
@@ -667,10 +661,8 @@ abstract class FormControl {
 
 	/**
 	 * Sets this field as array. Will add [] to control name. Chainable method.
-	 *
-	 * @return	FormControl subclass
 	 */
-	public function setArrayName(): FormControl {
+	public function setArrayName(): FormControlSelect|FormControlInput|FormControlTextarea|FormControlButton {
 
 		$this->arrayName = TRUE;
 		return $this;
@@ -681,9 +673,8 @@ abstract class FormControl {
 	 * Sets placeholder text. Chainable method.
 	 *
 	 * @param	string		Placeholder’s text.
-	 * @return	FormControl subclass
 	 */
-	public function setPlaceholder(string $text): FormControl {
+	public function setPlaceholder(string $text): FormControlSelect|FormControlInput|FormControlTextarea|FormControlButton {
 
 		$this->placeholder = $text;
 		return $this;
@@ -694,10 +685,8 @@ abstract class FormControl {
 	 * Sets minimum length for value of this control. It’s a chainable method.
 	 *
 	 * @param	int		Minimum length for value.
-	 *
-	 * @return	FormControl subclass
 	 */
-	public function setMinLength(int $length): FormControl {
+	public function setMinLength(int $length): FormControlSelect|FormControlInput|FormControlTextarea|FormControlButton {
 
 		$this->minLength = $length;
 		return $this;
@@ -708,10 +697,8 @@ abstract class FormControl {
 	 * Sets maximum length for value of this control. It’s a chainable method.
 	 *
 	 * @param	int		Maximum length for value.
-	 *
-	 * @return	FormControl subclass
 	 */
-	public function setMaxLength(int $length): FormControl {
+	public function setMaxLength(int $length): FormControlSelect|FormControlInput|FormControlTextarea|FormControlButton {
 
 		$this->maxLength = $length;
 		return $this;
@@ -723,10 +710,8 @@ abstract class FormControl {
 	 * duplicates. This method is chainable.
 	 *
 	 * @param	string|array	Single class name, list space separated or array of class names.
-	 *
-	 * @return	FormControl subclass
 	 */
-	public function addClass($class): FormControl {
+	public function addClass($class): FormControlSelect|FormControlInput|FormControlTextarea|FormControlButton {
 
 		// classes array
 		if (is_array($class)) {
@@ -753,9 +738,8 @@ abstract class FormControl {
 	 * Set a label for this control as text or translation key. Chainable method.
 	 *
 	 * @param	string	The text label or the uppercase translation key.
-	 * @return	FormControl
 	 */
-	public function setLabel(string $label): FormControl {
+	public function setLabel(string $label): FormControlSelect|FormControlInput|FormControlTextarea|FormControlButton {
 
 		$this->label = $label;
 
@@ -765,8 +749,6 @@ abstract class FormControl {
 
 	/**
 	 * Return the control’s label.
-	 *
-	 * @return	string
 	 */
 	public function getLabel(): string {
 
@@ -795,9 +777,8 @@ abstract class FormControl {
 	 * Set a description for this control as text. Chainable method.
 	 *
 	 * @param	string	The text description.
-	 * @return	FormControl
 	 */
-	public function setDescription(string $description): FormControl {
+	public function setDescription(string $description): FormControlSelect|FormControlInput|FormControlTextarea|FormControlButton {
 
 		$this->description = $description;
 
@@ -807,8 +788,6 @@ abstract class FormControl {
 
 	/**
 	 * Return the control’s description.
-	 *
-	 * @return	string
 	 */
 	public function getDescription(): string {
 
@@ -818,8 +797,6 @@ abstract class FormControl {
 
 	/**
 	 * Print the control’s label even with required-field class.
-	 *
-	 * @return	void
 	 */
 	public function printLabel(): void {
 
@@ -842,7 +819,6 @@ abstract class FormControl {
 	 * Print the HTML code of this FormControl.
 	 *
 	 * @param	string	HTML name of the wanted control.
-	 * @return	void
 	 */
 	public function printControl(): void {
 
@@ -852,8 +828,6 @@ abstract class FormControl {
 
 	/**
 	 * Process and return the common control attributes.
-	 *
-	 * @return string
 	 */
 	protected function processProperties(): string {
 
@@ -891,8 +865,6 @@ abstract class FormControl {
 
 	/**
 	 * Create a control name escaping special chars and adding array puncts in case of.
-	 *
-	 * @return string
 	 */
 	protected function getNameProperty(): string {
 
