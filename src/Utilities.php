@@ -764,10 +764,8 @@ class Utilities {
 
 	/**
 	 * Check if the server’s user agent contains a word about mobile devices and return TRUE if found.
-	 *
-	 * @return	boolean
 	 */
-	public static function isUserAgentMobile() {
+	public static function isUserAgentMobile(): bool {
 
 		$user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? strtolower($_SERVER['HTTP_USER_AGENT']) : '';
 
@@ -781,6 +779,17 @@ class Utilities {
 		} else {
 			return FALSE;
 		}
+
+	}
+
+	/**
+	 * Sends a 401 error to the browser with a "Unauthorized" JSON message, useful for raw/ajax requests.
+	 */
+	public static function jsonResponseSessionExpired(): void {
+
+		http_response_code(401); // Unauthorized
+		print json_encode(['error' => Translator::do('USER_SESSION_EXPIRED')]);
+		exit();
 
 	}
 
