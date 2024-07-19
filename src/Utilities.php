@@ -235,11 +235,26 @@ class Utilities {
 	 * Proxy method to print a JSON error message.
 	 *
 	 * @param	string	Error message to print on user.
+	 * @param	int|NULL	Error code (optional).
+	 * @param	int|NULL	HTTP code (optional).
 	 * @return	void
 	 */
-	public static function printJsonError(string $message): void {
+	public static function printJsonError(string $message, ?int $code=NULL, ?int $httpCode=NULL): void {
 
-		self::printJsonMessage($message, TRUE);
+		$logger = Logger::getInstance();
+
+		$ret			= new \stdClass();
+		$ret->message	= $message;
+		$ret->error		= TRUE;
+		$ret->code		= $code;
+		$ret->log		= $logger->getEventListForAjax();
+		$json			= json_encode($ret);
+		if (is_int($httpCode)) {
+			http_response_code($httpCode);
+		}
+		header('Content-Type: application/json', TRUE);
+		print $json;
+		die();
 
 	}
 
