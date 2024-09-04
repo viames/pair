@@ -315,7 +315,7 @@ class Form {
 	 * value (optional).
 	 *
 	 * @param	string	Select’s name.
-	 * @param	array	Array with object as options.
+	 * @param	Collection|array	Array with object as options.
 	 * @param	string	Property name of the value for option object (default is “value”).
 	 * @param	string	Property name of the text for option object (default is “text”).
 	 * @param	string	Value selected in this select (default NULL).
@@ -324,7 +324,7 @@ class Form {
 	 *
 	 * @return	string
 	 */
-	public static function buildSelect(string $name, array $list, string $valName='value', string $textName='text', $value=NULL, $attributes=NULL, $prependEmpty=NULL) {
+	public static function buildSelect(string $name, Collection|array $list, string $valName='value', string $textName='text', $value=NULL, $attributes=NULL, $prependEmpty=NULL) {
 
 		$control = new FormControlSelect($name, $attributes);
 		$control->setListByObjectArray($list, $valName, $textName)->setValue($value);
@@ -338,17 +338,17 @@ class Form {
 	}
 
 	/**
-	 * Proxy for buildSelect that allow to start option list from a simple array.
+	 * Proxy for buildSelect that allow to start option list from a simple Collection or array.
 	 *
 	 * @param	string	Select’s name.
-	 * @param	array	Associative array value=>text for options.
+	 * @param	Collection|array	Associative array value=>text for options.
 	 * @param	string	Value selected in this select (default NULL).
 	 * @param	string	Extended attributes as associative array tag=>value (optional).
 	 * @param	string	Prepend empty value (default NULL, no prepend).
 	 *
 	 * @return	string
 	 */
-	public static function buildSelectFromArray(string $name, array $list, string $value=NULL, $attributes=NULL, $prependEmpty=NULL) {
+	public static function buildSelectFromArray(string $name, Collection|array $list, string $value=NULL, $attributes=NULL, $prependEmpty=NULL) {
 
 		$control = new FormControlSelect($name, $attributes);
 		$control->setListByAssociativeArray($list)->setValue($value);

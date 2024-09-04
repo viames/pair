@@ -67,7 +67,7 @@ class Logger {
 	/**
 	 * Shutdown the log.
 	 */
-	final public function disable() {
+	final public function disable(): void {
 
 		$this->disabled = TRUE;
 
@@ -76,8 +76,6 @@ class Logger {
 	/**
 	 * Check that logger can be collected by checking "disabled" flag, cli,
 	 * API, router module and Options.
-	 *
-	 * @return boolean
 	 */
 	final public function isEnabled(): bool {
 
@@ -124,7 +122,7 @@ class Logger {
 	/**
 	 * Starts the time chrono.
 	 */
-	private function startChrono() {
+	private function startChrono(): void {
 
 		$this->timeStart = $this->lastChrono = $this->getMicrotime();
 
@@ -134,8 +132,6 @@ class Logger {
 
 	/**
 	 * Returns current time as float value.
-	 *
-	 * @return float
 	 */
 	private function getMicrotime(): float {
 
@@ -147,11 +143,9 @@ class Logger {
 
 	/**
 	 * Adds an event, storing its chrono time.
-	 *
 	 * @param	string	Event description.
 	 * @param	string	Event type notice, query, api, warning or error (default is notice).
 	 * @param	string	Optional additional text.
-	 * @return	void
 	 */
 	final public static function event(string $description, string $type='notice', $subtext=NULL): void {
 
@@ -175,10 +169,9 @@ class Logger {
 
 	/**
 	 * AddEvent’s proxy for warning event creations.
-	 *
 	 * @param	string	Event description.
 	 */
-	final public static function warning(string $description) {
+	final public static function warning(string $description): void {
 
 		self::event($description, 'warning');
 
@@ -186,10 +179,9 @@ class Logger {
 
 	/**
 	 * AddEvent’s proxy for error event creations.
-	 *
 	 * @param	string	Event description.
 	 */
-	final public static function error(string $description) {
+	final public static function error(string $description): void {
 
 		self::event($description, 'error');
 
@@ -197,7 +189,6 @@ class Logger {
 
 	/**
 	 * Returns a formatted event list of all chrono steps.
-	 *
 	 * @return	string|NULL	HTML code of log list.
 	 */
 	final public function getEventList(): ?string {

@@ -5,6 +5,7 @@ namespace Pair\Core;
 use Pair\Logger;
 use Pair\Orm\Collection;
 use Pair\Orm\Database;
+use Pair\Orm\Query;
 
 abstract class Model {
 
@@ -178,11 +179,10 @@ abstract class Model {
 
 	/**
 	 * Returns object list with pagination by running the query in getQuery() method.
-	 *
 	 * @param	string		Active record class name.
-	 * @param	string|NULL	Optional query.
+	 * @param	Query|string	Optional query.
 	 */
-	public function getItems(string $class, string $optionalQuery=NULL): Collection {
+	public function getItems(string $class, Query|string $optionalQuery=NULL): Collection {
 
 		// class must inherit Pair\Orm\ActiveRecord
 		if (!class_exists($class) or !is_subclass_of($class, 'Pair\Orm\ActiveRecord')) {
@@ -197,27 +197,34 @@ abstract class Model {
 
 	/**
 	 * Returns count of available objects.
-	 *
 	 * @param	string		Active record class name.
-	 * @param	string|NULL	Optional query.
-	 * @return	int
+	 * @param	Query|string	Optional query.
 	 */
-	public function countItems(string $class, string $optionalQuery=NULL): int {
+	public function countItems(string $class, Query|string $optionalQuery=NULL): int {
 
-		$query = $optionalQuery ? $optionalQuery : $this->getQuery($class);
+		$type = gettype($optionalQuery);
+
+		switch ($type) {
+			case 'object':
+				$query = $optionalQuery->toSql();
+				break;
+			case 'string':
+				$query = $optionalQuery;
+				break;
+			default:
+				$query = $this->getQuery($class);
+		}
+
 		return (int)Database::load('SELECT COUNT(1) FROM (' . $query . ') AS `result`', [], PAIR_DB_COUNT);
 
 	}
 
 	/**
 	 * Create and return the SQL to retrieve the elements of the default item list.
-	 *
 	 * @param	string	ActiveRecord’s class name.
-	 * @return	string
 	 */
-	protected function getQuery(string $class): string {
+	protected function getQuery(string $class): Query|string {
 
-		// assembla la query
 		return 'SELECT * FROM `' . $class::TABLE_NAME . '`';
 
 	}

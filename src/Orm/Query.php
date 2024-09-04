@@ -15,6 +15,12 @@ class Query {
 
 	}
 
+	public function toSql(): string {
+
+		return '';
+
+	}
+
 	public function where($column, $operator, $value): Query {
 
 		return $this;

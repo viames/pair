@@ -13,82 +13,74 @@ class Template extends ActiveRecord implements PluginInterface {
 
 	/**
 	 * ID as primary key.
-	 * @var int
 	 */
-	protected $id;
+	protected int $id;
 
 	/**
 	 * Unique name with no space.
-	 * @var string
 	 */
-	protected $name;
+	protected string $name;
 
 	/**
 	 * Release version.
-	 * @var string
 	 */
-	protected $version;
+	protected string $version;
 
 	/**
 	 * Publication date, properly converted when inserted into db.
-	 * @var DateTime
 	 */
-	protected $dateReleased;
+	protected \DateTime $dateReleased;
 
 	/**
 	 * Version of application on which installs.
-	 * @var string
 	 */
-	protected $appVersion;
+	protected string $appVersion;
 
 	/**
 	 * Flag for default template only.
-	 * @var bool
 	 */
-	protected $default;
+	protected bool $default;
 
 	/**
 	 * User ID of installer.
-	 * @var int
 	 */
-	protected $installedBy;
+	protected int $installedBy;
 
 	/**
 	 * Installation date, properly converted when inserted into db.
-	 * @var DateTime
 	 */
-	protected $dateInstalled;
+	protected \DateTime $dateInstalled;
 
 	/**
 	 * Flag to declare this derived from default template.
-	 * @var bool
 	 */
-	protected $derived;
+	protected bool $derived;
 
 	/**
 	 * Palette for charts as CSV of HEX colors.
-	 * @var array
 	 */
-	protected $palette;
+	protected array $palette;
 
 	/**
 	 * Template from which it derives. It’s NULL if standard Template.
-	 * @var Template|NULL
 	 */
-	protected $base;
+	protected ?Template $base;
 
 	/**
 	 * Name of related db table.
-	 * @var string
 	 */
 	const TABLE_NAME = 'templates';
 
 	/**
 	 * Name of primary key db field.
-	 * @var string
 	 */
 	const TABLE_KEY = 'id';
 
+	/**
+	 * Properties that are stored in the shared cache.
+	 */
+	const SHARED_CACHE_PROPERTIES = ['installedBy'];
+	
 	/**
 	 * Method called by constructor just after having populated the object.
 	 */

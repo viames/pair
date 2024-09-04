@@ -577,6 +577,12 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 
 	}
 
+	public function merge($items): Collection {
+
+		return new Collection(array_merge($this->items, $items));
+
+	}
+
 	/**
 	 * A method required by the Iterator interface that advances the pointer position to the next element.
 	 */

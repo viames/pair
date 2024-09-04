@@ -11,39 +11,33 @@ class Locale extends ActiveRecord {
 
 	/**
 	 * This property maps “id” column.
-	 * @var int
 	 */
-	protected $id;
+	protected int $id;
 
 	/**
 	 * This property maps “language_id” column.
-	 * @var int
 	 */
-	protected $languageId;
+	protected int $languageId;
 
 	/**
 	 * This property maps “country_id” column.
-	 * @var int
 	 */
-	protected $countryId;
+	protected int $countryId;
 
 	/**
 	 * This property maps “official_language” column.
-	 * @var bool
 	 */
-	protected $officialLanguage;
+	protected bool $officialLanguage;
 
 	/**
 	 * This property maps “default_country” column.
-	 * @var bool
 	 */
-	protected $defaultCountry;
+	protected ?bool $defaultCountry;
 
 	/**
 	 * This property maps “app_default” column.
-	 * @var bool
 	 */
-	protected $appDefault;
+	protected bool $appDefault;
 
 	/**
 	 * Name of related db table.
@@ -162,8 +156,9 @@ class Locale extends ActiveRecord {
 
 	public function getRepresentation(): string {
 
-		$country = new Country($this->countryId);
-		$language = new Language($this->languageId);
+		$country = $this->getCountry() ?? new Country($this->countryId);
+
+		$language = $this->getLanguage() ?? new Language($this->languageId);
 
 		return $language->code . '-' . $country->code;
 
@@ -171,7 +166,6 @@ class Locale extends ActiveRecord {
 
 	/**
 	 * Returns the Locale object by its representation.
-	 *
 	 * @param	string	Locale representation (eg. en-GB).
 	 */
 	public static function getByRepresentation(string $representation): ?Locale {
@@ -192,10 +186,7 @@ class Locale extends ActiveRecord {
 
 	/**
 	 * Returns the Locale object by a Language code and its default Country.
-	 *
 	 * @param	string	Language code as of ISO 639-1 standard list.
-	 *
-	 * @return	Locale|NULL
 	 */
 	public static function getDefaultByLanguage(string $languageCode): ?Locale {
 
@@ -212,10 +203,7 @@ class Locale extends ActiveRecord {
 
 	/**
 	 * Returns translation absolute file path for this Locale and passed module.
-	 *
 	 * @param	string	Module name.
-	 *
-	 * @return	string
 	 */
 	public function getFilePath(string $module): string {
 
@@ -226,10 +214,8 @@ class Locale extends ActiveRecord {
 
 	/**
 	 * Read all translation strings from a file located into a module.
-	 *
-	 * @param	Module|NULL		Module object or NULL to read the common translation file.
-	 *
-	 * @return	array:string
+	 * @param	Module|NULL	Module object or NULL to read the common translation file.
+	 * @return	string[]
 	 */
 	public function readTranslation(?Module $module): array {
 
@@ -253,10 +239,7 @@ class Locale extends ActiveRecord {
 
 	/**
 	 * Returns TRUE if translation file of passed module is writable.
-	 *
 	 * @param	string	Module name.
-	 *
-	 * @return	bool
 	 */
 	public function isFileWritable(string $moduleName): bool {
 
@@ -273,11 +256,8 @@ class Locale extends ActiveRecord {
 
 	/**
 	 * Write all translation strings into a file located into a module.
-	 *
-	 * @param	array:string	List of translation strings.
+	 * @param	string[]	List of translation strings.
 	 * @param	Module|NULL		Module object or NULL to read the common translation file.
-	 *
-	 * @return	bool
 	 */
 	public function writeTranslation(array $strings, ?Module $module): bool {
 
