@@ -2,6 +2,9 @@
 
 namespace Pair;
 
+use Pair\Core\Application;
+use Pair\Support\Utilities;
+
 class Plugin {
 	
 	/**
@@ -45,12 +48,6 @@ class Plugin {
 	 * @var array
 	 */
 	protected $options = [];
-	
-	/**
-	 * Cache folder’s name on relative path.
-	 * @var string
-	 */
-	const TEMP_FOLDER = 'temp';
 	
 	/**
 	 * Life time of file in cache folder (minutes).
@@ -137,15 +134,13 @@ class Plugin {
 		
 		// TODO managing all ZIP errors (ZipArchive::ER_EXISTS, ZipArchive::ER_INCONS, etc.)
 		
-		static::checkTemporaryFolder();
-		
 		if (TRUE !== $zipOpened) {
 			trigger_error('ERROR_EXTRACTING_ZIP_CONTENT');
 			return FALSE;
 		}
 		
 		// make a random temporary folder
-		$tempFolder = static::TEMP_FOLDER . '/' . substr(md5(time()),0,6);
+		$tempFolder = TEMP_PATH . substr(md5(time()),0,6);
 		
 		// extract all zip contents
 		$zip->extractTo($tempFolder);
@@ -184,9 +179,6 @@ class Plugin {
 		// set the plugin-type common folder
 		$this->baseFolder = $plugin->getBaseFolder();
 			
-		// the temporary directory where extracted files reside
-		$sourceFolder = APPLICATION_PATH . '/' . $tempFolder;
-		
 		// this is destination path for copy plugin files
 		$pluginFolder = $this->baseFolder . '/' . strtolower($manifest->plugin->folder);
 
@@ -211,7 +203,7 @@ class Plugin {
 		// copy all plugin files
 		foreach ($files as $file) {
 			
-			$source = $sourceFolder . '/' . $file;
+			$source = $tempFolder . '/' . $file;
 			$dest	= $pluginFolder . '/' . $file;
 			
 			try {
@@ -324,7 +316,6 @@ class Plugin {
 		if (!is_dir($this->baseFolder)) {
 			$app = Application::getInstance();
 			$app->enqueueError('Plugin folder is missing');
-			//$app->redirect($this->type . 's/default');
 		}
 		
 		$this->createManifestFile();
@@ -338,8 +329,8 @@ class Plugin {
 		$dirName	= $pathInfos['basename'];
 		
 		// creates unique file name
-		$filename	= Utilities::uniqueFilename($this->name . ucfirst($this->type) . '.zip', self::TEMP_FOLDER);
-		$zipFile	= self::TEMP_FOLDER . '/' . $filename;
+		$filename	= Utilities::uniqueFilename($this->name . ucfirst($this->type) . '.zip', TEMP_PATH);
+		$zipFile	= TEMP_PATH . $filename;
 		
 		// creates the ZIP archive
 		$zip = new \ZipArchive();
@@ -410,51 +401,22 @@ class Plugin {
 	}
 	
 	/**
-	 * Check temporary folder or create it.
-	 */
-	public static function checkTemporaryFolder() {
-		
-		if (!file_exists(static::TEMP_FOLDER) or !is_dir(static::TEMP_FOLDER)) {
-			
-			// remove any file named as wanted temporary folder
-			@unlink(static::TEMP_FOLDER);
-
-			// create the folder
-			$old = umask(0);
-			if (!mkdir(static::TEMP_FOLDER, 0777, TRUE)) {
-				trigger_error('Directory creation on ' . static::TEMP_FOLDER . ' failed');
-				$ret = FALSE;
-			}
-			umask($old);
-			
-			// sets full permissions
-			if (!chmod(static::TEMP_FOLDER, 0777)) {
-				trigger_error('Set permissions on directory ' . static::TEMP_FOLDER . ' failed');
-				$ret = FALSE;
-			}
-			
-		}
-		
-	}
-	
-	/**
 	 * Deletes file with created date older than EXPIRE_TIME const.
 	 */
 	public static function removeOldFiles() {
-		
-		if (!is_dir(static::TEMP_FOLDER)) {
+
+		if (!is_dir(TEMP_PATH)) {
+			Logger::error('Folder ' . TEMP_PATH . ' cannot be accessed');
 			return;
 		}
 		
 		$counter = 0;
 
-		$baseFolder = APPLICATION_PATH . '/' . static::TEMP_FOLDER;
-
-		$files = Utilities::getDirectoryFilenames($baseFolder);
+		$files = Utilities::getDirectoryFilenames(TEMP_PATH);
 
 		foreach ($files as $file) {
 
-			$pathFile	= $baseFolder . '/' . $file;
+			$pathFile	= TEMP_PATH . '/' . $file;
 			$fileLife	= time() - filemtime($pathFile);
 			$maxLife	= static::FILE_EXPIRE * 60;
 			
@@ -465,20 +427,17 @@ class Plugin {
 
 		}
 		
-		if ($counter) {
-			Logger::event($counter . ' files has been deleted from ' . static::TEMP_FOLDER);
-		} else {
-			Logger::event('No old files deleted from ' . static::TEMP_FOLDER);
-		}
+		Logger::event($counter
+			? $counter . ' files has been deleted from temporary folder'
+			: 'No old files deleted from temporary folder'
+		);
 		
 	}
 	
 	/**
 	 * Creates or updates manifest.xml file for declare package content.
-	 * 
-	 * @return	bool
 	 */
-	public function createManifestFile() {
+	public function createManifestFile(): bool {
 		
 		// lambda method to add an array to the XML
 		$addChildArray = function ($element, $list) use (&$addChildArray) {

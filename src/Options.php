@@ -2,6 +2,8 @@
 
 namespace Pair;
 
+use Pair\Orm\Database;
+
 class Options {
 
 	/**
@@ -141,35 +143,6 @@ class Options {
 		}
 
 		return $ret;
-
-	}
-
-	/**
-	 * Returns an option’s value.
-	 *
-	 * @param	string	The option’s name.
-	 * @throws	Exception
-	 * @return	mixed|NULL
-	 *
-	 * @deprecated Use static method get() instead.
-	 */
-	public function getValue($name) {
-
-		return self::get($name);
-
-	}
-
-	/**
-	 * Method to set an object property value.
-	 *
-	 * @param	string	Property’s name.
-	 * @param	mixed	Property’s value.
-	 *
-	 * @deprecated Use static method set() instead.
-	 */
-	public function setValue($name, $value) {
-
-		return self::set($name, $value);
 
 	}
 

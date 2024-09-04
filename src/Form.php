@@ -2,6 +2,13 @@
 
 namespace Pair;
 
+use Pair\Logger;
+use Pair\Core\Application;
+use Pair\Orm\ActiveRecord;
+use Pair\Orm\Collection;
+use Pair\Support\Input;
+use Pair\Support\Translator;
+
 class Form {
 
 	/**
@@ -164,7 +171,7 @@ class Form {
 	 */
 	public function setValuesByObject(ActiveRecord $object): void {
 
-		if (is_object($object) and is_subclass_of($object, 'Pair\ActiveRecord')) {
+		if (is_object($object) and is_subclass_of($object, 'Pair\Orm\ActiveRecord')) {
 
 			$properties = $object->getAllProperties();
 
@@ -1296,7 +1303,7 @@ class FormControlSelect extends FormControl {
 	 *
 	 * @return	FormControlSelect
 	 */
-	public function setListByObjectArray(array $list, string $propertyValue, string $propertyText, $propertyAttributes = null): FormControlSelect {
+	public function setListByObjectArray(array|Collection $list, string $propertyValue, string $propertyText, $propertyAttributes = null): FormControlSelect {
 
 		// for each list object, add an option
 		foreach ($list as $opt) {

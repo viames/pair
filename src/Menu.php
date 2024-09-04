@@ -2,6 +2,8 @@
 
 namespace Pair;
 
+use Pair\Core\Application;
+
 class Menu {
 
 	/**
@@ -172,7 +174,7 @@ class Menu {
 		$app = Application::getInstance();
 
 		// check permissions
-		if (!isset($item->url) or (is_a($app->currentUser, 'Pair\User') and !$app->currentUser->canAccess($item->url))) {
+		if (!isset($item->url) or (is_a($app->currentUser, 'Pair\Models\User') and !$app->currentUser->canAccess($item->url))) {
 			return '';
 		}
 		
@@ -200,7 +202,7 @@ class Menu {
 		foreach ($item->list as $i) {
 
 			// check permissions
-			if (isset($i->url) and (!is_a($app->currentUser, 'Pair\User') or !$app->currentUser->canAccess($i->url))) {
+			if (isset($i->url) and (!is_a($app->currentUser, 'Pair\Models\User') or !$app->currentUser->canAccess($i->url))) {
 				continue;
 			}
 

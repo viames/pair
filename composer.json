@@ -35,7 +35,11 @@
 		],
 		"psr-4": {
 			"Pair\\": "src/",
-			"Pair\\Oauth\\": "src/oauth"
+			"Pair\\Core\\": "src/Core",
+			"Pair\\Models\\": "src/Models",
+			"Pair\\Orm\\": "src/Orm",
+			"Pair\\Services\\": "src/Services",
+			"Pair\\Support\\": "src/Support"
 		}
 	},
 	"support": {

@@ -2,167 +2,159 @@
 
 namespace Pair;
 
+use Pair\Core\Application;
+
 class Breadcrumb {
 
 	/**
-	 * List of all paths.
+	 * List of all path segments.
 	 * @var \stdClass[]
 	 */
-	protected $paths = [];
+	protected array $segments = [];
 
 	/**
-	 * Flag to remove last URL in getPaths().
-	 * @var bool
+	 * Flag to remove last URL in getPath().
 	 */
-	protected $lastUrlDisabled = FALSE;
+	protected bool $lastUrlDisabled = FALSE;
 
 	/**
 	 * Singleton object.
-	 * @var Breadcrumb
 	 */
-	protected static $instance = NULL;
+	protected static ?Breadcrumb $instance = NULL;
 
 	/**
 	 * Initializes breadcrumb with Home path.
 	 */
 	private function __construct() {
-		
+
 		$app = Application::getInstance();
-		
+
 		// add user-landing path if user is available
-		if (is_a($app->currentUser, 'Pair\User')) {
+		if (is_a($app->currentUser, 'Pair\Models\User')) {
 			$landing = $app->currentUser->getLanding();
 			$resource = $landing->module . '/' . $landing->action;
-			$this->addPath('Home', $resource);
+			$this->segment('Home', $resource);
 		}
 
 	}
-	
+
 	/**
 	 * Returns singleton object.
-	 *
-	 * @return	Breadcrumb
 	 */
 	public static function getInstance(): self {
-	
+
 		if (is_null(self::$instance)) {
 			self::$instance = new self();
 		}
-	
+
 		return self::$instance;
-	
+
 	}
-	
+
 	/**
-	 * Adds a new sub-path to Breadcrumb.
-	 * 
-	 * @param	string	Title of the sub-path.
-	 * @param	string	Destination URL (default NULL).
+	 * Adds a new sub-path to Breadcrumb or a list of sub-paths.
 	 */
-	public static function path(string $title, string $url=NULL): void {
+	public static function path(array|string $titleOrList, ?string $url=NULL): void {
 
 		$self = self::getInstance();
-		
-		$path			= new \stdClass();
-		$path->title	= $title;
-		$path->url		= $url;
-		$path->active	= TRUE;
 
-		// just last active path will remains active
-		foreach ($self->paths as $p) {
-			$p->active = FALSE;
+		if (is_array($titleOrList)) {
+
+			foreach ($titleOrList as $title => $url) {
+				$self->segment($title, $url);
+			}
+
+		} else {
+
+			$self->segment($titleOrList, $url);
+
 		}
-		
-		$self->paths[]	= $path;
-		
+
 	}
-	
+
 	/**
-	 * Adds a new sub-path to Breadcrumb. Chainable method.
-	 * 
-	 * @param	string	Title of the sub-path.
-	 * @param	string	Destination URL (default NULL).
-	 * @return	Breadcrumb
-	 * @deprecated Use Breadcrumb::path() instead
+	 * Adds a new sub-path to Breadcrumb.
 	 */
-	public function addPath($title, $url=NULL) {
-		
+	public function segment(string $title, ?string $url): void {
+
 		$path			= new \stdClass();
 		$path->title	= $title;
 		$path->url		= $url;
 		$path->active	= TRUE;
 
 		// just last active path will remains active
-		foreach ($this->paths as $p) {
+		foreach ($this->segments as $p) {
 			$p->active = FALSE;
 		}
-		
-		$this->paths[]	= $path;
-		
-		return $this;
-	
+
+		$this->segments[] = $path;
+
 	}
-	
+
 	/**
-	 * Returns all paths as array.
-	 * 
+	 * Returns all path’s segments as array.
 	 * @return \stdClass[]
 	 */
-	public function getPaths(): array {
-		
+	public function getPath(): array {
+
 		if ($this->lastUrlDisabled) {
-			$newPaths = $this->paths;
+			$newPaths = $this->segments;
 			end($newPaths)->url = NULL;
 			return $newPaths;
 		} else {
-			return $this->paths;
+			return $this->segments;
 		}
-		
+
 	}
-	
+
+	/**
+	 * Returns all path’s segments as array.
+	 * @deprecated
+	 */
+	public function getPaths(): array {
+
+		return $this->getPath();
+
+	}
+
 	/**
 	 * Overwrite the standard Home path.
-	 * 
-	 * @param	string	Path title.
-	 * @param	string	Optional URL.
 	 */
-	public function setHome($title, $url=NULL): void {
-		
+	public function setHome(string $title, ?string $url=NULL): void {
+
 		$path			= new \stdClass();
 		$path->title	= $title;
 		$path->url		= $url;
-		$path->active	= count($this->paths) > 1 ? FALSE : TRUE;
-		
-		$this->paths[0] = $path;
-		
+		$path->active	= count($this->segments) > 1 ? FALSE : TRUE;
+
+		$this->segments[0] = $path;
+
 	}
-	
+
 	/**
 	 * Returns title of last item of breadcrumb.
-	 * 
-	 * @return	string
 	 */
 	public function getLastPathTitle(): string {
-		
-		$path = end($this->paths);
+
+		$path = end($this->segments);
 		return $path->title;
-		
+
 	}
-	
+
 	public function disableLastUrl(): void {
-		
+
 		$this->lastUrlDisabled = TRUE;
-		
+
 	}
-	
+
 	public function getBackPath(): ?\stdClass {
-		
-		if (count($this->paths) > 2) {
-			return $this->paths[count($this->paths)-2];
+
+		if (count($this->segments) > 2) {
+			return $this->segments[count($this->segments)-2];
 		} else {
 			return NULL;
 		}
-		
+
 	}
 
 }

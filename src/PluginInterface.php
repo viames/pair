@@ -9,34 +9,24 @@ interface PluginInterface {
 
 	/**
 	 * Returns absolute path to plugin folder.
-	 * 
-	 *  @return	string
 	 */
-	public function getBaseFolder();
+	public function getBaseFolder(): string;
 	
 	/**
 	 * Checks if plugin is already installed.
-	 *
 	 * @param	string	Name of plugin to search.
-	 * 
-	 * @return	boolean
 	 */
-	public static function pluginExists($name);
+	public static function pluginExists($name): bool;
 	
 	/**
 	 * Creates and returns a Plugin object for implemented class.
-	 *
-	 * @return Plugin
 	 */
-	public function getPlugin();
+	public function getPlugin(): Plugin;
 	
 	/**
 	 * Store an object loaded by a Plugin.
-	 *
 	 * @param	SimpleXMLElement	List of options.
-	 *
-	 * @return	bool
 	 */
-	public function storeByPlugin(\SimpleXMLElement $options);
+	public function storeByPlugin(\SimpleXMLElement $options): bool;
 	
 }

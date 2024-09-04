@@ -2,6 +2,9 @@
 
 namespace Pair;
 
+use Pair\Services\AmazonS3;
+use Pair\Support\Utilities;
+
 /**
  * This class manages http file uploads.
  */
@@ -343,7 +346,7 @@ class Upload {
 	public static function getUploadProgress(string $uniqueId): float {
 
 		if (function_exists('apc_fetch')) {
-			$upload = apc_fetch('upload_' . $uniqueId);
+			$upload = apcu_fetch('upload_' . $uniqueId);
 			if ($upload['done']) {
 				$percent = 100.0;
 			} else if (0 == $upload['total']) {

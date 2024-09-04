@@ -2,6 +2,11 @@
 
 namespace Pair;
 
+use Pair\Core\Application;
+use Pair\Models\Locale;
+use Pair\Orm\Database;
+use Pair\Support\Utilities;
+
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Cell\Cell;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;

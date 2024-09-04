@@ -9,17 +9,14 @@ class Widget {
 
 	/**
 	 * Path to the file with a trailing slash.
-	 * @var string
 	 */
-	private $scriptPath = APPLICATION_PATH . '/widgets/';
+	private string $scriptPath = APPLICATION_PATH . '/widgets/';
 
 	/**
 	 * Renders the widget layout and returns it.
-	 *
 	 * @param	string	Name of widget file without file’s extension (.php).
-	 * @return	string
 	 */
-	public function render($name) {
+	public function render(string $name): string {
 
 		Logger::event('Rendering ' . $name . ' widget');
 

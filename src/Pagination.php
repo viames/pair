@@ -2,6 +2,8 @@
 
 namespace Pair;
 
+use Pair\Core\Router;
+
 class Pagination {
 	
 	/**
