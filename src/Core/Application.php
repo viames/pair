@@ -340,9 +340,9 @@ class Application {
 	 * Check the temporary folder and, if it does not exist or is inaccessible, create it.
 	 */
 	public static function fixTemporaryFolder() {
-		
+
 		if (!file_exists(TEMP_PATH) or !is_dir(TEMP_PATH) or !is_writable(TEMP_PATH)) {
-			
+
 			// remove any file named as wanted temporary folder
 			if (file_exists(TEMP_PATH) and !unlink(TEMP_PATH)) {
 				trigger_error('File ' . TEMP_PATH . ' exists and can’t be removed');
@@ -356,17 +356,17 @@ class Application {
 				return FALSE;
 			}
 			umask($old);
-			
+
 			// sets full permissions
 			if (!chmod(TEMP_PATH, 0777)) {
 				trigger_error('Set permissions on directory ' . TEMP_PATH . ' failed');
 				return FALSE;
 			}
-			
+
 		}
 
 		return TRUE;
-		
+
 	}
 
 	/**
@@ -912,7 +912,7 @@ class Application {
 		// user is not logged in
 		} else {
 
-			// in case of AJAX call, sends a JSON error 
+			// in case of AJAX call, sends a JSON error
 			if ($router->isRaw()) {
 				Utilities::jsonResponseSessionExpired();
 			}
@@ -934,17 +934,14 @@ class Application {
 	/**
 	 * Store variables of any type in a cookie for next retrievement. Existent variables with
 	 * same name will be overwritten.
-	 *
-	 * @param	string	State name.
-	 * @param	mixed	State value (any variable type).
 	 */
-	public function setPersistentState(string $name, $value) {
+	public function setPersistentState(string $name, mixed $value): void {
 
-		$name = static::getCookiePrefix() . ucfirst($name);
+		$stateName = static::getCookiePrefix() . ucfirst($name);
 
-		$this->persistentState[$name] = $value;
+		$this->persistentState[$stateName] = $value;
 
-		setcookie($name, json_encode($value), [
+		setcookie($stateName, json_encode($value), [
 			'expires' => time() + 2592000, // 30 days
 			'path' => '/',
 			'samesite' => 'Lax',
@@ -955,14 +952,10 @@ class Application {
 
 	/**
 	 * Retrieves variables of any type form a cookie named like in param.
-	 *
-	 * @param	string	State name.
-	 *
-	 * @return	mixed
 	 */
-	public function getPersistentState(string $name) {
+	public function getPersistentState(string $stateName): mixed {
 
-		$name = static::getCookiePrefix() . ucfirst($name);
+		$name = static::getCookiePrefix() . ucfirst($stateName);
 
 		if (array_key_exists($name, $this->persistentState)) {
 			return $this->persistentState[$name];
@@ -976,18 +969,16 @@ class Application {
 
 	/**
 	 * Removes a state variable from cookie.
-	 *
-	 * @param	string	State name.
 	 */
-	public function unsetPersistentState(string $name) {
+	public function unsetPersistentState(string $name): void {
 
-		$name = static::getCookiePrefix() . ucfirst($name);
+		$stateName = static::getCookiePrefix() . ucfirst($name);
 
-		unset($this->persistentState[$name]);
+		unset($this->persistentState[$stateName]);
 
-		if (isset($_COOKIE[$name])) {
-			unset($_COOKIE[$name]);
-			setcookie($name, '', [
+		if (isset($_COOKIE[$stateName])) {
+			unset($_COOKIE[$stateName]);
+			setcookie($stateName, '', [
 				'expires' => -1,
 				'path' => '/',
 				'samesite' => 'Lax',
@@ -1014,8 +1005,6 @@ class Application {
 
 	/**
 	 * Return a cookie prefix based on product name, like ProductName.
-	 *
-	 * @return	string
 	 */
 	public static function getCookiePrefix(): string {
 

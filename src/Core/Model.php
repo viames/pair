@@ -153,7 +153,7 @@ abstract class Model {
 	/**
 	 * Create SQL code about ORDER and LIMIT.
 	 */
-	protected function getOrderLimitSql() {
+	protected function getOrderLimitSql(): string {
 
 		$ret = '';
 

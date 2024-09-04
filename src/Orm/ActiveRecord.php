@@ -117,20 +117,20 @@ abstract class ActiveRecord implements \JsonSerializable {
 		try {
 
 			if (array_key_exists($name, static::getBinds()) or in_array($name, ['keyProperties', 'db', 'loadedFromDb', 'typeList', 'cache', 'errors', 'updatedProperties', 'dynamicProperties'])) {
-				
+
 				if (!property_exists($this, $name)) {
 					throw new \Exception('Property “'. $name .'” doesn’t exist for object '. get_called_class());
 				}
-				
+
 			// it’s a dynamic property
 			} else {
 
 				if (!array_key_exists($name, $this->dynamicProperties)) {
 					throw new \Exception('Dynamic property “'. $name .'” doesn’t exist for object '. get_called_class());
 				}
-				
+
 				return $this->dynamicProperties[$name];
-			
+
 			}
 
 			return isset($this->$name) ? $this->$name : NULL;
@@ -165,8 +165,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 		if (!array_key_exists($name, static::getBinds())) {
 			$this->dynamicProperties[$name] = @$value;
 			return;
-		}		
-		
+		}
+
 		// check that’s not the initial object population
 		if (isset(debug_backtrace()[1]) and !in_array(debug_backtrace()[1]['function'], ['populate'])) {
 			$previousValue = $this->__get($name);
@@ -302,7 +302,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		};
 
-		$getInverseRelatedObjects = function(string $class): array {
+		$getInverseRelatedObjects = function(string $class): Collection {
 
 			// foreign keys list
 			$foreignKeys = $this->db->getForeignKeys($class::TABLE_NAME);
@@ -376,11 +376,28 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// reset updated properties
 		$this->loadedFromDb = FALSE;
 		$this->cache = [];
-		
+
 		$this->resetErrors();
 
 		// log the reload
 		Logger::event('Cloned ' . $class . ' object');
+
+	}
+
+	/**
+	 * Called by var_dump() when dumping an object to get the relevant object properties.
+	 */
+	public function __debugInfo(): array {
+
+		$debug = [];
+
+		$properties = $this->getAllProperties();
+
+		foreach ($properties as $name => $value) {
+			$debug[$name] = $value;
+		}
+
+		return $debug;
 
 	}
 
@@ -676,7 +693,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$key = (is_array($class::TABLE_KEY) and isset($class::TABLE_KEY[0]))
 		? $class::TABLE_KEY[0] ?? NULL
 		: $class::TABLE_KEY;
-		
+
 		return ($key and (is_int($key) or is_string($key)));
 
 	}
@@ -950,7 +967,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 				Logger::event('Failed to update ' . $class . ' object');
 				$this->addError($this->db->getLastError());
 				return FALSE;
-			}	
+			}
 
 			// reset updated-properties tracker
 			$this->updatedProperties = [];
@@ -1330,13 +1347,10 @@ abstract class ActiveRecord implements \JsonSerializable {
 	/**
 	 * Extended method to return a property value of the Pair\Orm\ActiveRecord inherited object related to
 	 * this by a ForeignKey in DB-table. Cached method.
-	 *
 	 * @param	string	Related property name, belongs to this object.
 	 * @param	string	Wanted property name, belongs to related object.
-	 *
-	 * @return	mixed|NULL
 	 */
-	final public function getRelatedProperty(string $relatedProperty, string $wantedProperty) {
+	final public function getRelatedProperty(string $relatedProperty, string $wantedProperty): mixed {
 
 		$obj = $this->getRelated($relatedProperty);
 
@@ -1353,9 +1367,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * @param	string	Class name of the referenced object.
 	 * @param	string	Referenced property name.
 	 * @param	string	Self property name.
-	 * @return	array
 	 */
-	final protected function getInverseRelateds(string $property, string $refClass, string $refProperty): array {
+	final protected function getInverseRelateds(string $property, string $refClass, string $refProperty): Collection {
 
 		// the table referenced by fk
 		$referencedTable = $refClass::TABLE_NAME;
@@ -1784,7 +1797,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 				} else {
 
-					trigger_error('In method ' . $class . '::getAllObject() unexistent property “' . $property . '” can’t be used as filter');
+					trigger_error('In method ' . $class . '::getAllObjects() unexistent property “' . $property . '” can’t be used as filter');
 
 				}
 
@@ -2231,8 +2244,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 	/**
 	 * Utility that works like \get_object_vars() but restricted to bound properties.
-	 *
-	 * @return array
 	 */
 	final public function getAllProperties(): array {
 
@@ -2672,6 +2683,22 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 	}
 
+	public function serialize(): string {
+
+		return serialize($this->getAllProperties());
+
+	}
+
+	public function unserialize(mixed $data): void {
+
+		$unserializedData = unserialize($data);
+
+		foreach ($unserializedData as $property => $value) {
+			$this->__set($property, $value);
+		}
+
+	}
+
 	public function toArray(): array {
 
 		$properties = $this->getAllProperties();
@@ -2690,7 +2717,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		return json_encode($this->toArray(), $options);
 
 	}
-	
+
 	/*
 	public static function where(): Builder {
 
