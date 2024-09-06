@@ -2,7 +2,7 @@
 
 namespace Pair\Orm;
 
-use Pair\Logger;
+use Pair\Support\Logger;
 
 
 define ('PAIR_DB_OBJECT_LIST',	1);

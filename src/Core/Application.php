@@ -2,8 +2,6 @@
 
 namespace Pair\Core;
 
-use Pair\Logger;
-use Pair\Options;
 use Pair\Models\Audit;
 use Pair\Models\Oauth2Token;
 use Pair\Models\Session;
@@ -12,6 +10,8 @@ use Pair\Models\Token;
 use Pair\Models\User;
 use Pair\Orm\ActiveRecord;
 use Pair\Orm\Database;
+use Pair\Support\Logger;
+use Pair\Support\Options;
 use Pair\Support\Translator;
 use Pair\Support\Utilities;
 

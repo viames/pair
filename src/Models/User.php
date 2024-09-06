@@ -522,7 +522,7 @@ class User extends ActiveRecord {
 		Audit::logout($user);
 
 		// delete session
-		$res = Database::run('DELETE FROM `sessions` WHERE id = ?', [$sid]);
+		$res = Database::run('DELETE FROM `sessions` WHERE `id` = ?', [$sid]);
 
 		// unset all persistent states
 		$app = Application::getInstance();

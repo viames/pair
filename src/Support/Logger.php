@@ -1,9 +1,9 @@
 <?php
 
-namespace Pair;
+namespace Pair\Support;
 
 use Pair\Core\Application;
-use Pair\Core\Router;
+use Pair\Core\Router;;
 use Pair\Models\Session;
 use Pair\Models\User;
 

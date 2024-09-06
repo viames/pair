@@ -1,6 +1,8 @@
 <?php
 
-namespace Pair;
+namespace Pair\Html;
+
+use Pair\Support\Logger;
 
 /**
  * Class for management of an HTML widget.

@@ -1,8 +1,8 @@
 <?php
 
-namespace Pair;
+namespace Pair\Html;
 
-use Pair\Logger;
+use Pair\Support\Logger;
 use Pair\Core\Application;
 use Pair\Orm\ActiveRecord;
 use Pair\Orm\Collection;

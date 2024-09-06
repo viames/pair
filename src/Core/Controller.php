@@ -2,7 +2,7 @@
 
 namespace Pair\Core;
 
-use Pair\Logger;
+use Pair\Support\Logger;
 use Pair\Orm\ActiveRecord;
 use Pair\Support\ErrorLog;
 use Pair\Support\Translator;

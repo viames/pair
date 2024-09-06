@@ -1,6 +1,6 @@
 <?php
 
-namespace Pair;
+namespace Pair\Support;
 
 use Pair\Services\AmazonS3;
 use Pair\Support\Utilities;

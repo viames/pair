@@ -1,6 +1,6 @@
 <?php
 
-namespace Pair;
+namespace Pair\Support;
 
 use Pair\Core\Application;
 use Pair\Support\Utilities;
@@ -283,7 +283,7 @@ class Plugin {
 		
 		// add namespace for Pair classes
 		if (in_array($class, ['Module', 'Template'])) {
-			$class = 'Pair\\' . $class;
+			$class = 'Pair\\Models\\' . $class;
 		}
 		
 		// check if plugin is already installed

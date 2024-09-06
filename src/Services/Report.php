@@ -1,6 +1,6 @@
 <?php
 
-namespace Pair;
+namespace Pair\Services;
 
 use Pair\Core\Application;
 use Pair\Models\Locale;

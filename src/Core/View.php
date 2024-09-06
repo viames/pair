@@ -2,13 +2,11 @@
 
 namespace Pair\Core;
 
-use Pair\Logger;
-use Pair\Pagination;
-use Pair\Options;
-use Pair\Core\Model;
-use Pair\Core\Router;
+use Pair\Html\Pagination;
 use Pair\Models\ErrorLog;
 use Pair\Orm\ActiveRecord;
+use Pair\Support\Logger;
+use Pair\Support\Options;
 use Pair\Support\Translator;
 use Pair\Support\Utilities;
 

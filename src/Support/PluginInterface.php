@@ -1,6 +1,6 @@
 <?php
 
-namespace Pair;
+namespace Pair\Support;
 
 /**
  * Interface for installable plugins.

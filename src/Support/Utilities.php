@@ -2,11 +2,8 @@
 
 namespace Pair\Support;
 
-use Pair\Logger;
-use Pair\Options;
 use Pair\Core\Application;
 use Pair\Core\Router;
-use Pair\Support\Translator;
 
 /**
  * Collection of useful methods for both internal framework needs and common application needs.
@@ -987,6 +984,7 @@ class Utilities {
 		// Pair framework
 		$checkFolder(APPLICATION_PATH . '/' . PAIR_FOLDER, 'Pair\\');
 		$checkFolder(APPLICATION_PATH . '/' . PAIR_FOLDER . '/Core', 'Pair\\Core\\');
+		$checkFolder(APPLICATION_PATH . '/' . PAIR_FOLDER . '/Html', 'Pair\\Html\\');
 		$checkFolder(APPLICATION_PATH . '/' . PAIR_FOLDER . '/Models', 'Pair\\Models\\');
 		$checkFolder(APPLICATION_PATH . '/' . PAIR_FOLDER . '/Orm', 'Pair\\Orm\\');
 		$checkFolder(APPLICATION_PATH . '/' . PAIR_FOLDER . '/Services', 'Pair\\Services\\');

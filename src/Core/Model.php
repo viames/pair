@@ -2,7 +2,7 @@
 
 namespace Pair\Core;
 
-use Pair\Logger;
+use Pair\Support\Logger;
 use Pair\Orm\Collection;
 use Pair\Orm\Database;
 use Pair\Orm\Query;

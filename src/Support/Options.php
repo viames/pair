@@ -1,6 +1,6 @@
 <?php
 
-namespace Pair;
+namespace Pair\Support;
 
 use Pair\Orm\Database;
 

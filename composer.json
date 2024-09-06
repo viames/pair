@@ -36,6 +36,7 @@
 		"psr-4": {
 			"Pair\\": "src/",
 			"Pair\\Core\\": "src/Core",
+			"Pair\\Html\\": "src/Html",
 			"Pair\\Models\\": "src/Models",
 			"Pair\\Orm\\": "src/Orm",
 			"Pair\\Services\\": "src/Services",

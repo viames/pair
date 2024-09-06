@@ -2,7 +2,7 @@
 
 namespace Pair\Models;
 
-use Pair\Logger;
+use Pair\Support\Logger;
 use Pair\Orm\ActiveRecord;
 use Pair\Orm\Database;
 use Pair\Support\Utilities;

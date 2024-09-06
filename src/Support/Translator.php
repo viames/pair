@@ -3,7 +3,7 @@
 namespace Pair\Support;
 
 use Pair\Core\Application;
-use Pair\Logger;
+use Pair\Support\Logger;
 use Pair\Core\Router;
 use Pair\Models\Locale;
 

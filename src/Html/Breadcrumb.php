@@ -1,6 +1,6 @@
 <?php
 
-namespace Pair;
+namespace Pair\Html;
 
 use Pair\Core\Application;
 
