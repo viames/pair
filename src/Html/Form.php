@@ -2,11 +2,11 @@
 
 namespace Pair\Html;
 
-use Pair\Support\Logger;
 use Pair\Core\Application;
 use Pair\Orm\ActiveRecord;
 use Pair\Orm\Collection;
 use Pair\Support\Input;
+use Pair\Support\Logger;
 use Pair\Support\Translator;
 
 class Form {
@@ -26,10 +26,8 @@ class Form {
 	/**
 	 * Adds an FormControlInput object to this Form object. Default type is Text.
 	 * Chainable method.
-	 *
 	 * @param	string	Control name.
 	 * @param	array	List of attributes.
-	 * @return	FormControlInput
 	 */
 	public function addInput(string $name, array $attributes = []): FormControlInput {
 
@@ -42,10 +40,8 @@ class Form {
 
 	/**
 	 * Adds an FormControlSelect object to this Form object. Chainable method.
-	 *
 	 * @param	string	Control name.
 	 * @param	array	List of attributes.
-	 * @return	FormControlSelect
 	 */
 	public function addSelect(string $name, array $attributes = []): FormControlSelect {
 
@@ -58,10 +54,8 @@ class Form {
 
 	/**
 	 * Adds an FormControlTextarea object to this Form object. Chainable method.
-	 *
 	 * @param	string	Control name.
 	 * @param	array	List of attributes.
-	 * @return	FormControlTextarea
 	 */
 	public function addTextarea(string $name, array $attributes = []): FormControlTextarea {
 
@@ -74,10 +68,8 @@ class Form {
 
 	/**
 	 * Adds an FormControlButton object to this Form object. Chainable method.
-	 *
 	 * @param	string	Control name.
 	 * @param	array	List of attributes.
-	 * @return	FormControlButton
 	 */
 	public function addButton(string $name, array $attributes = []): FormControlButton {
 
@@ -90,10 +82,9 @@ class Form {
 
 	/**
 	 * Add a FormControl object to controls list of this Form.
-	 *
 	 * @param	mixed	FormControl children class object.
 	 */
-	public function addControl($control) {
+	public function addControl(mixed $control): void {
 
 		$this->controls[$control->name] = $control;
 
@@ -119,22 +110,19 @@ class Form {
 
 	/**
 	 * Remove a control form a Form object.
-	 *
 	 * @param	string	Control name.
-	 *
-	 * @return	bool
 	 */
-	public function removeControl(string $name): bool {
+	public function removeControl(string $controlName): bool {
 
-		if (substr($name, -2) == '[]') {
-			$name = substr($name, 0, -2);
+		if (substr($controlName, -2) == '[]') {
+			$controlName = substr($controlName, 0, -2);
 		}
 
-		if (!$this->controlExists($name)) {
+		if (!$this->controlExists($controlName)) {
 			return FALSE;
 		}
 
-		unset($this->controls[$name]);
+		unset($this->controls[$controlName]);
 		return TRUE;
 
 	}
@@ -152,10 +140,7 @@ class Form {
 
 	/**
 	 * Check whether the control exists.
-	 *
 	 * @param	string	Control name.
-	 *
-	 * @return	boolean
 	 */
 	public function controlExists($name): bool {
 
@@ -165,9 +150,7 @@ class Form {
 
 	/**
 	 * Assigns all attributes of passed ActiveRecord children to controls with same name.
-	 *
 	 * @param	ActiveRecord	An object inherited by ActiveRecord.
-	 * @return	void
 	 */
 	public function setValuesByObject(ActiveRecord $object): void {
 
@@ -188,7 +171,6 @@ class Form {
 
 	/**
 	 * Returns all FormControl subclass objects registered in this Form object.
-	 *
 	 * @return FormControl[]
 	 */
 	public function getAllControls(): array {
@@ -199,9 +181,7 @@ class Form {
 
 	/**
 	 * Creates an HTML form control getting its object by its name.
-	 *
 	 * @param	string	HTML name for this control.
-	 * @return	string
 	 */
 	public function renderControl(string $name): string {
 
@@ -227,9 +207,7 @@ class Form {
 
 	/**
 	 * Print the HTML code of a form control by its name.
-	 *
 	 * @param	string	HTML name of the wanted control.
-	 * @return	void
 	 */
 	public function printControl(string $name): void {
 
@@ -239,13 +217,12 @@ class Form {
 
 	/**
 	 * Print the HTML code of a control’s label.
-	 *
 	 * @param	string	HTML name of the wanted control.
 	 */
-	public function printLabel(string $name) {
+	public function printLabel(string $controlName) {
 
 		// gets control object
-		$control = $this->getControl($name);
+		$control = $this->getControl($controlName);
 
 		if ($control) {
 			$control->printLabel();
@@ -255,8 +232,6 @@ class Form {
 
 	/**
 	 * Validates all form field controls and returns a FormValidation result object.
-	 *
-	 * @return	bool
 	 */
 	public function isValid(): bool {
 
@@ -276,7 +251,6 @@ class Form {
 
 	/**
 	 * Return a list of unvalid FormControl objects.
-	 *
 	 * @return FormControl[]
 	 */
 	public function getUnvalidControls(): array {
@@ -297,10 +271,7 @@ class Form {
 
 	/**
 	 * Adds a common CSS class to all controls of this form at render time. Chainable.
-	 *
 	 * @param	string	CSS Class name.
-	 *
-	 * @return	\Pair\Form
 	 */
 	public function addControlClass(string $class): Form {
 
@@ -313,7 +284,6 @@ class Form {
 	/**
 	 * Create an HTML select control starting from an object array and setting a default
 	 * value (optional).
-	 *
 	 * @param	string	Select’s name.
 	 * @param	Collection|array	Array with object as options.
 	 * @param	string	Property name of the value for option object (default is “value”).
@@ -321,8 +291,6 @@ class Form {
 	 * @param	string	Value selected in this select (default NULL).
 	 * @param	string	Extended parameters as associative array tag=>value.
 	 * @param	string	Prepend empty value (default NULL, no prepend).
-	 *
-	 * @return	string
 	 */
 	public static function buildSelect(string $name, Collection|array $list, string $valName='value', string $textName='text', $value=NULL, $attributes=NULL, $prependEmpty=NULL) {
 
@@ -339,14 +307,11 @@ class Form {
 
 	/**
 	 * Proxy for buildSelect that allow to start option list from a simple Collection or array.
-	 *
 	 * @param	string	Select’s name.
 	 * @param	Collection|array	Associative array value=>text for options.
 	 * @param	string	Value selected in this select (default NULL).
 	 * @param	string	Extended attributes as associative array tag=>value (optional).
 	 * @param	string	Prepend empty value (default NULL, no prepend).
-	 *
-	 * @return	string
 	 */
 	public static function buildSelectFromArray(string $name, Collection|array $list, string $value=NULL, $attributes=NULL, $prependEmpty=NULL) {
 
@@ -363,13 +328,10 @@ class Form {
 
 	/**
 	 * Creates an HTML input form control.
-	 *
 	 * @param	string	HTML name for this control.
 	 * @param	string	Default value (NULL default).
 	 * @param	string	Type (text -default-, email, tel, url, color, password, number, bool, date, datetime, file, image, address, hidden).
 	 * @param	string	More parameters as associative array tag=>value (optional).
-	 *
-	 * @return	string
 	 */
 	public static function buildInput(string $name, string $value=NULL, string $type='text', $attributes=[]) {
 
@@ -382,14 +344,11 @@ class Form {
 
 	/**
 	 * Creates a TextArea input field.
-	 *
 	 * @param	string	HTML name for this control.
 	 * @param   int		Rows value.
 	 * @param   int		Columns value.
 	 * @param	string	Default value (NULL default).
 	 * @param	string	More parameters as associative array tag=>value (optional).
-	 *
-	 * @return string
 	 */
 	public static function buildTextarea(string $name, int $rows, int $cols, $value=NULL, $attributes=[]) {
 
@@ -402,14 +361,11 @@ class Form {
 
 	/**
 	 * Creates an HTML button form control prepending an optional icon.
-	 *
 	 * @param	string	Text for the button.
 	 * @param	string	Type (submit -default-, button, reset).
 	 * @param	string	HTML name for this control (optional).
 	 * @param	string	More parameters as associative array tag=>value (optional).
 	 * @param	string	Name of Font Awesome icon class (optional).
-	 *
-	 * @return	string
 	 */
 	public static function buildButton(string $value, string $type='submit', string $name=NULL, $attributes=[], $faIcon=NULL) {
 
@@ -1079,12 +1035,14 @@ class FormControlInput extends FormControl {
 				break;
 
 			case 'date':
-				$ret .= ' type="date" value="' . htmlspecialchars((string)$this->value) . '"';
+				$value = is_a($this->value, 'DateTime') ? $this->value->format($this->dateFormat) : (string)$this->value;
+				$ret .= ' type="date" value="' . htmlspecialchars($value) . '"';
 				break;
 
 			case 'datetime':
 				$type = Input::usingCustomDatetimepicker() ? 'datetime' : 'datetime-local';
-				$ret .= ' type="' . $type . '" value="' . htmlspecialchars((string)$this->value) . '"';
+				$value = is_a($this->value, 'DateTime') ? $this->value->format($this->dateFormat) : (string)$this->value;
+				$ret .= ' type="' . $type . '" value="' . htmlspecialchars($value) . '"';
 				break;
 
 			case 'file':
