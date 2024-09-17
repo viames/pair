@@ -15,13 +15,18 @@ class Form {
 	 * List of all controls added to this form.
 	 * @var FormControl[]
 	 */
-	private $controls = [];
+	private array $controls = [];
 
 	/**
 	 * List of class to add on each controls.
 	 * @var string[]
 	 */
-	private $controlClasses = [];
+	private array $controlClasses = [];
+
+	/**
+	 * Class to add on each labels.
+	 */
+	private ?string $labelClasses = NULL;
 
 	/**
 	 * Adds an FormControlInput object to this Form object. Default type is Text.
@@ -82,9 +87,8 @@ class Form {
 
 	/**
 	 * Add a FormControl object to controls list of this Form.
-	 * @param	mixed	FormControl children class object.
 	 */
-	public function addControl(mixed $control): void {
+	public function addControl(FormControl $control): void {
 
 		$this->controls[$control->name] = $control;
 
@@ -225,6 +229,9 @@ class Form {
 		$control = $this->getControl($controlName);
 
 		if ($control) {
+			if (isset($this->labelClasses) and $this->labelClasses) {
+				$control->setLabelClass($this->labelClasses);
+			}
 			$control->printLabel();
 		}
 
@@ -295,7 +302,7 @@ class Form {
 	public static function buildSelect(string $name, Collection|array $list, string $valName='value', string $textName='text', $value=NULL, $attributes=NULL, $prependEmpty=NULL) {
 
 		$control = new FormControlSelect($name, $attributes);
-		$control->setListByObjectArray($list, $valName, $textName)->setValue($value);
+		$control->setOptions($list, $valName, $textName)->setValue($value);
 
 		if ($prependEmpty) {
 			$control->prependEmpty($prependEmpty);
@@ -316,7 +323,7 @@ class Form {
 	public static function buildSelectFromArray(string $name, Collection|array $list, string $value=NULL, $attributes=NULL, $prependEmpty=NULL) {
 
 		$control = new FormControlSelect($name, $attributes);
-		$control->setListByAssociativeArray($list)->setValue($value);
+		$control->setOptions($list)->setValue($value);
 
 		if ($prependEmpty) {
 			$control->prependEmpty($prependEmpty);
@@ -373,6 +380,17 @@ class Form {
 		$control->setType($type)->setFaIcon($faIcon)->setValue($value);
 
 		return $control->render();
+
+	}
+
+	/**
+	 * Sets a common CSS class for all labels of this form.
+	 */
+	public function setLabelClass(string $class): Form {
+
+		$this->labelClasses = $class;
+
+		return $this;
 
 	}
 
@@ -465,6 +483,11 @@ abstract class FormControl {
 	private $description;
 
 	/**
+	 * CSS class for label.
+	 */
+	private ?string $labelClass;
+
+	/**
 	 * Build control with HTML name tag and optional attributes.
 	 *
 	 * @param	string	Control name.
@@ -523,12 +546,10 @@ abstract class FormControl {
 
 	/**
 	 * Return a string value for this object, matches the control’s label.
-	 *
-	 * @return	string
 	 */
 	public function __toString(): string {
 
-		return $this->getLabel();
+		return $this->getLabelText();
 
 	}
 
@@ -713,7 +734,7 @@ abstract class FormControl {
 	/**
 	 * Return the control’s label.
 	 */
-	public function getLabel(): string {
+	public function getLabelText(): string {
 
 		// no label, get it by the control’s name
 		if (!$this->label) {
@@ -757,22 +778,41 @@ abstract class FormControl {
 		return $this->description;
 
 	}
+	
+	/**
+	 * Sets a CSS class for all the controls label. Chainable method.
+	 */
+	public function setLabelClass(string $class): FormControlSelect|FormControlInput|FormControlTextarea|FormControlButton {
+
+		$this->labelClass = $class;
+
+		return $this;
+
+	}
 
 	/**
-	 * Print the control’s label even with required-field class.
+	 * Print the control’s label tag even with required-field class.
 	 */
 	public function printLabel(): void {
 
-		$label = $this->getLabel();
+		$label = '<label for="' . htmlspecialchars($this->name) . '"';
+		
+		if (isset($this->labelClass) and $this->labelClass) {
+			$label .= ' class="' . $this->labelClass . '"';
+		}
+
+		$label .= '>';
 
 		// if required, add required-field css class
-		if ($this->required and !$this->readonly and !$this->disabled) {
-			$label = '<span class="required-field">' . $label . '</span>';
-		}
+		$label .= ($this->required and !$this->readonly and !$this->disabled)
+		? '<span class="required-field">' . htmlspecialchars($this->getLabelText()) . '</span>'
+		: $this->getLabelText();
 
 		if ($this->description) {
 			$label .= ' <i class="fal fa-question-circle" data-toggle="tooltip" data-placement="auto" title="' . htmlspecialchars((string)$this->description) . '"></i>';
 		}
+
+		$label .= '</label>';
 
 		print $label;
 
@@ -1106,8 +1146,6 @@ class FormControlInput extends FormControl {
 	/**
 	 * Validates this control against empty values, minimum length, maximum length,
 	 * and returns TRUE if is all set checks pass.
-	 *
-	 * @return	bool
 	 */
 	public function validate(): bool {
 
@@ -1200,21 +1238,18 @@ class FormControlSelect extends FormControl {
 
 	/**
 	 * Items list of \stdClass objs with value and text attributes.
-	 * @var array
 	 */
-	private $list = [];
+	private array $list = [];
 
 	/**
 	 * Flag to enable this control to multiple values.
-	 * @var bool
 	 */
-	private $multiple = FALSE;
+	private bool $multiple = FALSE;
 
 	/**
 	 * If populated with text, add an empty option before the list of values.
-	 * @var string|NULL
 	 */
-	private $emptyOption;
+	private ?string $emptyOption;
 
 	/**
 	 * Check whether this select control has options.
@@ -1227,10 +1262,8 @@ class FormControlSelect extends FormControl {
 
 	/**
 	 * Populates select control with an associative array. Chainable method.
-	 *
 	 * @param	array	Associative array (value=>text).
-	 *
-	 * @return	FormControlSelect
+	 * @deprecated		Deprecated in favor of setOptions.
 	 */
 	public function setListByAssociativeArray(array $list): FormControlSelect {
 
@@ -1253,13 +1286,11 @@ class FormControlSelect extends FormControl {
 	 * Populates select control with an object array. Each object must have properties
 	 * for value and text. If property text includes a couple of round parenthesys, will
 	 * invoke a function without parameters. It’s a chainable method.
-	 *
 	 * @param	\stdClass[]	Object with value and text properties.
 	 * @param	string		Name of property’s value.
 	 * @param	string		Name of property’s text or an existent object function.
 	 * @param 	string		Name of property's attributes (optional).
-	 *
-	 * @return	FormControlSelect
+	 * @deprecated			Deprecated in favor of setOptions.
 	 */
 	public function setListByObjectArray(array|Collection $list, string $propertyValue, string $propertyText, $propertyAttributes = null): FormControlSelect {
 
@@ -1295,12 +1326,73 @@ class FormControlSelect extends FormControl {
 	}
 
 	/**
+	 * Populates select control with an object array. Each object must have properties
+	 * for value and text. If property text includes a couple of round parenthesys, will
+	 * invoke a function without parameters. It’s a chainable method.
+	 * @param	array|Collection	Associative array [value=>label] or object list [{value,label,attributes}].
+	 * @param	string	Name of property’s value.
+	 * @param	string	Name of property’s text or an existent object function.
+	 * @param 	string	Optional attributes [name=>value].
+	 */
+	public function setOptions(array|Collection $list, ?string $propertyValue=NULL, ?string $propertyText=NULL, ?array $propertyAttributes = NULL): FormControlSelect {
+
+		$allowedValues = ['string','integer','double'];
+
+		// check if associative array
+		if (is_array($list) and in_array(gettype(reset($list)), $allowedValues)) {
+
+			$objectList = [];
+			
+			// convert associative array to a stdClass array
+			foreach ($list as $value=>$text) {
+				$object = new \stdClass();
+				$object->value = $value;
+				$object->text = (string)$text;
+				$objectList[] = $object;
+			}
+			
+			$list = $objectList;
+
+			$propertyValue = 'value';
+			$propertyText = 'text';
+
+		}
+
+		// for each item of the list, add an option
+		foreach ($list as $opt) {
+
+			$option = new \stdClass();
+			$option->value = $opt->$propertyValue;
+			$option->attributes = [];
+
+			if (is_array($propertyAttributes)) {
+				foreach ($propertyAttributes as $pa) {
+					array_push($option->attributes, ['name' => $pa, 'value' => $opt->$pa]);
+				}
+			} else if (is_string($propertyAttributes)) {
+				array_push($option->attributes, ['name' => $propertyAttributes, 'value' => $opt->$propertyAttributes]);
+			}
+
+			// check wheter the propertyText is a function call
+			if (FALSE !== strpos($propertyText,'()') and strpos($propertyText,'()')+2 == strlen($propertyText)) {
+				$functionName = substr($propertyText, 0, strrpos($propertyText,'()'));
+				$option->text = $opt->$functionName();
+			} else {
+				$option->text = $opt->$propertyText;
+			}
+
+			$this->list[] = $option;
+
+		}
+
+		return $this;
+
+	}
+
+	/**
 	 * Populate this control through an array in which each element is the group title and
 	 * in turn contains a list of objects with the value and text properties. Chainable.
-	 *
 	 * @param	array:\stdClass[]	Two-dimensional list.
-	 *
-	 * @return	FormControlSelect
 	 */
 	public function setGroupedList(array $list): FormControlSelect {
 
@@ -1312,10 +1404,7 @@ class FormControlSelect extends FormControl {
 
 	/**
 	 * Adds a null value as first item. Chainable method.
-	 *
 	 * @param	string|NULL	Option text for first null value.
-	 *
-	 * @return	FormControlSelect
 	 */
 	public function prependEmpty(string $text=NULL): FormControlSelect {
 
@@ -1327,8 +1416,6 @@ class FormControlSelect extends FormControl {
 
 	/**
 	 * Enables this select control to accept multiple choises. Chainable method.
-	 *
-	 * @return	FormControlSelect
 	 */
 	public function setMultiple(): FormControlSelect {
 
@@ -1339,8 +1426,6 @@ class FormControlSelect extends FormControl {
 
 	/**
 	 * Renders a Select field tag as HTML code.
-	 *
-	 * @return string
 	 */
 	public function render(): string {
 
@@ -1375,7 +1460,7 @@ class FormControlSelect extends FormControl {
 		};
 
 		// add an initial line to the options of this select
-		if (!is_null($this->emptyOption)) {
+		if (isset($this->emptyOption) and !is_null($this->emptyOption)) {
 			$option			= new \stdClass();
 			$option->value	= '';
 			$option->text	= ($this->disabled or $this->readonly) ? '' : $this->emptyOption;
@@ -1425,8 +1510,6 @@ class FormControlSelect extends FormControl {
 
 	/**
 	 * Validates this control and returns TRUE if is valid.
-	 *
-	 * @return	bool
 	 */
 	public function validate(): bool {
 
@@ -1442,7 +1525,7 @@ class FormControlSelect extends FormControl {
 		} else if (count($this->list)) {
 
 			// this FormControlSelect contains an empty option as the first element
-			if (!is_null($this->emptyOption) and !$this->required and (''==$value or is_null($value))) {
+			if (isset($this->emptyOption) and !is_null($this->emptyOption) and !$this->required and (''==$value or is_null($value))) {
 
 				$valid = TRUE;
 
@@ -1484,8 +1567,6 @@ class FormControlTextarea extends FormControl {
 	 * Sets rows for this textarea. Chainable method.
 	 *
 	 * @param	int		Rows number.
-	 *
-	 * @return	FormControlTextarea
 	 */
 	public function setRows(int $num): FormControlTextarea {
 
@@ -1498,8 +1579,6 @@ class FormControlTextarea extends FormControl {
 	 * Sets columns for this textarea. Chainable method.
 	 *
 	 * @param	int		Columns number.
-	 *
-	 * @return	FormControlTextarea
 	 */
 	public function setCols(int $num): FormControlTextarea {
 
@@ -1510,8 +1589,6 @@ class FormControlTextarea extends FormControl {
 
 	/**
 	 * Renders a TextArea field tag as HTML code.
-	 *
-	 * @return string
 	 */
 	public function render(): string {
 
@@ -1527,8 +1604,6 @@ class FormControlTextarea extends FormControl {
 	/**
 	 * Validates this control against empty values, minimum length, maximum length,
 	 * and returns TRUE if is all set checks pass.
-	 *
-	 * @return	bool
 	 */
 	public function validate(): bool {
 
@@ -1575,8 +1650,6 @@ class FormControlButton extends FormControl {
 	 * Sets type for a FormControlButton (submit, reset, button). Chainable method.
 	 *
 	 * @param	string	The button type.
-	 *
-	 * @return	FormControlButton
 	 */
 	public function setType(string $type): FormControlButton {
 
@@ -1589,8 +1662,6 @@ class FormControlButton extends FormControl {
 	 * Sets a FontAwesome icon for this button object. Chainable method.
 	 *
 	 * @param	string	The icon class.
-	 *
-	 * @return	FormControlButton
 	 */
 	public function setFaIcon(string $class): FormControlButton {
 
@@ -1601,8 +1672,6 @@ class FormControlButton extends FormControl {
 
 	/**
 	 * Renders an HTML button form control prepending an optional FontAwesome icon.
-	 *
-	 * @return	string
 	 */
 	public function render(): string {
 
@@ -1630,8 +1699,6 @@ class FormControlButton extends FormControl {
 
 	/**
 	 * Validation is disabled for buttons, returns always TRUE.
-	 *
-	 * @return	bool
 	 */
 	public function validate(): bool {
 

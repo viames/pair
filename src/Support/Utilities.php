@@ -4,6 +4,7 @@ namespace Pair\Support;
 
 use Pair\Core\Application;
 use Pair\Core\Router;
+use Pair\Orm\Collection;
 
 /**
  * Collection of useful methods for both internal framework needs and common application needs.
@@ -167,6 +168,29 @@ class Utilities {
 		}
 
 		return $ret;
+
+	}
+
+	/**
+	 * Determines whether the brightness of the color code passed as a parameter is less
+	 * than 128, so it is a dark color. Useful for dynamically choosing a foreground or
+	 * background color that contrasts with the color passed.
+	 */
+	public static function isDarkColor(string $hexColor): bool {
+
+		// removes the # symbol, if present
+		$hexColor = ltrim($hexColor, '#');
+
+		// converts HEX color to RGB components
+		$r = hexdec(substr($hexColor, 0, 2));
+		$g = hexdec(substr($hexColor, 2, 2));
+		$b = hexdec(substr($hexColor, 4, 2));
+
+		// calculate brightness using the perceived formula
+		$brightness = ($r * 299 + $g * 587 + $b * 114) / 1000;
+
+		// if the brightness is less than 128, the color is dark
+		return $brightness < 128;
 
 	}
 
@@ -1203,13 +1227,12 @@ class Utilities {
 	/**
 	 * Returns the object with the property closest to the value passed as a parameter,
 	 * searching the indicated property of the object list passed.
-	 *
-	 * @param array List of objects to search.
+	 * @param Collection|array List of objects to search.
 	 * @param string Name of the property that contains the name to compare.
 	 * @param string Value to search for.
 	 * @return object The closest object.
 	 */
-	public static function findSimilar(array $objectList, string $propertyName, string $searchedValue, ?bool $caseSensitive=FALSE): object {
+	public static function findSimilar(Collection|array $objectList, string $propertyName, string $searchedValue, ?bool $caseSensitive=FALSE): object {
 
 		// temporary list to sort by similarity
 		$similarity = [];

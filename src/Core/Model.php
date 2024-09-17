@@ -2,10 +2,10 @@
 
 namespace Pair\Core;
 
-use Pair\Support\Logger;
 use Pair\Orm\Collection;
 use Pair\Orm\Database;
 use Pair\Orm\Query;
+use Pair\Support\Logger;
 
 abstract class Model {
 
@@ -186,7 +186,7 @@ abstract class Model {
 
 		// class must inherit Pair\Orm\ActiveRecord
 		if (!class_exists($class) or !is_subclass_of($class, 'Pair\Orm\ActiveRecord')) {
-			return [];
+			return new Collection();
 		}
 
 		$query = $optionalQuery ?? $this->getQuery($class) . $this->getOrderLimitSql();

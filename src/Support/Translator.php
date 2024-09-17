@@ -3,9 +3,9 @@
 namespace Pair\Support;
 
 use Pair\Core\Application;
-use Pair\Support\Logger;
 use Pair\Core\Router;
 use Pair\Models\Locale;
+use Pair\Support\Logger;
 
 class Translator {
 
@@ -198,12 +198,11 @@ class Translator {
 	 * Return the translated string from expected lang file, if there, else
 	 * from default, else return the key string.
 	 *
-	 * @param	string		The language key.
-	 * @param	array|NULL	List of parameters to bind on string (optional).
-	 *
-	 * @return	string
+	 * @param	string	The language key.
+	 * @param	string|array|NULL	Parameter or list of parameters to bind on string (optional).
+	 * @param	bool|NULL	Show a warning if string is not found (optional).
 	 */
-	public static function do($key, $vars=NULL) {
+	public static function do($key, mixed $vars=NULL, bool $warning=TRUE): string {
 
 		$self = static::getInstance();
 
@@ -215,17 +214,26 @@ class Translator {
 
 			$string = $self->strings[$key];
 
-		// search into strings of default language
-		} else if (is_array($self->defaultStrings) and array_key_exists($key, $self->defaultStrings) and $self->defaultStrings[$key]) {
+		} else if ($warning) {
+		
+			// search into strings of default language
+			if (is_array($self->defaultStrings) and array_key_exists($key, $self->defaultStrings) and $self->defaultStrings[$key]) {
 
-			Logger::warning('Language string ' . $key . ' is untranslated for current language [' . $self->currentLocale->code . ']');
-			$string = $self->defaultStrings[$key];
+				Logger::warning('Language string ' . $key . ' is untranslated for current language [' . $self->currentLocale->code . ']');
+				$string = $self->defaultStrings[$key];
 
-		// return the string constant, as debug info
+			// return the string constant, as debug info
+			} else {
+
+				Logger::warning('Language string ' . $key . ' is untranslated');
+				$string = '[' . $key . ']';
+
+			}
+
 		} else {
 
-			Logger::warning('Language string ' . $key . ' is untranslated');
-			$string = '[' . $key . ']';
+			// return without warning and square brackets
+			$string = $key;
 
 		}
 

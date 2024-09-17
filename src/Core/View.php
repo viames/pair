@@ -114,10 +114,8 @@ abstract class View {
 	 * Formats page layout including variables and returns.
 	 *
 	 * @param	string	Layout file name without extension (.php).
-	 *
-	 * @return	string
 	 */
-	final public function display($name=NULL) {
+	final public function display($name=NULL): void {
 
 		$this->render();
 
@@ -180,7 +178,7 @@ abstract class View {
 	 * @param	string	Variable-item name.
 	 * @param	mixed	Variable-item value.
 	 */
-	public function assign($name, $val) {
+	public function assign($name, $val): void {
 
 		$this->vars[$name] = $val;
 
@@ -191,9 +189,8 @@ abstract class View {
 	 * otherwise the property of the method, otherwise NULL.
 	 *
 	 * @param	string	Nome della proprietà richiesta.
-	 * @return	mixed
 	 */
-	public function __get($name) {
+	public function __get($name): mixed {
 
 		if (array_key_exists($name, $this->vars)) {
 			return $this->vars[$name];
@@ -219,6 +216,9 @@ abstract class View {
 
 	}
 
+	/**
+	 * Sets the requested session state variable.
+	 */
 	final public function setState($name, $value) {
 
 		$this->app->setState($name, $value);
@@ -229,9 +229,8 @@ abstract class View {
 	 * Returns the requested session state variable.
 	 *
 	 * @param	integer	Variable’s name.
-	 * @return	mixed
 	 */
-	final public function getState($name) {
+	final public function getState($name): mixed {
 
 		return $this->app->getState($name);
 
@@ -281,29 +280,12 @@ abstract class View {
 	}
 
 	/**
-	 * Prints a column header with sorting link.
+	 * Alias of sortable() that prints a sortable column header.
+	 * @deprecated Use sortable() instead.
 	 */
-	public function printSortableColumn(string $title, int $ascSort, int $descSort): void {
+	public function printSortableColumn(string $title, int $ascOrder, int $descOrder): void {
 
-		$router = Router::getInstance();
-
-		print '<div style="white-space:nowrap">';
-
-		if ($ascSort == $router->order) {
-
-			print '<a href="' . $router->getOrderUrl($descSort) . '">' . $title . '</a> <i class="fa fa-arrow-up"></i>';
-
-		} else if ($descSort == $router->order) {
-
-			print '<a href="' . $router->getOrderUrl(0) . '">' . $title . '</a> <i class="fa fa-arrow-down"></i>';
-
-		} else {
-
-			print '<a href="' . $router->getOrderUrl($ascSort) . '">' . $title . '</a>';
-
-		}
-
-		print '</div>';
+		$this->sortable($title, $ascOrder, $descOrder);
 
 	}
 
@@ -316,8 +298,6 @@ abstract class View {
 
 	/**
 	 * Return the HTML code of pagination bar.
-	 *
-	 * @return string
 	 */
 	public function getPaginationBar(): string {
 
@@ -342,7 +322,6 @@ abstract class View {
 	/**
 	 * Return an A-Z list with link for build an alpha filter.
 	 * @param	string	Current selected list item, if any.
-	 * @return	Generator
 	 */
 	public function getAlphaFilter(?string $selected=NULL): \Generator {
 
@@ -365,7 +344,6 @@ abstract class View {
 	 * Returns the object of inherited class when called with id as first parameter.
 	 *
 	 * @param	string	Expected object class type.
-	 * @return	ActiveRecord|NULL
 	 */
 	protected function getObjectRequestedById(string $class, ?int $pos=NULL): ?ActiveRecord {
 
@@ -411,7 +389,7 @@ abstract class View {
 	 *
 	 * @param	ActiveRecord	The inherited object.
 	 */
-	protected function raiseError(ActiveRecord $object) {
+	protected function raiseError(ActiveRecord $object): void {
 
 		// get error list from the ActiveRecord object
 		$errors = $object->getErrors();
@@ -426,6 +404,38 @@ abstract class View {
 
 		// after the message has been queued, store the error data
 		ErrorLog::keepSnapshot('Failure in ' . \get_class($object) . ' class');
+
+	}
+
+	/**
+	 * Prints a column header with sorting link.
+	 */
+	public function sortable(string $title, int $ascOrder, int $descOrder): void {
+
+		$router = Router::getInstance();
+
+		print '<div style="white-space:nowrap">';
+
+		// check if the title is uppercase and translate it
+		if (strtoupper($title) == $title) {
+			$title = $this->lang($title);
+		}
+
+		if ($ascOrder == $router->order) {
+
+			print '<a href="' . $router->getOrderUrl($descOrder) . '">' . $title . '</a> <i class="fa fa-arrow-up"></i>';
+
+		} else if ($descOrder == $router->order) {
+
+			print '<a href="' . $router->getOrderUrl(0) . '">' . $title . '</a> <i class="fa fa-arrow-down"></i>';
+
+		} else {
+
+			print '<a href="' . $router->getOrderUrl($ascOrder) . '">' . $title . '</a>';
+
+		}
+
+		print '</div>';
 
 	}
 

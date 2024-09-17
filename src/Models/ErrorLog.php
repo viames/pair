@@ -94,12 +94,10 @@ class ErrorLog extends ActiveRecord {
 
 	/**
 	 * Returns array with matching object property name on related db fields.
-	 *
-	 * @return	array
 	 */
 	protected static function getBinds(): array {
 		
-		$varFields = array (
+		$varFields = [
 			'id'			=> 'id',
 			'createdTime'	=> 'created_time',
 			'userId'		=> 'user_id',
@@ -110,7 +108,8 @@ class ErrorLog extends ActiveRecord {
 			'cookieData'	=> 'cookie_data',
 			'description'	=> 'description',
 			'userMessages'	=> 'user_messages',
-			'referer'		=> 'referer');
+			'referer'		=> 'referer'
+		];
 		
 		return $varFields;
 		

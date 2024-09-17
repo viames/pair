@@ -2,9 +2,9 @@
 
 namespace Pair\Core;
 
-use Pair\Support\Logger;
+use Pair\Models\ErrorLog;
 use Pair\Orm\ActiveRecord;
-use Pair\Support\ErrorLog;
+use Pair\Support\Logger;
 use Pair\Support\Translator;
 use Pair\Support\Utilities;
 
@@ -247,9 +247,6 @@ abstract class Controller {
 
 	/**
 	 * Return View object related to this controller.
-	 *
-	 * @return	mixed
-	 *
 	 * @throws Exception
 	 */
 	public function getView(): ?View {
@@ -327,11 +324,11 @@ abstract class Controller {
 	 * Proxy function to translate a string, used for AJAX return messages.
 	 *
 	 * @param	string	The language key.
-	 * @param	string|array	Parameter or parameter’s list to bind on translation string (optional).
+	 * @param	string|array|NULL	Parameter or list of parameters to bind on translation string (optional).
 	 */
-	public function lang($key, $vars=NULL) {
+	public function lang($key, mixed $vars=NULL) {
 
-		return Translator::do($key, $vars);
+		return Translator::do($key, (array)$vars);
 
 	}
 

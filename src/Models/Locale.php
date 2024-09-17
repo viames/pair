@@ -2,9 +2,9 @@
 
 namespace Pair\Models;
 
-use Pair\Support\Logger;
 use Pair\Orm\ActiveRecord;
 use Pair\Orm\Database;
+use Pair\Support\Logger;
 use Pair\Support\Utilities;
 
 class Locale extends ActiveRecord {

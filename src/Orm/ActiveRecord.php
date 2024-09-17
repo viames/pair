@@ -636,7 +636,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$this->loadFromDb($this->getSqlKeyValues());
 
 		// log the reload
-		Logger::event('Reloaded ' . $class . ' object with ' . $this->getKeyForEventlog());
+		Logger::event('Reloaded ' . $class . ' object with ' . $this->getKeysForEventlog());
 
 	}
 
@@ -651,8 +651,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 	/**
 	 * Return TRUE if each key property has a value.
-	 *
-	 * @return boolean
 	 */
 	public function areKeysPopulated(): bool {
 
@@ -660,7 +658,9 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		$keys = (array)$this->getId();
 
-		if (!count($keys)) return FALSE;
+		if (!count($keys)) {
+			throw new \Exception('No key properties found for ' . get_called_class());
+		}
 
 		foreach ($keys as $k) {
 			if (!$k) $populated = FALSE;
@@ -732,67 +732,79 @@ abstract class ActiveRecord implements \JsonSerializable {
 	/**
 	 * Return an indexed array with current table key values regardless of object
 	 * properties value.
-	 *
-	 * @return array
 	 */
 	private function getSqlKeyValues(): array {
 
-		// force to array
-		$propertyNames = (array)$this->keyProperties;
-
-		// list to return
-		$values = [];
-
-		foreach ($propertyNames as $name) {
-			$values[] = $this->{$name};
-		}
-
-		return $values;
+		return array_values($this->getKeysValues());
 
 	}
 
 	/**
 	 * Return a list of primary or compound key of this object.
-	 *
-	 * @return string
 	 */
-	private function getKeyForEventlog(): string {
+	private function getKeysForEventlog(): string {
 
-		// force to array
-		$properties = (array)$this->keyProperties;
+		$keysValues = [];
 
-		$keyParts = [];
-
-		foreach ($properties as $propertyName) {
-			$keyParts[] = $propertyName . '=' . $this->$propertyName;
+		foreach ($this->getKeysValues() as $key => $value) {
+			$keysValues[] = $key . '=' . $value;
 		}
 
-		return implode(', ', $keyParts);
+		return implode(', ', $keysValues);
+
+	}
+
+	private function getKeysValues(): array {
+
+		// force to array
+		$propertyNames = (array)$this->keyProperties;
+
+		// list to return
+		$keysValues = [];
+
+		foreach ($propertyNames as $propertyName) {
+
+			$value = is_a($this->__get($propertyName), '\DateTime')
+			? $this->__get($propertyName)->format('Y-m-d H:i:s')
+			: $this->__get($propertyName);
+
+			$keysValues[$propertyName] = $value;
+		}
+
+		return $keysValues;
+
 
 	}
 
 	/**
 	 * Create into database the current object values or update it if exists based on table’s
 	 * keys and auto-increment property. Return TRUE if write is completed succesfully.
-	 *
-	 * @return	bool
 	 */
 	final public function store(): bool {
+
+		$objectId = $this->getId();
+
+		try {
+
+			// update if object’s keys are populated
+			$update = ($objectId and $this->areKeysPopulated() and static::exists($objectId));
+
+		} catch (\Exception $e) {
+
+			$this->addError($e->getMessage());
+			return FALSE;
+
+		}
 
 		// hook for tasks to be executed before store
 		$this->beforeStore();
 
-		// create if object’s keys are populated
-		if ($this->areKeysPopulated() and static::exists($this->getId())) {
-			$ret = $this->update();
-		} else {
-			$ret = $this->create();
-		}
+		$result = $update ? $this->update() : $this->create();
 
 		// hook for tasks to be executed after store
 		$this->afterStore();
 
-		return $ret;
+		return $result;
 
 	}
 
@@ -810,8 +822,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * Create this object as new database record and will assign its primary key
 	 * as $id property. Null properties won’t be written in the new row.
 	 * Return TRUE if success.
-	 *
-	 * @return bool
 	 */
 	final public function create(): bool {
 
@@ -819,10 +829,18 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$class = get_called_class();
 
 		$autoIncrement = $this->db->isAutoIncrement(static::TABLE_NAME);
+		
+		try {
+			if (!$autoIncrement and !$this->areKeysPopulated()) {
+				Logger::event('The object’s ' . implode(', ', $this->keyProperties) . ' properties must be populated in order to create a ' . $class . ' record');
+				return FALSE;
+			}
 
-		if (!$this->areKeysPopulated() and !$autoIncrement) {
-			Logger::event('The object’s ' . implode(', ', $this->keyProperties) . ' properties must be populated in order to create a ' . $class . ' record');
+		} catch (\Exception $e) {
+
+			$this->addError($e->getMessage());
 			return FALSE;
+
 		}
 
 		// hook for tasks to be executed before creation
@@ -879,15 +897,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// reset updated-properties tracker
 		$this->updatedProperties = [];
 
-		// set logs
-		$keyParts = [];
-
-		foreach ($this->keyProperties as $prop) {
-			$keyParts[] = $prop . '=' . $this->{$prop};
-		}
-
 		// log as application event
-		Logger::event('Created a new ' . $class . ' object with ' . implode(', ' , $keyParts));
+		Logger::event('Created a new ' . $class . ' object with ' . $this->getKeysForEventlog());
 
 		// hook for tasks to be executed after creation
 		$this->afterCreate();
@@ -911,10 +922,19 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * declared properties. Return TRUE if success.
 	 *
 	 * @param	mixed	Optional array of subject properties or single property to update.
-	 *
-	 * @return	bool
 	 */
-	final public function update($properties=NULL): bool {
+	final public function update(mixed $properties=NULL): bool {
+
+		try {
+
+			$keysPopulated = $this->areKeysPopulated();
+
+		} catch (\Exception $e) {
+
+			$this->addError($e->getMessage());
+			return FALSE;
+
+		}
 
 		// hook for tasks to be executed before creation
 		$this->beforeUpdate();
@@ -939,53 +959,47 @@ abstract class ActiveRecord implements \JsonSerializable {
 			$properties = array_keys($class::getBinds());
 		}
 
-		$logParam = $this->getKeyForEventlog();
+		$logParam = $this->getKeysForEventlog();
 
-		// require table primary key and force its assign
-		if ($this->areKeysPopulated()) {
+		if (!$keysPopulated) {
+			Logger::event('The ' . $class . ' object with ' . $logParam . ' cannot be updated');
+			return FALSE;
+		}
 
-			// set an object with the columns to update
-			$dbObj = $this->prepareData($properties);
+		// set an object with the columns to update
+		$dbObj = $this->prepareData($properties);
 
-			// force to array
-			$key = (array)$this->keyProperties;
+		// force to array
+		$keysValues = $this->getKeysValues();
 
-			$dbKey = new \stdClass();
+		$dbKey = new \stdClass();
 
-			// set the table key with values
-			foreach ($key as $k) {
+		// set the table key with values
+		foreach ($keysValues as $key => $value) {
 
-				// get object property value
-				$dbKey->{$binds[$k]} = $this->$k;
+			// get object property value
+			$dbKey->{$binds[$key]} = $value;
 
-			}
+		}
 
-			$res = (bool)$this->db->updateObject($class::TABLE_NAME, $dbObj, $dbKey, static::getEncryptableFields());
+		$res = (bool)$this->db->updateObject($class::TABLE_NAME, $dbObj, $dbKey, static::getEncryptableFields());
 
-			if (!$res) {
-				Logger::event('Failed to update ' . $class . ' object');
-				$this->addError($this->db->getLastError());
-				return FALSE;
-			}
+		if (!$res) {
+			Logger::event('Failed to update ' . $class . ' object');
+			$this->addError($this->db->getLastError());
+			return FALSE;
+		}
 
-			// reset updated-properties tracker
-			$this->updatedProperties = [];
+		// reset updated-properties tracker
+		$this->updatedProperties = [];
 
-			Logger::event('Updated ' . $class . ' object with ' . $logParam);
+		Logger::event('Updated ' . $class . ' object with ' . $logParam);
 
-			// check and update this object in the common cache
-			$uniqueId = is_array($this->getId()) ? implode('-', $this->getId()) : (string)$this->getId();
-			if (isset($app->activeRecordCache[$class][$uniqueId])) {
-				$app->putActiveRecordCache($class, $this);
-				Logger::event('Updated ' . $class . ' object with id=' . $uniqueId . ' in common cache');
-			}
-
-		// object is not populated
-		} else {
-
-			$res = FALSE;
-			Logger::error('The ' . $class . ' object with ' . $logParam . ' cannot be updated');
-
+		// check and update this object in the common cache
+		$uniqueId = is_array($this->getId()) ? implode('-', $this->getId()) : (string)$this->getId();
+		if (isset($app->activeRecordCache[$class][$uniqueId])) {
+			$app->putActiveRecordCache($class, $this);
+			Logger::event('Updated ' . $class . ' object with id=' . $uniqueId . ' in common cache');
 		}
 
 		// hook for tasks to be executed after creation
@@ -2038,7 +2052,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @return	bool
 	 */
-	final public static function exists($keys): bool {
+	final public static function exists(mixed $keys): bool {
 
 		// initialize some vars
 		$tableKey	= (array)static::TABLE_KEY;
@@ -2062,7 +2076,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @return	NULL|mixed
 	 */
-	final public function getCache($name) {
+	final public function getCache($name): mixed {
 
 		return ((is_array($this->cache) and array_key_exists($name, $this->cache)) ? $this->cache[$name] : NULL);
 
@@ -2372,8 +2386,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 	/**
 	 * Generate a Form object with proper controls type already populated with object properties.
-	 *
-	 * @return	Form
 	 */
 	public function getForm(): Form {
 
@@ -2382,7 +2394,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// build a select control
 		$getSelectControl = function ($property, $field, $values) use ($form) {
 
-			$control = $form->addSelect($property)->setListByAssociativeArray($values, $values);
+			$control = $form->addSelect($property)->setOptions($values, $values);
 
 			if (static::isNullable($field) or static::isEmptiable($field)) {
 				$control->prependEmpty();
@@ -2481,16 +2493,16 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 	/**
 	 * Returns unique ID of inherited object or in case of compound key, an indexed array.
-	 *
-	 * @return int|string|array|NULL
 	 */
-	final public function getId() {
+	final public function getId(): int|string|array|NULL {
 
 		$ids = [];
 
 		foreach ($this->keyProperties as $propertyName) {
 			if (isset($this->{$propertyName})) {
-				$ids[] = $this->{$propertyName};
+				$ids [] = is_a($this->{$propertyName}, 'DateTime')
+				? $this->{$propertyName}->format('Y-m-d H:i:s')
+				: $this->{$propertyName};
 			}
 		}
 
@@ -2500,8 +2512,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 	/**
 	 * Function for serializing the object through json response.
-	 *
-	 * @return array
 	 */
 	public function jsonSerialize(): array {
 
@@ -2524,7 +2534,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * respect to the corresponding record in the DB.
 	 *
 	 * @param	string	Property name.
-	 * @return	bool
 	 */
 	final protected function hasPropertyUpdated(string $name): bool {
 
@@ -2535,8 +2544,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 	/**
 	 * Returns the list of properties whose value has changed since the record was last
 	 * written to the DB.
-	 *
-	 * @return array
 	 */
 	final protected function getUpdatedProperties(): array {
 
@@ -2547,7 +2554,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 	/**
 	 * Convert this object with hidden properties, to a stdClass. Useful, for example, to print the object as JSON.
 	 * @param	array	Optional list of the properties you want to return, as a subset of those available.
-	 * @return \stdClass
 	 */
 	public function convertToStdClass(?array $wantedProperties=NULL): \stdClass {
 
@@ -2617,7 +2623,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * Return the SELECT query code for columns mapped to encrypted properties. Empty string in case of no encrypted properties.
 	 *
 	 * @param	string|NULL	Table alias.
-	 * @return	string
 	 */
 	public static function getEncryptedColumnsQuery(string $tableAlias=NULL): string {
 
