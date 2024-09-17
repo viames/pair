@@ -4,6 +4,7 @@ namespace Pair\Support;
 
 use Pair\Core\Application;
 use Pair\Core\Router;
+use Pair\Orm\Collection;
 
 /**
  * Collection of useful methods for both internal framework needs and common application needs.
@@ -1203,13 +1204,12 @@ class Utilities {
 	/**
 	 * Returns the object with the property closest to the value passed as a parameter,
 	 * searching the indicated property of the object list passed.
-	 *
-	 * @param array List of objects to search.
+	 * @param Collection|array List of objects to search.
 	 * @param string Name of the property that contains the name to compare.
 	 * @param string Value to search for.
 	 * @return object The closest object.
 	 */
-	public static function findSimilar(array $objectList, string $propertyName, string $searchedValue, ?bool $caseSensitive=FALSE): object {
+	public static function findSimilar(Collection|array $objectList, string $propertyName, string $searchedValue, ?bool $caseSensitive=FALSE): object {
 
 		// temporary list to sort by similarity
 		$similarity = [];

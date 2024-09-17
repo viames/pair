@@ -340,12 +340,11 @@ class Upload {
 
 	/**
 	 * Will returns percentual of upload progress with APC.
-	 * @param	string	UniqueID del caricamento
-	 * @return	float
+	 * @param	string	UniqueID of the upload.
 	 */
 	public static function getUploadProgress(string $uniqueId): float {
 
-		if (function_exists('apc_fetch')) {
+		if (function_exists('apcu_fetch')) {
 			$upload = apcu_fetch('upload_' . $uniqueId);
 			if ($upload['done']) {
 				$percent = 100.0;

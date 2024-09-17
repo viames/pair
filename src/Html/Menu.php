@@ -3,13 +3,14 @@
 namespace Pair\Html;
 
 use Pair\Core\Application;
+use Pair\Support\Translator;
 
 class Menu {
 
 	/**
 	 * Item object list.
 	 */
-	protected $items = [];
+	protected array $items = [];
 
 	/**
 	 * URL of the active menu item.
@@ -19,7 +20,7 @@ class Menu {
 	/**
 	 * Add a Title item to menu.
 	 */
-	public function addTitle(string $title) {
+	public function addTitle(string $title): void {
 
 		$item 			= new \stdClass();
 		$item->type		= 'title';
@@ -29,30 +30,30 @@ class Menu {
 	}
 
 	/**
-	 * Adds a single-item menu entry. The optional badge can be a subtitle. 
-	 * 
+	 * Adds a single-item menu entry. The optional badge can be a subtitle.
 	 * @param	string	Url of item.
 	 * @param	string	Title shown.
 	 * @param	string	Optional, can be an icon, a subtitle or icon placeholder.
 	 * @param	string	Optional, is CSS extra class definition.
 	 * @param	string	Optional, the anchor target.
 	 * @param	string	Optional, the badge type as Bootstrap class (ex. primary, info, danger etc.).
+	 * @deprecated use Menu::item() instead.
 	 */
-	public function addItem(string $url, string $title, string $badge=NULL, string $class=NULL, string $target=NULL, string $badgeType=NULL) {
+	public function addItem(string $url, string $title, string $badge=NULL, string $class=NULL, string $target=NULL, string $badgeType=NULL): void {
 
-		$this->items[]	= self::getItemObject($url, $title, $badge, $class, $target, $badgeType ?? 'primary');
+		$this->items[] = self::getItemObject($url, $title, $badge, $class, $target, $badgeType ?? 'primary');
 
 	}
 
 	/**
 	 * Adds a multi-entry menu item. The list is array of single-item objects.
-	 * 
 	 * @param	string	Title for this item.
 	 * @param	array	List of single-item objects
 	 * @param	string	Optional, can be an icon, a subtitle or icon placeholder.
+	 * @deprecated use Menu::multiItem() instead.
 	 */
-	public function addMulti(string $title, array $list, string $class=NULL) {
-	
+	public function addMulti(string $title, array $list, string $class=NULL): void {
+
 		$multi 			= new \stdClass();
 		$multi->type	= 'multi';
 		$multi->title	= $title;
@@ -65,32 +66,29 @@ class Menu {
 		$this->items[] = $multi;
 
 	}
-	
+
 	/**
 	 * Adds a separator to menu.
-	 * 
 	 * @param	string	Separator title. Optional.
 	 */
-	public function addSeparator(string $title=NULL) {
-	
+	public function addSeparator(string $title=NULL): void {
+
 		$item 			= new \stdClass();
 		$item->type		= 'separator';
 		$item->title	= $title;
 		$this->items[]	= $item;
-	
+
 	}
-	
+
 	/**
 	 * Static method utility to create single-item object.
-	 *  
 	 * @param	string	Url of item.
 	 * @param	string	Title shown.
 	 * @param	string	Optional, can be an icon, a subtitle or icon placeholder.
 	 * @param	string	Optional, is CSS extra class definition.
 	 * @param	string	Optional, the anchor target.
 	 * @param	string	Optional, the badge type as Bootstrap class (ex. primary, info, error etc.).
-	 * 
-	 * @return	\stdClass
+	 * @deprecated use Menu::item() instead.
 	 */
 	public static function getItemObject(string $url, string $title, string $badge=NULL, string $class=NULL, string $target=NULL, string $badgeType=NULL): \stdClass {
 
@@ -108,9 +106,69 @@ class Menu {
 	}
 
 	/**
+	 * Create an item object for single-item menu entry. The optional badge can be a subtitle.
+	 * @param	string	Url of item.
+	 * @param	string	Title shown.
+	 * @param	string	Optional, can be an icon, a subtitle or icon placeholder.
+	 * @param	string	Optional, is CSS extra class definition.
+	 * @param	string	Optional, the anchor target.
+	 * @param	string	Optional, the badge type as Bootstrap class (ex. primary, info, error etc.).
+	 */
+	public function item(string $url, string $title, ?string $class=NULL, ?string $badge=NULL, ?string $badgeType=NULL, ?string $target=NULL): void {
+
+		$item 			= new \stdClass();
+		$item->type		= 'single';
+		$item->url		= $url;
+		$item->title	= $this->translateTitle($title);
+		$item->class	= $class;
+		$item->badge	= $badge;
+		$item->target	= $target;
+		$item->badgeType= $badgeType ?? 'primary';
+
+		$this->items[] = $item;
+
+	}
+
+	/**
+	 * Adds a multi-entry menu item. The list is array of single-item objects.
+	 * @param	string	Title for this item.
+	 * @param	array	List of single-item menu entry.
+	 * @param	string	Optional, can be an icon, a subtitle or icon placeholder.
+	 */
+	public function multiItem(string $title, array $list, string $class=NULL): void {
+
+		$multi 			= new \stdClass();
+		$multi->type	= 'multi';
+		$multi->title	= $this->translateTitle($title);
+		$multi->class	= $class;
+		$multi->list	= [];
+
+		foreach ($list as $i) {
+
+			// required fields
+			if (!isset($i[0]) or !isset($i[1])) {
+				continue;
+			}
+			
+			$item = new \stdClass();
+			$item->type		= 'single';
+			$item->url		= $i[0];
+			$item->title	= $this->translateTitle($i[1]);
+			$item->class	= $i[2] ?? NULL;
+			$item->badge	= $i[3] ?? NULL;
+			$item->badgeType= $i[4] ?? 'primary';
+			$item->target	= $i[5] ?? NULL;
+
+			$multi->list[] = $item;
+
+		}
+
+		$this->items[] = $multi;
+
+	}
+
+	/**
 	 * Builds HTML of this menu.
-	 *
-	 * @return string
 	 */
 	public function render(): string {
 
@@ -122,7 +180,7 @@ class Menu {
 		foreach ($this->items as $item) {
 
 			switch ($item->type) {
-				
+
 				// menu title rendering
 				case 'title':
 					$ret .= $this->renderTitle($item);
@@ -153,9 +211,7 @@ class Menu {
 
 	/**
 	 * Menu title rendering.
-	 * 
 	 * @param	\stdClass Menu item object.
-	 * @return	string
 	 */
 	protected function renderTitle(\stdClass $item): string {
 
@@ -165,9 +221,7 @@ class Menu {
 
 	/**
 	 * Single menu item rendering.
-	 * 
 	 * @param	\stdClass Menu item object.
-	 * @return	string
 	 */
 	protected function renderSingle(\stdClass $item): string {
 
@@ -177,7 +231,7 @@ class Menu {
 		if (!isset($item->url) or (is_a($app->currentUser, 'Pair\Models\User') and !$app->currentUser->canAccess($item->url))) {
 			return '';
 		}
-		
+
 		$active = ($item->url == $this->activeItem ? ' class="active"' : '');
 
 		return '<li><a href="' . $item->url . '"' . ($item->target ? ' target="' . $item->target . '"' : '') .
@@ -188,9 +242,7 @@ class Menu {
 
 	/**
 	 * Menu item with many sub-items rendering.
-	 * 
 	 * @param	\stdClass Menu item object.
-	 * @return	string
 	 */
 	protected function renderMulti(\stdClass $item): string {
 
@@ -222,7 +274,7 @@ class Menu {
 				'</a></li>';
 
 		}
-		
+
 		// prevent empty multi-menu
 		if ('' == $links) {
 			return '';
@@ -241,14 +293,26 @@ class Menu {
 
 	/**
 	 * Menu separator rendering.
-	 * 
 	 * @param	\stdClass Menu item object.
-	 * @return	string
 	 */
 	private function renderSeparator(\stdClass $item): string {
 
 		if (!$item->title) $item->title = '&nbsp;';
 		return '<div class="separator">' . $item->title . '</div>';
+
+	}
+
+	/**
+	 * Translate the title string if it is uppercase.
+	 */
+	private function translateTitle(string $title): string {
+
+		if (strtoupper($title) === $title) {
+			$translator = Translator::getInstance();
+			return $translator->do($title, [], FALSE);
+		} else {
+			return $title;
+		}
 
 	}
 
