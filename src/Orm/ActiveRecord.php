@@ -2372,8 +2372,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 	/**
 	 * Generate a Form object with proper controls type already populated with object properties.
-	 *
-	 * @return	Form
 	 */
 	public function getForm(): Form {
 
@@ -2382,7 +2380,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// build a select control
 		$getSelectControl = function ($property, $field, $values) use ($form) {
 
-			$control = $form->addSelect($property)->setListByAssociativeArray($values, $values);
+			$control = $form->addSelect($property)->setOptions($values, $values);
 
 			if (static::isNullable($field) or static::isEmptiable($field)) {
 				$control->prependEmpty();

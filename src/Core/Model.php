@@ -2,10 +2,10 @@
 
 namespace Pair\Core;
 
-use Pair\Support\Logger;
 use Pair\Orm\Collection;
 use Pair\Orm\Database;
 use Pair\Orm\Query;
+use Pair\Support\Logger;
 
 abstract class Model {
 

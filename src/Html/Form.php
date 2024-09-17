@@ -295,7 +295,7 @@ class Form {
 	public static function buildSelect(string $name, Collection|array $list, string $valName='value', string $textName='text', $value=NULL, $attributes=NULL, $prependEmpty=NULL) {
 
 		$control = new FormControlSelect($name, $attributes);
-		$control->setListByObjectArray($list, $valName, $textName)->setValue($value);
+		$control->setOptions($list, $valName, $textName)->setValue($value);
 
 		if ($prependEmpty) {
 			$control->prependEmpty($prependEmpty);
@@ -316,7 +316,7 @@ class Form {
 	public static function buildSelectFromArray(string $name, Collection|array $list, string $value=NULL, $attributes=NULL, $prependEmpty=NULL) {
 
 		$control = new FormControlSelect($name, $attributes);
-		$control->setListByAssociativeArray($list)->setValue($value);
+		$control->setOptions($list)->setValue($value);
 
 		if ($prependEmpty) {
 			$control->prependEmpty($prependEmpty);
@@ -1227,10 +1227,8 @@ class FormControlSelect extends FormControl {
 
 	/**
 	 * Populates select control with an associative array. Chainable method.
-	 *
 	 * @param	array	Associative array (value=>text).
-	 *
-	 * @return	FormControlSelect
+	 * @deprecated		Deprecated in favor of setOptions.
 	 */
 	public function setListByAssociativeArray(array $list): FormControlSelect {
 
@@ -1253,13 +1251,11 @@ class FormControlSelect extends FormControl {
 	 * Populates select control with an object array. Each object must have properties
 	 * for value and text. If property text includes a couple of round parenthesys, will
 	 * invoke a function without parameters. It’s a chainable method.
-	 *
 	 * @param	\stdClass[]	Object with value and text properties.
 	 * @param	string		Name of property’s value.
 	 * @param	string		Name of property’s text or an existent object function.
 	 * @param 	string		Name of property's attributes (optional).
-	 *
-	 * @return	FormControlSelect
+	 * @deprecated			Deprecated in favor of setOptions.
 	 */
 	public function setListByObjectArray(array|Collection $list, string $propertyValue, string $propertyText, $propertyAttributes = null): FormControlSelect {
 
@@ -1295,12 +1291,70 @@ class FormControlSelect extends FormControl {
 	}
 
 	/**
+	 * Populates select control with an object array. Each object must have properties
+	 * for value and text. If property text includes a couple of round parenthesys, will
+	 * invoke a function without parameters. It’s a chainable method.
+	 * @param	\stdClass[]	Associative array [value=>label] or object list [{value,label,attributes}].
+	 * @param	string		Name of property’s value.
+	 * @param	string		Name of property’s text or an existent object function.
+	 * @param 	string		Optional attributes [name=>value].
+	 */
+	public function setOptions(array|Collection $list, ?string $propertyValue=NULL, ?string $propertyText=NULL, ?array $propertyAttributes = NULL): FormControlSelect {
+
+		// if associative array, convert to object list
+		if (is_array($list) and array_keys($list) !== range(0, count($list) - 1)) {
+
+			$objectList = [];
+			
+			foreach ($list as $value=>$text) {
+				$object = new \stdClass();
+				$object->value = $value;
+				$object->text = $text;
+				$objectList[] = $object;
+			}
+			
+			$list = $objectList;
+
+			$propertyValue = 'value';
+			$propertyText = 'text';
+
+		}
+
+		// for each list object, add an option
+		foreach ($list as $opt) {
+
+			$option			= new \stdClass();
+			$option->value	= $opt->$propertyValue;
+			$option->attributes = [];
+
+			if (is_array($propertyAttributes)) {
+				foreach ($propertyAttributes as $pa) {
+					array_push($option->attributes, ['name' => $pa, 'value' => $opt->$pa]);
+				}
+			} else if (is_string($propertyAttributes)) {
+				array_push($option->attributes, ['name' => $propertyAttributes, 'value' => $opt->$propertyAttributes]);
+			}
+
+			// check wheter the propertyText is a function call
+			if (FALSE !== strpos($propertyText,'()') and strpos($propertyText,'()')+2 == strlen($propertyText)) {
+				$functionName = substr($propertyText, 0, strrpos($propertyText,'()'));
+				$option->text = $opt->$functionName();
+			} else {
+				$option->text = $opt->$propertyText;
+			}
+
+			$this->list[] = $option;
+
+		}
+
+		return $this;
+
+	}
+
+	/**
 	 * Populate this control through an array in which each element is the group title and
 	 * in turn contains a list of objects with the value and text properties. Chainable.
-	 *
 	 * @param	array:\stdClass[]	Two-dimensional list.
-	 *
-	 * @return	FormControlSelect
 	 */
 	public function setGroupedList(array $list): FormControlSelect {
 
@@ -1312,10 +1366,7 @@ class FormControlSelect extends FormControl {
 
 	/**
 	 * Adds a null value as first item. Chainable method.
-	 *
 	 * @param	string|NULL	Option text for first null value.
-	 *
-	 * @return	FormControlSelect
 	 */
 	public function prependEmpty(string $text=NULL): FormControlSelect {
 
