@@ -726,6 +726,29 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 
     }
 
+	/**
+	 * Searches the collection for the given value and returns its key if found. If the item is not found,
+	 * false is returned. The search is done using a "loose" comparison, meaning a string with an integer
+	 * value will be considered equal to an integer of the same value. To use "strict" comparison, pass
+	 * true as the second argument to the method. Alternatively, you may pass in your own callback to
+	 * search for the first item that passes your truth test.
+	 */
+	public function search($value, bool $strict = FALSE): mixed {
+
+		foreach ($this->items as $key => $item) {
+
+			if (($strict and $item === $value) or (!$strict and $item == $value)) {
+
+				return $key;
+
+			}
+
+		}
+
+		return FALSE;
+
+	}
+
     /**
      * Get and remove the first N items from the collection.
      */

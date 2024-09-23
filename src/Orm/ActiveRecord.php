@@ -651,8 +651,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 	/**
 	 * Return TRUE if each key property has a value.
-	 *
-	 * @return boolean
 	 */
 	public function areKeysPopulated(): bool {
 
@@ -660,7 +658,9 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		$keys = (array)$this->getId();
 
-		if (!count($keys)) return FALSE;
+		if (!count($keys)) {
+			throw new \Exception('No key properties found for ' . get_called_class());
+		}
 
 		foreach ($keys as $k) {
 			if (!$k) $populated = FALSE;
@@ -732,8 +732,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 	/**
 	 * Return an indexed array with current table key values regardless of object
 	 * properties value.
-	 *
-	 * @return array
 	 */
 	private function getSqlKeyValues(): array {
 
@@ -753,8 +751,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 	/**
 	 * Return a list of primary or compound key of this object.
-	 *
-	 * @return string
 	 */
 	private function getKeyForEventlog(): string {
 
@@ -774,25 +770,30 @@ abstract class ActiveRecord implements \JsonSerializable {
 	/**
 	 * Create into database the current object values or update it if exists based on table’s
 	 * keys and auto-increment property. Return TRUE if write is completed succesfully.
-	 *
-	 * @return	bool
 	 */
 	final public function store(): bool {
+
+		try {
+
+			// update if object’s keys are populated
+			$update = ($this->areKeysPopulated() and static::exists($this->getId()));
+
+		} catch (\Exception $e) {
+
+			$this->addError($e->getMessage());
+			return FALSE;
+
+		}
 
 		// hook for tasks to be executed before store
 		$this->beforeStore();
 
-		// create if object’s keys are populated
-		if ($this->areKeysPopulated() and static::exists($this->getId())) {
-			$ret = $this->update();
-		} else {
-			$ret = $this->create();
-		}
+		$result = $update ? $this->update() : $this->create();
 
 		// hook for tasks to be executed after store
 		$this->afterStore();
 
-		return $ret;
+		return $result;
 
 	}
 
@@ -810,8 +811,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * Create this object as new database record and will assign its primary key
 	 * as $id property. Null properties won’t be written in the new row.
 	 * Return TRUE if success.
-	 *
-	 * @return bool
 	 */
 	final public function create(): bool {
 
@@ -819,10 +818,18 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$class = get_called_class();
 
 		$autoIncrement = $this->db->isAutoIncrement(static::TABLE_NAME);
+		
+		try {
+			if (!$autoIncrement and !$this->areKeysPopulated()) {
+				Logger::event('The object’s ' . implode(', ', $this->keyProperties) . ' properties must be populated in order to create a ' . $class . ' record');
+				return FALSE;
+			}
 
-		if (!$this->areKeysPopulated() and !$autoIncrement) {
-			Logger::event('The object’s ' . implode(', ', $this->keyProperties) . ' properties must be populated in order to create a ' . $class . ' record');
+		} catch (\Exception $e) {
+
+			$this->addError($e->getMessage());
 			return FALSE;
+
 		}
 
 		// hook for tasks to be executed before creation
@@ -911,10 +918,19 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * declared properties. Return TRUE if success.
 	 *
 	 * @param	mixed	Optional array of subject properties or single property to update.
-	 *
-	 * @return	bool
 	 */
-	final public function update($properties=NULL): bool {
+	final public function update(mixed $properties=NULL): bool {
+
+		try {
+
+			$keysPopulated = $this->areKeysPopulated();
+
+		} catch (\Exception $e) {
+
+			$this->addError($e->getMessage());
+			return FALSE;
+
+		}
 
 		// hook for tasks to be executed before creation
 		$this->beforeUpdate();
@@ -941,51 +957,45 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		$logParam = $this->getKeyForEventlog();
 
-		// require table primary key and force its assign
-		if ($this->areKeysPopulated()) {
+		if (!$keysPopulated) {
+			Logger::event('The ' . $class . ' object with ' . $logParam . ' cannot be updated');
+			return FALSE;
+		}
 
-			// set an object with the columns to update
-			$dbObj = $this->prepareData($properties);
+		// set an object with the columns to update
+		$dbObj = $this->prepareData($properties);
 
-			// force to array
-			$key = (array)$this->keyProperties;
+		// force to array
+		$key = (array)$this->keyProperties;
 
-			$dbKey = new \stdClass();
+		$dbKey = new \stdClass();
 
-			// set the table key with values
-			foreach ($key as $k) {
+		// set the table key with values
+		foreach ($key as $k) {
 
-				// get object property value
-				$dbKey->{$binds[$k]} = $this->$k;
+			// get object property value
+			$dbKey->{$binds[$k]} = $this->$k;
 
-			}
+		}
 
-			$res = (bool)$this->db->updateObject($class::TABLE_NAME, $dbObj, $dbKey, static::getEncryptableFields());
+		$res = (bool)$this->db->updateObject($class::TABLE_NAME, $dbObj, $dbKey, static::getEncryptableFields());
 
-			if (!$res) {
-				Logger::event('Failed to update ' . $class . ' object');
-				$this->addError($this->db->getLastError());
-				return FALSE;
-			}
+		if (!$res) {
+			Logger::event('Failed to update ' . $class . ' object');
+			$this->addError($this->db->getLastError());
+			return FALSE;
+		}
 
-			// reset updated-properties tracker
-			$this->updatedProperties = [];
+		// reset updated-properties tracker
+		$this->updatedProperties = [];
 
-			Logger::event('Updated ' . $class . ' object with ' . $logParam);
+		Logger::event('Updated ' . $class . ' object with ' . $logParam);
 
-			// check and update this object in the common cache
-			$uniqueId = is_array($this->getId()) ? implode('-', $this->getId()) : (string)$this->getId();
-			if (isset($app->activeRecordCache[$class][$uniqueId])) {
-				$app->putActiveRecordCache($class, $this);
-				Logger::event('Updated ' . $class . ' object with id=' . $uniqueId . ' in common cache');
-			}
-
-		// object is not populated
-		} else {
-
-			$res = FALSE;
-			Logger::error('The ' . $class . ' object with ' . $logParam . ' cannot be updated');
-
+		// check and update this object in the common cache
+		$uniqueId = is_array($this->getId()) ? implode('-', $this->getId()) : (string)$this->getId();
+		if (isset($app->activeRecordCache[$class][$uniqueId])) {
+			$app->putActiveRecordCache($class, $this);
+			Logger::event('Updated ' . $class . ' object with id=' . $uniqueId . ' in common cache');
 		}
 
 		// hook for tasks to be executed after creation
@@ -2479,10 +2489,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 	/**
 	 * Returns unique ID of inherited object or in case of compound key, an indexed array.
-	 *
-	 * @return int|string|array|NULL
 	 */
-	final public function getId() {
+	final public function getId(): int|string|array|NULL {
 
 		$ids = [];
 

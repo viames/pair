@@ -455,10 +455,8 @@ class User extends ActiveRecord {
 	/**
 	 * Starts a new session, writes on db and updates users table for last login.
 	 * Returns true if both db writing has been done succesfully.
-	 *
 	 * @param	string	IANA time zone identifier.
 	 * @param	int		Possible ID of the user before impersonation.
-	 * @return	bool
 	 */
 	private function createSession(string $timezone, ?int $formerUserId = null): bool {
 
@@ -501,9 +499,7 @@ class User extends ActiveRecord {
 
 	/**
 	 * Does the logout action and returns TRUE if session is found and deleted.
-	 *
 	 * @param	string	Session ID to close.
-	 * @return	bool
 	 */
 	public static function doLogout(string $sid): bool {
 
@@ -543,8 +539,6 @@ class User extends ActiveRecord {
 
 	/**
 	 * It will returns DateTimeZone object for this User.
-	 *
-	 * @return DateTimeZone
 	 */
 	public function getDateTimeZone(): \DateTimeZone {
 
@@ -572,7 +566,6 @@ class User extends ActiveRecord {
 	/**
 	 * Check if this user has access permission to a module and optionally to a specific action.
 	 * Admin can access everything. This method use cache variable to load once from db.
-	 *
 	 * @param	string	Module name.
 	 * @param	string	Optional action name.
 	 * @return	bool	True if access is granted.
@@ -642,8 +635,6 @@ class User extends ActiveRecord {
 
 	/**
 	 * Get landing module and action as object properties where the user goes after login.
-	 *
-	 * @return \stdClass|NULL
 	 */
 	public function getLanding(): ?\stdClass {
 
@@ -673,8 +664,6 @@ class User extends ActiveRecord {
 
 	/**
 	 * Return the language code of this user. Cached.
-	 *
-	 * @return	string|NULL
 	 */
 	public function getLanguageCode(): ?string {
 
@@ -697,8 +686,6 @@ class User extends ActiveRecord {
 
 	/**
 	 * Get Group object for this user. Cached.
-	 *
-	 * @return Group
 	 */
 	public function getGroup(): Group {
 
@@ -712,8 +699,6 @@ class User extends ActiveRecord {
 
 	/**
 	 * Join the user’s name and surname and return it
-	 *
-	 * @return	string
 	 */
 	public function getFullName(): string {
 
@@ -723,8 +708,6 @@ class User extends ActiveRecord {
 
 	/**
 	 * Check if the localeId parameter has been set and returns TRUE if so.
-	 *
-	 * @return boolean
 	 */
 	public function isLocaleSet(): bool {
 
@@ -734,8 +717,6 @@ class User extends ActiveRecord {
 
 	/**
 	 * Returns the Locale object for this user, if set, otherwise the default Locale.
-	 *
-	 * @return Locale
 	 */
 	public function getLocale(): Locale {
 
@@ -750,8 +731,6 @@ class User extends ActiveRecord {
 	/**
 	 * Check whether record of this object is deletable based on inverse foreign-key list
 	 * and the user is not the same connected.
-	 *
-	 * @return	bool
 	 */
 	public function isDeletable(): bool {
 
@@ -767,9 +746,7 @@ class User extends ActiveRecord {
 
 	/**
 	 * Return an user that matches pw_reset string. NULL if not found.
-	 *
 	 * @param	string		PwReset value.
-	 * @return	User|NULL
 	 */
 	public static function getByPwReset(string $pwReset): ?User {
 
@@ -781,10 +758,8 @@ class User extends ActiveRecord {
 
 	/**
 	 * Apply a password reset for this User.
-	 *
 	 * @param	string	New password to set.
 	 * @param	string	IANA time zone identifier.
-	 * @return	bool
 	 */
 	public function setNewPassword(string $newPassword, string $timezone): bool {
 
@@ -807,9 +782,7 @@ class User extends ActiveRecord {
 
 	/**
 	 * Create a remember-me object, store it into DB and set the browser’s cookie.
-	 *
 	 * @param	string	IANA time zone identifier.
-	 * @return	bool
 	 */
 	public function createRememberMe(string $timezone): bool {
 
@@ -843,8 +816,6 @@ class User extends ActiveRecord {
 
 	/**
 	 * Update the expire date of RememberMe cookie.
-	 *
-	 * @return boolean
 	 */
 	public function renewRememberMe(): bool {
 
@@ -907,8 +878,6 @@ class User extends ActiveRecord {
 
 	/**
 	 * Delete DB record and browser’s cookie because when logout is invoked.
-	 *
-	 * @return bool
 	 */
 	private function unsetRememberMe(): bool {
 
@@ -935,8 +904,6 @@ class User extends ActiveRecord {
 
 	/**
 	 * Return TRUE if this user or the the former User object if impersonating, is admin.
-	 *
-	 * @return	bool
 	 */
 	public function isAdmin(): bool {
 
@@ -954,8 +921,6 @@ class User extends ActiveRecord {
 
 	/**
 	 * Return the current Application connected User object or its child, NULL otherwise.
-	 *
-	 * @return	User|NULL
 	 */
 	public static function current(): ?self {
 
@@ -970,7 +935,6 @@ class User extends ActiveRecord {
 	 * object to be returned.
 	 *
 	 * @param	string	IANA time zone identifier.
-	 * @return	\DateTimeZone
 	 */
 	public static function getValidTimeZone(string $timezone): \DateTimeZone {
 

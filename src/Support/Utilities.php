@@ -172,6 +172,29 @@ class Utilities {
 	}
 
 	/**
+	 * Determines whether the brightness of the color code passed as a parameter is less
+	 * than 128, so it is a dark color. Useful for dynamically choosing a foreground or
+	 * background color that contrasts with the color passed.
+	 */
+	public static function isDarkColor(string $hexColor): bool {
+
+		// removes the # symbol, if present
+		$hexColor = ltrim($hexColor, '#');
+
+		// converts HEX color to RGB components
+		$r = hexdec(substr($hexColor, 0, 2));
+		$g = hexdec(substr($hexColor, 2, 2));
+		$b = hexdec(substr($hexColor, 4, 2));
+
+		// calculate brightness using the perceived formula
+		$brightness = ($r * 299 + $g * 587 + $b * 114) / 1000;
+
+		// if the brightness is less than 128, the color is dark
+		return $brightness < 128;
+
+	}
+
+	/**
 	 * Converts an array of strings to an array of integers.
 	 * @return int[]
 	 */
