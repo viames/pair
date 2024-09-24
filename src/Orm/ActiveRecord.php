@@ -636,7 +636,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$this->loadFromDb($this->getSqlKeyValues());
 
 		// log the reload
-		Logger::event('Reloaded ' . $class . ' object with ' . $this->getKeyForEventlog());
+		Logger::event('Reloaded ' . $class . ' object with ' . $this->getKeysForEventlog());
 
 	}
 
@@ -735,35 +735,44 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	private function getSqlKeyValues(): array {
 
-		// force to array
-		$propertyNames = (array)$this->keyProperties;
-
-		// list to return
-		$values = [];
-
-		foreach ($propertyNames as $name) {
-			$values[] = $this->{$name};
-		}
-
-		return $values;
+		return array_values($this->getKeysValues());
 
 	}
 
 	/**
 	 * Return a list of primary or compound key of this object.
 	 */
-	private function getKeyForEventlog(): string {
+	private function getKeysForEventlog(): string {
 
-		// force to array
-		$properties = (array)$this->keyProperties;
+		$keysValues = [];
 
-		$keyParts = [];
-
-		foreach ($properties as $propertyName) {
-			$keyParts[] = $propertyName . '=' . $this->$propertyName;
+		foreach ($this->getKeysValues() as $key => $value) {
+			$keysValues[] = $key . '=' . $value;
 		}
 
-		return implode(', ', $keyParts);
+		return implode(', ', $keysValues);
+
+	}
+
+	private function getKeysValues(): array {
+
+		// force to array
+		$propertyNames = (array)$this->keyProperties;
+
+		// list to return
+		$keysValues = [];
+
+		foreach ($propertyNames as $propertyName) {
+
+			$value = is_a($this->__get($propertyName), '\DateTime')
+			? $this->__get($propertyName)->format('Y-m-d H:i:s')
+			: $this->__get($propertyName);
+
+			$keysValues[$propertyName] = $value;
+		}
+
+		return $keysValues;
+
 
 	}
 
@@ -886,15 +895,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// reset updated-properties tracker
 		$this->updatedProperties = [];
 
-		// set logs
-		$keyParts = [];
-
-		foreach ($this->keyProperties as $prop) {
-			$keyParts[] = $prop . '=' . $this->{$prop};
-		}
-
 		// log as application event
-		Logger::event('Created a new ' . $class . ' object with ' . implode(', ' , $keyParts));
+		Logger::event('Created a new ' . $class . ' object with ' . $this->getKeysForEventlog());
 
 		// hook for tasks to be executed after creation
 		$this->afterCreate();
@@ -955,7 +957,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 			$properties = array_keys($class::getBinds());
 		}
 
-		$logParam = $this->getKeyForEventlog();
+		$logParam = $this->getKeysForEventlog();
 
 		if (!$keysPopulated) {
 			Logger::event('The ' . $class . ' object with ' . $logParam . ' cannot be updated');
@@ -966,15 +968,15 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$dbObj = $this->prepareData($properties);
 
 		// force to array
-		$key = (array)$this->keyProperties;
+		$keysValues = $this->getKeysValues();
 
 		$dbKey = new \stdClass();
 
 		// set the table key with values
-		foreach ($key as $k) {
+		foreach ($keysValues as $key => $value) {
 
 			// get object property value
-			$dbKey->{$binds[$k]} = $this->$k;
+			$dbKey->{$binds[$key]} = $value;
 
 		}
 
@@ -2048,7 +2050,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @return	bool
 	 */
-	final public static function exists($keys): bool {
+	final public static function exists(mixed $keys): bool {
 
 		// initialize some vars
 		$tableKey	= (array)static::TABLE_KEY;
@@ -2072,7 +2074,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @return	NULL|mixed
 	 */
-	final public function getCache($name) {
+	final public function getCache($name): mixed {
 
 		return ((is_array($this->cache) and array_key_exists($name, $this->cache)) ? $this->cache[$name] : NULL);
 
@@ -2496,7 +2498,9 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		foreach ($this->keyProperties as $propertyName) {
 			if (isset($this->{$propertyName})) {
-				$ids[] = $this->{$propertyName};
+				$ids [] = is_a($this->{$propertyName}, 'DateTime')
+				? $this->{$propertyName}->format('Y-m-d H:i:s')
+				: $this->{$propertyName};
 			}
 		}
 

@@ -24,6 +24,12 @@ class Form {
 	private $controlClasses = [];
 
 	/**
+	 * Class to add on each labels.
+	 * @var string
+	 */
+	private $labelClasses = NULL;
+
+	/**
 	 * Adds an FormControlInput object to this Form object. Default type is Text.
 	 * Chainable method.
 	 * @param	string	Control name.
@@ -225,6 +231,7 @@ class Form {
 		$control = $this->getControl($controlName);
 
 		if ($control) {
+			$control->setLabelClass($this->labelClasses);
 			$control->printLabel();
 		}
 
@@ -376,6 +383,17 @@ class Form {
 
 	}
 
+	/**
+	 * Sets a common CSS class for all labels of this form.
+	 */
+	public function setLabelClass(string $class): Form {
+
+		$this->labelClasses = $class;
+
+		return $this;
+
+	}
+
 }
 
 abstract class FormControl {
@@ -523,12 +541,10 @@ abstract class FormControl {
 
 	/**
 	 * Return a string value for this object, matches the control’s label.
-	 *
-	 * @return	string
 	 */
 	public function __toString(): string {
 
-		return $this->getLabel();
+		return $this->getLabelText();
 
 	}
 
@@ -713,7 +729,7 @@ abstract class FormControl {
 	/**
 	 * Return the control’s label.
 	 */
-	public function getLabel(): string {
+	public function getLabelText(): string {
 
 		// no label, get it by the control’s name
 		if (!$this->label) {
@@ -757,22 +773,41 @@ abstract class FormControl {
 		return $this->description;
 
 	}
+	
+	/**
+	 * Sets a CSS class for all the controls label. Chainable method.
+	 */
+	public function setLabelClass(string $class): FormControlSelect|FormControlInput|FormControlTextarea|FormControlButton {
+
+		$this->labelClass = $class;
+
+		return $this;
+
+	}
 
 	/**
-	 * Print the control’s label even with required-field class.
+	 * Print the control’s label tag even with required-field class.
 	 */
 	public function printLabel(): void {
 
-		$label = $this->getLabel();
+		$label = '<label for="' . htmlspecialchars($this->name) . '"';
+		
+		if ($this->labelClass) {
+			$label .= ' class="' . $this->labelClass . '"';
+		}
+
+		$label .= '>';
 
 		// if required, add required-field css class
-		if ($this->required and !$this->readonly and !$this->disabled) {
-			$label = '<span class="required-field">' . $label . '</span>';
-		}
+		$label .= ($this->required and !$this->readonly and !$this->disabled)
+		? '<span class="required-field">' . htmlspecialchars($this->getLabelText()) . '</span>'
+		: $this->getLabelText();
 
 		if ($this->description) {
 			$label .= ' <i class="fal fa-question-circle" data-toggle="tooltip" data-placement="auto" title="' . htmlspecialchars((string)$this->description) . '"></i>';
 		}
+
+		$label .= '</label>';
 
 		print $label;
 
