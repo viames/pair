@@ -15,19 +15,18 @@ class Form {
 	 * List of all controls added to this form.
 	 * @var FormControl[]
 	 */
-	private $controls = [];
+	private array $controls = [];
 
 	/**
 	 * List of class to add on each controls.
 	 * @var string[]
 	 */
-	private $controlClasses = [];
+	private array $controlClasses = [];
 
 	/**
 	 * Class to add on each labels.
-	 * @var string
 	 */
-	private $labelClasses = NULL;
+	private ?string $labelClasses = NULL;
 
 	/**
 	 * Adds an FormControlInput object to this Form object. Default type is Text.
@@ -231,7 +230,9 @@ class Form {
 		$control = $this->getControl($controlName);
 
 		if ($control) {
-			$control->setLabelClass($this->labelClasses);
+			if (isset($this->labelClasses) and $this->labelClasses) {
+				$control->setLabelClass($this->labelClasses);
+			}
 			$control->printLabel();
 		}
 
@@ -481,6 +482,11 @@ abstract class FormControl {
 	 * @var string|NULL
 	 */
 	private $description;
+
+	/**
+	 * CSS class for label.
+	 */
+	private ?string $labelClass;
 
 	/**
 	 * Build control with HTML name tag and optional attributes.
@@ -792,7 +798,7 @@ abstract class FormControl {
 
 		$label = '<label for="' . htmlspecialchars($this->name) . '"';
 		
-		if ($this->labelClass) {
+		if (isset($this->labelClass) and $this->labelClass) {
 			$label .= ' class="' . $this->labelClass . '"';
 		}
 

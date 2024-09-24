@@ -1022,7 +1022,13 @@ class Application {
 		$router	= Router::getInstance();
 
 		// make sure to have a template set
-		$template = $this->getTemplate();
+		try {
+			$template = $this->getTemplate();
+		} catch (\Exception $e) {
+			print 'Template not found';
+			http_response_code(404);
+			exit();
+		}
 
 		$controllerFile = APPLICATION_PATH . '/modules/' . $router->module . '/controller.php';
 
@@ -1182,11 +1188,15 @@ class Application {
 			$this->template = Template::getDefault();
 		}
 
+		if (!$this->template) {
+			throw new \Exception('Template keys are not populated');
+		}
+
 		// if this is derived template, load derived.php file
 		if ($this->template->derived) {
 			$derivedFile = $this->template->getBaseFolder() . '/'  . strtolower($this->template->name) . '/derived.php';
 			if (file_exists($derivedFile)) require $derivedFile;
-		}
+		}	
 
 		return $this->template;
 

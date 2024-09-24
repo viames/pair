@@ -186,7 +186,7 @@ abstract class Model {
 
 		// class must inherit Pair\Orm\ActiveRecord
 		if (!class_exists($class) or !is_subclass_of($class, 'Pair\Orm\ActiveRecord')) {
-			return [];
+			return new Collection();
 		}
 
 		$query = $optionalQuery ?? $this->getQuery($class) . $this->getOrderLimitSql();
