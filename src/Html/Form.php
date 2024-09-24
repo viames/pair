@@ -1462,7 +1462,7 @@ class FormControlSelect extends FormControl {
 		};
 
 		// add an initial line to the options of this select
-		if (!is_null($this->emptyOption)) {
+		if (isset($this->emptyOption) and !is_null($this->emptyOption)) {
 			$option			= new \stdClass();
 			$option->value	= '';
 			$option->text	= ($this->disabled or $this->readonly) ? '' : $this->emptyOption;
