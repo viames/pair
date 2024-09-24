@@ -782,10 +782,12 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	final public function store(): bool {
 
+		$objectId = $this->getId();
+
 		try {
 
 			// update if object’s keys are populated
-			$update = ($this->areKeysPopulated() and static::exists($this->getId()));
+			$update = ($objectId and $this->areKeysPopulated() and static::exists($objectId));
 
 		} catch (\Exception $e) {
 
@@ -2510,8 +2512,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 	/**
 	 * Function for serializing the object through json response.
-	 *
-	 * @return array
 	 */
 	public function jsonSerialize(): array {
 
@@ -2534,7 +2534,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * respect to the corresponding record in the DB.
 	 *
 	 * @param	string	Property name.
-	 * @return	bool
 	 */
 	final protected function hasPropertyUpdated(string $name): bool {
 
@@ -2545,8 +2544,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 	/**
 	 * Returns the list of properties whose value has changed since the record was last
 	 * written to the DB.
-	 *
-	 * @return array
 	 */
 	final protected function getUpdatedProperties(): array {
 
@@ -2557,7 +2554,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 	/**
 	 * Convert this object with hidden properties, to a stdClass. Useful, for example, to print the object as JSON.
 	 * @param	array	Optional list of the properties you want to return, as a subset of those available.
-	 * @return \stdClass
 	 */
 	public function convertToStdClass(?array $wantedProperties=NULL): \stdClass {
 
@@ -2627,7 +2623,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * Return the SELECT query code for columns mapped to encrypted properties. Empty string in case of no encrypted properties.
 	 *
 	 * @param	string|NULL	Table alias.
-	 * @return	string
 	 */
 	public static function getEncryptedColumnsQuery(string $tableAlias=NULL): string {
 

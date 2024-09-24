@@ -1241,21 +1241,18 @@ class FormControlSelect extends FormControl {
 
 	/**
 	 * Items list of \stdClass objs with value and text attributes.
-	 * @var array
 	 */
-	private $list = [];
+	private array $list = [];
 
 	/**
 	 * Flag to enable this control to multiple values.
-	 * @var bool
 	 */
-	private $multiple = FALSE;
+	private bool $multiple = FALSE;
 
 	/**
 	 * If populated with text, add an empty option before the list of values.
-	 * @var string|NULL
 	 */
-	private $emptyOption;
+	private ?string $emptyOption;
 
 	/**
 	 * Check whether this select control has options.
@@ -1342,7 +1339,7 @@ class FormControlSelect extends FormControl {
 	 */
 	public function setOptions(array|Collection $list, ?string $propertyValue=NULL, ?string $propertyText=NULL, ?array $propertyAttributes = NULL): FormControlSelect {
 
-		// if associative array, convert to object list
+		// if associative array, convert it to object list
 		if (is_array($list) and array_keys($list) !== range(0, count($list) - 1)) {
 
 			$objectList = [];
@@ -1361,11 +1358,11 @@ class FormControlSelect extends FormControl {
 
 		}
 
-		// for each list object, add an option
+		// for each item of the Collection, add an option
 		foreach ($list as $opt) {
 
-			$option			= new \stdClass();
-			$option->value	= $opt->$propertyValue;
+			$option = new \stdClass();
+			$option->value = $opt->$propertyValue;
 			$option->attributes = [];
 
 			if (is_array($propertyAttributes)) {
@@ -1431,8 +1428,6 @@ class FormControlSelect extends FormControl {
 
 	/**
 	 * Renders a Select field tag as HTML code.
-	 *
-	 * @return string
 	 */
 	public function render(): string {
 
