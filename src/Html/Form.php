@@ -1146,8 +1146,6 @@ class FormControlInput extends FormControl {
 	/**
 	 * Validates this control against empty values, minimum length, maximum length,
 	 * and returns TRUE if is all set checks pass.
-	 *
-	 * @return	bool
 	 */
 	public function validate(): bool {
 
@@ -1331,7 +1329,7 @@ class FormControlSelect extends FormControl {
 	 * Populates select control with an object array. Each object must have properties
 	 * for value and text. If property text includes a couple of round parenthesys, will
 	 * invoke a function without parameters. It’s a chainable method.
-	 * @param	array	Associative array [value=>label] or object list [{value,label,attributes}].
+	 * @param	array|Collection	Associative array [value=>label] or object list [{value,label,attributes}].
 	 * @param	string	Name of property’s value.
 	 * @param	string	Name of property’s text or an existent object function.
 	 * @param 	string	Optional attributes [name=>value].
@@ -1418,8 +1416,6 @@ class FormControlSelect extends FormControl {
 
 	/**
 	 * Enables this select control to accept multiple choises. Chainable method.
-	 *
-	 * @return	FormControlSelect
 	 */
 	public function setMultiple(): FormControlSelect {
 
@@ -1514,8 +1510,6 @@ class FormControlSelect extends FormControl {
 
 	/**
 	 * Validates this control and returns TRUE if is valid.
-	 *
-	 * @return	bool
 	 */
 	public function validate(): bool {
 
@@ -1573,8 +1567,6 @@ class FormControlTextarea extends FormControl {
 	 * Sets rows for this textarea. Chainable method.
 	 *
 	 * @param	int		Rows number.
-	 *
-	 * @return	FormControlTextarea
 	 */
 	public function setRows(int $num): FormControlTextarea {
 
@@ -1587,8 +1579,6 @@ class FormControlTextarea extends FormControl {
 	 * Sets columns for this textarea. Chainable method.
 	 *
 	 * @param	int		Columns number.
-	 *
-	 * @return	FormControlTextarea
 	 */
 	public function setCols(int $num): FormControlTextarea {
 
@@ -1599,8 +1589,6 @@ class FormControlTextarea extends FormControl {
 
 	/**
 	 * Renders a TextArea field tag as HTML code.
-	 *
-	 * @return string
 	 */
 	public function render(): string {
 
@@ -1616,8 +1604,6 @@ class FormControlTextarea extends FormControl {
 	/**
 	 * Validates this control against empty values, minimum length, maximum length,
 	 * and returns TRUE if is all set checks pass.
-	 *
-	 * @return	bool
 	 */
 	public function validate(): bool {
 
@@ -1664,8 +1650,6 @@ class FormControlButton extends FormControl {
 	 * Sets type for a FormControlButton (submit, reset, button). Chainable method.
 	 *
 	 * @param	string	The button type.
-	 *
-	 * @return	FormControlButton
 	 */
 	public function setType(string $type): FormControlButton {
 
@@ -1678,8 +1662,6 @@ class FormControlButton extends FormControl {
 	 * Sets a FontAwesome icon for this button object. Chainable method.
 	 *
 	 * @param	string	The icon class.
-	 *
-	 * @return	FormControlButton
 	 */
 	public function setFaIcon(string $class): FormControlButton {
 
@@ -1690,8 +1672,6 @@ class FormControlButton extends FormControl {
 
 	/**
 	 * Renders an HTML button form control prepending an optional FontAwesome icon.
-	 *
-	 * @return	string
 	 */
 	public function render(): string {
 
@@ -1719,8 +1699,6 @@ class FormControlButton extends FormControl {
 
 	/**
 	 * Validation is disabled for buttons, returns always TRUE.
-	 *
-	 * @return	bool
 	 */
 	public function validate(): bool {
 
