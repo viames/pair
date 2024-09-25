@@ -34,7 +34,7 @@ class Migration extends ActiveRecord {
 	/**
 	 * This property maps “result” column.
 	 */
-	protected ?int $result;
+	protected ?bool $result;
 
 	/**
 	 * This property maps “created_at” column.
@@ -57,13 +57,30 @@ class Migration extends ActiveRecord {
 	const TABLE_KEY = 'id';
 
 	/**
-	 * Method called by constructor just after having populated the object.
+	 * Initializes the ActiveRecord-specific types of this object’s properties.
 	 */
 	protected function init(): void {
 
+		$this->bindAsBoolean('result');
+
 		$this->bindAsDatetime('createdAt', 'updatedAt');
 
-		$this->bindAsInteger('id', 'queryIndex', 'affectedRows', 'result');
+		$this->bindAsInteger('id', 'queryIndex', 'affectedRows');
+
+	}
+
+	/**
+	 * Returns the time spent to execute the migration.
+	 */
+	public function executionTime(): string {
+
+		$diff = $this->updatedAt->getTimestamp() - $this->createdAt->getTimestamp();
+
+		$hours = floor($diff / 3600);
+		$minutes = floor(($diff - $hours * 3600) / 60);
+		$seconds = $diff - $hours * 3600 - $minutes * 60;
+
+		return sprintf('%02d:%02d:%02d', $hours, $minutes, $seconds);
 
 	}
 

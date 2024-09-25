@@ -281,29 +281,12 @@ abstract class View {
 	}
 
 	/**
-	 * Prints a column header with sorting link.
+	 * Old alias that prints a sortable column header.
+	 * @deprecated Use sortable() instead.
 	 */
-	public function printSortableColumn(string $title, int $ascSort, int $descSort): void {
+	public function printSortableColumn(string $title, int $ascOrder, int $descOrder): void {
 
-		$router = Router::getInstance();
-
-		print '<div style="white-space:nowrap">';
-
-		if ($ascSort == $router->order) {
-
-			print '<a href="' . $router->getOrderUrl($descSort) . '">' . $title . '</a> <i class="fa fa-arrow-up"></i>';
-
-		} else if ($descSort == $router->order) {
-
-			print '<a href="' . $router->getOrderUrl(0) . '">' . $title . '</a> <i class="fa fa-arrow-down"></i>';
-
-		} else {
-
-			print '<a href="' . $router->getOrderUrl($ascSort) . '">' . $title . '</a>';
-
-		}
-
-		print '</div>';
+		$this->sortable($title, $ascOrder, $descOrder);
 
 	}
 
@@ -426,6 +409,33 @@ abstract class View {
 
 		// after the message has been queued, store the error data
 		ErrorLog::keepSnapshot('Failure in ' . \get_class($object) . ' class');
+
+	}
+
+	/**
+	 * Prints a column header with sorting link.
+	 */
+	public function sortable(string $title, int $ascOrder, int $descOrder): void {
+
+		$router = Router::getInstance();
+
+		print '<div style="white-space:nowrap">';
+
+		if ($ascOrder == $router->order) {
+
+			print '<a href="' . $router->getOrderUrl($descOrder) . '">' . $title . '</a> <i class="fa fa-arrow-up"></i>';
+
+		} else if ($descOrder == $router->order) {
+
+			print '<a href="' . $router->getOrderUrl(0) . '">' . $title . '</a> <i class="fa fa-arrow-down"></i>';
+
+		} else {
+
+			print '<a href="' . $router->getOrderUrl($ascOrder) . '">' . $title . '</a>';
+
+		}
+
+		print '</div>';
 
 	}
 
