@@ -8,13 +8,18 @@ class Form {
 	 * List of all controls added to this form.
 	 * @var FormControl[]
 	 */
-	private $controls = [];
+	private array $controls = [];
 
 	/**
 	 * List of class to add on each controls.
 	 * @var string[]
 	 */
-	private $controlClasses = [];
+	private array $controlClasses = [];
+
+	/**
+	 * Class to add on each labels.
+	 */
+	private ?string $labelClasses = NULL;
 
 	/**
 	 * Adds an FormControlInput object to this Form object. Default type is Text.
@@ -86,7 +91,7 @@ class Form {
 	 *
 	 * @param	mixed	FormControl children class object.
 	 */
-	public function addControl($control) {
+	public function addControl(FormControl $control): void {
 
 		$this->controls[$control->name] = $control;
 
@@ -117,17 +122,17 @@ class Form {
 	 *
 	 * @return	bool
 	 */
-	public function removeControl(string $name): bool {
+	public function removeControl(string $controlName): bool {
 
-		if (substr($name, -2) == '[]') {
-			$name = substr($name, 0, -2);
+		if (substr($controlName, -2) == '[]') {
+			$controlName = substr($controlName, 0, -2);
 		}
 
-		if (!$this->controlExists($name)) {
+		if (!$this->controlExists($controlName)) {
 			return FALSE;
 		}
 
-		unset($this->controls[$name]);
+		unset($this->controls[$controlName]);
 		return TRUE;
 
 	}
@@ -235,12 +240,15 @@ class Form {
 	 *
 	 * @param	string	HTML name of the wanted control.
 	 */
-	public function printLabel(string $name) {
+	public function printLabel(string $controlName) {
 
 		// gets control object
-		$control = $this->getControl($name);
+		$control = $this->getControl($controlName);
 
 		if ($control) {
+			if (isset($this->labelClasses) and $this->labelClasses) {
+				$control->setLabelClass($this->labelClasses);
+			}
 			$control->printLabel();
 		}
 
@@ -320,7 +328,7 @@ class Form {
 	public static function buildSelect(string $name, array $list, string $valName='value', string $textName='text', $value=NULL, $attributes=NULL, $prependEmpty=NULL) {
 
 		$control = new FormControlSelect($name, $attributes);
-		$control->setListByObjectArray($list, $valName, $textName)->setValue($value);
+		$control->setOptions($list, $valName, $textName)->setValue($value);
 
 		if ($prependEmpty) {
 			$control->prependEmpty($prependEmpty);
@@ -344,7 +352,7 @@ class Form {
 	public static function buildSelectFromArray(string $name, array $list, string $value=NULL, $attributes=NULL, $prependEmpty=NULL) {
 
 		$control = new FormControlSelect($name, $attributes);
-		$control->setListByAssociativeArray($list)->setValue($value);
+		$control->setOptions($list)->setValue($value);
 
 		if ($prependEmpty) {
 			$control->prependEmpty($prependEmpty);
@@ -410,6 +418,17 @@ class Form {
 		$control->setType($type)->setFaIcon($faIcon)->setValue($value);
 
 		return $control->render();
+
+	}
+
+	/**
+	 * Sets a common CSS class for all labels of this form.
+	 */
+	public function setLabelClass(string $class): Form {
+
+		$this->labelClasses = $class;
+
+		return $this;
 
 	}
 
@@ -502,6 +521,11 @@ abstract class FormControl {
 	private $description;
 
 	/**
+	 * CSS class for label.
+	 */
+	private ?string $labelClass;
+
+	/**
 	 * Build control with HTML name tag and optional attributes.
 	 *
 	 * @param	string	Control name.
@@ -565,7 +589,7 @@ abstract class FormControl {
 	 */
 	public function __toString(): string {
 
-		return $this->getLabel();
+		return $this->getLabelText();
 
 	}
 
@@ -750,7 +774,7 @@ abstract class FormControl {
 	/**
 	 * Return the control’s label.
 	 */
-	public function getLabel(): string {
+	public function getLabelText(): string {
 
 		// no label, get it by the control’s name
 		if (!$this->label) {
@@ -796,11 +820,22 @@ abstract class FormControl {
 	}
 
 	/**
-	 * Print the control’s label even with required-field class.
+	 * Sets a CSS class for all the controls label. Chainable method.
+	 */
+	public function setLabelClass(string $class): FormControlSelect|FormControlInput|FormControlTextarea|FormControlButton {
+
+		$this->labelClass = $class;
+
+		return $this;
+
+	}
+
+	/**
+	 * Print the control’s label tag even with required-field class.
 	 */
 	public function printLabel(): void {
 
-		$label = $this->getLabel();
+		$label = $this->getLabelText();
 
 		// if required, add required-field css class
 		if ($this->required and !$this->readonly and !$this->disabled) {
@@ -1072,12 +1107,14 @@ class FormControlInput extends FormControl {
 				break;
 
 			case 'date':
-				$ret .= ' type="date" value="' . htmlspecialchars((string)$this->value) . '"';
+				$value = is_a($this->value, 'DateTime') ? $this->value->format($this->dateFormat) : (string)$this->value;
+				$ret .= ' type="date" value="' . htmlspecialchars($value) . '"';
 				break;
 
 			case 'datetime':
 				$type = Input::usingCustomDatetimepicker() ? 'datetime' : 'datetime-local';
-				$ret .= ' type="' . $type . '" value="' . htmlspecialchars((string)$this->value) . '"';
+				$value = is_a($this->value, 'DateTime') ? $this->value->format($this->dateFormat) : (string)$this->value;
+				$ret .= ' type="' . $type . '" value="' . htmlspecialchars($value) . '"';
 				break;
 
 			case 'file':
@@ -1235,21 +1272,18 @@ class FormControlSelect extends FormControl {
 
 	/**
 	 * Items list of \stdClass objs with value and text attributes.
-	 * @var array
 	 */
-	private $list = [];
+	private array $list = [];
 
 	/**
 	 * Flag to enable this control to multiple values.
-	 * @var bool
 	 */
-	private $multiple = FALSE;
+	private bool $multiple = FALSE;
 
 	/**
 	 * If populated with text, add an empty option before the list of values.
-	 * @var string|NULL
 	 */
-	private $emptyOption;
+	private ?string $emptyOption;
 
 	/**
 	 * Check whether this select control has options.
@@ -1303,6 +1337,67 @@ class FormControlSelect extends FormControl {
 
 			$option			= new \stdClass();
 			$option->value	= $opt->$propertyValue;
+			$option->attributes = [];
+
+			if (is_array($propertyAttributes)) {
+				foreach ($propertyAttributes as $pa) {
+					array_push($option->attributes, ['name' => $pa, 'value' => $opt->$pa]);
+				}
+			} else if (is_string($propertyAttributes)) {
+				array_push($option->attributes, ['name' => $propertyAttributes, 'value' => $opt->$propertyAttributes]);
+			}
+
+			// check wheter the propertyText is a function call
+			if (FALSE !== strpos($propertyText,'()') and strpos($propertyText,'()')+2 == strlen($propertyText)) {
+				$functionName = substr($propertyText, 0, strrpos($propertyText,'()'));
+				$option->text = $opt->$functionName();
+			} else {
+				$option->text = $opt->$propertyText;
+			}
+
+			$this->list[] = $option;
+
+		}
+
+		return $this;
+
+	}
+
+	/**
+	 * Populates select control with an object array. Each object must have properties
+	 * for value and text. If property text includes a couple of round parenthesys, will
+	 * invoke a function without parameters. It’s a chainable method.
+	 * @param	\stdClass[]	Associative array [value=>label] or object list [{value,label,attributes}].
+	 * @param	string		Name of property’s value.
+	 * @param	string		Name of property’s text or an existent object function.
+	 * @param 	string		Optional attributes [name=>value].
+	 */
+	public function setOptions(array|Collection $list, ?string $propertyValue=NULL, ?string $propertyText=NULL, ?array $propertyAttributes = NULL): FormControlSelect {
+
+		// if associative array, convert it to object list
+		if (is_array($list) and array_keys($list) !== range(0, count($list) - 1)) {
+
+			$objectList = [];
+			
+			foreach ($list as $value=>$text) {
+				$object = new \stdClass();
+				$object->value = $value;
+				$object->text = $text;
+				$objectList[] = $object;
+			}
+			
+			$list = $objectList;
+
+			$propertyValue = 'value';
+			$propertyText = 'text';
+
+		}
+
+		// for each item of the Collection, add an option
+		foreach ($list as $opt) {
+
+			$option = new \stdClass();
+			$option->value = $opt->$propertyValue;
 			$option->attributes = [];
 
 			if (is_array($propertyAttributes)) {
@@ -1410,7 +1505,7 @@ class FormControlSelect extends FormControl {
 		};
 
 		// add an initial line to the options of this select
-		if (!is_null($this->emptyOption)) {
+		if (isset($this->emptyOption) and !is_null($this->emptyOption)) {
 			$option			= new \stdClass();
 			$option->value	= '';
 			$option->text	= ($this->disabled or $this->readonly) ? '' : $this->emptyOption;
