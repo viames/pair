@@ -284,7 +284,7 @@ abstract class Controller {
 	 *
 	 * @throws Exception
 	 */
-	public function getView() {
+	public function getView(): ?View {
 
 		try {
 
@@ -337,7 +337,12 @@ abstract class Controller {
 	 */
 	public function display() {
 
-		$view = $this->getView();
+		try {
+			$view = $this->getView();
+		} catch (\Exception $e) {
+			$this->enqueueError($e->getMessage());
+			$this->redirect($this->router->module);
+		}
 
 		if (is_subclass_of($view, 'Pair\View')) {
 			$view->display();
@@ -354,11 +359,11 @@ abstract class Controller {
 	 * Proxy function to translate a string, used for AJAX return messages.
 	 *
 	 * @param	string	The language key.
-	 * @param	string|array	Parameter or parameter’s list to bind on translation string (optional).
+	 * @param	string|array|NULL	Parameter or list of parameters to bind on translation string (optional).
 	 */
-	public function lang($key, $vars=NULL) {
+	public function lang($key, mixed $vars=NULL) {
 
-		return Translator::do($key, $vars);
+		return Translator::do($key, (array)$vars);
 
 	}
 

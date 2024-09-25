@@ -179,8 +179,8 @@ abstract class View {
 	}
 
 	/**
-	 * Restituisce, se esiste, la variabile assegnata al layout,
-	 * altrimenti la proprietà del metodo, altrimenti NULL.
+	 * Returns, if it exists, the variable assigned to the layout,
+	 * otherwise the property of the method, otherwise NULL.
 	 *
 	 * @param	string	Nome della proprietà richiesta.
 	 * @return	mixed
@@ -311,7 +311,7 @@ abstract class View {
 	}
 
 	/**
-	 * Prints a column header with sorting link.
+	 * Alias of sortable() that prints a sortable column header.
 	 */
 	public function printSortableColumn(string $title, int $ascSort, int $descSort): void {
 
@@ -456,6 +456,33 @@ abstract class View {
 
 		// after the message has been queued, store the error data
 		ErrorLog::keepSnapshot('Failure in ' . \get_class($object) . ' class');
+
+	}
+
+	/**
+	 * Prints a column header with sorting link.
+	 */
+	public function sortable(string $title, int $ascOrder, int $descOrder): void {
+
+		$router = Router::getInstance();
+
+		print '<div style="white-space:nowrap">';
+
+		if ($ascOrder == $router->order) {
+
+			print '<a href="' . $router->getOrderUrl($descOrder) . '">' . $title . '</a> <i class="fa fa-arrow-up"></i>';
+
+		} else if ($descOrder == $router->order) {
+
+			print '<a href="' . $router->getOrderUrl(0) . '">' . $title . '</a> <i class="fa fa-arrow-down"></i>';
+
+		} else {
+
+			print '<a href="' . $router->getOrderUrl($ascOrder) . '">' . $title . '</a>';
+
+		}
+
+		print '</div>';
 
 	}
 

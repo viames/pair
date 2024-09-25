@@ -328,20 +328,20 @@ abstract class ActiveRecord implements \JsonSerializable {
 		if ('get'==substr($name,0,3)) {
 
 			// check if invoked a virtual method on Pair class
-			if (class_exists($evenPairClass) and is_subclass_of($evenPairClass,'Pair\ActiveRecord')) {
+			if (is_subclass_of($evenPairClass,'Pair\ActiveRecord')) {
 
 				return $getRelatedObject($evenPairClass);
 
 			// check if invoked a virtual method on other ActiveRecord’s class
-			} else if (class_exists($evenClass) and is_subclass_of($evenClass,'Pair\ActiveRecord')) {
+			} else if (is_subclass_of($evenClass,'Pair\ActiveRecord')) {
 
 				return $getRelatedObject($evenClass);
 
-			} else if ((class_exists($multiPairClass) and is_subclass_of($multiPairClass,'Pair\ActiveRecord'))) {
+			} else if (is_subclass_of($multiPairClass,'Pair\ActiveRecord')) {
 
 				return $getInverseRelatedObjects($multiPairClass);
 
-			} else if ((class_exists($multiClass) and is_subclass_of($multiClass,'Pair\ActiveRecord'))) {
+			} else if (is_subclass_of($multiClass,'Pair\ActiveRecord')) {
 
 				return $getInverseRelatedObjects($multiClass);
 
@@ -374,6 +374,23 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		// log the reload
 		Logger::event('Cloned ' . $class . ' object');
+
+	}
+
+	/**
+	 * Called by var_dump() when dumping an object to get the relevant object properties.
+	 */
+	public function __debugInfo(): array {
+
+		$debug = [];
+
+		$properties = $this->getAllProperties();
+
+		foreach ($properties as $name => $value) {
+			$debug[$name] = $value;
+		}
+
+		return $debug;
 
 	}
 
@@ -675,6 +692,23 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 
 	/**
+	 * Reveal if children class has a simple key as integer or string.
+	 */
+	public static function hasSimpleKey(): bool {
+
+		$class = get_called_class();
+
+		if (is_array($class::TABLE_KEY) and count($class::TABLE_KEY) > 1) return FALSE;
+
+		$key = (is_array($class::TABLE_KEY) and isset($class::TABLE_KEY[0]))
+		? $class::TABLE_KEY[0] ?? NULL
+		: $class::TABLE_KEY;
+
+		return ($key and (is_int($key) or is_string($key)));
+
+	}
+
+	/**
 	 * Check if a property is mapped to a table primary or compound key field for this object.
 	 *
 	 * @param	string	Single key name.
@@ -756,20 +790,27 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	final public function store(): bool {
 
+		try {
+			
+			// update if object’s keys are populated
+			$update = ($this->areKeysPopulated() and static::exists($this->getId()));
+
+		} catch (\Exception $e) {
+	
+			$this->addError($e->getMessage());
+			return FALSE;
+	
+		}
+
 		// hook for tasks to be executed before store
 		$this->beforeStore();
 
-		// create if object’s keys are populated
-		if ($this->areKeysPopulated() and static::exists($this->getId())) {
-			$ret = $this->update();
-		} else {
-			$ret = $this->create();
-		}
+		$result = $update ? $this->update() : $this->create();
 
 		// hook for tasks to be executed after store
 		$this->afterStore();
 
-		return $ret;
+		return $result;
 
 	}
 
@@ -797,7 +838,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		$autoIncrement = $this->db->isAutoIncrement(static::TABLE_NAME);
 
-		if (!$this->areKeysPopulated() and !$autoIncrement) {
+		if (!$autoIncrement and !$this->areKeysPopulated()) {
 			Logger::event('The object’s ' . implode(', ', $this->keyProperties) . ' properties must be populated in order to create a ' . $class . ' record');
 			return FALSE;
 		}
@@ -1779,7 +1820,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 				} else {
 
-					trigger_error('In method ' . $class . '::getAllObject() unexistent property “' . $property . '” can’t be used as filter');
+					trigger_error('In method ' . $class . '::getAllObjects() unexistent property “' . $property . '” can’t be used as filter');
 
 				}
 

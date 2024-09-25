@@ -189,7 +189,7 @@ abstract class Model {
 	/**
 	 * Create SQL code about ORDER and LIMIT.
 	 */
-	protected function getOrderLimitSql() {
+	protected function getOrderLimitSql(): string {
 
 		$ret = '';
 
@@ -254,7 +254,6 @@ abstract class Model {
 	 */
 	protected function getQuery(string $class): string {
 
-		// assembla la query
 		return 'SELECT * FROM `' . $class::TABLE_NAME . '`';
 
 	}
