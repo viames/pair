@@ -1572,7 +1572,7 @@ class FormControlSelect extends FormControl {
 		} else if (count($this->list)) {
 
 			// this FormControlSelect contains an empty option as the first element
-			if (!is_null($this->emptyOption) and !$this->required and (''==$value or is_null($value))) {
+			if (isset($this->emptyOption) and !is_null($this->emptyOption) and !$this->required and (''==$value or is_null($value))) {
 
 				$valid = TRUE;
 
