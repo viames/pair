@@ -1372,7 +1372,7 @@ class FormControlSelect extends FormControl {
 	 * @param	string		Name of property’s text or an existent object function.
 	 * @param 	string		Optional attributes [name=>value].
 	 */
-	public function setOptions(array|Collection $list, ?string $propertyValue=NULL, ?string $propertyText=NULL, ?array $propertyAttributes = NULL): FormControlSelect {
+	public function setOptions(array $list, ?string $propertyValue=NULL, ?string $propertyText=NULL, ?array $propertyAttributes = NULL): FormControlSelect {
 
 		// if associative array, convert it to object list
 		if (is_array($list) and array_keys($list) !== range(0, count($list) - 1)) {
@@ -1393,7 +1393,7 @@ class FormControlSelect extends FormControl {
 
 		}
 
-		// for each item of the Collection, add an option
+		// for each item of the list, add an option
 		foreach ($list as $opt) {
 
 			$option = new \stdClass();
