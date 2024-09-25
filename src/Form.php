@@ -1374,15 +1374,18 @@ class FormControlSelect extends FormControl {
 	 */
 	public function setOptions(array $list, ?string $propertyValue=NULL, ?string $propertyText=NULL, ?array $propertyAttributes = NULL): FormControlSelect {
 
-		// if associative array, convert it to object list
-		if (is_array($list) and array_keys($list) !== range(0, count($list) - 1)) {
+		$allowedValues = ['string','integer','double'];
+
+		// check if associative array
+		if (is_array($list) and in_array(gettype(reset($list)), $allowedValues)) {
 
 			$objectList = [];
 			
+			// convert associative array to a stdClass array
 			foreach ($list as $value=>$text) {
 				$object = new \stdClass();
 				$object->value = $value;
-				$object->text = $text;
+				$object->text = (string)$text;
 				$objectList[] = $object;
 			}
 			
