@@ -87,9 +87,8 @@ class Form {
 
 	/**
 	 * Add a FormControl object to controls list of this Form.
-	 * @param	mixed	FormControl children class object.
 	 */
-	public function addControl(mixed $control): void {
+	public function addControl(FormControl $control): void {
 
 		$this->controls[$control->name] = $control;
 
@@ -1332,22 +1331,25 @@ class FormControlSelect extends FormControl {
 	 * Populates select control with an object array. Each object must have properties
 	 * for value and text. If property text includes a couple of round parenthesys, will
 	 * invoke a function without parameters. It’s a chainable method.
-	 * @param	\stdClass[]	Associative array [value=>label] or object list [{value,label,attributes}].
-	 * @param	string		Name of property’s value.
-	 * @param	string		Name of property’s text or an existent object function.
-	 * @param 	string		Optional attributes [name=>value].
+	 * @param	array	Associative array [value=>label] or object list [{value,label,attributes}].
+	 * @param	string	Name of property’s value.
+	 * @param	string	Name of property’s text or an existent object function.
+	 * @param 	string	Optional attributes [name=>value].
 	 */
 	public function setOptions(array|Collection $list, ?string $propertyValue=NULL, ?string $propertyText=NULL, ?array $propertyAttributes = NULL): FormControlSelect {
 
-		// if associative array, convert it to object list
-		if (is_array($list) and array_keys($list) !== range(0, count($list) - 1)) {
+		$allowedValues = ['string','integer','double'];
+
+		// check if associative array
+		if (is_array($list) and in_array(gettype(reset($list)), $allowedValues)) {
 
 			$objectList = [];
 			
+			// convert associative array to a stdClass array
 			foreach ($list as $value=>$text) {
 				$object = new \stdClass();
 				$object->value = $value;
-				$object->text = $text;
+				$object->text = (string)$text;
 				$objectList[] = $object;
 			}
 			
@@ -1358,7 +1360,7 @@ class FormControlSelect extends FormControl {
 
 		}
 
-		// for each item of the Collection, add an option
+		// for each item of the list, add an option
 		foreach ($list as $opt) {
 
 			$option = new \stdClass();
@@ -1529,7 +1531,7 @@ class FormControlSelect extends FormControl {
 		} else if (count($this->list)) {
 
 			// this FormControlSelect contains an empty option as the first element
-			if (!is_null($this->emptyOption) and !$this->required and (''==$value or is_null($value))) {
+			if (isset($this->emptyOption) and !is_null($this->emptyOption) and !$this->required and (''==$value or is_null($value))) {
 
 				$valid = TRUE;
 

@@ -281,7 +281,7 @@ abstract class View {
 	}
 
 	/**
-	 * Old alias that prints a sortable column header.
+	 * Alias of sortable() that prints a sortable column header.
 	 * @deprecated Use sortable() instead.
 	 */
 	public function printSortableColumn(string $title, int $ascOrder, int $descOrder): void {
