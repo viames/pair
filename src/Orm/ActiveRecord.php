@@ -3,6 +3,7 @@
 namespace Pair\Orm;
 
 use Pair\Core\Application;
+use Pair\Exception\ActiveRecordWriteException;
 use Pair\Html\Form;
 use Pair\Support\Input;
 use Pair\Support\Logger;
@@ -829,11 +830,17 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$class = get_called_class();
 
 		$autoIncrement = $this->db->isAutoIncrement(static::TABLE_NAME);
-		
+
 		try {
+
 			if (!$autoIncrement and !$this->areKeysPopulated()) {
-				Logger::event('The object’s ' . implode(', ', $this->keyProperties) . ' properties must be populated in order to create a ' . $class . ' record');
-				return FALSE;
+
+				$errCode = static::hasSimpleKey()
+				? ActiveRecordWriteException::ERROR_PRIMARY_KEY_NOT_POPULATED
+				: ActiveRecordWriteException::ERROR_COMPOSITE_PRIMARY_KEY_NOT_POPULATED;
+
+				throw new ActiveRecordWriteException(implode(', ', $this->keyProperties) . ' not populated', $errCode);
+
 			}
 
 		} catch (\Exception $e) {
@@ -927,7 +934,15 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		try {
 
-			$keysPopulated = $this->areKeysPopulated();
+			if (!$this->areKeysPopulated()) {
+			
+				$errCode = static::hasSimpleKey()
+				? ActiveRecordWriteException::ERROR_PRIMARY_KEY_NOT_POPULATED
+				: ActiveRecordWriteException::ERROR_COMPOSITE_PRIMARY_KEY_NOT_POPULATED;
+
+				throw new ActiveRecordWriteException(implode(', ', $this->keyProperties) . ' not populated', $errCode);
+
+			}
 
 		} catch (\Exception $e) {
 
@@ -960,11 +975,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 
 		$logParam = $this->getKeysForEventlog();
-
-		if (!$keysPopulated) {
-			Logger::event('The ' . $class . ' object with ' . $logParam . ' cannot be updated');
-			return FALSE;
-		}
 
 		// set an object with the columns to update
 		$dbObj = $this->prepareData($properties);
