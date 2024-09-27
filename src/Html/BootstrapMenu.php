@@ -41,7 +41,7 @@ class BootstrapMenu extends Menu {
 
 					$ret .= '<li' . $active . '><a href="' . $item->url . '"' . ($item->target ? ' target="' . $item->target . '"' : '') .
 						'><i class="fa fa-lg fa-fw ' . $item->class . '"></i> <span class="nav-label">' . $item->title .'</span> ' .
-						(isset($item->badge) and $item->badge ? '<span class="badge float-right">' . $item->badge . '</span>' : '') .
+						((isset($item->badge) and $item->badge) ? '<span class="badge float-right">' . $item->badge . '</span>' : '') .
 						'</a></li>';
 
 					break;
@@ -70,7 +70,7 @@ class BootstrapMenu extends Menu {
 						$links .=
 							'<li class="' . $active . '"><a href="' . $i->url . '">' .
 							'<i class="fa fa-fw ' . $i->class . '"></i> ' . $i->title .
-							(isset($item->badge) and $item->badge ? '<span class="badge float-right">' . $i->badge . '</span>' : '') .
+							((isset($item->badge) and $item->badge) ? '<span class="badge float-right">' . $i->badge . '</span>' : '') .
 							'</a></li>';
 
 					}
