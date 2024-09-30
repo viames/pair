@@ -7,6 +7,7 @@ use Pair\Exception\ActiveRecordWriteException;
 use Pair\Html\Form;
 use Pair\Support\Input;
 use Pair\Support\Logger;
+use Pair\Support\Translator;
 use Pair\Support\Utilities;
 
 /**
@@ -2150,8 +2151,10 @@ abstract class ActiveRecord implements \JsonSerializable {
 		if ($format) {
 			return $this->$prop->format($format);
 		}
-
-		return Utilities::intlFormat(NULL, $this->$prop);
+		
+		// read the date format from the language file
+		$dateTimeFormat = Translator::do('DATETIME_FORMAT');
+		return Utilities::intlFormat($dateTimeFormat, $this->$prop);
 
 	}
 
@@ -2175,7 +2178,9 @@ abstract class ActiveRecord implements \JsonSerializable {
 			return $this->$prop->format($format);
 		}
 
-		return Utilities::intlFormat(NULL, $this->$prop);
+		// read the date format from the language file
+		$dateFormat = Translator::do('DATE_FORMAT');
+		return Utilities::intlFormat($dateFormat, $this->$prop);
 
 	}
 
@@ -2205,7 +2210,11 @@ abstract class ActiveRecord implements \JsonSerializable {
 					break;
 
 				case 'DateTime':
-					print $this->formatDateTime($name);
+					$field = static::getMappedField($name);
+					$column = static::getColumnType($field);
+					print ('date' == $column->type
+					? $this->formatDate($name)
+					: $this->formatDateTime($name));
 					break;
 
 				case 'csv':

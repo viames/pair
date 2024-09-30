@@ -5,50 +5,45 @@ namespace Pair\Support;
 use Pair\Core\Application;
 use Pair\Core\Router;
 use Pair\Models\Locale;
+use Pair\Orm\Collection;
 use Pair\Support\Logger;
 
 class Translator {
 
 	/**
 	 * Singleton object.
-	 * @var Translator|NULL
 	 */
-	protected static $instance;
+	protected static Translator $instance;
 
 	/**
 	 * The default Locale object.
-	 * @var	Locale
 	 */
-	private $defaultLocale;
+	private Locale $defaultLocale;
 
 	/**
 	 * The current user’s Locale object.
-	 * @var Locale
 	 */
-	private $currentLocale;
+	private Locale $currentLocale;
 
 	/**
 	 * Current module in where to look for language files.
-	 * @var	string
 	 */
-	private $module;
+	private string $module;
 
 	/**
 	 * Translation strings, as loaded from ini language file.
-	 * @var NULL|array
 	 */
-	private $strings;
+	private ?array $strings;
 
 	/**
 	 * Default language strings, loaded if needed and stored for next use.
-	 * @var NULL|array
 	 */
-	private $defaultStrings;
+	private ?array $defaultStrings;
 
 	/**
 	 * Set current language reading the favorite browser language variable.
 	 */
-	private function __construct() {
+	private function __construct(){
 
 		// config module for locale
 		$this->defaultLocale = Locale::getDefault();
@@ -60,7 +55,7 @@ class Translator {
 	 */
 	public static function getInstance(): Translator {
 
-		if (is_null(static::$instance)) {
+		if (!isset(static::$instance) or is_null(static::$instance)) {
 			static::$instance = new static();
 		}
 
@@ -97,7 +92,7 @@ class Translator {
 	 *
 	 * @return	Locale
 	 */
-	public function getDefaultLocale() {
+	public function getDefaultLocale(): Locale {
 
 		$this->checkLocaleSet();
 
@@ -110,15 +105,15 @@ class Translator {
 	 *
 	 * @param	Locale	Locale object to set.
 	 */
-	public function setLocale(Locale $newLocale) {
+	public function setLocale(Locale $newLocale): void {
 
 		// apply some changes only if new Locale really differs
-		if (!$this->currentLocale or ($this->currentLocale and $newLocale->id != $this->currentLocale->id)) {
+		if (!isset($this->currentLocale) or !$this->currentLocale or ($this->currentLocale and $newLocale->id != $this->currentLocale->id)) {
 
 			$this->currentLocale = $newLocale;
 
 			// if new language code equals the default one, move lang-strings
-			if ($this->defaultLocale and $newLocale->id == $this->defaultLocale->id) {
+			if ($this->defaultLocale and $newLocale->id == $this->defaultLocale->id and isset($this->defaultStrings)) {
 
 				$this->strings = $this->defaultStrings;
 				$this->defaultStrings = NULL;
@@ -143,7 +138,7 @@ class Translator {
 	 *
 	 * @param	string	Module name.
 	 */
-	public function setModuleName($moduleName) {
+	public function setModuleName($moduleName): void {
 
 		$this->module = $moduleName;
 
@@ -152,7 +147,7 @@ class Translator {
 	/**
 	 * Check that both default and current locales are set.
 	 */
-	private function checkLocaleSet() {
+	private function checkLocaleSet(): void {
 
 		if (!$this->defaultLocale) {
 
@@ -164,7 +159,7 @@ class Translator {
 
 		}
 
-		if (!$this->currentLocale) {
+		if (!isset($this->currentLocale) or !$this->currentLocale) {
 
 			// temporary sets default locale as current
 			$this->currentLocale = $this->defaultLocale;
@@ -202,7 +197,7 @@ class Translator {
 	 * @param	string|array|NULL	Parameter or list of parameters to bind on string (optional).
 	 * @param	bool|NULL	Show a warning if string is not found (optional).
 	 */
-	public static function do($key, mixed $vars=NULL, bool $warning=TRUE): string {
+	public static function do($key, mixed $vars=NULL, bool $warning=TRUE, string|Callable $default=NULL): string {
 
 		$self = static::getInstance();
 
@@ -213,6 +208,14 @@ class Translator {
 		if (array_key_exists($key, $self->strings) and $self->strings[$key]) {
 
 			$string = $self->strings[$key];
+
+		} else if (is_string($default)) {
+
+			$string = $default;
+
+		} else if (is_callable($default)) {
+
+			$string = $default($key);
 
 		} else if ($warning) {
 		
@@ -258,10 +261,8 @@ class Translator {
 	 * Return TRUE if passed language is available for translation.
 	 *
 	 * @param	string	Language key.
-	 *
-	 * @return	boolean
 	 */
-	public function stringExists($key) {
+	public function stringExists($key): bool {
 
 		// load translation strings
 		$this->loadStrings();
@@ -288,13 +289,13 @@ class Translator {
 		$this->strings = [];
 
 		// useful for landing page
-		if (!$this->module) {
+		if (!isset($this->module) or !$this->module) {
 			$app = Application::getInstance();
 			$router = Router::getInstance();
 			if ($router->module) {
 				$this->module = $router->module;
 			} else if (is_a($app->currentUser, 'Pair\Models\User')) {
-				$this->module = $app->currentUser->getLanding()->module;
+				$this->module = (string)$app->currentUser->getLanding()->module;
 			}
 		}
 
@@ -303,12 +304,13 @@ class Translator {
 
 		// common strings in current language
 		$common = APPLICATION_PATH . '/translations/' . $this->currentLocale->getRepresentation() . '.ini';
-		if (file_exists($common)) {
+		if (file_exists($common) and is_readable($common)) {
 			try {
-				$this->strings = @parse_ini_file($common);
-				if (FALSE == $this->strings) {
+				$commonFileContent = parse_ini_file($common);
+				if (FALSE == $commonFileContent) {
 					throw new \Exception('File parsing failed: ' . $common);
 				}
+				$this->strings = $commonFileContent;
 			} catch (\Exception $e) {
 				$this->strings = [];
 			}
@@ -370,9 +372,8 @@ class Translator {
 	 * Translate the text in an array of select-options strings if uppercase.
 	 *
 	 * @param	array	List of (value=>text)s to translate.
-	 * @return	array
 	 */
-	public function translateSelectOptions($optSelect) {
+	public function translateSelectOptions(array $optSelect): array {
 
 		// load translation strings
 		$this->loadStrings();
@@ -395,10 +396,8 @@ class Translator {
 	 *
 	 * @param	array	List of ActiveRecord objects.
 	 * @param	string	Parameter name.
-	 *
-	 * return 	ActiveRecord[]
 	 */
-	public function translateActiveRecordList($list, $propertyName) {
+	public function translateActiveRecordList(array|Collection $list, $propertyName): array|Collection {
 
 		if (!isset($list[0]) or !property_exists($list[0], $propertyName)) {
 			return $list;
@@ -414,7 +413,7 @@ class Translator {
 
 	}
 
-	public static function getDefaultFileName() {
+	public static function getDefaultFileName(): string {
 
 		try {
 			return self::$instance->getDefaultLocale()->getRepresentation() . '.ini';

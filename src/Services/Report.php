@@ -5,6 +5,7 @@ namespace Pair\Services;
 use Pair\Core\Application;
 use Pair\Models\Locale;
 use Pair\Orm\Database;
+use Pair\Support\Translator;
 use Pair\Support\Utilities;
 
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -130,20 +131,41 @@ abstract class Report {
 	}
 
 	/**
+	 * Formats a boolean value for display in the Excel sheet.
+	 */
+	protected function formatBooleanCell(bool $value): string {
+
+		return (
+			$value
+			? Translator::do('WORD_TRUE', NULL, FALSE, 'True')
+			: Translator::do('WORD_FALSE', NULL, FALSE, 'False')
+		);
+
+	}
+
+	/**
 	 * Set the format and value of a cell in the Excel sheet.
 	 */
-	private function formatCell(Cell &$cell, $value, ?string $format): void {
+	private function formatCell(Cell &$cell, mixed $value, string|Callable $format=NULL): void {
 
 		// default is auto format
 		if (is_null($format)) {
 
 			$cell->setValue($value);
+			return;
+
+		} else if (is_callable($format)) {
+
+			$cell->setValue($format($value));
+			return;
 
 		}
 
 		// otherwise select the appropriate format
 		switch ($format) {
 
+			case 'int':
+			case 'integer':
 			case 'numeric':
 				$cell->setValueExplicit($value, DataType::TYPE_NUMERIC);
 				break;
@@ -160,6 +182,11 @@ abstract class Report {
 				$cell->setValue($this->formatDateCell($value, $format));
 				break;
 
+			case 'bool':
+			case 'boolean':
+				$cell->setValue($this->formatBooleanCell((bool)(int)$value));
+				break;
+
 			case 'string':
 			default:
 				$cell->setValueExplicit($value, DataType::TYPE_STRING);
@@ -169,7 +196,10 @@ abstract class Report {
 
 	}
 
-	private function formatDateCell($value, string $format): ?string {
+	/**
+	 * Formats a date value for display in the Excel sheet.
+	 */
+	protected function formatDateCell($value, string $format): ?string {
 
 		switch ($format) {
 
@@ -301,7 +331,7 @@ abstract class Report {
 	/**
 	 * Defines a particular column by its index zero-based.
 	 */
-	protected function setColumn(int $index, string $head, ?string $format = NULL): self {
+	protected function setColumn(int $index, string $head, string|Callable $format = NULL): self {
 
 		$column = new \stdClass;
 		$column->head = $head;

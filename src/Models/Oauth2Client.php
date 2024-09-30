@@ -8,51 +8,44 @@ class Oauth2Client extends ActiveRecord {
 
 	/**
 	 * This property maps “id” column.
-	 * @var string
 	 */
-	protected $id;
+	protected string $id;
 
 	/**
 	 * This property maps “secret” column.
-	 * @var string
 	 */
-	protected $secret;
+	protected string $secret;
 
 	/**
 	 * This property maps “enabled” column.
-	 * @var int
 	 */
-	protected $enabled;
+	protected bool $enabled;
 
 	/**
 	 * This property maps “created_at” column.
-	 * @var DateTime
 	 */
-	protected $createdAt;
+	protected ?\DateTime $createdAt;
 
 	/**
 	 * This property maps “updated_at” column.
-	 * @var DateTime
 	 */
-	protected $updatedAt;
+	protected ?\DateTime $updatedAt;
 
 	/**
 	 * Name of related db table.
-	 * @var string
 	 */
 	const TABLE_NAME = 'oauth2_clients';
 
 	/**
 	 * Name of primary key db field.
-	 * @var string
 	 */
 	const TABLE_KEY = 'id';
 
 	/**
 	 * Method called by constructor just after having populated the object.
 	 */
-	protected function init() {
-
+	protected function init(): void {
+		
 		$this->bindAsBoolean('enabled');
 
 		$this->bindAsDatetime('createdAt', 'updatedAt');
@@ -60,9 +53,17 @@ class Oauth2Client extends ActiveRecord {
 	}
 
 	/**
+	 * Generates a random secret.
+	 */
+	public static function generateSecret(int $length = 32): string {
+
+		return bin2hex(openssl_random_pseudo_bytes($length));
+
+	}
+
+	/**
 	 * If there is a non-expired token, update its date and return it, otherwise
 	 * create a new one.
-	 * @return	string
 	 */
 	public function getToken(): string {
 

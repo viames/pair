@@ -66,17 +66,20 @@ class Oauth2Token extends ActiveRecord {
 
 	}
 
+	/**
+	 * Get the Authorization header.
+	 */
 	private static function getAuthorizationHeader(): ?string {
 
-		$headers = NULL;
+		$header = NULL;
 
 		if (isset($_SERVER['Authorization'])) {
 
-			$headers = trim($_SERVER["Authorization"]);
+			$header = trim($_SERVER["Authorization"]);
 
 		} else if (isset($_SERVER['HTTP_AUTHORIZATION'])) { //Nginx or fast CGI
 
-			$headers = trim($_SERVER["HTTP_AUTHORIZATION"]);
+			$header = trim($_SERVER["HTTP_AUTHORIZATION"]);
 
 		} else if (function_exists('apache_request_headers')) {
 
@@ -85,22 +88,18 @@ class Oauth2Token extends ActiveRecord {
 			// Server-side fix for bug in old Android versions (a nice side-effect of this fix means we don't care about capitalization for Authorization)
 			$requestHeaders = array_combine(array_map('ucwords', array_keys($requestHeaders)), array_values($requestHeaders));
 
-			//print_r($requestHeaders);
-
 			if (isset($requestHeaders['Authorization'])) {
-				$headers = trim($requestHeaders['Authorization']);
+				$header = trim($requestHeaders['Authorization']);
 			}
 
 		}
 
-		return $headers;
+		return $header;
 
 	}
 
 	/**
 	 * Get access token from header.
-	 *
-	 * @return string|NULL
 	 */
 	public static function readBearerToken(): ?string {
 
@@ -116,8 +115,6 @@ class Oauth2Token extends ActiveRecord {
 
 	/**
 	 * Read client_id and client_secret from header authorization.
-	 *
-	 * @return \stdClass|NULL
 	 */
 	public static function readBasicAuth(): ?\stdClass {
 
@@ -137,7 +134,6 @@ class Oauth2Token extends ActiveRecord {
 	/**
 	 * Verify that the past token exists and has a compatible date and creates a past date for the number of seconds in duration
 	 * @param string $bearerToken
-	 * @return bool
 	 */
 	public static function validate(string $bearerToken): bool {
 
@@ -161,7 +157,6 @@ class Oauth2Token extends ActiveRecord {
 	 * The request could not be understood by the server due to malformed syntax. The client
 	 * SHOULD NOT repeat the request without modifications.
 	 * @param string $detail
-	 * @return void
 	 */
 	public static function badRequest(string $detail): void {
 
@@ -176,7 +171,6 @@ class Oauth2Token extends ActiveRecord {
 	 * (section 14.8). If the request already included Authorization credentials, then the 401
 	 * response indicates that authorization has been refused for those credentials.
 	 * @param string $detail
-	 * @return void
 	 */
 	public static function unauthorized(string $detail): void {
 
@@ -192,7 +186,6 @@ class Oauth2Token extends ActiveRecord {
 	 * this information available to the client, the status code 404 (Not Found) can be used
 	 * instead.
 	 * @param string $detail
-	 * @return void
 	 */
 	public static function forbidden(string $detail): void {
 
@@ -207,7 +200,6 @@ class Oauth2Token extends ActiveRecord {
 	 * @param string $title
 	 * @param string $status
 	 * @param null|string $detail
-	 * @return void
 	 */
 	private static function sendRfc2616Response(string $type, string $title, string $status, ?string $detail=NULL): void {
 
