@@ -758,20 +758,26 @@ class Database {
 	 */
 	public function getForeignKeys(string $tableName): array {
 
+		// check the internal memory-cache
 		if (!isset($this->definitions[$tableName]['foreignKeys'])) {
 
 			// old-style join because of speedness
 			$query =
-				'SELECT k.`CONSTRAINT_NAME`, k.`COLUMN_NAME`, k.`REFERENCED_TABLE_NAME`,' .
-				' k.`REFERENCED_COLUMN_NAME`, r.`UPDATE_RULE`, r.`DELETE_RULE`' .
-				' FROM information_schema.`KEY_COLUMN_USAGE` AS k' .
-				' JOIN information_schema.`REFERENTIAL_CONSTRAINTS` AS r' .
-				' WHERE k.`CONSTRAINT_NAME` != "PRIMARY"' .
-				' AND k.`TABLE_SCHEMA` = ? AND k.`TABLE_NAME` = ?' .
-				' AND r.`CONSTRAINT_SCHEMA` = ? AND r.`TABLE_NAME` = ?' .
-				' AND k.`CONSTRAINT_NAME` = r.`CONSTRAINT_NAME`';
+				'SELECT k.`CONSTRAINT_NAME`, k.`COLUMN_NAME`, k.`REFERENCED_TABLE_NAME`,
+				k.`REFERENCED_COLUMN_NAME`, r.`UPDATE_RULE`, r.`DELETE_RULE`
+				FROM information_schema.`KEY_COLUMN_USAGE` AS k
+				JOIN information_schema.`REFERENTIAL_CONSTRAINTS` AS r
+				WHERE k.`CONSTRAINT_NAME` != "PRIMARY"
+				AND k.`TABLE_SCHEMA` = :dbName AND k.`TABLE_NAME` = :tableName
+				AND r.`CONSTRAINT_SCHEMA` = :dbName AND r.`TABLE_NAME` = :tableName
+				AND k.`CONSTRAINT_NAME` = r.`CONSTRAINT_NAME`';
 
-			$this->definitions[$tableName]['foreignKeys'] = self::load($query, [DB_NAME, $tableName, DB_NAME, $tableName]);
+			$params = [
+				'dbName' => DB_NAME,
+				'tableName' => $tableName
+			];
+
+			$this->definitions[$tableName]['foreignKeys'] = self::load($query, $params);
 
 		}
 
@@ -788,20 +794,26 @@ class Database {
 	 */
 	public function getInverseForeignKeys(string $tableName): array {
 
+		// check the internal memory-cache
 		if (!isset($this->definitions[$tableName]['inverseForeignKeys'])) {
 
 			// old-style join because of speedness
 			$query =
-				'SELECT k.CONSTRAINT_NAME, k.REFERENCED_COLUMN_NAME, k.TABLE_NAME, ' .
-				' k.COLUMN_NAME, r.UPDATE_RULE, r.DELETE_RULE' .
-				' FROM information_schema.`KEY_COLUMN_USAGE` AS k' .
-				' JOIN information_schema.`REFERENTIAL_CONSTRAINTS` AS r' .
-				' WHERE k.CONSTRAINT_NAME != "PRIMARY"' .
-				' AND k.TABLE_SCHEMA = ? AND k.REFERENCED_TABLE_NAME = ?' .
-				' AND r.CONSTRAINT_SCHEMA = ? AND r.REFERENCED_TABLE_NAME = ?' .
-				' AND k.CONSTRAINT_NAME = r.CONSTRAINT_NAME';
+				'SELECT k.CONSTRAINT_NAME, k.REFERENCED_COLUMN_NAME, k.TABLE_NAME,
+				k.COLUMN_NAME, r.UPDATE_RULE, r.DELETE_RULE
+				FROM information_schema.`KEY_COLUMN_USAGE` AS k
+				JOIN information_schema.`REFERENTIAL_CONSTRAINTS` AS r
+				WHERE k.CONSTRAINT_NAME != "PRIMARY"
+				AND k.TABLE_SCHEMA = :dbName AND k.REFERENCED_TABLE_NAME = :tableName
+				AND r.CONSTRAINT_SCHEMA = :dbName AND r.REFERENCED_TABLE_NAME = :tableName
+				AND k.CONSTRAINT_NAME = r.CONSTRAINT_NAME';
 
-			$this->definitions[$tableName]['inverseForeignKeys'] = self::load($query, [DB_NAME, $tableName, DB_NAME, $tableName]);
+			$params = [
+				'dbName' => DB_NAME,
+				'tableName' => $tableName
+			];
+
+			$this->definitions[$tableName]['inverseForeignKeys'] = self::load($query, $params);
 
 		}
 
