@@ -295,7 +295,7 @@ class Translator {
 			if ($router->module) {
 				$this->module = $router->module;
 			} else if (is_a($app->currentUser, 'Pair\Models\User')) {
-				$this->module = $app->currentUser->getLanding()->module;
+				$this->module = $app->currentUser->getLanding()->module ?? '';
 			}
 		}
 
