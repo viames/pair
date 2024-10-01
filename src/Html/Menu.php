@@ -236,7 +236,7 @@ class Menu {
 
 		return '<li><a href="' . $item->url . '"' . ($item->target ? ' target="' . $item->target . '"' : '') .
 			$active . '><i class="fal fa-lg fa-fw ' . $item->class . '"></i> <span class="nav-label">' . $item->title .'</span> ' .
-			($item->badge ? '<span class="float-right label label-' . $item->badgeType . '">' . $item->badge . '</span>' : '') . '</a></li>';
+			($item->badge ? '<span class="float-end badge badge-' . $item->badgeType . '">' . $item->badge . '</span>' : '') . '</a></li>';
 
 	}
 
@@ -270,7 +270,7 @@ class Menu {
 			$links .=
 				'<li class="' . $active . '"><a href="' . $i->url . '" class="' . $active . '">' .
 				'<i class="fal fa-fw ' . $i->class . '"></i>' . $i->title .
-				($i->badge ? '<span class="float-right label label-' . $item->badgeType . '">' . $i->badge . '</span>' : '') .
+				($i->badge ? '<span class="float-end badge badge-' . $item->badgeType . '">' . $i->badge . '</span>' : '') .
 				'</a></li>';
 
 		}
