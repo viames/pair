@@ -159,7 +159,7 @@ class Translator {
 
 		}
 
-		if (!$this->currentLocale) {
+		if (!isset($this->currentLocale) or !$this->currentLocale) {
 
 			// temporary sets default locale as current
 			$this->currentLocale = $this->defaultLocale;
