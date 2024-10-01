@@ -19,7 +19,7 @@ class Oauth2Client extends ActiveRecord {
 	/**
 	 * This property maps “enabled” column.
 	 */
-	protected int $enabled;
+	protected bool $enabled;
 
 	/**
 	 * This property maps “created_at” column.
@@ -45,10 +45,19 @@ class Oauth2Client extends ActiveRecord {
 	 * Method called by constructor just after having populated the object.
 	 */
 	protected function init(): void {
+		
+		$this->bindAsBoolean('enabled');
 
 		$this->bindAsDatetime('createdAt', 'updatedAt');
 
-		$this->bindAsInteger('enabled');
+	}
+
+	/**
+	 * Generates a random secret.
+	 */
+	public static function generateSecret(int $length = 32): string {
+
+		return bin2hex(openssl_random_pseudo_bytes($length));
 
 	}
 
