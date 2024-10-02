@@ -146,8 +146,8 @@ class Application {
 
 		// check config file or start installation
 		if (!file_exists($config)) {
-			if (file_exists('installer/start.php')) {
-				include 'installer/start.php';
+			if (file_exists(APPLICATION_PATH . '/installer/start.php')) {
+				include APPLICATION_PATH . '/installer/start.php';
 			} else {
 				die ('Configuration file is missing.');
 			}
