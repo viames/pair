@@ -71,7 +71,7 @@ class Translator {
 		$self = static::getInstance();
 		$currentLocale = $self->getCurrentLocale();
 		$currentLanguage = $currentLocale->getLanguage();
-		
+
 		return $currentLanguage ? $currentLanguage->code : NULL;
 
 	}
@@ -218,9 +218,9 @@ class Translator {
 			$string = $default($key);
 
 		} else if ($warning) {
-		
+
 			// search into strings of default language
-			if (is_array($self->defaultStrings) and array_key_exists($key, $self->defaultStrings) and $self->defaultStrings[$key]) {
+			if (isset($self->defaultStrings) and is_array($self->defaultStrings) and array_key_exists($key, $self->defaultStrings) and $self->defaultStrings[$key]) {
 
 				Logger::warning('Language string ' . $key . ' is untranslated for current language [' . $self->currentLocale->code . ']');
 				$string = $self->defaultStrings[$key];
@@ -294,7 +294,7 @@ class Translator {
 			$router = Router::getInstance();
 			if ($router->module) {
 				$this->module = $router->module;
-			} else if (is_a($app->currentUser, 'Pair\Models\User')) {
+			} else if (is_a($app->currentUser, 'Pair\Models\User') and $app->currentUser->getLanding() and $app->currentUser->getLanding()->module) {
 				$this->module = (string)$app->currentUser->getLanding()->module;
 			}
 		}
@@ -317,7 +317,7 @@ class Translator {
 		}
 
 		// if module is not set, won’t find language file
-		if ($this->module) {
+		if (isset($this->module) and $this->module) {
 
 			// module strings in current language
 			$file1 = APPLICATION_PATH . '/modules/' . strtolower($this->module) . '/translations/' . $this->currentLocale->getRepresentation() . '.ini';
