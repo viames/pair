@@ -263,7 +263,7 @@ class Database {
 	 * @param	array|NULL	List of parameters to bind on the sql query.
 	 * @param	int			Returned type (see constants PAIR_DB_*). PAIR_DB_OBJECT_LIST is default.
 	 */
-	public static function load(string $query, $params=[], int $option=NULL): array|Collection|\stdClass|int|NULL {
+	public static function load(string $query, $params=[], int $option=NULL): array|Collection|\stdClass|string|int|NULL {
 
 		$self = static::getInstance();
 
