@@ -86,7 +86,7 @@ abstract class Model {
 	 *
 	 * @param	string	Error message’s text.
 	 */
-	public function addError(string $message) {
+	public function addError(string $message): void {
 
 		$this->errors[] = $message;
 
@@ -94,10 +94,8 @@ abstract class Model {
 
 	/**
 	 * Returns text of latest error. In case of no errors, returns FALSE.
-	 *
-	 * @return mixed
 	 */
-	public function getLastError() {
+	public function getLastError(): array|bool {
 
 		return end($this->errors);
 
@@ -105,8 +103,6 @@ abstract class Model {
 
 	/**
 	 * Returns an array with text of all errors.
-	 *
-	 * @return array
 	 */
 	public function getErrors(): array {
 
