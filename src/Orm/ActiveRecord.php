@@ -55,6 +55,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	private array $dynamicProperties = [];
 
+	const TABLE_KEY = 'FAKE_KEY';
+
 	/**
 	 * Constructor, if param is db-row, will bind it on this object, if it’s id,
 	 * with load the object data from db, otherwise the object will be empty.
@@ -110,10 +112,9 @@ abstract class ActiveRecord implements \JsonSerializable {
 	/**
 	 * Return property’s value if set. Throw an exception and return NULL if not set.
 	 * @param	string	Property’s name.
-	 * @return	mixed|NULL
 	 * @throws	Exception
 	 */
-	public function __get(string $name) {
+	public function __get(string $name): mixed {
 
 		try {
 
@@ -148,7 +149,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	/**
 	 * Magic method required by array_columns().
 	 */
-	public function __isset($name) : bool {
+	public function __isset(string $name): bool {
 
         return isset($this->$name);
 
@@ -160,7 +161,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * @param	string	Property’s name.
 	 * @param	mixed	Property’s value.
 	 */
-	public function __set(string $name, $value) {
+	public function __set(string $name, mixed $value): void {
 
 		// it’s a dynamic property, deprecated since PHP 8.2
 		if (!array_key_exists($name, static::getBinds())) {
@@ -472,9 +473,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * save data. Datetime properties will be converted to Y-m-d H:i:s or NULL.
 	 *
 	 * @param	array	List of property name to prepare.
-	 * @return	mixed
 	 */
-	private function prepareData(array $properties) {
+	private function prepareData(array $properties): \stdClass {
 
 		// trigger before preparing data
 		$this->beforePrepareData();
@@ -1241,9 +1241,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @param	string	Related property name.
 	 * @param	string	Related object class.
-	 * @return	static|NULL
 	 */
-	final public function getRelated(string $relatedProperty, ?string $className=NULL): ?self {
+	final public function getRelated(string $relatedProperty, string $className=NULL): ?self {
 
 		$cacheName = $relatedProperty . 'RelatedObject';
 
@@ -1334,7 +1333,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$relatedValue = $this->__get($relatedProperty);
 
 		//  check if is managed by common cache
-		if ($this->isInSharedCache($relatedProperty)) {
+		if ($relatedValue and $this->isInSharedCache($relatedProperty)) {
 
 			$app = Application::getInstance();
 
@@ -1817,7 +1816,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 					$field = $binds[$property];
 
 					// creates where condition
-					$conds[] = $field . (is_null($value) ? ' IS NULL' : ' = ' . (is_int($value) ? $value : $db->quote($value)));
+					$conds[] = '`' . $field . '`' . (is_null($value) ? ' IS NULL' : ' = ' . (is_int($value) ? $value : $db->quote($value)));
 
 				} else {
 
@@ -2298,8 +2297,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * Get the name of class property mapped by db field. NULL if not found.
 	 *
 	 * @param	string	Field name.
-	 *
-	 * @return	NULL|string
 	 */
 	final static public function getMappedProperty(string $fieldName): ?string {
 
@@ -2312,7 +2309,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * Get the name of db field mapped by a class property. NULL if not found.
 	 *
 	 * @param	string	Property name.
-	 * @return	NULL|string
 	 */
 	final static public function getMappedField(string $propertyName): ?string {
 
@@ -2328,7 +2324,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @param	string	Property name.
 	 * @param	mixed	Property value. If not unique property, return the first table item.
-	 * @return	ActiveRecord|NULL
 	 */
 	final public static function getObjectByCachedList(string $property, $value): ?self {
 
@@ -2354,8 +2349,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * Load all records in a table from the DB and store them in the Application cache,
 	 * then look for the required property in this list. It is very useful for repeated
 	 * searches on small tables of the DB, eg. less than 1000 records.
-	 *
-	 * @return	void
 	 */
 	final public static function unsetCachedList(): void {
 
@@ -2370,7 +2363,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @param	string	Optional list of properties to populate, comma separated. If no items,
 	 * 					will tries to populate all columns.
-	 * @return	bool
 	 */
 	public function populateByRequest(): bool {
 

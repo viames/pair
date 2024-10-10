@@ -101,6 +101,24 @@ class Translator {
 	}
 
 	/**
+	 * Set the default locale forcing read of language strings.
+	 */
+	public static function resetLocale(): void {
+
+		$self = static::getInstance();
+
+		$defaultLocale = Locale::getDefault();
+		$self->currentLocale = $defaultLocale;
+
+		$self->strings = NULL;
+		$self->loadStrings();
+
+		// set default locale to all categories
+		setlocale(LC_ALL, str_replace('-', '_', $defaultLocale->getRepresentation()) . '.UTF-8');
+
+	}
+
+	/**
 	 * Set a new current locale by preparing its language strings.
 	 *
 	 * @param	Locale	Locale object to set.
@@ -197,7 +215,7 @@ class Translator {
 	 * @param	string|array|NULL	Parameter or list of parameters to bind on string (optional).
 	 * @param	bool|NULL	Show a warning if string is not found (optional).
 	 */
-	public static function do($key, mixed $vars=NULL, bool $warning=TRUE, string|Callable $default=NULL): string {
+	public static function do(string $key, string|array|NULL $vars=NULL, bool $warning=TRUE, string|Callable $default=NULL): string {
 
 		$self = static::getInstance();
 
@@ -323,7 +341,7 @@ class Translator {
 			$file1 = APPLICATION_PATH . '/modules/' . strtolower($this->module) . '/translations/' . $this->currentLocale->getRepresentation() . '.ini';
 			if (file_exists($file1)) {
 				try {
-					$moduleStrings = @parse_ini_file($file1);
+					$moduleStrings = parse_ini_file($file1);
 					if (FALSE == $moduleStrings) {
 						throw new \Exception('File parsing failed: ' . $file1);
 					}

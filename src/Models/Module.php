@@ -66,6 +66,11 @@ class Module extends ActiveRecord implements PluginInterface {
 	const TABLE_KEY = 'id';
 
 	/**
+	 * Properties that are stored in the shared cache.
+	 */
+	const SHARED_CACHE_PROPERTIES = ['installedBy'];
+
+	/**
 	 * Method called by constructor just after having populated the object.
 	 */
 	protected function init() {
@@ -138,11 +143,9 @@ class Module extends ActiveRecord implements PluginInterface {
 	/**
 	 * Checks if Module is already installed in this application.
 	 */
-	public static function pluginExists($name): bool {
+	public static function pluginExists(string $name): bool {
 
-		$db = Database::getInstance();
-		$db->setQuery('SELECT COUNT(1) FROM `modules` WHERE `name` = ?');
-		return (bool)$db->loadCount($name);
+		return (bool)self::countAllObjects(['name'=>$name]);
 
 	}
 

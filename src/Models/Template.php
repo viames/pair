@@ -161,16 +161,10 @@ class Template extends ActiveRecord implements PluginInterface {
 	 * Checks if Template is already installed in this application.
 	 *
 	 * @param	string	Name of Template to search.
-	 *
-	 * @return	boolean
-	 *
-	 * @see		PluginInterface::pluginExists()
 	 */
-	public static function pluginExists($name): bool {
+	public static function pluginExists(string $name): bool {
 
-		$db = Database::getInstance();
-		$db->setQuery('SELECT COUNT(1) FROM `templates` WHERE name = ?');
-		return (bool)$db->loadCount($name);
+		return (bool)self::countAllObjects(['name'=>$name]);
 
 	}
 

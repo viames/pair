@@ -272,9 +272,8 @@ class Application {
 	 * otherwise the properties of the method, otherwise NULL
 	 *
 	 * @param	string	Requested property’s name.
-	 * @return	mixed
 	 */
-	public function __get(string $name) {
+	public function __get(string $name): mixed {
 
 		switch ($name) {
 
@@ -320,7 +319,7 @@ class Application {
 	 * @param	string	Property’s name.
 	 * @param	mixed	Property’s value.
 	 */
-	public function __set(string $name, $value) {
+	public function __set(string $name, mixed $value): void {
 
 		if (property_exists($this, $name)) {
 
@@ -339,7 +338,7 @@ class Application {
 	/**
 	 * Check the temporary folder and, if it does not exist or is inaccessible, create it.
 	 */
-	public static function fixTemporaryFolder() {
+	public static function fixTemporaryFolder(): bool {
 
 		if (!file_exists(TEMP_PATH) or !is_dir(TEMP_PATH) or !is_writable(TEMP_PATH)) {
 
@@ -407,9 +406,9 @@ class Application {
 	 * Sets a session state variable.
 	 *
 	 * @param	string	Name of the state variable.
-	 * @param	string	Value of any type as is, like strings, custom objects etc.
+	 * @param	mixed	Value of any type as is, like strings, custom objects etc.
 	 */
-	public function setState($name, $value) {
+	public function setState(string $name, mixed $value): void {
 
 		$this->state[$name] = $value;
 
@@ -420,7 +419,7 @@ class Application {
 	 *
 	 * @param	string	Name of the state variable.
 	 */
-	public function unsetState($name) {
+	public function unsetState(string $name): void {
 
 		unset($this->state[$name]);
 
@@ -430,10 +429,8 @@ class Application {
 	 * Returns the requested session state variable.
 	 *
 	 * @param	string	State’s name.
-	 *
-	 * @return	mixed|NULL
 	 */
-	final public function getState(string $name) {
+	final public function getState(string $name): mixed {
 
 		if (array_key_exists($name, $this->state)) {
 			return $this->state[$name];
@@ -450,7 +447,7 @@ class Application {
 	 *
 	 * @return	bool
 	 */
-	final public function issetState($name) {
+	final public function issetState(string $name): bool {
 
 		return (array_key_exists($name, $this->state));
 
@@ -461,9 +458,8 @@ class Application {
 	 *
 	 * @param	string		Name of the ActiveObject class.
 	 * @param	int|string	Unique identifier of the class.
-	 * @return	ActiveRecord|NULL
 	 */
-	final public function getActiveRecordCache(string $class, $id): ?ActiveRecord {
+	final public function getActiveRecordCache(string $class, int|string $id): ?ActiveRecord {
 
 		return (isset($this->activeRecordCache[$class][$id])
 			? $this->activeRecordCache[$class][$id]
@@ -476,9 +472,8 @@ class Application {
 	 *
 	 * @param	string			Name of the ActiveObject class.
 	 * @param	ActiveRecord	Object to cache.
-	 * @return	void
 	 */
-	final public function putActiveRecordCache(string $class, $object): void {
+	final public function putActiveRecordCache(string $class, ActiveRecord $object): void {
 
 		// can’t manage composite key
 		if (1 == count((array)$object->keyProperties) ) {
@@ -493,7 +488,7 @@ class Application {
 	 *
 	 * @param	string	Javascript content.
 	 */
-	public function addScript($script) {
+	public function addScript(string $script): void {
 
 		$this->scriptContent[] = $script;
 
@@ -548,7 +543,7 @@ class Application {
 	 *
 	 * @param	string	Path to stylesheet, absolute or relative with no trailing slash.
 	 */
-	public function loadCss($href) {
+	public function loadCss(string $href): void {
 
 		$this->cssFiles[] = $href;
 
@@ -559,7 +554,7 @@ class Application {
 	 *
 	 * @param	string	Path to manifest file, absolute or relative with no trailing slash.
 	 */
-	public function loadManifest(string $href) {
+	public function loadManifest(string $href): void {
 
 		$this->manifestFiles[] = $href;
 
@@ -572,7 +567,7 @@ class Application {
 	 * @param	string	Optional title.
 	 * @param	string	Message’s type (info, error).
 	 */
-	public function enqueueMessage($text, $title='', $type=NULL) {
+	public function enqueueMessage(string $text, string $title='', string $type=NULL): void {
 
 		$message		= new \stdClass();
 		$message->text	= $text;
@@ -589,7 +584,7 @@ class Application {
 	 * @param	string	Message’s text.
 	 * @param	string	Optional title.
 	 */
-	public function enqueueError($text, $title='') {
+	public function enqueueError(string $text, string $title=''): void {
 
 		$this->enqueueMessage($text, ($title ? $title : 'Error'), 'error');
 
@@ -602,7 +597,7 @@ class Application {
 	 * @param	string	Location URL.
 	 * @param	bool	If TRUE, will avoids to add base url (default FALSE).
 	 */
-	public function redirect(string $url, bool $externalUrl=FALSE) {
+	public function redirect(string $url, bool $externalUrl=FALSE): void {
 
 		// stores enqueued messages for next retrievement
 		$this->makeQueuedMessagesPersistent();
@@ -649,7 +644,7 @@ class Application {
 	/**
 	 * Store enqueued messages for next retrievement.
 	 */
-	public function makeQueuedMessagesPersistent() {
+	public function makeQueuedMessagesPersistent(): void {
 
 		$this->setPersistentState('EnqueuedMessages', $this->messages);
 
@@ -660,7 +655,7 @@ class Application {
 	 *
 	 * @param	string	Name of module that executes API requests. Default is “api”.
 	 */
-	public function runApi(string $name = 'api') {
+	public function runApi(string $name = 'api'): void {
 
 		$router = Router::getInstance();
 
@@ -786,7 +781,7 @@ class Application {
 	 *
 	 * @param	string	Module name.
 	 */
-	public function setGuestModule(string $moduleName) {
+	public function setGuestModule(string $moduleName): void {
 
 		if (!in_array($moduleName, $this->guestModules)) {
 			$this->guestModules[] = $moduleName;
@@ -991,7 +986,7 @@ class Application {
 	/**
 	 * Removes all state variables from cookies.
 	 */
-	public function unsetAllPersistentStates() {
+	public function unsetAllPersistentStates(): void {
 
 		$prefix = static::getCookiePrefix();
 
@@ -1017,7 +1012,7 @@ class Application {
 	 *
 	 * @throws \Exception
 	 */
-	final public function startMvc() {
+	final public function startMvc(): void {
 
 		$router	= Router::getInstance();
 
@@ -1152,10 +1147,8 @@ class Application {
 
 	/**
 	 * Returns javascript code for displaying a front-end user message.
-	 *
-	 * @return string
 	 */
-	private function getMessageScript() {
+	private function getMessageScript(): string {
 
 		$script = '';
 
@@ -1196,7 +1189,7 @@ class Application {
 		if ($this->template->derived) {
 			$derivedFile = $this->template->getBaseFolder() . '/'  . strtolower($this->template->name) . '/derived.php';
 			if (file_exists($derivedFile)) require $derivedFile;
-		}	
+		}
 
 		return $this->template;
 

@@ -63,7 +63,7 @@ abstract class Report {
 	 * Adds to a property of the class, the specification of a column to be created, numbering it
 	 * with a zero-based index.
 	 */
-	protected function addColumn(string $head, ?string $format = NULL): self {
+	protected function addColumn(string $head, string $format = NULL): self {
 
 		$column = new \stdClass;
 

@@ -66,9 +66,8 @@ class Options {
 	 *
 	 * @param	string	The option’s name.
 	 * @throws	Exception
-	 * @return	mixed|NULL
 	 */
-	public static function get($name) {
+	public static function get(string $name): mixed {
 
 		$self = static::getInstance();
 

@@ -1334,7 +1334,7 @@ class FormControlSelect extends FormControl {
 	 * @param	string	Name of property’s text or an existent object function.
 	 * @param 	string	Optional attributes [name=>value].
 	 */
-	public function setOptions(array|Collection $list, ?string $propertyValue=NULL, ?string $propertyText=NULL, ?array $propertyAttributes = NULL): FormControlSelect {
+	public function setOptions(array|Collection $list, string $propertyValue=NULL, string $propertyText=NULL, array $propertyAttributes=NULL): FormControlSelect {
 
 		$allowedValues = ['string','integer','double'];
 

@@ -22,9 +22,10 @@ class Utilities {
 	 * @param	int		Error number.
 	 * @param	string	Error text message.
 	 * @param	string	Error full file path.
-	 * @param	string	Error line.
+	 * @param	int		Error line.
+	 * @param	array	(Optional) it will be passed an array that points to the active symbol table at the point the error occurred.
 	 */
-	public static function customErrorHandler(int $errno, string $errstr, string $errfile, int $errline): void {
+	public static function customErrorHandler(int $errno, string $errstr, string $errfile, int $errline, ?array $errcontext=NULL): void {
 
 		$backtrace = self::getDebugBacktrace();
 
@@ -138,6 +139,7 @@ class Utilities {
 
 	/**
 	 * Get the backtrace and assemble an array with comprehensible items.
+	 *
 	 * @return string[]
 	 */
 	public static function getDebugBacktrace(): array {
@@ -206,6 +208,7 @@ class Utilities {
 
 	/**
 	 * Creates a plain text string from any variable type.
+	 *
 	 * @param	mixed	Variable of any type.
 	 * @param	bool	Flag to hide var type.
 	 */
@@ -444,7 +447,7 @@ class Utilities {
 	 *
 	 * @param	string	Custom message to print in the container.
 	 */
-	public static function printNoDataMessageBox(?string $customMessage=NULL) {
+	public static function printNoDataMessageBox(string $customMessage=NULL) {
 
 		Router::exceedingPaginationFallback();
 
@@ -557,7 +560,6 @@ class Utilities {
 	 * @param	string	Relative path of the interested folder to scan.
 	 * @param	string	Internal, subfolder recursive name-cache.
 	 * @param	array	Internal, empty array at first scan.
-	 * @return	array
 	 */
 	public static function getDirectoryFilenames(string $path, string $subfolder=NULL, array $fileList=[]): array {
 
@@ -612,8 +614,6 @@ class Utilities {
 	 * FALSE if folder or file is not found or in case of errors.
 	 *
 	 * @param	string	Relative or absolute directory.
-	 *
-	 * @return	boolean
 	 */
 	public static function deleteFolder($dir) {
 
@@ -782,10 +782,8 @@ class Utilities {
 	 * a date over current time, sets as now.
 	 *
 	 * @param	string	Date in various formats.
-	 *
-	 * @return	DateTime
 	 */
-	public static function getDateTimeFromRfc($date) {
+	public static function getDateTimeFromRfc(string $date): ?\DateTime {
 
 		// various date formats
 		$formats = [
@@ -862,13 +860,31 @@ class Utilities {
 	}
 
 	/**
+	 * Check if there is an executable available in the operating system for direct execution. If the path
+	 * cannot be changed in the system, the path to the executable can be specified in the Pair configuration.
+	 */
+	public static function getExecutablePath(string $executable, string $configConst=NULL): ?string {
+
+		if (!is_null($configConst) and defined($configConst) and is_executable(constant($configConst))) {
+			return constant($configConst);
+		}
+
+		exec('which ' . $executable, $output, $resultCode);
+
+		if (!isset($output[0]) or !is_executable($output[0])) {
+			Logger::error($executable . ' is not available on this server');
+		}
+
+		return ($output[0] ?? NULL);
+
+	}
+
+	/**
 	 * Check if passed file is an Adobe PDF document.
 	 *
 	 * @param	string	Path to file.
-	 *
-	 * @return	NULL|bool
 	 */
-	public static function isPdf($file) {
+	public static function isPdf($file): bool {
 
 		return self::checkFileMime($file, ['application/pdf']);
 
@@ -1115,7 +1131,7 @@ class Utilities {
 	 * @param	\DateTime	The date object to be formatted, it will be the current date if NULL.
 	 * @return	string
 	 */
-	public static function intlFormat(?string $format=NULL, ?\DateTime $dateTime=NULL): string {
+	public static function intlFormat(string $format=NULL, \DateTime $dateTime=NULL): string {
 
 		$formatter = new \IntlDateFormatter(NULL, \IntlDateFormatter::MEDIUM, \IntlDateFormatter::SHORT);
 		if ($format) {
@@ -1132,7 +1148,7 @@ class Utilities {
 	 * @param	string Optional name for the document (with extension).
 	 * @return	bool
 	 */
-	public static function exportCsvForExcel(array $data, ?string $name=NULL): bool {
+	public static function exportCsvForExcel(array $data, string $name=NULL): bool {
 
 		// field delimiter
 		$delimiter = ";";

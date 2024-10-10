@@ -129,9 +129,8 @@ class User extends ActiveRecord {
 	 *
 	 * @param	string	Property’s name.
 	 * @throws	Exception
-	 * @return	mixed|NULL
 	 */
-	public function __get($name) {
+	public function __get(string $name): mixed {
 
 		switch ($name) {
 
@@ -879,7 +878,7 @@ class User extends ActiveRecord {
 	/**
 	 * Delete DB record and browser’s cookie because when logout is invoked.
 	 */
-	private function unsetRememberMe(): bool {
+	public function unsetRememberMe(): bool {
 
 		// build the cookie name
 		$cookieContent = UserRemember::getCookieContent();

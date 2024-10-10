@@ -148,6 +148,18 @@ abstract class Controller {
 	}
 
 	/**
+	 * Print an error message and redirect to default action.
+	 *
+	 * @param	string	Optional message to enqueue.
+	 */
+	protected function accessDenied(string $message=NULL) {
+
+		$this->enqueueError(($message ? $message : Translator::do('ACCESS_DENIED')));
+		$this->redirect(strtolower($this->name));
+
+	}
+
+	/**
 	 * Proxy to set a variable within global scope.
 	 *
 	 * @param	string	Variable name.
@@ -234,18 +246,6 @@ abstract class Controller {
 	}
 
 	/**
-	 * Proxy to redirect HTTP on the URL param. Relative path as default.
-	 *
-	 * @param	string	Location URL.
-	 * @param	bool	If TRUE, will avoids to add base url (default FALSE).
-	 */
-	public function redirect(string $url, bool $absoluteUrl=FALSE): void {
-
-		$this->app->redirect($url, $absoluteUrl);
-
-	}
-
-	/**
 	 * Return View object related to this controller.
 	 * @throws Exception
 	 */
@@ -321,14 +321,12 @@ abstract class Controller {
 	}
 
 	/**
-	 * Proxy function to translate a string, used for AJAX return messages.
-	 *
-	 * @param	string	The language key.
-	 * @param	string|array|NULL	Parameter or list of parameters to bind on translation string (optional).
+	 * Shortcut to enqueue an error message and set a view.
 	 */
-	public function lang($key, mixed $vars=NULL) {
+	public function fallBackWithError(string $message, string $view='default'): void {
 
-		return Translator::do($key, (array)$vars);
+		$this->enqueueError($message);
+		$this->view = $view;
 
 	}
 
@@ -365,6 +363,18 @@ abstract class Controller {
 	}
 
 	/**
+	 * Proxy function to translate a string, used for AJAX return messages.
+	 *
+	 * @param	string	The language key.
+	 * @param	string|array|NULL	Parameter or list of parameters to bind on translation string (optional).
+	 */
+	public function lang(string $key, string|array|NULL $vars=NULL) {
+
+		return Translator::do($key, (array)$vars);
+
+	}
+
+	/**
 	 * Get error list from an ActiveRecord object and show it to the user.
 	 *
 	 * @param	ActiveRecord	The inherited object.
@@ -389,14 +399,38 @@ abstract class Controller {
 	}
 
 	/**
-	 * Print an error message and redirect to default action.
+	 * Proxy to redirect HTTP on the URL param. Relative path as default.
 	 *
-	 * @param	string	Optional message to enqueue.
+	 * @param	string	Location URL.
+	 * @param	bool	If TRUE, will avoids to add base url (default FALSE).
 	 */
-	protected function accessDenied(?string $message=NULL) {
+	public function redirect(string $url=NULL, bool $absoluteUrl=FALSE): void {
 
-		$this->enqueueError(($message ? $message : Translator::do('ACCESS_DENIED')));
-		$this->redirect(strtolower($this->name));
+		if (is_null($url)) {
+			$url = $this->router->module;
+		}
+
+		$this->app->redirect($url, $absoluteUrl);
+
+	}
+
+	/**
+	 * Shortcut to HTTP redirect with an enqueue notification error.
+	 */
+	public function redirectWithError(string $message, string $url=NULL): void {
+
+		$this->enqueueError($message);
+		$this->redirect($url);
+
+	}
+
+	/**
+	 * Shortcut to HTTP redirect with an enqueue notification message.
+	 */
+	public function redirectWithMessage(string $message, string $url=NULL): void {
+
+		$this->enqueueMessage($message);
+		$this->redirect($url);
 
 	}
 

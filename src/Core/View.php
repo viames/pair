@@ -323,7 +323,7 @@ abstract class View {
 	 * Return an A-Z list with link for build an alpha filter.
 	 * @param	string	Current selected list item, if any.
 	 */
-	public function getAlphaFilter(?string $selected=NULL): \Generator {
+	public function getAlphaFilter(string $selected=NULL): \Generator {
 
 		$router = Router::getInstance();
 
@@ -372,7 +372,7 @@ abstract class View {
 	/**
 	 * Prints the alpha filter bar.
 	 */
-	public function printAlphaFilter(?string $selected=NULL): void {
+	public function printAlphaFilter(string $selected=NULL): void {
 
 		$router = Router::getInstance();
 		$letters = $this->getAlphaFilter($selected);

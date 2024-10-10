@@ -98,7 +98,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	/**
 	 * Returns the average value of a given key.
 	 */
-	public function avg(?string $key=NULL): float {
+	public function avg(string $key=NULL): float {
 
 		$sum = $this->sum($key);
 
@@ -734,7 +734,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 * the method. You may pass a closure to the implode method if you would like to format the
 	 * values being imploded.
 	 */
-	public function implode(string $glue, ?string $key = NULL): string {
+	public function implode(string $glue, string $key = NULL): string {
 
 		if (is_null($key)) {
 			return implode($glue, $this->items);
@@ -893,7 +893,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 * Returns the "mode value" of a given key. In statistics, the mode is the value that appears
 	 * most often in a set of data values.
 	 */
-	public function mode(?string $key=NULL): mixed {
+	public function mode(string $key=NULL): mixed {
 
 		$count = $this->countBy($key);
 
@@ -1035,7 +1035,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 * collection to be keyed. If duplicate keys exist, the last matching element will be inserted
 	 * into the plucked collection.
 	 */
-	public function pluck(string $value, ?string $key = NULL): Collection {
+	public function pluck(string $value, string $key = NULL): Collection {
 
 		$items = [];
 
@@ -1517,7 +1517,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 * will be considered equal to an integer of the same value. Use the uniqueStrict method to
 	 * filter using "strict" comparisons.
 	 */
-	public function unique(?string $key = NULL): Collection {
+	public function unique(string $key = NULL): Collection {
 
 		if (is_null($key)) {
 			return new Collection(array_unique($this->items));
