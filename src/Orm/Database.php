@@ -54,7 +54,7 @@ class Database {
 
 	/**
 	 * Connects to db just the first time, returns singleton object everytime.
-	 * @return	Database
+	 *
 	 * @throws	Exception
 	 */
 	public static function getInstance(): self {
@@ -79,6 +79,7 @@ class Database {
 
 	/**
 	 * Proxy to open a connection to DBMS if current PDO handler is NULL.
+	 *
 	 * @throws	PDOException
 	 */
 	public function connect(): void {
@@ -89,7 +90,9 @@ class Database {
 
 	/**
 	 * Connects to DBMS with params only if PDO handler property is null, so not connected.
+	 *
 	 * @param	bool	Flag to open a persistent connection (TRUE). Default is FALSE.
+	 *
 	 * @throws	PDOException
 	 */
 	private function openConnection(bool $persistent=FALSE): void {

@@ -1817,7 +1817,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 					$field = $binds[$property];
 
 					// creates where condition
-					$conds[] = $field . (is_null($value) ? ' IS NULL' : ' = ' . (is_int($value) ? $value : $db->quote($value)));
+					$conds[] = '`' . $field . '`' . (is_null($value) ? ' IS NULL' : ' = ' . (is_int($value) ? $value : $db->quote($value)));
 
 				} else {
 

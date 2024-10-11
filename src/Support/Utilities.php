@@ -21,11 +21,11 @@ class Utilities {
 	 *
 	 * @param	int		Error number.
 	 * @param	string	Error text message.
-	 * @param	string	(Optional) Error full file path.
-	 * @param	int		(Optional) Error line.
+	 * @param	string	Error full file path.
+	 * @param	int		Error line.
 	 * @param	array	(Optional) it will be passed an array that points to the active symbol table at the point the error occurred.
 	 */
-	public static function customErrorHandler(int $errno, string $errstr, ?string $errfile, ?int $errline, ?array $errcontext): void {
+	public static function customErrorHandler(int $errno, string $errstr, string $errfile, int $errline, ?array $errcontext=NULL): void {
 
 		$backtrace = self::getDebugBacktrace();
 
