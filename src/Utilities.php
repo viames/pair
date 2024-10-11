@@ -523,7 +523,6 @@ class Utilities {
 	 * @param	string	Relative path of the interested folder to scan.
 	 * @param	string	Internal, subfolder recursive name-cache.
 	 * @param	array	Internal, empty array at first scan.
-	 * @return	array
 	 */
 	public static function getDirectoryFilenames(string $path, string $subfolder=NULL, array $fileList=[]): array {
 
@@ -578,8 +577,6 @@ class Utilities {
 	 * FALSE if folder or file is not found or in case of errors.
 	 *
 	 * @param	string	Relative or absolute directory.
-	 *
-	 * @return	boolean
 	 */
 	public static function deleteFolder($dir) {
 
@@ -824,6 +821,26 @@ class Utilities {
 		}
 
 		return $camelCase;
+
+	}
+
+	/**
+	 * Check if there is an executable available in the operating system for direct execution. If the path
+	 * cannot be changed in the system, the path to the executable can be specified in the Pair configuration.
+	 */
+	public static function getExecutablePath(string $executable, ?string $configConst=NULL): ?string {
+
+		if (!is_null($configConst) and defined($configConst) and is_executable(constant($configConst))) {
+			return constant($configConst);
+		}
+
+		exec('which ' . $executable, $output, $resultCode);
+
+		if (!isset($output[0]) or !is_executable($output[0])) {
+			Logger::error($executable . ' is not available on this server');
+		}
+
+		return ($output[0] ?? NULL);
 
 	}
 
