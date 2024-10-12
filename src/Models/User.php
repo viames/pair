@@ -129,9 +129,8 @@ class User extends ActiveRecord {
 	 *
 	 * @param	string	Property’s name.
 	 * @throws	Exception
-	 * @return	mixed|NULL
 	 */
-	public function __get($name) {
+	public function __get(string $name): mixed {
 
 		switch ($name) {
 

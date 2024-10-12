@@ -336,7 +336,7 @@ abstract class Controller {
 	 * @param	string	The language key.
 	 * @param	string|array|NULL	Parameter or list of parameters to bind on translation string (optional).
 	 */
-	public function lang($key, mixed $vars=NULL) {
+	public function lang(string $key, string|array|NULL $vars=NULL) {
 
 		return Translator::do($key, (array)$vars);
 
