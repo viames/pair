@@ -110,10 +110,9 @@ abstract class ActiveRecord implements \JsonSerializable {
 	/**
 	 * Return property’s value if set. Throw an exception and return NULL if not set.
 	 * @param	string	Property’s name.
-	 * @return	mixed|NULL
 	 * @throws	Exception
 	 */
-	public function __get(string $name) {
+	public function __get(string $name): mixed {
 
 		try {
 
@@ -160,7 +159,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * @param	string	Property’s name.
 	 * @param	mixed	Property’s value.
 	 */
-	public function __set(string $name, $value) {
+	public function __set(string $name, mixed $value): void {
 
 		// it’s a dynamic property, deprecated since PHP 8.2
 		if (!array_key_exists($name, static::getBinds())) {

@@ -602,7 +602,7 @@ class Application {
 	 * @param	string	Location URL.
 	 * @param	bool	If TRUE, will avoids to add base url (default FALSE).
 	 */
-	public function redirect(string $url, bool $externalUrl=FALSE) {
+	public function redirect(string $url, bool $externalUrl=FALSE): void {
 
 		// stores enqueued messages for next retrievement
 		$this->makeQueuedMessagesPersistent();

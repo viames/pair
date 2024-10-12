@@ -246,6 +246,16 @@ abstract class Controller {
 	}
 
 	/**
+	 * Shortcut to redirect to the module’s default action. Useful to go back after a form submission.
+	 */
+	public function redirectModule(): void {
+
+		$router = Router::getInstance();
+		$this->redirect($router->module);
+
+	}
+
+	/**
 	 * Return View object related to this controller.
 	 * @throws Exception
 	 */
