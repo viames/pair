@@ -11,8 +11,9 @@ class Schedule {
 
 	/**
 	 * Function to call.
+	 * @var NULL|callable
 	 */
-	private ?Callable $functionToRun;
+	private $functionToRun;
 
 	/**
 	 * Callable function's parameters (optional).
@@ -37,7 +38,7 @@ class Schedule {
 	 * @param mixed|null $params
 	 * @return Schedule
 	 */
-	public function command(callable $functionToRun, ?mixed $params=NULL): self {
+	public function command(callable $functionToRun, mixed $params=NULL): self {
 
 		$this->params = $params;
 
