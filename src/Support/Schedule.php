@@ -6,27 +6,23 @@ class Schedule {
 
 	/**
 	 * Current DateTime.
-	 * @var DateTime;
 	 */
-	private $now;
+	private \DateTime $now;
 
 	/**
 	 * Function to call.
-	 * @var NULL|callable
 	 */
-	private $functionToRun;
+	private ?Callable $functionToRun;
 
 	/**
 	 * Callable function's parameters (optional).
-	 * @var mixed
 	 */
-	private $params;
+	private mixed $params;
 
 	/**
 	 * Flag to enable action execution.
-	 * @var bool
 	 */
-	private $timeToRun = FALSE;
+	private bool $timeToRun = FALSE;
 
 	public function __construct() {
 
@@ -41,7 +37,7 @@ class Schedule {
 	 * @param mixed|null $params
 	 * @return Schedule
 	 */
-	public function command(callable $functionToRun, $params=NULL): self {
+	public function command(callable $functionToRun, ?mixed $params=NULL): self {
 
 		$this->params = $params;
 
@@ -58,7 +54,6 @@ class Schedule {
 
 	/**
 	 * Run the required user function.
-	 * @return bool
 	 */
 	private function handle(): bool {
 
@@ -82,7 +77,6 @@ class Schedule {
 
 	/**
 	 * Run the task every minute.
-	 * @return bool
 	 */
 	public function everyMinute(): bool {
 
@@ -94,7 +88,6 @@ class Schedule {
 
 	/**
 	 * Run the task every two minutes.
-	 * @return bool
 	 */
 	public function everyTwoMinutes(): bool {
 
@@ -108,7 +101,6 @@ class Schedule {
 
 	/**
 	 * Run the task every three minutes.
-	 * @return bool
 	 */
 	public function everyThreeMinutes(): bool {
 
@@ -122,7 +114,6 @@ class Schedule {
 
 	/**
 	 * Run the task every four minutes.
-	 * @return bool
 	 */
 	public function everyFourMinutes(): bool {
 
@@ -136,7 +127,6 @@ class Schedule {
 
 	/**
 	 * Run the task every five minutes.
-	 * @return bool
 	 */
 	public function everyFiveMinutes(): bool {
 
@@ -150,7 +140,6 @@ class Schedule {
 
 	/**
 	 * Run the task every ten minutes.
-	 * @return bool
 	 */
 	public function everyTenMinutes(): bool {
 
@@ -164,7 +153,6 @@ class Schedule {
 
 	/**
 	 * Run the task every fifteen minutes.
-	 * @return bool
 	 */
 	public function everyFifteenMinutes(): bool {
 
@@ -178,7 +166,6 @@ class Schedule {
 
 	/**
 	 * Run the task every thirty minutes.
-	 * @return bool
 	 */
 	public function everyThirtyMinutes(): bool {
 
@@ -192,7 +179,6 @@ class Schedule {
 
 	/**
 	 * Run the task every hour.
-	 * @return bool
 	 */
 	public function hourly(): bool {
 
@@ -206,8 +192,6 @@ class Schedule {
 
 	/**
 	 * Run the task every hour at {$minutes} minutes past the hour.
-	 * @param int $minutes
-	 * @return bool
 	 */
 	public function hourlyAt(int $minutes): bool {
 
@@ -221,7 +205,6 @@ class Schedule {
 
 	/**
 	 * Run the task every two hours.
-	 * @return bool
 	 */
 	public function everyTwoHours(): bool {
 
@@ -235,7 +218,6 @@ class Schedule {
 
 	/**
 	 * Run the task every three hours.
-	 * @return bool
 	 */
 	public function everyThreeHours(): bool {
 
@@ -249,7 +231,6 @@ class Schedule {
 
 	/**
 	 * Run the task every four hours.
-	 * @return bool
 	 */
 	public function everyFourHours(): bool {
 
@@ -263,7 +244,6 @@ class Schedule {
 
 	/**
 	 * Run the task every six hours.
-	 * @return bool
 	 */
 	public function everySixHours(): bool {
 
@@ -277,7 +257,6 @@ class Schedule {
 
 	/**
 	 * Run the task every day at midnight.
-	 * @return bool
 	 */
 	public function daily(): bool {
 
@@ -291,8 +270,6 @@ class Schedule {
 
 	/**
 	 * Run the task every day at {$time}.
-	 * @param string $time
-	 * @return bool
 	 */
 	public function dailyAt(string $time): bool {
 
@@ -306,9 +283,6 @@ class Schedule {
 
 	/**
 	 * Run the task daily at {$time1} & {$time2}.
-	 * @param string $time1
-	 * @param string $time2
-	 * @return bool
 	 */
 	public function twiceDaily(string $time1, string $time2): bool {
 
@@ -322,7 +296,6 @@ class Schedule {
 
 	/**
 	 * Run the task every Sunday at 00:00.
-	 * @return bool
 	 */
 	public function weekly(): bool {
 
@@ -336,9 +309,6 @@ class Schedule {
 
 	/**
 	 * Run the task every {dayOfTheWeek} at {time}.
-	 * @param int $dayOfTheWeek
-	 * @param string $time
-	 * @return bool
 	 */
 	public function weeklyOn(int $dayOfTheWeek, string $time): bool {
 
@@ -352,7 +322,6 @@ class Schedule {
 
 	/**
 	 * Run the task on the first day of every month at 00:00.
-	 * @return bool
 	 */
 	public function monthly(): bool {
 
@@ -366,9 +335,6 @@ class Schedule {
 
 	/**
 	 * Run the task every month on the {$dayOfTheMonth} at {$time}.
-	 * @param int $dayOfTheMonth
-	 * @param string $time
-	 * @return bool
 	 */
 	public function monthlyOn(int $dayOfTheMonth, string $time): bool {
 
@@ -382,10 +348,6 @@ class Schedule {
 
 	/**
 	 * Run the task monthly on the {$dayOfTheMonth1} and {$dayOfTheMonth2} at {$time}.
-	 * @param int $dayOfTheMonth1
-	 * @param int $dayOfTheMonth2
-	 * @param string $time
-	 * @return bool
 	 */
 	public function twiceMonthly(int $dayOfTheMonth1, int $dayOfTheMonth2, string $time): bool {
 
@@ -399,8 +361,6 @@ class Schedule {
 
 	/**
 	 * Run the task on the last day of the month at {$time}.
-	 * @param string $time
-	 * @return bool
 	 */
 	public function lastDayOfMonth(string $time): bool {
 
@@ -414,7 +374,6 @@ class Schedule {
 
 	/**
 	 * Run the task on the first day of every quarter at 00:00.
-	 * @return bool
 	 */
 	public function quarterly(): bool {
 
@@ -428,7 +387,6 @@ class Schedule {
 
 	/**
 	 * Run the task on the first day of every year at 00:00.
-	 * @return bool
 	 */
 	public function yearly(): bool {
 
@@ -442,10 +400,6 @@ class Schedule {
 
 	/**
 	 * Run the task every year in {$month}, on day of month {$dayOfTheMonth1} at {$time}.
-	 * @param int $month
-	 * @param int $dayOfTheMonth
-	 * @param string $time
-	 * @return bool
 	 */
 	public function yearlyOn(int $month, int $dayOfTheMonth, string $time): bool {
 
