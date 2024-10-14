@@ -878,7 +878,7 @@ class User extends ActiveRecord {
 	/**
 	 * Delete DB record and browser’s cookie because when logout is invoked.
 	 */
-	private function unsetRememberMe(): bool {
+	public function unsetRememberMe(): bool {
 
 		// build the cookie name
 		$cookieContent = UserRemember::getCookieContent();
