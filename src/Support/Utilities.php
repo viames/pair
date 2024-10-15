@@ -447,7 +447,7 @@ class Utilities {
 	 *
 	 * @param	string	Custom message to print in the container.
 	 */
-	public static function printNoDataMessageBox(?string $customMessage=NULL) {
+	public static function printNoDataMessageBox(string $customMessage=NULL) {
 
 		Router::exceedingPaginationFallback();
 
@@ -863,7 +863,7 @@ class Utilities {
 	 * Check if there is an executable available in the operating system for direct execution. If the path
 	 * cannot be changed in the system, the path to the executable can be specified in the Pair configuration.
 	 */
-	public static function getExecutablePath(string $executable, ?string $configConst=NULL): ?string {
+	public static function getExecutablePath(string $executable, string $configConst=NULL): ?string {
 
 		if (!is_null($configConst) and defined($configConst) and is_executable(constant($configConst))) {
 			return constant($configConst);
@@ -1131,7 +1131,7 @@ class Utilities {
 	 * @param	\DateTime	The date object to be formatted, it will be the current date if NULL.
 	 * @return	string
 	 */
-	public static function intlFormat(?string $format=NULL, ?\DateTime $dateTime=NULL): string {
+	public static function intlFormat(string $format=NULL, \DateTime $dateTime=NULL): string {
 
 		$formatter = new \IntlDateFormatter(NULL, \IntlDateFormatter::MEDIUM, \IntlDateFormatter::SHORT);
 		if ($format) {
@@ -1148,7 +1148,7 @@ class Utilities {
 	 * @param	string Optional name for the document (with extension).
 	 * @return	bool
 	 */
-	public static function exportCsvForExcel(array $data, ?string $name=NULL): bool {
+	public static function exportCsvForExcel(array $data, string $name=NULL): bool {
 
 		// field delimiter
 		$delimiter = ";";

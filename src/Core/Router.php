@@ -592,7 +592,6 @@ class Router {
 	 * Set the action
 	 *
 	 * @param  mixed	Action string or NULL.
-	 * @return void
 	 */
 	public function setAction(?string $action): void {
 
@@ -602,8 +601,6 @@ class Router {
 
 	/**
 	 * Return action string.
-	 *
-	 * @return	string|NULL
 	 */
 	public function getAction(): ?string {
 
@@ -656,7 +653,7 @@ class Router {
 	 * @param	string|NULL	Optional module name.
 	 * @param	bool|NULL	Optional raw flag.
 	 */
-	public static function addRoute(string $path, string $action, ?string $module=NULL, ?bool $raw=FALSE) {
+	public static function addRoute(string $path, string $action, string $module=NULL, ?bool $raw=FALSE) {
 
 		// fix empty path
 		if ('' == $path) {

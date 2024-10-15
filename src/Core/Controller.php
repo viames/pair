@@ -403,7 +403,7 @@ abstract class Controller {
 	 *
 	 * @param	string	Optional message to enqueue.
 	 */
-	protected function accessDenied(?string $message=NULL) {
+	protected function accessDenied(string $message=NULL) {
 
 		$this->enqueueError(($message ? $message : Translator::do('ACCESS_DENIED')));
 		$this->redirect(strtolower($this->name));

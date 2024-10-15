@@ -114,7 +114,7 @@ class Menu {
 	 * @param	string	Optional, the anchor target.
 	 * @param	string	Optional, the badge type as Bootstrap class (ex. primary, info, error etc.).
 	 */
-	public function item(string $url, string $title, ?string $class=NULL, ?string $badge=NULL, ?string $badgeType=NULL, ?string $target=NULL): void {
+	public function item(string $url, string $title, string $class=NULL, string $badge=NULL, string $badgeType=NULL, string $target=NULL): void {
 
 		$item 			= new \stdClass();
 		$item->type		= 'single';

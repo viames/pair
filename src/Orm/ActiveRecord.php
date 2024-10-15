@@ -1241,9 +1241,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @param	string	Related property name.
 	 * @param	string	Related object class.
-	 * @return	static|NULL
 	 */
-	final public function getRelated(string $relatedProperty, ?string $className=NULL): ?self {
+	final public function getRelated(string $relatedProperty, string $className=NULL): ?self {
 
 		$cacheName = $relatedProperty . 'RelatedObject';
 
@@ -1334,7 +1333,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$relatedValue = $this->__get($relatedProperty);
 
 		//  check if is managed by common cache
-		if ($this->isInSharedCache($relatedProperty)) {
+		if ($relatedValue and $this->isInSharedCache($relatedProperty)) {
 
 			$app = Application::getInstance();
 
