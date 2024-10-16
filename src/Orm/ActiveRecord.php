@@ -3,6 +3,7 @@
 namespace Pair\Orm;
 
 use Pair\Core\Application;
+use Pair\Exception\ActiveRecordReadException;
 use Pair\Exception\ActiveRecordWriteException;
 use Pair\Html\Form;
 use Pair\Support\Input;
@@ -586,7 +587,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @param	int|string|array	Object primary or compound key ID to load.
 	 */
-	private function loadFromDb($key): void {
+	private function loadFromDb(int|string|array $key): void {
 
 		// inherited class
 		$class = get_called_class();
@@ -2680,6 +2681,10 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 	}
 
+	/**
+	 * Search an object in the database with the primary key equivalent to the value passed in the parameter
+	 * and returns it as an ActiveRecord of this class, if found. NULL if not found.
+	 */
 	public static function find(int|string|array $primaryKey): ?ActiveRecord {
 
 		$self = new static();
@@ -2695,6 +2700,24 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 
 		return NULL;
+
+	}
+
+	/**
+	 * Search an object in the database with the primary key equivalent to the value passed in the parameter
+	 * and returns it as an ActiveRecord of this class, if found. If not found, throws an exception.
+	 * 
+	 * @throws	ActiveRecordReadException
+	 */
+	public static function findOrFail(int|string|array $primaryKey): ActiveRecord {
+
+		$obj = static::find($primaryKey);
+
+		if (!$obj) {
+			throw new ActiveRecordReadException('Object not found', 1004);
+		}
+
+		return $obj;
 
 	}
 
