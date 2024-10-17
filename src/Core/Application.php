@@ -1120,14 +1120,12 @@ class Application {
 		if (count($this->scriptContent) or count($this->messages)) {
 
 			$this->pageScripts .= "<div id=\"scriptContainer\"><script>\n";
-			$this->pageScripts .= "$(document).ready(function(){\n";
 
 			foreach ($this->scriptContent as $s) {
 				$this->pageScripts .= $s ."\n";
 			}
 
 			$this->pageScripts .= $this->getMessageScript();
-			$this->pageScripts .= "});\n";
 			$this->pageScripts .= "</script></div>";
 
 		}
