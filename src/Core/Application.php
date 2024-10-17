@@ -336,6 +336,17 @@ class Application {
 	}
 
 	/**
+	 * Add script content that will be loaded by jQuery into the #scriptContainer DOM element.
+	 *
+	 * @param	string	Javascript content.
+	 */
+	public function addScript(string $script): void {
+
+		$this->scriptContent[] = $script;
+
+	}
+
+	/**
 	 * Check the temporary folder and, if it does not exist or is inaccessible, create it.
 	 */
 	public static function fixTemporaryFolder(): bool {
@@ -369,20 +380,25 @@ class Application {
 	}
 
 	/**
-	 * Sets current user, default template and translation locale.
-	 * @param	User	User object or inherited class object.
+	 * Return an ActiveRecord object cached or NULL if not found.
+	 *
+	 * @param	string		Name of the ActiveObject class.
+	 * @param	int|string	Unique identifier of the class.
 	 */
-	public function setCurrentUser(User $user): void {
+	final public function getActiveRecordCache(string $class, int|string $id): ?ActiveRecord {
 
-		if (is_a($user,'Pair\Models\User')) {
+		return (isset($this->activeRecordCache[$class][$id])
+			? $this->activeRecordCache[$class][$id]
+			: NULL);
 
-			$this->currentUser = $user;
+	}
 
-			// sets user language
-			$tran = Translator::getInstance();
-			$tran->setLocale($user->getLocale());
+	/**
+	 * Return a cookie prefix based on product name, like ProductName.
+	 */
+	public static function getCookiePrefix(): string {
 
-		}
+		return str_replace(' ', '', ucwords(str_replace('_', ' ', PRODUCT_NAME)));
 
 	}
 
@@ -403,25 +419,45 @@ class Application {
 	}
 
 	/**
-	 * Sets a session state variable.
-	 *
-	 * @param	string	Name of the state variable.
-	 * @param	mixed	Value of any type as is, like strings, custom objects etc.
+	 * Returns javascript code for displaying a front-end user message.
 	 */
-	public function setState(string $name, mixed $value): void {
+	private function getMessageScript(): string {
 
-		$this->state[$name] = $value;
+		$script = '';
+
+		if (count($this->messages)) {
+
+			foreach ($this->messages as $m) {
+
+				$types = ['info', 'warning', 'error'];
+				if (!in_array($m->type, $types)) $m->type = 'info';
+				$script .= '$.showMessage("' .
+					addslashes($m->title) . '","' .
+					addcslashes($m->text,"\"\n\r") . '","' . // removes carriage returns and quotes
+					addslashes($m->type) . "\");\n";
+
+			}
+
+		}
+
+		return $script;
 
 	}
 
 	/**
-	 * Deletes a session state variable.
-	 *
-	 * @param	string	Name of the state variable.
+	 * Retrieves variables of any type form a cookie named like in param.
 	 */
-	public function unsetState(string $name): void {
+	public function getPersistentState(string $name): mixed {
 
-		unset($this->state[$name]);
+		$stateName = $this->persistentStateName($name);
+
+		if (array_key_exists($stateName, $this->persistentState)) {
+			return $this->persistentState[$stateName];
+		} else if (isset($_COOKIE[$stateName])) {
+			return json_decode($_COOKIE[$stateName]);
+		} else {
+			return NULL;
+		}
 
 	}
 
@@ -441,11 +477,78 @@ class Application {
 	}
 
 	/**
+	 * Returns the time zone of the logged in user, otherwise the default for the application.
+	 * @return \DateTimeZone
+	 */
+	public static final function getTimeZone(): \DateTimeZone {
+
+		$app = Application::getInstance();
+
+		// in login page the currentUser doesn’t exist
+		return is_a($app->currentUser, 'User')
+			? $app->currentUser->getDateTimeZone()
+			: new \DateTimeZone(BASE_TIMEZONE);
+
+	}
+
+	/**
+	 * If current selected template is not valid, replace it with the default one. It’s private to avoid
+	 * loops on derived templates load.
+	 */
+	private function getTemplate(): Template {
+
+		if (!$this->template or !$this->template->areKeysPopulated()) {
+			$this->template = Template::getDefault();
+		}
+
+		if (!$this->template) {
+			throw new \Exception('Template keys are not populated');
+		}
+
+		// if this is derived template, load derived.php file
+		if ($this->template->derived) {
+			$derivedFile = $this->template->getBaseFolder() . '/'  . strtolower($this->template->name) . '/derived.php';
+			if (file_exists($derivedFile)) require $derivedFile;
+		}
+
+		return $this->template;
+
+	}
+
+	/**
+	 * Return TRUE if Pair was invoked by CLI.
+	 */
+	final public static function isCli(): bool {
+
+		return (php_sapi_name() === 'cli');
+
+	}
+
+	/**
+	 * Return TRUE if this host is a developer server.
+	 */
+	final public static function isDevelopmentHost(): bool {
+
+		// can be defined in config.php, default is false
+		return PAIR_DEVELOPMENT;
+
+	}
+
+	/**
+	 * Retrieves variables of any type form a cookie named like in param.
+	 */
+	public function issetPersistentState(string $name): bool {
+
+		$stateName = $this->persistentStateName($name);
+
+		return (array_key_exists($stateName, $this->persistentState) or isset($_COOKIE[$stateName]));
+
+	}
+
+	/**
 	 * Returns TRUE if state has been previously set, NULL value included.
 	 *
 	 * @param	string	Name of the state variable.
-	 *
-	 * @return	bool
 	 */
 	final public function issetState(string $name): bool {
 
@@ -454,43 +557,54 @@ class Application {
 	}
 
 	/**
-	 * Return an ActiveRecord object cached or NULL if not found.
+	 * Proxy function to append an error message to queue.
 	 *
-	 * @param	string		Name of the ActiveObject class.
-	 * @param	int|string	Unique identifier of the class.
+	 * @param	string	Message’s text.
+	 * @param	string	Optional title.
 	 */
-	final public function getActiveRecordCache(string $class, int|string $id): ?ActiveRecord {
+	public function enqueueError(string $text, string $title=''): void {
 
-		return (isset($this->activeRecordCache[$class][$id])
-			? $this->activeRecordCache[$class][$id]
-			: NULL);
+		$this->enqueueMessage($text, ($title ? $title : 'Error'), 'error');
 
 	}
 
 	/**
-	 * Store an ActiveRecord object into the common cache of Application singleton.
+	 * Appends a text message to queue.
 	 *
-	 * @param	string			Name of the ActiveObject class.
-	 * @param	ActiveRecord	Object to cache.
+	 * @param	string	Message’s text.
+	 * @param	string	Optional title.
+	 * @param	string	Message’s type (info, error).
 	 */
-	final public function putActiveRecordCache(string $class, ActiveRecord $object): void {
+	public function enqueueMessage(string $text, string $title='', string $type=NULL): void {
 
-		// can’t manage composite key
-		if (1 == count((array)$object->keyProperties) ) {
-			$this->activeRecordCache[$class][(string)$object->getId()] = $object;
-			Logger::event('Stored ' . get_class($object) . ' object with id=' . (string)$object->getId() . ' in common cache');
-		}
+		$message		= new \stdClass();
+		$message->text	= $text;
+		$message->title	= ($title ? $title : 'Info');
+		$message->type	= ($type  ? $type  : 'info');
+
+		$this->messages[] = $message;
 
 	}
 
 	/**
-	 * Add script content that will be loaded by jQuery into the #scriptContainer DOM element.
+	 * Useful to collect CSS file list and render tags into page head.
 	 *
-	 * @param	string	Javascript content.
+	 * @param	string	Path to stylesheet, absolute or relative with no trailing slash.
 	 */
-	public function addScript(string $script): void {
+	public function loadCss(string $href): void {
 
-		$this->scriptContent[] = $script;
+		$this->cssFiles[] = $href;
+
+	}
+
+	/**
+	 * Collect Manifest files and includes into the page head.
+	 *
+	 * @param	string	Path to manifest file, absolute or relative with no trailing slash.
+	 */
+	public function loadManifest(string $href): void {
+
+		$this->manifestFiles[] = $href;
 
 	}
 
@@ -539,253 +653,11 @@ class Application {
 	}
 
 	/**
-	 * Useful to collect CSS file list and render tags into page head.
-	 *
-	 * @param	string	Path to stylesheet, absolute or relative with no trailing slash.
-	 */
-	public function loadCss(string $href): void {
-
-		$this->cssFiles[] = $href;
-
-	}
-
-	/**
-	 * Collect Manifest files and includes into the page head.
-	 *
-	 * @param	string	Path to manifest file, absolute or relative with no trailing slash.
-	 */
-	public function loadManifest(string $href): void {
-
-		$this->manifestFiles[] = $href;
-
-	}
-
-	/**
-	 * Appends a text message to queue.
-	 *
-	 * @param	string	Message’s text.
-	 * @param	string	Optional title.
-	 * @param	string	Message’s type (info, error).
-	 */
-	public function enqueueMessage(string $text, string $title='', string $type=NULL): void {
-
-		$message		= new \stdClass();
-		$message->text	= $text;
-		$message->title	= ($title ? $title : 'Info');
-		$message->type	= ($type  ? $type  : 'info');
-
-		$this->messages[] = $message;
-
-	}
-
-	/**
-	 * Proxy function to append an error message to queue.
-	 *
-	 * @param	string	Message’s text.
-	 * @param	string	Optional title.
-	 */
-	public function enqueueError(string $text, string $title=''): void {
-
-		$this->enqueueMessage($text, ($title ? $title : 'Error'), 'error');
-
-	}
-
-	/**
-	 * Redirect HTTP on the URL param. Relative path as default. Queued messages
-	 * get a persistent storage in a cookie in order to being retrieved later.
-	 *
-	 * @param	string	Location URL.
-	 * @param	bool	If TRUE, will avoids to add base url (default FALSE).
-	 */
-	public function redirect(string $url, bool $externalUrl=FALSE): void {
-
-		// stores enqueued messages for next retrievement
-		$this->makeQueuedMessagesPersistent();
-
-		if (!$url) return;
-
-		// external redirect
-		if ($externalUrl) {
-
-			header('Location: ' . $url);
-
-		// redirect to internal path
-		} else {
-
-			$router = Router::getInstance();
-			$page  = $router->getPage();
-
-			if ($page > 1) {
-
-				// removes a possible leading slash
-				if ('/'==$url[0]) {
-					$url = substr($url,1);
-				}
-
-				// if url contains just module, create a fake action placeholder
-				if (FALSE == strpos($url, '/')) {
-					$url .= '/';
-				}
-
-				header('Location: ' . BASE_HREF . $url . '/page-' . $page);
-
-			} else {
-
-				header('Location: ' . BASE_HREF . $url);
-
-			}
-
-		}
-
-		exit();
-
-	}
-
-	/**
 	 * Store enqueued messages for next retrievement.
 	 */
 	public function makeQueuedMessagesPersistent(): void {
 
 		$this->setPersistentState('EnqueuedMessages', $this->messages);
-
-	}
-
-	/**
-	 * Manage API login, logout and custom requests.
-	 *
-	 * @param	string	Name of module that executes API requests. Default is “api”.
-	 */
-	public function runApi(string $name = 'api'): void {
-
-		$router = Router::getInstance();
-
-		// check if API has been called
-		if (!trim($name) or $name != $router->module or !file_exists(APPLICATION_PATH . '/' . MODULE_PATH . 'controller.php')) {
-			return;
-		}
-
-		// set as raw request
-		Router::setRaw();
-
-		$logger = Logger::getInstance();
-		$logger->disable();
-
-		// require controller file
-		require (APPLICATION_PATH . '/' . MODULE_PATH . 'controller.php');
-
-		// get SID or token via GET
-		$sid		= Router::get('sid');
-		$tokenValue	= Router::get('token');
-
-		// read the Bearer token via HTTP header
-		$bearerToken = Oauth2Token::readBearerToken();
-
-		// assemble the API controller name
-		$ctlName = $name . 'Controller';
-
-		if (!class_exists($ctlName)) {
-			print ('The API Controller class is incorrect');
-			exit();
-		}
-
-		// new API Controller instance
-		$apiCtl = new $ctlName();
-
-		// set the action function
-		$action = $router->action ? $router->action . 'Action' : 'defaultAction';
-
-		// check token as first
-		if ($tokenValue) {
-
-			$token = Token::getByValue((string)$tokenValue);
-
-			// set token and start controller
-			if ($token) {
-				$token->updateLastUse();
-				$apiCtl->setToken($token);
-				$apiCtl->$action();
-			} else {
-				$apiCtl->sendError(19);
-			}
-
-		// or check for Oauth2 Bearer token via http header
-		} else if ($bearerToken) {
-
-			if (!Oauth2Token::validate($bearerToken)) {
-				sleep(3);
-				Oauth2Token::unauthorized('Authentication failed');
-			}
-
-			// verify that the bearer token is valid
-			$apiCtl->setBearerToken($bearerToken);
-			$apiCtl->$action();
-
-		} else if ('login' == $router->action) {
-
-			unset($_COOKIE[session_name()]);
-			session_destroy();
-			session_start();
-
-			// user controller
-			$apiCtl->$action();
-
-		} else if ('logout' == $router->action) {
-
-			session_start();
-
-			// user controller
-			$apiCtl->$action();
-
-		// signup
-		} else if ('signup' == $router->action) {
-
-			// user controller
-			$apiCtl->$action();
-
-		// all the other requests with sid
-		} else if ($sid) {
-
-			// get passed session
-			$session = new Session($sid);
-
-			// check if sid is valid
-			if (!$session->isLoaded()) {
-				$apiCtl->sendError(27);
-			}
-
-			// if session exists, extend session timeout
-			$session->extendTimeout();
-
-			// create User object for API
-			$userClass = PAIR_USER_CLASS;
-			$user = new $userClass($session->idUser);
-			$this->setCurrentUser($user);
-
-			// set session and start controller
-			$apiCtl->setSession($session);
-			$apiCtl->$action();
-
-		// unauthorized request
-		} else {
-
-			Oauth2Token::unauthorized(PRODUCT_NAME . '-API: Authentication failed');
-
-		}
-
-		exit();
-
-	}
-
-	/**
-	 * Add the name of a module to the list of guest modules, for which authorization is not required.
-	 *
-	 * @param	string	Module name.
-	 */
-	public function setGuestModule(string $moduleName): void {
-
-		if (!in_array($moduleName, $this->guestModules)) {
-			$this->guestModules[] = $moduleName;
-		}
 
 	}
 
@@ -926,6 +798,236 @@ class Application {
 
 	}
 
+	private function persistentStateName(string $name): string {
+
+		return static::getCookiePrefix() . ucfirst($name);
+
+	}
+
+	/**
+	 * Store an ActiveRecord object into the common cache of Application singleton.
+	 *
+	 * @param	string			Name of the ActiveObject class.
+	 * @param	ActiveRecord	Object to cache.
+	 */
+	final public function putActiveRecordCache(string $class, ActiveRecord $object): void {
+
+		// can’t manage composite key
+		if (1 == count((array)$object->keyProperties) ) {
+			$this->activeRecordCache[$class][(string)$object->getId()] = $object;
+			Logger::event('Stored ' . get_class($object) . ' object with id=' . (string)$object->getId() . ' in common cache');
+		}
+
+	}
+
+	/**
+	 * Redirect HTTP on the URL param. Relative path as default. Queued messages
+	 * get a persistent storage in a cookie in order to being retrieved later.
+	 *
+	 * @param	string	Location URL.
+	 * @param	bool	If TRUE, will avoids to add base url (default FALSE).
+	 */
+	public function redirect(string $url, bool $externalUrl=FALSE): void {
+
+		// stores enqueued messages for next retrievement
+		$this->makeQueuedMessagesPersistent();
+
+		if (!$url) return;
+
+		// external redirect
+		if ($externalUrl) {
+
+			header('Location: ' . $url);
+
+		// redirect to internal path
+		} else {
+
+			$router = Router::getInstance();
+			$page  = $router->getPage();
+
+			if ($page > 1) {
+
+				// removes a possible leading slash
+				if ('/'==$url[0]) {
+					$url = substr($url,1);
+				}
+
+				// if url contains just module, create a fake action placeholder
+				if (FALSE == strpos($url, '/')) {
+					$url .= '/';
+				}
+
+				header('Location: ' . BASE_HREF . $url . '/page-' . $page);
+
+			} else {
+
+				header('Location: ' . BASE_HREF . $url);
+
+			}
+
+		}
+
+		exit();
+
+	}
+
+	/**
+	 * Manage API login, logout and custom requests.
+	 *
+	 * @param	string	Name of module that executes API requests. Default is “api”.
+	 */
+	public function runApi(string $name = 'api'): void {
+
+		$router = Router::getInstance();
+
+		// check if API has been called
+		if (!trim($name) or $name != $router->module or !file_exists(APPLICATION_PATH . '/' . MODULE_PATH . 'controller.php')) {
+			return;
+		}
+
+		// set as raw request
+		Router::setRaw();
+
+		$logger = Logger::getInstance();
+		$logger->disable();
+
+		// require controller file
+		require (APPLICATION_PATH . '/' . MODULE_PATH . 'controller.php');
+
+		// get SID or token via GET
+		$sid		= Router::get('sid');
+		$tokenValue	= Router::get('token');
+
+		// read the Bearer token via HTTP header
+		$bearerToken = Oauth2Token::readBearerToken();
+
+		// assemble the API controller name
+		$ctlName = $name . 'Controller';
+
+		if (!class_exists($ctlName)) {
+			print ('The API Controller class is incorrect');
+			exit();
+		}
+
+		// new API Controller instance
+		$apiCtl = new $ctlName();
+
+		// set the action function
+		$action = $router->action ? $router->action . 'Action' : 'defaultAction';
+
+		// check token as first
+		if ($tokenValue) {
+
+			$token = Token::getByValue((string)$tokenValue);
+
+			// set token and start controller
+			if ($token) {
+				$token->updateLastUse();
+				$apiCtl->setToken($token);
+				$apiCtl->$action();
+			} else {
+				$apiCtl->sendError(19);
+			}
+
+		// or check for Oauth2 Bearer token via http header
+		} else if ($bearerToken) {
+
+			if (!Oauth2Token::validate($bearerToken)) {
+				sleep(3);
+				Oauth2Token::unauthorized('Authentication failed');
+			}
+
+			// verify that the bearer token is valid
+			$apiCtl->setBearerToken($bearerToken);
+			$apiCtl->$action();
+
+		} else if ('login' == $router->action) {
+
+			unset($_COOKIE[session_name()]);
+			session_destroy();
+			session_start();
+
+			// user controller
+			$apiCtl->$action();
+
+		} else if ('logout' == $router->action) {
+
+			session_start();
+
+			// user controller
+			$apiCtl->$action();
+
+		// signup
+		} else if ('signup' == $router->action) {
+
+			// user controller
+			$apiCtl->$action();
+
+		// all the other requests with sid
+		} else if ($sid) {
+
+			// get passed session
+			$session = new Session($sid);
+
+			// check if sid is valid
+			if (!$session->isLoaded()) {
+				$apiCtl->sendError(27);
+			}
+
+			// if session exists, extend session timeout
+			$session->extendTimeout();
+
+			// create User object for API
+			$userClass = PAIR_USER_CLASS;
+			$user = new $userClass($session->idUser);
+			$this->setCurrentUser($user);
+
+			// set session and start controller
+			$apiCtl->setSession($session);
+			$apiCtl->$action();
+
+		// unauthorized request
+		} else {
+
+			Oauth2Token::unauthorized(PRODUCT_NAME . '-API: Authentication failed');
+
+		}
+
+		exit();
+
+	}
+
+	/**
+	 * Sets current user, default template and translation locale.
+	 * @param	User	User object or inherited class object.
+	 */
+	public function setCurrentUser(User $user): void {
+
+		if (is_a($user,'Pair\Models\User')) {
+
+			$this->currentUser = $user;
+
+			// sets user language
+			$tran = Translator::getInstance();
+			$tran->setLocale($user->getLocale());
+
+		}
+
+	}
+
+	/**
+	 * Add the name of a module to the list of guest modules, for which authorization is not required.
+	 *
+	 * @param	string	Module name.
+	 */
+	public function setGuestModule(string $moduleName): void {
+
+		if (!in_array($moduleName, $this->guestModules)) {
+			$this->guestModules[] = $moduleName;
+		}
+
+	}
+
 	/**
 	 * Store variables of any type in a cookie for next retrievement. Existent variables with
 	 * same name will be overwritten.
@@ -946,64 +1048,14 @@ class Application {
 	}
 
 	/**
-	 * Retrieves variables of any type form a cookie named like in param.
+	 * Sets a session state variable.
+	 *
+	 * @param	string	Name of the state variable.
+	 * @param	mixed	Value of any type as is, like strings, custom objects etc.
 	 */
-	public function getPersistentState(string $stateName): mixed {
+	public function setState(string $name, mixed $value): void {
 
-		$name = static::getCookiePrefix() . ucfirst($stateName);
-
-		if (array_key_exists($name, $this->persistentState)) {
-			return $this->persistentState[$name];
-		} else if (isset($_COOKIE[$name])) {
-			return json_decode($_COOKIE[$name]);
-		} else {
-			return NULL;
-		}
-
-	}
-
-	/**
-	 * Removes a state variable from cookie.
-	 */
-	public function unsetPersistentState(string $name): void {
-
-		$stateName = static::getCookiePrefix() . ucfirst($name);
-
-		unset($this->persistentState[$stateName]);
-
-		if (isset($_COOKIE[$stateName])) {
-			unset($_COOKIE[$stateName]);
-			setcookie($stateName, '', [
-				'expires' => -1,
-				'path' => '/',
-				'samesite' => 'Lax',
-				'secure' => !self::isDevelopmentHost()
-			]);
-		}
-
-	}
-
-	/**
-	 * Removes all state variables from cookies.
-	 */
-	public function unsetAllPersistentStates(): void {
-
-		$prefix = static::getCookiePrefix();
-
-		foreach ($_COOKIE as $name=>$content) {
-			if (0 == strpos($name, $prefix)) {
-				$this->unsetPersistentState($name);
-			}
-		}
-
-	}
-
-	/**
-	 * Return a cookie prefix based on product name, like ProductName.
-	 */
-	public static function getCookiePrefix(): string {
-
-		return str_replace(' ', '', ucwords(str_replace('_', ' ', PRODUCT_NAME)));
+		$this->state[$name] = $value;
 
 	}
 
@@ -1120,14 +1172,12 @@ class Application {
 		if (count($this->scriptContent) or count($this->messages)) {
 
 			$this->pageScripts .= "<div id=\"scriptContainer\"><script>\n";
-			$this->pageScripts .= "$(document).ready(function(){\n";
 
 			foreach ($this->scriptContent as $s) {
 				$this->pageScripts .= $s ."\n";
 			}
 
 			$this->pageScripts .= $this->getMessageScript();
-			$this->pageScripts .= "});\n";
 			$this->pageScripts .= "</script></div>";
 
 		}
@@ -1146,86 +1196,49 @@ class Application {
 	}
 
 	/**
-	 * Returns javascript code for displaying a front-end user message.
+	 * Removes all state variables from cookies.
 	 */
-	private function getMessageScript(): string {
+	public function unsetAllPersistentStates(): void {
 
-		$script = '';
+		$prefix = static::getCookiePrefix();
 
-		if (count($this->messages)) {
-
-			foreach ($this->messages as $m) {
-
-				$types = ['info', 'warning', 'error'];
-				if (!in_array($m->type, $types)) $m->type = 'info';
-				$script .= '$.showMessage("' .
-					addslashes($m->title) . '","' .
-					addcslashes($m->text,"\"\n\r") . '","' . // removes carriage returns and quotes
-					addslashes($m->type) . "\");\n";
-
+		foreach (array_keys($_COOKIE) as $name) {
+			if (0 == strpos($name, $prefix)) {
+				$this->unsetPersistentState($name);
 			}
-
 		}
-
-		return $script;
 
 	}
 
 	/**
-	 * If current selected template is not valid, replace it with the default one. It’s private to avoid
-	 * loops on derived templates load.
+	 * Removes a state variable from cookie.
 	 */
-	private function getTemplate(): Template {
+	public function unsetPersistentState(string $name): void {
 
-		if (!$this->template or !$this->template->areKeysPopulated()) {
-			$this->template = Template::getDefault();
+		$stateName = $this->persistentStateName($name);
+
+		unset($this->persistentState[$stateName]);
+
+		if (isset($_COOKIE[$stateName])) {
+			unset($_COOKIE[$stateName]);
+			setcookie($stateName, '', [
+				'expires' => -1,
+				'path' => '/',
+				'samesite' => 'Lax',
+				'secure' => !self::isDevelopmentHost()
+			]);
 		}
-
-		if (!$this->template) {
-			throw new \Exception('Template keys are not populated');
-		}
-
-		// if this is derived template, load derived.php file
-		if ($this->template->derived) {
-			$derivedFile = $this->template->getBaseFolder() . '/'  . strtolower($this->template->name) . '/derived.php';
-			if (file_exists($derivedFile)) require $derivedFile;
-		}
-
-		return $this->template;
 
 	}
 
 	/**
-	 * Return TRUE if this host is a developer server.
+	 * Deletes a session state variable.
+	 *
+	 * @param	string	Name of the state variable.
 	 */
-	final public static function isDevelopmentHost(): bool {
+	public function unsetState(string $name): void {
 
-		// can be defined in config.php, default is false
-		return PAIR_DEVELOPMENT;
-
-	}
-
-	/**
-	 * Return TRUE if Pair was invoked by CLI.
-	 */
-	final public static function isCli(): bool {
-
-		return (php_sapi_name() === 'cli');
-
-	}
-
-	/**
-	 * Returns the time zone of the logged in user, otherwise the default for the application.
-	 * @return \DateTimeZone
-	 */
-	public static final function getTimeZone(): \DateTimeZone {
-
-		$app = Application::getInstance();
-
-		// in login page the currentUser doesn’t exist
-		return is_a($app->currentUser, 'User')
-			? $app->currentUser->getDateTimeZone()
-			: new \DateTimeZone(BASE_TIMEZONE);
+		unset($this->state[$name]);
 
 	}
 
