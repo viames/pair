@@ -2,6 +2,7 @@
 
 namespace Pair\Orm;
 
+use Pair\Exception\DatabaseException;
 use Pair\Support\Logger;
 
 
@@ -114,11 +115,11 @@ class Database {
 
 			$this->handler = new \PDO($dsn, DB_USER, DB_PASS, $options);
 
-			if (is_a($this->handler, 'PDO')) {
-				$this->handler->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-			} else {
+			if (!is_a($this->handler, 'PDO')) {
 				throw new \PDOException('Db handler is not valid, connection failed');
 			}
+
+			$this->handler->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
 
 		} catch (\Exception $e) {
 
@@ -512,7 +513,6 @@ class Database {
 	 * Return the query count as integer number.
 	 *
 	 * @param	array|NULL	List of parameters to bind on sql query.
-	 * @return	int
 	 */
 	public function loadCount($params=[]): int {
 
@@ -547,7 +547,6 @@ class Database {
 	 * @param	string	Table name.
 	 * @param	object	Object with property name as each column name.
 	 * @param	array	Optional list of encryptable columns.
-	 * @return	bool	TRUE if insert was succesfully done.
 	 */
 	public function insertObject(string $table, \stdClass $object, ?array $encryptables=[]): bool {
 
@@ -590,7 +589,6 @@ class Database {
 	 * @param	string	Table name.
 	 * @param	array	Object list, named as the table columns.
 	 * @param	array	Optional list of encryptable columns.
-	 * @return	int		Number of inserted rows.
 	 */
 	public function insertObjects(string $table, array $list, ?array $encryptables=[]): int {
 
@@ -647,7 +645,6 @@ class Database {
 	 * @param	\stdClass	Object with properties of new values to update.
 	 * @param	\stdClass	Object with keys and values for where clause.
 	 * @param	array		Optional list of encryptable columns.
-	 * @return	int			Numbers of affected rows.
 	 */
 	public function updateObject(string $table, \stdClass &$object, \stdClass $key, ?array $encryptables=[]): int {
 
@@ -714,7 +711,6 @@ class Database {
 	 * @param	string		Table name.
 	 * @param	\stdClass	Object with properties that equal columns name.
 	 * @param	array		Optional list of encryptable columns.
-	 * @return	bool		Execution result.
 	 */
 	public function insertUpdateObject(string $table, \stdClass $object, ?array $encryptables=[]): bool {
 
@@ -854,7 +850,6 @@ class Database {
 	 *
 	 * @param	string	Name of table to describe.
 	 * @param	string	Column name.
-	 *
 	 * @return	\stdClass|NULL
 	 */
 	public function describeColumn(string $tableName, string $column): ?\stdClass {
@@ -900,7 +895,6 @@ class Database {
 	 * Check if parameter table has auto-increment primary key by using cached method.
 	 *
 	 * @param	string	Name of table to check auto-increment flag.
-	 * @return	bool
 	 */
 	public function isAutoIncrement(string $tableName): bool {
 
@@ -921,7 +915,6 @@ class Database {
 	 *
 	 * @param	string	Name of table to check.
 	 * @param	string	Name of the column in the table to check
-	 * @return	bool
 	 */
 	public function isVirtualGenerated(string $tableName, string $columnName): bool {
 
@@ -941,7 +934,6 @@ class Database {
 	 * Check wheter a table exists by its name.
 	 *
 	 * @param	string	Table name.
-	 * @return	bool
 	 */
 	public function tableExists(string $tableName): bool {
 
@@ -952,10 +944,8 @@ class Database {
 
 	/**
 	 * Returns last inserted ID, if any.
-	 *
-	 * @return	mixed
 	 */
-	public function getLastInsertId() {
+	public function getLastInsertId(): string|bool {
 
 		$this->openConnection();
 
@@ -965,8 +955,6 @@ class Database {
 
 	/**
 	 * Return the MySQL version number.
-	 *
-	 * @return string|NULL
 	 */
 	public function getMysqlVersion(): ?string {
 
@@ -979,7 +967,7 @@ class Database {
 	 * Set MySQL connection as UTF8mb4 and collation as utf8mb4_unicode_ci, useful to
 	 * support extended unicode like Emoji.
 	 */
-	public function setUtf8unicode() {
+	public function setUtf8unicode(): void {
 
 		$this->openConnection();
 
@@ -1007,7 +995,7 @@ class Database {
 
 		} catch (\Exception $e) {
 
-			// cannot log right now
+			throw new DatabaseException('Error setting utf8mb4 charset and collation', 1002, $e);
 
 		}
 
@@ -1018,7 +1006,7 @@ class Database {
 	 *
 	 * @param	string	Text error message.
 	 */
-	public function addError(string $message) {
+	public function addError(string $message): void {
 
 		trigger_error($message);
 		$this->errors[] = $message;
@@ -1027,10 +1015,8 @@ class Database {
 
 	/**
 	 * Returns text of latest error message, or FALSE if not errors.
-	 *
-	 * @return	string|bool
 	 */
-	public function getLastError() {
+	public function getLastError(): string|bool {
 
 		return end($this->errors);
 
@@ -1042,7 +1028,7 @@ class Database {
 	 * @param	string	SQL query.
 	 * @param	int		Number of items in result-set or affected rows.
 	 */
-	private function logQuery(string $query, int $result) {
+	private function logQuery(string $query, int $result): void {
 
 		$subtext = (int)$result . ' ' . (1==$result ? 'row' : 'rows');
 
@@ -1053,11 +1039,11 @@ class Database {
 	/**
 	 * Proxy for logQuery() that binds query parameters.
 	 *
-	 * @param	string		SQL query.
-	 * @param	int			Number of items in result-set or affected rows.
-	 * @param	array|NULL	Parameters to bind.
+	 * @param	string	SQL query.
+	 * @param	int		Number of items in result-set or affected rows.
+	 * @param	array	Optional parameters to bind.
 	 */
-	private function logParamQuery(string $query, int $result, $params=[]) {
+	private function logParamQuery(string $query, int $result, array $params=[]): void {
 
 		$params = (array)$params;
 
@@ -1094,7 +1080,7 @@ class Database {
 	 * @param	string		SQL Query.
 	 * @param	array|NULL	Parameters.
 	 */
-	private function handleException(\Exception $e, string $query, ?array $params) {
+	private function handleException(\Exception $e, string $query, ?array $params): void {
 
 		$params = (array)$params;
 
