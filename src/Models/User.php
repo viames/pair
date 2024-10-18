@@ -174,8 +174,6 @@ class User extends ActiveRecord {
 
 	/**
 	 * Returns array with matching object property name on related db fields.
-	 *
-	 * @return array
 	 */
 	protected static function getBinds(): array {
 
@@ -250,7 +248,6 @@ class User extends ActiveRecord {
 	 *
 	 * @param	string	Plain text password.
 	 * @param	string	Crypted hash.
-	 * @return	boolean
 	 */
 	public static function checkPassword(string $password, string $hash): bool {
 
@@ -265,7 +262,6 @@ class User extends ActiveRecord {
 	 * @param	string	Username.
 	 * @param	string	Plain text password.
 	 * @param	string	IANA time zone identifier.
-	 * @return	\stdClass
 	 */
 	public static function doLogin(string $username, string $password, string $timezone): \stdClass {
 
@@ -365,7 +361,6 @@ class User extends ActiveRecord {
 	 * @param	\Pair\Models\User 	$user
 	 * @param	string		$timezone	IANA time zone identifier.
 	 * @param	int|NULL	Former user ID.
-	 * @return	\stdClass
 	 */
 	public static function loginAs(User $user, string $timezone, ?int $formerUserId = null): \stdClass {
 
@@ -441,8 +436,6 @@ class User extends ActiveRecord {
 
 	/**
 	 * Sets to 0 faults counter property.
-	 *
-	 * @return	bool
 	 */
 	public function resetFaults(): bool {
 
@@ -567,7 +560,6 @@ class User extends ActiveRecord {
 	 * Admin can access everything. This method use cache variable to load once from db.
 	 * @param	string	Module name.
 	 * @param	string	Optional action name.
-	 * @return	bool	True if access is granted.
 	 */
 	public function canAccess(string $module, string $action=NULL): bool {
 
@@ -921,7 +913,7 @@ class User extends ActiveRecord {
 	/**
 	 * Return the current Application connected User object or its child, NULL otherwise.
 	 */
-	public static function current(): ?self {
+	public static function current(): ?static {
 
 		$app = Application::getInstance();
 		return $app->currentUser;
