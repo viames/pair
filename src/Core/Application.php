@@ -336,7 +336,7 @@ class Application {
 	}
 
 	/**
-	 * Add script content that will be loaded by jQuery into the #scriptContainer DOM element.
+	 * Add script content that will be loaded by jQuery into the #pair-script-container DOM element.
 	 *
 	 * @param	string	Javascript content.
 	 */
@@ -431,7 +431,7 @@ class Application {
 
 				$types = ['info', 'warning', 'error'];
 				if (!in_array($m->type, $types)) $m->type = 'info';
-				$script .= '$.showMessage("' .
+				$script .= 'pairMessage("' .
 					addslashes($m->title) . '","' .
 					addcslashes($m->text,"\"\n\r") . '","' . // removes carriage returns and quotes
 					addslashes($m->type) . "\");\n";
@@ -1171,7 +1171,7 @@ class Application {
 		// collect plain text scripts
 		if (count($this->scriptContent) or count($this->messages)) {
 
-			$this->pageScripts .= "<div id=\"scriptContainer\"><script>\n";
+			$this->pageScripts .= "<div id=\"pair-script-container\"><script>\n";
 
 			foreach ($this->scriptContent as $s) {
 				$this->pageScripts .= $s ."\n";
