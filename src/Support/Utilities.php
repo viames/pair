@@ -388,10 +388,10 @@ class Utilities {
 		$types = ['info', 'warning', 'error'];
 		if (!in_array($type, $types)) $type = 'info';
 
-		$message = '<script>$(document).ready(function(){$.showMessage("'.
+		$message = '<script>pairMessage("'.
 				addslashes($title) .'","'.
 				addslashes($message) .'","'.
-				addslashes($type) .'");});</script>';
+				addslashes($type) .'");</script>';
 
 		return $message;
 
