@@ -5,6 +5,12 @@
 [![Latest Unstable Version](https://poser.pugx.org/viames/pair/v/unstable)](https://packagist.org/packages/viames/pair)
 [![License](https://poser.pugx.org/viames/pair/license)](https://packagist.org/packages/viames/pair)
 
+## What’s New
+
+**Pair is currently being updated to [version 2](https://github.com/viames/pair/tree/2.0.0-alpha)**. Many new features have been introduced and existing ones improved. Among these improvements are `Migrations`, `Collections`, and many third-party products and services incorporated into Pair to make it easy to create lightning-fast server-side web applications.
+
+The independent script `pair_2_upgrade.php` allows you to upgrade applications from Pair 1.x to Pair 2. Feedback, code integration, and documentation adjustments are welcome.
+
 ## Features
 
 Pair is simple and fast, few frills, maybe none. It was written with simplicity in mind, while trying to achieve the most frequent needs of web applications. It implements [Model-View-Controller](https://en.wikipedia.org/wiki/Model-View-Controller) pattern and a search friendly [route logic](https://github.com/viames/pair/wiki/Router) by default.
