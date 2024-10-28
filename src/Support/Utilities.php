@@ -273,25 +273,15 @@ class Utilities {
 	 *
 	 * @param	string	Error message to print on user.
 	 * @param	int|NULL	Error code (optional).
-	 * @param	int|NULL	HTTP code (optional).
-	 * @return	void
+	 * @param	int|NULL	HTTP code (optional, 400 by default).
 	 */
-	public static function printJsonError(string $message, ?int $code=NULL, ?int $httpCode=NULL): void {
+	public static function pairJsonError(string $message, int $code=NULL, int $httpCode=NULL): void {
 
-		$logger = Logger::getInstance();
-
-		$ret			= new \stdClass();
-		$ret->message	= $message;
-		$ret->error		= TRUE;
-		$ret->code		= $code;
-		$ret->log		= $logger->getEventListForAjax();
-		$json			= json_encode($ret);
-		if (is_int($httpCode)) {
-			http_response_code($httpCode);
+		if (is_null($httpCode)) {
+			$httpCode = 400;
 		}
-		header('Content-Type: application/json', TRUE);
-		print $json;
-		die();
+
+		self::pairJsonData(NULL, $message, TRUE, $code, $httpCode);
 
 	}
 
@@ -300,22 +290,22 @@ class Utilities {
 	 * (bool)error, (string)log.
 	 *
 	 * @param	string	Error message to print on user.
-	 * @param	bool	Error flag, set TRUE to notice about error (optional).
-	 * @param	bool	Error code (optional).
 	 */
-	public static function printJsonMessage(string $message, $error=FALSE, $code=NULL): void {
+	public static function pairJsonMessage(string $message): void {
 
-		$logger = Logger::getInstance();
+		self::pairJsonData(NULL, $message);
 
-		$ret			= new \stdClass();
-		$ret->message	= $message;
-		$ret->error		= $error;
-		$ret->code		= $code;
-		$ret->log		= $logger->getEventListForAjax();
-		$json			= json_encode($ret);
-		header('Content-Type: application/json', TRUE);
-		print $json;
-		die();
+	}
+
+	/**
+	 * Prints a JSON object with three properties, useful for ajax returns: (string)message,
+	 * (bool)error, (string)log.
+	 *
+	 * @param	string	Error message to print on user.
+	 */
+	public static function pairJsonSuccess(): void {
+
+		self::pairJsonData(NULL);
 
 	}
 
@@ -327,21 +317,43 @@ class Utilities {
 	 * @param	string	Error message to print on user (optional).
 	 * @param	bool	Error flag, set TRUE to notice about error (optional).
 	 * @param	bool	Error code (optional).
+	 * @param	int		HTTP code (optional).
 	 */
-	public static function printJsonData($data, $message='', $error=FALSE, $code=NULL): void {
+	public static function pairJsonData(mixed $data, string $message=NULL, bool $error=FALSE, int $code=NULL, int $httpCode=NULL): void {
 
+		$ret = new \stdClass();
+
+		// per messaggi o errori, data non viene restituito
+		if (!is_null($data)) {
+			$ret->data = $data;
+		}
+
+		if (!is_null($message)) {
+			$ret->message = $message;
+		}
+
+		$ret->error = $error;
+
+		if (!is_null($code)) {
+			$ret->code = $code;
+		}
+
+		// contains events registered by Logger, if active
 		$logger = Logger::getInstance();
+		$eventList = $logger->getEventListForAjax();
+		if ($eventList) {
+			$ret->log = $logger->getEventListForAjax();
+		}
 
-		$ret			= new \stdClass();
-		$ret->data		= $data;
-		$ret->message	= $message;
-		$ret->error		= $error;
-		$ret->code		= $code;
-		$ret->log		= $logger->getEventListForAjax();
-		$json			= json_encode($ret);
+		$json = json_encode($ret);
+
+		if (is_int($httpCode)) {
+			http_response_code($httpCode);
+		}
+
 		header('Content-Type: application/json', TRUE);
 		print $json;
-		die();
+		exit((int)$error);
 
 	}
 
@@ -362,12 +374,11 @@ class Utilities {
 	}
 
 	/**
-	 * Proxy method to output HTML code that prints a JS message in page at runtime.
+	 * Proxy method to output HTML code that prints a JS popup notification in page at runtime.
 	 *
 	 * @param	string	Message title.
 	 * @param	string	Message text.
 	 * @param	string	Type, can be info, error or warning.
-	 * @return	void
 	 */
 	public static function printJsMessage(string $title, string $message, string $type='info'): void {
 
@@ -376,19 +387,18 @@ class Utilities {
 	}
 
 	/**
-	 * Return the HTML code that prints a JS message in page at runtime.
+	 * Return the HTML code that show a JS popup notification in page at runtime.
 	 *
 	 * @param	string	Message title.
 	 * @param	string	Message text.
 	 * @param	string	Type, can be info, error or warning.
-	 * @return	string
 	 */
 	public static function getJsMessage(string $title, string $message, string $type='info'): string {
 
 		$types = ['info', 'warning', 'error'];
 		if (!in_array($type, $types)) $type = 'info';
 
-		$message = '<script>pairMessage("'.
+		$message = '<script defer>pairMessage("'.
 				addslashes($title) .'","'.
 				addslashes($message) .'","'.
 				addslashes($type) .'");</script>';

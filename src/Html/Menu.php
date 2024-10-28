@@ -18,69 +18,6 @@ class Menu {
 	protected ?string $activeItem = NULL;
 
 	/**
-	 * Add a Title item to menu.
-	 */
-	public function addTitle(string $title): void {
-
-		$item 			= new \stdClass();
-		$item->type		= 'title';
-		$item->title	= $title;
-		$this->items[]	= $item;
-
-	}
-
-	/**
-	 * Adds a single-item menu entry. The optional badge can be a subtitle.
-	 * @param	string	Url of item.
-	 * @param	string	Title shown.
-	 * @param	string	Optional, can be an icon, a subtitle or icon placeholder.
-	 * @param	string	Optional, is CSS extra class definition.
-	 * @param	string	Optional, the anchor target.
-	 * @param	string	Optional, the badge type as Bootstrap class (ex. primary, info, danger etc.).
-	 * @deprecated use Menu::item() instead.
-	 */
-	public function addItem(string $url, string $title, string $badge=NULL, string $class=NULL, string $target=NULL, string $badgeType=NULL): void {
-
-		$this->items[] = self::getItemObject($url, $title, $badge, $class, $target, $badgeType ?? 'primary');
-
-	}
-
-	/**
-	 * Adds a multi-entry menu item. The list is array of single-item objects.
-	 * @param	string	Title for this item.
-	 * @param	array	List of single-item objects
-	 * @param	string	Optional, can be an icon, a subtitle or icon placeholder.
-	 * @deprecated use Menu::multiItem() instead.
-	 */
-	public function addMulti(string $title, array $list, string $class=NULL): void {
-
-		$multi 			= new \stdClass();
-		$multi->type	= 'multi';
-		$multi->title	= $title;
-		$multi->class	= $class;
-		$multi->list	= [];
-		foreach ($list as $i) {
-			$multi->list[]	= $i;
-		}
-
-		$this->items[] = $multi;
-
-	}
-
-	/**
-	 * Adds a separator to menu.
-	 * @param	string	Separator title. Optional.
-	 */
-	public function addSeparator(string $title=NULL): void {
-
-		$item 			= new \stdClass();
-		$item->type		= 'separator';
-		$item->title	= $title;
-		$this->items[]	= $item;
-
-	}
-
-	/**
 	 * Static method utility to create single-item object.
 	 * @param	string	Url of item.
 	 * @param	string	Title shown.
@@ -149,7 +86,7 @@ class Menu {
 			if (!isset($i[0]) or !isset($i[1])) {
 				continue;
 			}
-			
+
 			$item = new \stdClass();
 			$item->type		= 'single';
 			$item->url		= $i[0];
@@ -295,10 +232,35 @@ class Menu {
 	 * Menu separator rendering.
 	 * @param	\stdClass Menu item object.
 	 */
-	private function renderSeparator(\stdClass $item): string {
+	protected function renderSeparator(\stdClass $item): string {
 
 		if (!$item->title) $item->title = '&nbsp;';
 		return '<div class="separator">' . $item->title . '</div>';
+
+	}
+
+	/**
+	 * Add a graphic or text separator to the menu.
+	 * @param	string	Separator title (optional).
+	 */
+	public function separator(string $title=NULL): void {
+
+		$item 			= new \stdClass();
+		$item->type		= 'separator';
+		$item->title	= $title;
+		$this->items[]	= $item;
+
+	}
+
+	/**
+	 * Add a Title item to menu.
+	 */
+	public function title(string $title): void {
+
+		$item 			= new \stdClass();
+		$item->type		= 'title';
+		$item->title	= $title;
+		$this->items[]	= $item;
 
 	}
 

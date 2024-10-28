@@ -6,7 +6,7 @@ use Pair\Core\Application;
 use Pair\Exception\ActiveRecordReadException;
 use Pair\Exception\ActiveRecordWriteException;
 use Pair\Html\Form;
-use Pair\Support\Input;
+use Pair\Support\Post;
 use Pair\Support\Logger;
 use Pair\Support\Translator;
 use Pair\Support\Utilities;
@@ -2381,10 +2381,10 @@ abstract class ActiveRecord implements \JsonSerializable {
 				$type = $this->getPropertyType($property);
 
 				// if input type was set or is bool type
-				if (Input::isSent($property) or 'bool' == $type) {
+				if (Post::sent($property) or 'bool' == $type) {
 
 					// assign the value to this object property
-					$this->__set($property, Input::get($property));
+					$this->__set($property, Post::get($property));
 
 				}
 
@@ -2406,7 +2406,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// build a select control
 		$getSelectControl = function ($property, $field, $values) use ($form) {
 
-			$control = $form->addSelect($property)->setOptions($values, $values);
+			$control = $form->select($property)->options($values, $values);
 
 			if (static::isNullable($field) or static::isEmptiable($field)) {
 				$control->prependEmpty();
@@ -2428,7 +2428,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 			// primary key
 			if ($this->isKeyProperty($propName)) {
 
-				$control = $form->addInput($propName)->setType('hidden');
+				$control = $form->hidden($propName);
 
 			} else {
 
@@ -2438,23 +2438,23 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 					// checkbox
 					case 'bool':
-						$control = $form->addInput($propName)->setType('bool');
+						$control = $form->checkbox($propName);
 						break;
 
 					// date or datetime
 					case 'DateTime':
 						$type = 'date' == $column->type ? 'date' : 'datetime';
-						$control = $form->addInput($propName)->setType($type);
+						$control = $form->input($propName)->type($type);
 						break;
 
 					// number with two decimals
 					case 'float':
-						$control = $form->addInput($propName)->setType('number')->setStep('0.01');
+						$control = $form->input($propName)->type('number')->setStep('0.01');
 						break;
 
 					// integer
 					case 'int':
-						$control = $form->addInput($propName)->setType('number');
+						$control = $form->input($propName)->type('number');
 						break;
 
 					// multiple select
@@ -2465,7 +2465,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 					// textarea for json
 					case 'json':
-						$control = $form->addTextarea($propName);
+						$control = $form->textarea($propName);
 						break;
 
 					// select, textarea or text
@@ -2476,11 +2476,11 @@ abstract class ActiveRecord implements \JsonSerializable {
 							$control = $getSelectControl($propName, $field, $column->length);
 							$control->setMultiple();
 						} else if (in_array($column->type, $textAreaTypes)) {
-							$control = $form->addTextarea($propName);
+							$control = $form->textarea($propName);
 						} else {
-							$control = $form->addInput($propName);
+							$control = $form->input($propName);
 							if (isset($column->length[0])) {
-								$control->setMaxLength($column->length[0]);
+								$control->maxLength($column->length[0]);
 							}
 						}
 						break;
@@ -2491,11 +2491,11 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 			// check if is required
 			if (!static::isNullable($field) and !static::isEmptiable($field)) {
-				$control->setRequired();
+				$control->required();
 			}
 
 			// set the object value
-			$control->setValue($value);
+			$control->value($value);
 
 		}
 

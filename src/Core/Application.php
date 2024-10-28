@@ -1171,7 +1171,7 @@ class Application {
 		// collect plain text scripts
 		if (count($this->scriptContent) or count($this->messages)) {
 
-			$this->pageScripts .= "<div id=\"pair-script-container\"><script>\n";
+			$this->pageScripts .= "<div id=\"pair-script-container\"><script defer>\n";
 
 			foreach ($this->scriptContent as $s) {
 				$this->pageScripts .= $s ."\n";

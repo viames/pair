@@ -4,11 +4,10 @@ namespace Pair\Support;
 
 use Pair\Core\Application;
 
-
 /**
  * Manage HTTP requests.
  */
-class Input {
+class Post {
 
 	/**
 	 * Get data by POST or GET array returning the specified type or default value. In case
@@ -17,18 +16,12 @@ class Input {
 	 * @param	string	HTTP parameter name.
 	 * @param	string	Type string -default-, int, bool, date or datetime will be casted.
 	 * @param	string	Default value to return, in case of null or empty.
-	 *
-	 * @return	mixed
 	 */
-	public static function get($name, $type='string', $default=NULL) {
+	public static function get($name, $type='string', $default=NULL): mixed {
 
 		$val = "";
 
 		switch ($_SERVER['REQUEST_METHOD']) {
-
-			case 'GET':
-				$request = &$_GET;
-				break;
 
 			case 'POST':
 				$request = &$_POST;
@@ -80,9 +73,8 @@ class Input {
 	 * Check wheter a field was submitted in the REQUEST array.
 	 *
 	 * @param	string	Field name.
-	 * @return	boolean
 	 */
-	public static function isSent($name): bool {
+	public static function sent(string $name): bool {
 
 		// remove [] from array
 		if (substr($name, -2) == '[]') {
@@ -100,9 +92,8 @@ class Input {
 	 *
 	 * @param	string	HTTP parameter name.
 	 * @param	string	Default value to return, in case of null or empty.
-	 * @return	string
 	 */
-	public static function getTrim($name, $default=NULL): string {
+	public static function trim($name, $default=NULL): string {
 
 		return self::get(trim($name), 'string', $default);
 
@@ -114,9 +105,8 @@ class Input {
 	 *
 	 * @param	string	HTTP parameter name.
 	 * @param	string	Default value to return, in case of null or empty.
-	 * @return	int
 	 */
-	public static function getInt($name, $default=NULL): int {
+	public static function int($name, $default=NULL): int {
 
 		return self::get($name, 'int', $default);
 
@@ -128,9 +118,8 @@ class Input {
 	 *
 	 * @param	string	HTTP parameter name.
 	 * @param	string	Default value to return, in case of null or empty.
-	 * @return	bool
 	 */
-	public static function getBool($name, $default=NULL): bool {
+	public static function bool($name, $default=NULL): bool {
 
 		return self::get($name, 'bool', $default);
 
@@ -142,9 +131,8 @@ class Input {
 	 *
 	 * @param	string	HTTP parameter name.
 	 * @param	string	Default value to return, in case of null or empty.
-	 * @return	\DateTime|NULL
 	 */
-	public static function getDate($name, $default=NULL): ?\DateTime {
+	public static function date($name, $default=NULL): ?\DateTime {
 
 		return self::get($name, 'date', $default);
 
@@ -156,9 +144,8 @@ class Input {
 	 *
 	 * @param	string	HTTP parameter name.
 	 * @param	string	Default value to return, in case of null or empty.
-	 * @return	\DateTime|NULL
 	 */
-	public static function getDatetime($name, $default=NULL): ?\DateTime {
+	public static function datetime($name, $default=NULL): ?\DateTime {
 
 		return self::get($name, 'datetime', $default);
 
@@ -170,9 +157,8 @@ class Input {
 	 * @param	string	Regular expression, for instance #[A-Z][A-Z_]+#.
 	 * @param	string	Type string, int, bool, date or datetime will be casted.
 	 * @param	string	Default value to return, in case of null or empty.
-	 * @return	array
 	 */
-	public static function getInputsByRegex($pattern, $type='string', $default=NULL): array {
+	public static function byRegex($pattern, $type='string', $default=NULL): array {
 
 		$list = [];
 
@@ -198,7 +184,7 @@ class Input {
 	 *
 	 * @return	bool	TRUE if method is post.
 	 */
-	public static function formPostSubmitted(): bool {
+	public static function submitted(): bool {
 
 		return (bool)count($_POST);
 
@@ -209,9 +195,8 @@ class Input {
 	 *
 	 * @param	mixed	Variable value.
 	 * @param	string	Variable type.
-	 * @return	mixed
 	 */
-	private static function castTo($val, string $type) {
+	private static function castTo($val, string $type): mixed {
 
 		$app = Application::getInstance();
 
