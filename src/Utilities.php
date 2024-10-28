@@ -18,7 +18,7 @@ class Utilities {
 	 * @param	int		Error number.
 	 * @param	string	Error text message.
 	 * @param	string	Error full file path.
-	 * @param	string	Error line.
+	 * @param	int		Error line.
 	 */
 	public static function customErrorHandler(int $errno, string $errstr, string $errfile, string $errline): void {
 
@@ -169,11 +169,43 @@ class Utilities {
 	}
 
 	/**
+	 * Determines whether the brightness of the color code passed as a parameter is less
+	 * than 128, so it is a dark color. Useful for dynamically choosing a foreground or
+	 * background color that contrasts with the color passed.
+	 */
+	public static function isDarkColor(string $hexColor): bool {
+
+		// removes the # symbol, if present
+		$hexColor = ltrim($hexColor, '#');
+
+		// converts HEX color to RGB components
+		$r = hexdec(substr($hexColor, 0, 2));
+		$g = hexdec(substr($hexColor, 2, 2));
+		$b = hexdec(substr($hexColor, 4, 2));
+
+		// calculate brightness using the perceived formula
+		$brightness = ($r * 299 + $g * 587 + $b * 114) / 1000;
+
+		// if the brightness is less than 128, the color is dark
+		return $brightness < 128;
+
+	}
+
+	/**
+	 * Converts an array of strings to an array of integers.
+	 * @return int[]
+	 */
+	public static function arrayToInt(array $array): array {
+
+		return array_map('intval', $array);
+
+	}
+
+	/**
 	 * Creates a plain text string from any variable type.
 	 *
 	 * @param	mixed	Variable of any type.
 	 * @param	bool	Flag to hide var type.
-	 * @return	string
 	 */
 	public static function varToText($var, bool $showTypes=TRUE, ?int $indent=0): string {
 
@@ -236,25 +268,15 @@ class Utilities {
 	 *
 	 * @param	string	Error message to print on user.
 	 * @param	int|NULL	Error code (optional).
-	 * @param	int|NULL	HTTP code (optional).
-	 * @return	void
+	 * @param	int|NULL	HTTP code (optional, 400 by default).
 	 */
-	public static function printJsonError(string $message, ?int $code=NULL, ?int $httpCode=NULL): void {
+	public static function printJsonError(string $message, int $code=NULL, int $httpCode=NULL): void {
 
-		$logger = Logger::getInstance();
-
-		$ret			= new \stdClass();
-		$ret->message	= $message;
-		$ret->error		= TRUE;
-		$ret->code		= $code;
-		$ret->log		= $logger->getEventListForAjax();
-		$json			= json_encode($ret);
-		if (is_int($httpCode)) {
-			http_response_code($httpCode);
+		if (is_null($httpCode)) {
+			$httpCode = 400;
 		}
-		header('Content-Type: application/json', TRUE);
-		print $json;
-		die();
+
+		self::printJsonData(NULL, $message, TRUE, $code, $httpCode);
 
 	}
 
@@ -263,22 +285,10 @@ class Utilities {
 	 * (bool)error, (string)log.
 	 *
 	 * @param	string	Error message to print on user.
-	 * @param	bool	Error flag, set TRUE to notice about error (optional).
-	 * @param	bool	Error code (optional).
 	 */
-	public static function printJsonMessage(string $message, $error=FALSE, $code=NULL): void {
+	public static function printJsonMessage(string $message): void {
 
-		$logger = Logger::getInstance();
-
-		$ret			= new \stdClass();
-		$ret->message	= $message;
-		$ret->error		= $error;
-		$ret->code		= $code;
-		$ret->log		= $logger->getEventListForAjax();
-		$json			= json_encode($ret);
-		header('Content-Type: application/json', TRUE);
-		print $json;
-		die();
+		self::printJsonData(NULL, $message);
 
 	}
 
@@ -291,20 +301,35 @@ class Utilities {
 	 * @param	bool	Error flag, set TRUE to notice about error (optional).
 	 * @param	bool	Error code (optional).
 	 */
-	public static function printJsonData($data, $message='', $error=FALSE, $code=NULL): void {
+	public static function printJsonData(mixed $data, string $message='', bool $error=FALSE, int $code=NULL, int $httpCode=NULL): void {
 
-		$logger = Logger::getInstance();
+		$ret = new \stdClass();
 
-		$ret			= new \stdClass();
-		$ret->data		= $data;
+		// per messaggi o errori, data non viene restituito
+		if (!is_null($data)) {
+			$ret->data = $data;
+		}
+
 		$ret->message	= $message;
 		$ret->error		= $error;
 		$ret->code		= $code;
-		$ret->log		= $logger->getEventListForAjax();
-		$json			= json_encode($ret);
+
+		// contiene gli eventi registrati dal Logger, se attivo
+		$logger = Logger::getInstance();
+		$eventList = $logger->getEventListForAjax();
+		if ($eventList) {
+			$ret->log = $logger->getEventListForAjax();
+		}
+
+		$json = json_encode($ret);
+
+		if (is_int($httpCode)) {
+			http_response_code($httpCode);
+		}
+
 		header('Content-Type: application/json', TRUE);
 		print $json;
-		die();
+		exit((int)$error);
 
 	}
 
