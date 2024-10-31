@@ -7,21 +7,17 @@ use Pair\Html\FormControl;
 class Button extends FormControl {
 
 	/**
-	 * Button type (submit, reset, button).
-	 * @var string
+	 * Button type submit|reset|button, default is button.
 	 */
-	private $type;
+	private string $type = 'button';
 
 	/**
 	 * FontAwesome icon class.
-	 * @var string
 	 */
-	private $faIcon;
+	private ?string $faIcon = NULL;
 
 	/**
-	 * Sets type for a Button (submit, reset, button). Chainable method.
-	 *
-	 * @param	string	The button type.
+	 * Set type for a Button (submit, reset, button). Chainable method.
 	 */
 	public function type(string $type): self {
 
@@ -31,11 +27,9 @@ class Button extends FormControl {
 	}
 
 	/**
-	 * Sets a FontAwesome icon for this button object. Chainable method.
-	 *
-	 * @param	string	The icon class.
+	 * Set a FontAwesome icon for this button object. Chainable method.
 	 */
-	public function setFaIcon(string $class): self {
+	public function faIcon(string $class): self {
 
 		$this->faIcon = $class;
 		return $this;
@@ -43,7 +37,7 @@ class Button extends FormControl {
 	}
 
 	/**
-	 * Renders an HTML button form control prepending an optional FontAwesome icon.
+	 * Render an HTML button form control with an optional FontAwesome icon prefixed.
 	 */
 	public function render(): string {
 

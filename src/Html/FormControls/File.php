@@ -12,19 +12,7 @@ class File extends FormControl {
 	protected $accept;
 
 	/**
-	 * Extends parent constructor in order to sets default type to text.
-	 *
-	 * @param	string	Control name.
-	 * @param	array	Additional attributes (tag=>value).
-	 */
-	public function __construct(string $name, array $attributes = []) {
-
-		parent::__construct($name, $attributes);
-
-	}
-
-	/**
-	 * Set accepted file type by input field (only affects the “file” input). Chainable method.
+	 * Set accepted file type by input field. Chainable method.
 	 *
 	 * @param	string	File type: file_extension, audio/*, video/*, image/*, media_type.
 	 */
@@ -36,11 +24,30 @@ class File extends FormControl {
 	}
 
 	/**
-	 * Renders and returns an HTML input form control.
+	 * Returns the HTML code of the file control adding the accept attribute which limits
+	 * the type of files that can be uploaded through the form.
 	 */
 	public function render(): string {
 
-		return '<input ' . $this->nameProperty() . ' type="file"' . $this->processProperties() . ' />';
+		$ret = '<input ' . $this->nameProperty();
+
+		$ret .= ' type="file" value="'. htmlspecialchars((string)$this->value) .'"';
+
+		if ($this->accept) {
+			$ret .= ' accept="' . $this->accept . '"';
+		}
+
+		if ($this->minLength) {
+			$ret .= ' minlength="' . (int)$this->minLength . '"';
+		}
+
+		if ($this->maxLength) {
+			$ret .= ' maxlength="' . (int)$this->maxLength . '"';
+		}
+
+		$ret .= $this->processProperties() . ' />';
+
+		return $ret;
 
 	}
 

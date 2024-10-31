@@ -2409,7 +2409,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 			$control = $form->select($property)->options($values, $values);
 
 			if (static::isNullable($field) or static::isEmptiable($field)) {
-				$control->prependEmpty();
+				$control->empty();
 			}
 
 			return $control;
@@ -2444,23 +2444,23 @@ abstract class ActiveRecord implements \JsonSerializable {
 					// date or datetime
 					case 'DateTime':
 						$type = 'date' == $column->type ? 'date' : 'datetime';
-						$control = $form->input($propName)->type($type);
+						$control = $form->text($propName);
 						break;
 
 					// number with two decimals
 					case 'float':
-						$control = $form->input($propName)->type('number')->setStep('0.01');
+						$control = $form->number($propName)->setStep('0.01');
 						break;
 
 					// integer
 					case 'int':
-						$control = $form->input($propName)->type('number');
+						$control = $form->number($propName);
 						break;
 
 					// multiple select
 					case 'csv':
 						$control = $getSelectControl($propName, $field, $column->length);
-						$control->setMultiple();
+						$control->multiple();
 						break;
 
 					// textarea for json
@@ -2474,11 +2474,11 @@ abstract class ActiveRecord implements \JsonSerializable {
 							$control = $getSelectControl($propName, $field, $column->length);
 						} else if ('set' == $column->type) {
 							$control = $getSelectControl($propName, $field, $column->length);
-							$control->setMultiple();
+							$control->multiple();
 						} else if (in_array($column->type, $textAreaTypes)) {
 							$control = $form->textarea($propName);
 						} else {
-							$control = $form->input($propName);
+							$control = $form->text($propName);
 							if (isset($column->length[0])) {
 								$control->maxLength($column->length[0]);
 							}

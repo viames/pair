@@ -127,22 +127,22 @@ use Pair\Html\Pagination;       	// renamed from Pair\Pagination
 use Pair\Html\Widget;           	// renamed from Pair\Widget
 
 // Models classes
-use Pair\Model\Acl;				// renamed from Pair\Acl
-use Pair\Model\Audit;			// renamed from Pair\Audit
-use Pair\Model\Country;			// renamed from Pair\Country
-use Pair\Model\ErrorLog;			// renamed from Pair\ErrorLog
-use Pair\Model\Group;			// renamed from Pair\Group
-use Pair\Model\Language;			// renamed from Pair\Language
-use Pair\Model\Locale;			// renamed from Pair\Locale
-use Pair\Model\Module;			// renamed from Pair\Module
+use Pair\Model\Acl;                     // renamed from Pair\Acl
+use Pair\Model\Audit;                   // renamed from Pair\Audit
+use Pair\Model\Country;                 // renamed from Pair\Country
+use Pair\Model\ErrorLog;                // renamed from Pair\ErrorLog
+use Pair\Model\Group;                   // renamed from Pair\Group
+use Pair\Model\Language;                // renamed from Pair\Language
+use Pair\Model\Locale;                  // renamed from Pair\Locale
+use Pair\Model\Module;                  // renamed from Pair\Module
 use Pair\Model\Oauth2Client;		// renamed from Pair\Oauth\Oauth2Client
-use Pair\Model\Oauth2Token;		// renamed from Pair\Oauth\Oauth2Token
+use Pair\Model\Oauth2Token;             // renamed from Pair\Oauth\Oauth2Token
 use Pair\Model\Rule;			// renamed from Pair\Rule
-use Pair\Model\Session;			// renamed from Pair\Session
-use Pair\Model\Template;			// renamed from Pair\Template
-use Pair\Model\Token;			// renamed from Pair\Token
-use Pair\Model\User;			// renamed from Pair\User
-use Pair\Model\UserRemember;		// renamed from Pair\UserRemember
+use Pair\Model\Session;                 // renamed from Pair\Session
+use Pair\Model\Template;                // renamed from Pair\Template
+use Pair\Model\Token;                   // renamed from Pair\Token
+use Pair\Model\User;                    // renamed from Pair\User
+use Pair\Model\UserRemember;            // renamed from Pair\UserRemember
 
 // Orm classes
 use Pair\Orm\ActiveRecord;      	// renamed from Pair\ActiveRecord
@@ -171,9 +171,9 @@ use Pair\Support\Utilities;     	// renamed from Pair\Utilities
 
 // Menu widget
 $menu = new BootstrapMenu();
-$menu->item();		     // renamed from $menu->addItem()
+$menu->item();		    // renamed from $menu->addItem()
 $menu->separator();		// renamed from $menu->addSeparator()
-$menu->title();		// renamed from $menu->addTitle()
+$menu->title();		    // renamed from $menu->addTitle()
 $menu->multiItem();		// faster creation of a list of menu sub-items
 $menu->addMulti();		// removed
 $menu->getItemObject();	// removed
@@ -185,9 +185,9 @@ $menu->getItemObject();	// removed
 <?php
 
 // JS methods that return JSON to the client
-Utilities::pairJsonMessage(); // renamed from Utilities::printJsonMessage()
-Utilities::pairJsonError();	// renamed from Utilities::printJsonError()
-Utilities::pairJsonData();	// renamed from Utilities::printJsonData()
+Utilities::pairJsonMessage();   // renamed from Utilities::printJsonMessage()
+Utilities::pairJsonError();     // renamed from Utilities::printJsonError()
+Utilities::pairJsonData();      // renamed from Utilities::printJsonData()
 ```
 
 ### Input class renamed to Post
@@ -213,6 +213,18 @@ Methods `setListByAssociativeArray()` and `setListByObjectArray()` of the `FormC
 
 The `options()` method populates select control options using a `Pair\Collection` or an object array. Each object must have properties for value and text. If property text includes a couple of round parenthesys, will invoke a function without parameters. It’s a chainable method.
 
+```php
+<?php
+
+$form = new Form();
+
+$form->select('controlName')    // renamed from $form->addSelect()
+     ->options($collection)     // renamed from $form->setListByObjectArray()
+     ->value()                  // renamed from $form->setValue()
+     ->multiple();              // renamed from $form->setMultiple()
+     ->empty();                 // renamed from $form->prependEmpty()
+```
+
 #### Methods for creating form controls
 
 Molti metodi per la creazione dei FormControl sono stati rinominati o estesi per essere più specifici del tipo di controllo che creano. Si prega di rinominare i metodi come indicato di seguito.
@@ -222,23 +234,18 @@ Molti metodi per la creazione dei FormControl sono stati rinominati o estesi per
 
 $form = new Form();
 
-$form->input('controlName')		// renamed from $form->addInput()
-     ->readonly();			     // renamed from $form->setReadonly()
-     ->disabled();			     // renamed from $form->setDisabled()
-     ->required();			     // renamed from $form->setRequired()
-     ->placeholder();	          // renamed from $form->setPlaceholder()
-     ->label('CONTROL_LABEL');	// renamed from $form->setLabel()
-
-$form->select('controlName');      // renamed from $form->addSelect()
+$form->text('controlName')      // renamed from $form->addInput()
+     ->readonly();			    // renamed from $form->setReadonly()
+     ->disabled();			    // renamed from $form->setDisabled()
+     ->required();			    // renamed from $form->setRequired()
+     ->placeholder();	        // renamed from $form->setPlaceholder()
+     ->label('CONTROL_LABEL');  // renamed from $form->setLabel()
 
 $form->textarea('controlName');	// renamed from $form->addTextarea()
-
-$form->button('controlName');      // renamed from $form->addButton()
-
-$form->values($activeRecordObj);   // renamed from $form->setValuesByObject()
-
+$form->button('controlName');   // renamed from $form->addButton()
+$form->values($activeRecordObj);// renamed from $form->setValuesByObject()
 $form->classForControls();		// renamed from $form->addControlClass()
-
+$form->control();       		// renamed from $form->getControl()
 $form->controls();              // renamed from $form->getAllControls()
 ```
 
@@ -247,21 +254,19 @@ New methods for creating form controls have been added to the `Form` class. Thes
 ```php
 <?php
 
-$form->address();		// changed from $form->addInput()->setType('address')
-
-$form->checkbox();		// changed from $form->addInput()->setType('bool')
-
-$form->color();			// changed from $form->addInput()->setType('color')
-
-$form->date();			// changed from $form->addInput()->setType('date')
-
-$form->datetime();		// changed from $form->addInput()->setType('datetime')
-
-$form->email();			// changed from $form->addInput()->setType('email')
-
-$form->file();			// changed from $form->addInput()->setType('file')
-
-$form->hidden();		// changed from $form->addInput()->setType('hidden')
+$form->address();	// changed from $form->addInput()->setType('address')
+$form->checkbox();	// changed from $form->addInput()->setType('bool')
+$form->color();		// changed from $form->addInput()->setType('color')
+$form->date();		// changed from $form->addInput()->setType('date')
+$form->datetime();	// changed from $form->addInput()->setType('datetime')
+$form->email();		// changed from $form->addInput()->setType('email')
+$form->file();		// changed from $form->addInput()->setType('file')
+$form->hidden();	// changed from $form->addInput()->setType('hidden')
+$form->image();		// changed from $form->addInput()->setType('image')
+$form->number();	// changed from $form->addInput()->setType('number')
+$form->password();	// changed from $form->addInput()->setType('password')
+$form->tel();		// changed from $form->addInput()->setType('tel')
+$form->url();		// changed from $form->addInput()->setType('url')
 ```
 
 #### Labels
@@ -276,9 +281,9 @@ See the example below.
 
 $form = new Form();
 
-$form->input('serialNumber')			// return a FormControl object
+$form->text('serialNumber')			    // return a FormControl subclass
      ->label('Serial number')			// set the label text and return the FormControl object
-     ->labelClass('my-label-class');	// set the class for the label of this FormControl
+     ->labelClass('my-label-class');    // set the class for the label of this FormControl
 
 // or apply to all labels in the Form as follows
 
