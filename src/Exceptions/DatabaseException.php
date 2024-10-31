@@ -1,6 +1,6 @@
 <?php
 
-namespace Pair\Exception;
+namespace Pair\Exceptions;
 
 use Exception;
 

@@ -12,24 +12,20 @@ class Textarea extends FormControl {
 
 	/**
 	 * Sets rows for this textarea. Chainable method.
-	 *
-	 * @param	int		Rows number.
 	 */
-	public function rows(int $num): self {
+	public function rows(int $rowsNumber): self {
 
-		$this->rows = $num;
+		$this->rows = $rowsNumber;
 		return $this;
 
 	}
 
 	/**
 	 * Sets columns for this textarea. Chainable method.
-	 *
-	 * @param	int		Columns number.
 	 */
-	public function cols(int $num): self {
+	public function cols(int $columnsNumber): self {
 
-		$this->cols = $num;
+		$this->cols = $columnsNumber;
 		return $this;
 
 	}

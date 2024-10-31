@@ -2,6 +2,7 @@
 
 namespace Pair\Core;
 
+use Pair\Exceptions\ControllerException;
 use Pair\Models\ErrorLog;
 use Pair\Orm\ActiveRecord;
 use Pair\Support\Logger;
@@ -390,8 +391,7 @@ abstract class Controller {
 			: $this->lang('ERROR_ON_LAST_REQUEST');
 
 		// enqueue error message for UI
-		$this->enqueueError($message);
-		$this->view = 'default';
+		throw new ControllerException($message);
 
 		// after the message has been queued, store the error data
 		ErrorLog::keepSnapshot('Failure in ' . \get_class($object) . ' class');
@@ -405,10 +405,6 @@ abstract class Controller {
 	 * @param	bool	If TRUE, will avoids to add base url (default FALSE).
 	 */
 	public function redirect(string $url=NULL, bool $absoluteUrl=FALSE): void {
-
-		if (is_null($url)) {
-			$url = $this->router->module;
-		}
 
 		$this->app->redirect($url, $absoluteUrl);
 

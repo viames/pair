@@ -12,9 +12,15 @@ use Pair\Html\FormControls\Datetime;
 use Pair\Html\FormControls\Email;
 use Pair\Html\FormControls\File;
 use Pair\Html\FormControls\Hidden;
-use Pair\Html\FormControls\Input;
+use Pair\Html\FormControls\Image;
+use Pair\Html\FormControls\Number;
+use Pair\Html\FormControls\Password;
+use Pair\Html\FormControls\Search;
 use Pair\Html\FormControls\Select;
+use Pair\Html\FormControls\Tel;
+use Pair\Html\FormControls\Text;
 use Pair\Html\FormControls\Textarea;
+use Pair\Html\FormControls\Url;
 use Pair\Orm\ActiveRecord;
 use Pair\Orm\Collection;
 use Pair\Support\Logger;
@@ -143,20 +149,6 @@ class Form {
 	}
 
 	/**
-	 * Adds a text Input object to this Form object. Default type is Text.
-	 * Chainable method.
-	 * @param	string	Control name.
-	 * @param	array	List of attributes.
-	 */
-	public function input(string $name, array $attributes = []): Input {
-
-		$control = new Input($name, $attributes);
-		$this->addControl($control);
-		return $control;
-
-	}
-
-	/**
 	 * Adds a Hidden input object to this Form object. Default type is Text.
 	 * Chainable method.
 	 * @param	string	Control name.
@@ -171,13 +163,93 @@ class Form {
 	}
 
 	/**
+	 * Adds an Image input object to this Form object. Chainable method.
+	 * @param	string	Control name.
+	 * @param	array	List of attributes.
+	 */
+	public function image(string $name, array $attributes = []): Image {
+		
+		$control = new Image($name, $attributes);
+		$this->addControl($control);
+		return $control;
+
+	}
+
+	/**
+	 * Adds a Number input object to this Form object. Chainable method.
+	 * @param	string	Control name.
+	 * @param	array	List of attributes.
+	 */
+	public function number(string $name, array $attributes = []): Number {
+
+		$control = new Number($name, $attributes);
+		$this->addControl($control);
+		return $control;
+
+	}
+
+	/**
+	 * Adds a Password input object to this Form object. Chainable method.
+	 * @param	string	Control name.
+	 * @param	array	List of attributes.
+	 */
+	public function password(string $name, array $attributes = []): Password {
+
+		$control = new Password($name, $attributes);
+		$this->addControl($control);
+		return $control;
+
+	}
+
+	/**
+	 * Adds a Search input object to this Form object. Chainable method.
+	 * @param	string	Control name.
+	 * @param	array	List of attributes.
+	 */
+	public function search(string $name, array $attributes = []): Search {
+
+		$control = new Search($name, $attributes);
+		$this->addControl($control);
+		return $control;
+
+	}
+
+	
+	/**
 	 * Adds a Select object to this Form object. Chainable method.
 	 * @param	string	Control name.
 	 * @param	array	List of attributes.
 	 */
 	public function select(string $name, array $attributes = []): Select {
-
+		
 		$control = new Select($name, $attributes);
+		$this->addControl($control);
+		return $control;
+		
+	}
+	
+	/**
+	 * Adds a Tel input object to this Form object. Chainable method.
+	 * @param	string	Control name.
+	 * @param	array	List of attributes.
+	 */
+	public function tel(string $name, array $attributes = []): Tel {
+
+		$control = new Tel($name, $attributes);
+		$this->addControl($control);
+		return $control;
+
+	}
+
+		/**
+	 * Adds a text Input object to this Form object. Default type is Text.
+	 * Chainable method.
+	 * @param	string	Control name.
+	 * @param	array	List of attributes.
+	 */
+	public function text(string $name, array $attributes = []): Text {
+
+		$control = new Text($name, $attributes);
 		$this->addControl($control);
 		return $control;
 
@@ -191,6 +263,19 @@ class Form {
 	public function textarea(string $name, array $attributes = []): Textarea {
 
 		$control = new Textarea($name, $attributes);
+		$this->addControl($control);
+		return $control;
+
+	}
+
+	/**
+	 * Adds an URL input object to this Form object. Chainable method.
+	 * @param	string	Control name.
+	 * @param	array	List of attributes.
+	 */
+	public function url(string $name, array $attributes = []): Url {
+
+		$control = new Url($name, $attributes);
 		$this->addControl($control);
 		return $control;
 
@@ -416,7 +501,7 @@ class Form {
 		$control->options($list, $valName, $textName)->value($value);
 
 		if ($prependEmpty) {
-			$control->prependEmpty($prependEmpty);
+			$control->empty($prependEmpty);
 		}
 
 		return $control->render();
@@ -427,13 +512,19 @@ class Form {
 	 * Creates an HTML input form control.
 	 * @param	string	HTML name for this control.
 	 * @param	string	Default value (NULL default).
-	 * @param	string	Type (text -default-, email, tel, url, color, password, number, bool, date, datetime, file, image, address, hidden).
-	 * @param	string	More parameters as associative array tag=>value (optional).
+	 * @param	string	Type (text -default-, password, email, url, etc.).
+	 * @param	array	More parameters as associative array tag=>value (optional).
 	 */
-	public static function buildInput(string $name, string $value=NULL, string $type='text', $attributes=[]): string {
+	public static function buildInput(string $name, string $value=NULL, string $type=NULL, array $attributes=[]): string {
 
-		$control = new Input($name, $attributes);
-		$control->type($type)->value($value);
+		if (!$type) {
+			$type = 'text';
+		}
+
+		$class = 'Pair\Html\FormControls\\' . ucfirst($type);
+
+		$control = new $class($name, $attributes);
+		$control->value($value);
 
 		return $control->render();
 
@@ -467,7 +558,7 @@ class Form {
 	public static function buildButton(string $value, string $type='submit', string $name=NULL, $attributes=[], $faIcon=NULL): string {
 
 		$control = new Button($name, $attributes);
-		$control->type($type)->setFaIcon($faIcon)->value($value);
+		$control->type($type)->faIcon($faIcon)->value($value);
 
 		return $control->render();
 

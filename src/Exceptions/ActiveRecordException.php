@@ -1,13 +1,11 @@
 <?php
 
-namespace Pair\Exception;
-
-use Exception;
+namespace Pair\Exceptions;
 
 /**
  * Custom exception for handling errors when writing an ActiveRecord object to the database.
  */
-class ActiveRecordWriteException extends Exception {
+class ActiveRecordException extends \Exception {
 
 	/**
 	 * Error connecting to the database.
@@ -50,13 +48,23 @@ class ActiveRecordWriteException extends Exception {
 	const ERROR_COMPOSITE_PRIMARY_KEY_NOT_POPULATED = 1008;
 
 	/**
-	 * Constructor for the ActiveRecordWriteException.
+	 * Record not found.
+	 */
+	const ERROR_RECORD_NOT_FOUND = 1009;
+
+	/**
+	 * Method not found.
+	 */
+	const ERROR_METHOD_NOT_FOUND = 1010;
+
+	/**
+	 * Constructor for the ActiveRecordException.
 	 *
 	 * @param string $message The error message, default to 'Error writing ActiveRecord to database'.
 	 * @param int $code The error code, default to 0.
 	 * @param Exception|NULL $previous Optional previous exception for exception chaining.
 	 */
-	public function __construct($message = 'Error writing ActiveRecord to database', $code = 0, Exception $previous = NULL) {
+	public function __construct($message = 'Error writing ActiveRecord to database', $code = 0, \Exception $previous = NULL) {
 
 		parent::__construct($message, $code, $previous);
 

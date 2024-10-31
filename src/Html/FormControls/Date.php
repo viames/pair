@@ -9,9 +9,8 @@ class Date extends FormControl {
 
 	/**
 	 * Default date format.
-	 * @var string
 	 */
-	protected $dateFormat = 'Y-m-d';
+	protected string $dateFormat = 'Y-m-d';
 
 	/**
 	 * Minimum allowed length for value.
@@ -56,11 +55,14 @@ class Date extends FormControl {
 	/**
 	 * Set the minimum value for this control. It’s a chainable method.
 	 *
-	 * @param	mixed	Minimum value.
+	 * @param string|\DateTime If string, valid format is 'y-m-d'.
 	 */
-	public function setMin($minValue): self {
+	public function min(string|\DateTime $minValue): self {
 
-		$this->min = (int)$minValue;
+		$this->min = is_a($minValue, 'DateTime')
+		? $minValue->format('Y-m-d')
+		: (string)$minValue;
+
 		return $this;
 
 	}
@@ -68,11 +70,14 @@ class Date extends FormControl {
 	/**
 	 * Set the maximum value for this control. It’s a chainable method.
 	 *
-	 * @param	mixed		Maximum value.
+	 * @param string|\DateTime If string, valid format is 'Y-m-d'.
 	 */
-	public function setMax($maxValue): self {
+	public function max(string|\DateTime $maxValue): self {
 
-		$this->max = (int)$maxValue;
+		$this->max = is_a($maxValue, 'DateTime')
+		? $maxValue->format('Y-m-d')
+		: (string)$maxValue;
+
 		return $this;
 
 	}
@@ -88,11 +93,11 @@ class Date extends FormControl {
 		$ret .= ' type="date" value="' . htmlspecialchars($value) . '"';
 
 		if (!is_null($this->min)) {
-			$ret .= ' min="' . htmlspecialchars((string)$this->min) . '"';
+			$ret .= ' min="' . $this->min . '"';
 		}
 
 		if (!is_null($this->max)) {
-			$ret .= ' max="' . htmlspecialchars((string)$this->max) . '"';
+			$ret .= ' max="' . $this->max . '"';
 		}
 
 		$ret .= $this->processProperties() . ' />';

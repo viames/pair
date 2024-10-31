@@ -7,15 +7,17 @@
 
 ## Features
 
-Pair is simple and fast, few frills, maybe none. It was written with simplicity in mind, while trying to achieve the most frequent needs of web applications. It implements [Model-View-Controller](https://en.wikipedia.org/wiki/Model-View-Controller) pattern and a search friendly [route logic](https://github.com/viames/pair/wiki/Router) by default.
+Pair is a simple and fast PHP framework with little or no frills. It was written with simplicity in mind, trying to satisfy the most frequent needs of web applications. It implements the [Model-View-Controller](https://en.wikipedia.org/wiki/Model-View-Controller) pattern and intuitive, search engine friendly [routing](https://github.com/viames/pair/wiki/Router) by default.
 
-Everyone knows that you do not need a truck to go shopping. You do not even need the car to go and buy the newspaper at the nearby newsstand. You need the right medium for everything.
+Pair is a simple and fast PHP framework with little or no frills. It was written with simplicity in mind, trying to satisfy the most frequent needs of web applications. It implements the Model-View-Controller pattern and intuitive routing logic by default.
 
-If you’re already tired of starting a new web project due to the complexity of the famous frameworks used around, you should take a look at Pair. For a small or medium web project, it fits really well.
+Everyone knows that you don't need a truck to go grocery shopping. You don't even need a car to go to the local newsstand to buy the newspaper. You need the right vehicle for every occasion.
 
-Pair acquires the logical connections of the database tables and automatically uses caching functions to reuse the data that has already been retrieved. While Pair sends the ready-made web page to the browser, some of the most popular frameworks haven't even loaded all the libraries yet.
+If starting a new web project is a hassle because of the complexity and slowness of the famous pachyderm frameworks used around, you should take a look at Pair. For a small or medium web project, it might surprise you.
 
-Using also the advanced functions of Pair for the efficient management of the information already extracted from the DB, it is possible to create a web page of an application that reads millions of records and many related tables in an astounding time of just 10 ms.
+Pair learns the referential constraints of database tables and automatically uses magic functions to reuse the data already read via cache. While Pair sends the complete web page to the browser, some of the most popular frameworks still have to load all the server-side libraries.
+
+Additionally using Pair's advanced features for efficiently managing information already extracted from the DB, you can create a web page of an application that reads millions of records and numerous related tables in the incredible time of just 10 ms.
 
 #### ActiveRecord
 
@@ -127,22 +129,22 @@ use Pair\Html\Pagination;       	// renamed from Pair\Pagination
 use Pair\Html\Widget;           	// renamed from Pair\Widget
 
 // Models classes
-use Pair\Model\Acl;				// renamed from Pair\Acl
-use Pair\Model\Audit;			// renamed from Pair\Audit
-use Pair\Model\Country;			// renamed from Pair\Country
-use Pair\Model\ErrorLog;			// renamed from Pair\ErrorLog
-use Pair\Model\Group;			// renamed from Pair\Group
-use Pair\Model\Language;			// renamed from Pair\Language
-use Pair\Model\Locale;			// renamed from Pair\Locale
-use Pair\Model\Module;			// renamed from Pair\Module
+use Pair\Model\Acl;                     // renamed from Pair\Acl
+use Pair\Model\Audit;                   // renamed from Pair\Audit
+use Pair\Model\Country;                 // renamed from Pair\Country
+use Pair\Model\ErrorLog;                // renamed from Pair\ErrorLog
+use Pair\Model\Group;                   // renamed from Pair\Group
+use Pair\Model\Language;                // renamed from Pair\Language
+use Pair\Model\Locale;                  // renamed from Pair\Locale
+use Pair\Model\Module;                  // renamed from Pair\Module
 use Pair\Model\Oauth2Client;		// renamed from Pair\Oauth\Oauth2Client
-use Pair\Model\Oauth2Token;		// renamed from Pair\Oauth\Oauth2Token
+use Pair\Model\Oauth2Token;             // renamed from Pair\Oauth\Oauth2Token
 use Pair\Model\Rule;			// renamed from Pair\Rule
-use Pair\Model\Session;			// renamed from Pair\Session
-use Pair\Model\Template;			// renamed from Pair\Template
-use Pair\Model\Token;			// renamed from Pair\Token
-use Pair\Model\User;			// renamed from Pair\User
-use Pair\Model\UserRemember;		// renamed from Pair\UserRemember
+use Pair\Model\Session;                 // renamed from Pair\Session
+use Pair\Model\Template;                // renamed from Pair\Template
+use Pair\Model\Token;                   // renamed from Pair\Token
+use Pair\Model\User;                    // renamed from Pair\User
+use Pair\Model\UserRemember;            // renamed from Pair\UserRemember
 
 // Orm classes
 use Pair\Orm\ActiveRecord;      	// renamed from Pair\ActiveRecord
@@ -171,9 +173,9 @@ use Pair\Support\Utilities;     	// renamed from Pair\Utilities
 
 // Menu widget
 $menu = new BootstrapMenu();
-$menu->item();		     // renamed from $menu->addItem()
+$menu->item();		    // renamed from $menu->addItem()
 $menu->separator();		// renamed from $menu->addSeparator()
-$menu->title();		// renamed from $menu->addTitle()
+$menu->title();		    // renamed from $menu->addTitle()
 $menu->multiItem();		// faster creation of a list of menu sub-items
 $menu->addMulti();		// removed
 $menu->getItemObject();	// removed
@@ -185,9 +187,9 @@ $menu->getItemObject();	// removed
 <?php
 
 // JS methods that return JSON to the client
-Utilities::pairJsonMessage(); // renamed from Utilities::printJsonMessage()
-Utilities::pairJsonError();	// renamed from Utilities::printJsonError()
-Utilities::pairJsonData();	// renamed from Utilities::printJsonData()
+Utilities::pairJsonMessage();   // renamed from Utilities::printJsonMessage()
+Utilities::pairJsonError();     // renamed from Utilities::printJsonError()
+Utilities::pairJsonData();      // renamed from Utilities::printJsonData()
 ```
 
 ### Input class renamed to Post
@@ -213,6 +215,18 @@ Methods `setListByAssociativeArray()` and `setListByObjectArray()` of the `FormC
 
 The `options()` method populates select control options using a `Pair\Collection` or an object array. Each object must have properties for value and text. If property text includes a couple of round parenthesys, will invoke a function without parameters. It’s a chainable method.
 
+```php
+<?php
+
+$form = new Form();
+
+$form->select('controlName')    // renamed from $form->addSelect()
+     ->options($collection)     // renamed from $form->setListByObjectArray()
+     ->value()                  // renamed from $form->setValue()
+     ->multiple();              // renamed from $form->setMultiple()
+     ->empty();                 // renamed from $form->prependEmpty()
+```
+
 #### Methods for creating form controls
 
 Molti metodi per la creazione dei FormControl sono stati rinominati o estesi per essere più specifici del tipo di controllo che creano. Si prega di rinominare i metodi come indicato di seguito.
@@ -222,23 +236,18 @@ Molti metodi per la creazione dei FormControl sono stati rinominati o estesi per
 
 $form = new Form();
 
-$form->input('controlName')		// renamed from $form->addInput()
-     ->readonly();			     // renamed from $form->setReadonly()
-     ->disabled();			     // renamed from $form->setDisabled()
-     ->required();			     // renamed from $form->setRequired()
-     ->placeholder();	          // renamed from $form->setPlaceholder()
-     ->label('CONTROL_LABEL');	// renamed from $form->setLabel()
-
-$form->select('controlName');      // renamed from $form->addSelect()
+$form->text('controlName')      // renamed from $form->addInput()
+     ->readonly();			    // renamed from $form->setReadonly()
+     ->disabled();			    // renamed from $form->setDisabled()
+     ->required();			    // renamed from $form->setRequired()
+     ->placeholder();	        // renamed from $form->setPlaceholder()
+     ->label('CONTROL_LABEL');  // renamed from $form->setLabel()
 
 $form->textarea('controlName');	// renamed from $form->addTextarea()
-
-$form->button('controlName');      // renamed from $form->addButton()
-
-$form->values($activeRecordObj);   // renamed from $form->setValuesByObject()
-
+$form->button('controlName');   // renamed from $form->addButton()
+$form->values($activeRecordObj);// renamed from $form->setValuesByObject()
 $form->classForControls();		// renamed from $form->addControlClass()
-
+$form->control();       		// renamed from $form->getControl()
 $form->controls();              // renamed from $form->getAllControls()
 ```
 
@@ -247,21 +256,19 @@ New methods for creating form controls have been added to the `Form` class. Thes
 ```php
 <?php
 
-$form->address();		// changed from $form->addInput()->setType('address')
-
-$form->checkbox();		// changed from $form->addInput()->setType('bool')
-
-$form->color();			// changed from $form->addInput()->setType('color')
-
-$form->date();			// changed from $form->addInput()->setType('date')
-
-$form->datetime();		// changed from $form->addInput()->setType('datetime')
-
-$form->email();			// changed from $form->addInput()->setType('email')
-
-$form->file();			// changed from $form->addInput()->setType('file')
-
-$form->hidden();		// changed from $form->addInput()->setType('hidden')
+$form->address();	// changed from $form->addInput()->setType('address')
+$form->checkbox();	// changed from $form->addInput()->setType('bool')
+$form->color();		// changed from $form->addInput()->setType('color')
+$form->date();		// changed from $form->addInput()->setType('date')
+$form->datetime();	// changed from $form->addInput()->setType('datetime')
+$form->email();		// changed from $form->addInput()->setType('email')
+$form->file();		// changed from $form->addInput()->setType('file')
+$form->hidden();	// changed from $form->addInput()->setType('hidden')
+$form->image();		// changed from $form->addInput()->setType('image')
+$form->number();	// changed from $form->addInput()->setType('number')
+$form->password();	// changed from $form->addInput()->setType('password')
+$form->tel();		// changed from $form->addInput()->setType('tel')
+$form->url();		// changed from $form->addInput()->setType('url')
 ```
 
 #### Labels
@@ -276,9 +283,9 @@ See the example below.
 
 $form = new Form();
 
-$form->input('serialNumber')			// return a FormControl object
+$form->text('serialNumber')			    // return a FormControl subclass
      ->label('Serial number')			// set the label text and return the FormControl object
-     ->labelClass('my-label-class');	// set the class for the label of this FormControl
+     ->labelClass('my-label-class');    // set the class for the label of this FormControl
 
 // or apply to all labels in the Form as follows
 

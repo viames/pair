@@ -6,11 +6,11 @@ use Pair\Html\FormControl;
 use Pair\Support\Post;
 use Pair\Support\Logger;
 
-class Email extends FormControl {
+class Url extends FormControl {
 
 	public function render(): string {
 
-		return parent::renderInput('email');
+		return parent::renderInput('url');
 
 	}
 
@@ -22,8 +22,8 @@ class Email extends FormControl {
 
 		$value	= Post::get($this->name);
 
-		if ($this->required and !filter_var($value, FILTER_VALIDATE_EMAIL)) {
-			Logger::event('Control validation on field “' . $this->name . '” has failed (email required)');
+		if ($this->required and !filter_var($value, FILTER_VALIDATE_URL)) {
+			Logger::event('Control validation on field “' . $this->name . '” has failed (url required)');
 			return FALSE;
 		}
 

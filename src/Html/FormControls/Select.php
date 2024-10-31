@@ -2,6 +2,7 @@
 
 namespace Pair\Html\FormControls;
 
+use Pair\Core\Application;
 use Pair\Html\FormControl;
 use Pair\Orm\Collection;
 use Pair\Support\Post;
@@ -51,7 +52,7 @@ class Select extends FormControl {
 		if (is_array($list) and in_array(gettype(reset($list)), $allowedValues)) {
 
 			$objectList = [];
-			
+
 			// convert associative array to a stdClass array
 			foreach ($list as $value=>$text) {
 				$object = new \stdClass();
@@ -59,7 +60,7 @@ class Select extends FormControl {
 				$object->text = (string)$text;
 				$objectList[] = $object;
 			}
-			
+
 			$list = $objectList;
 
 			$propertyValue = 'value';
@@ -115,7 +116,7 @@ class Select extends FormControl {
 	 * Adds a null value as first item. Chainable method.
 	 * @param	string|NULL	Option text for first null value.
 	 */
-	public function prependEmpty(string $text=NULL): self {
+	public function empty(string $text=NULL): self {
 
 		$this->emptyOption = is_null($text) ? Translator::do('SELECT_NULL_VALUE') : $text;
 
@@ -126,7 +127,7 @@ class Select extends FormControl {
 	/**
 	 * Enables this select control to accept multiple choises. Chainable method.
 	 */
-	public function setMultiple(): self {
+	public function multiple(): self {
 
 		$this->multiple = TRUE;
 		return $this;
@@ -144,10 +145,12 @@ class Select extends FormControl {
 		 * @return	string
 		 */
 		$buildOption = function ($option) {
+
 			// check on required properties
 			if (!isset($option->value) or !isset($option->text)) {
 				return '';
 			}
+
 			// check if value is an array
 			if (is_array($this->value)) {
 				$selected = in_array($option->value, $this->value) ? ' selected="selected"' : '';
@@ -261,6 +264,26 @@ class Select extends FormControl {
 		}
 
 		return $valid;
+
+	}
+
+	/**
+	 * Set value or multiple values.
+	 */
+	public function value(string|int|float|\DateTime|array|NULL $value): static {
+
+		if (is_array($value)) {
+
+			// special behavior for array values
+			$this->value = $value;
+
+		} else {
+
+			parent::value($value);
+
+		}
+
+		return $this;
 
 	}
 

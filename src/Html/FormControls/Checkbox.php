@@ -7,19 +7,7 @@ use Pair\Html\FormControl;
 class Checkbox extends FormControl {
 
 	/**
-	 * Extends parent constructor in order to sets default type to text.
-	 *
-	 * @param	string	Control name.
-	 * @param	array	Additional attributes (tag=>value).
-	 */
-	public function __construct(string $name, array $attributes = []) {
-
-		parent::__construct($name, $attributes);
-
-	}
-
-	/**
-	 * Renders and returns an HTML input form control.
+	 * Renders and returns the checkbox HTML form control.
 	 */
 	public function render(): string {
 

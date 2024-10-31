@@ -12,79 +12,79 @@ abstract class FormControl {
 	/**
 	 * Name of this control is HTML control name tag.
 	 */
-	private string $name;
+	protected string $name;
 
 	/**
 	 * DOM object unique ID.
 	 */
-	private ?string $id = NULL;
+	protected ?string $id = NULL;
 
 	/**
 	 * Current value for this control object.
 	 */
-	private mixed $value = NULL;
+	protected mixed $value = NULL;
 
 	/**
 	 * Flag for set this field as required.
 	 */
-	private bool $required = FALSE;
+	protected bool $required = FALSE;
 
 	/**
 	 * Flag for set this field as disabled.
 	 */
-	private bool $disabled = FALSE;
+	protected bool $disabled = FALSE;
 
 	/**
 	 * Flag for set this field as readonly.
 	 */
-	private bool $readonly = FALSE;
+	protected bool $readonly = FALSE;
 
 	/**
 	 * Flag for set this control name as array.
 	 */
-	private bool $arrayName = FALSE;
+	protected bool $arrayName = FALSE;
 
 	/**
 	 * Control placeholder text.
 	 */
-	private ?string $placeholder = NULL;
+	protected ?string $placeholder = NULL;
 
 	/**
 	 * Minimum allowed length for value.
 	 */
-	private ?int $minLength = NULL;
+	protected ?int $minLength = NULL;
 
 	/**
 	 * Maximum allowed length for value.
 	 */
-	private ?int $maxLength = NULL;
+	protected ?int $maxLength = NULL;
 
 	/**
 	 * List of optional attributes as associative array.
 	 * @var string[]
 	 */
-	private array $attributes = [];
+	protected array $attributes = [];
 
 	/**
 	 * Container for all control CSS classes.
 	 * @var string[]
 	 */
-	private array $class = [];
+	protected array $class = [];
 
 	/**
 	 * Optional label for this control.
 	 */
-	private ?string $label = NULL;
+	protected ?string $label = NULL;
 
 	/**
 	 * Optional description for this control.
 	 */
-	private ?string $description = NULL;
+	protected ?string $description = NULL;
 
 	/**
 	 * CSS class for label.
 	 */
-	private ?string $labelClass;
+	protected ?string $labelClass;
 
 	/**
 	 * Build control with HTML name tag and optional attributes.
@@ -113,20 +113,11 @@ abstract class FormControl {
 	 */
 	public function __get(string $name): mixed {
 
-		try {
-
-			if (!property_exists($this, $name)) {
-				throw new \Exception('Property “'. $name .'” doesn’t exist for object '. get_called_class());
-			}
-
-			return $this->$name;
-
-		} catch (\Exception $e) {
-
-			trigger_error($e->getMessage());
-			return NULL;
-
+		if (!property_exists($this, $name)) {
+			throw new \Exception('Property “'. $name .'” doesn’t exist for object '. get_called_class());
 		}
+
+		return $this->$name;
 
 	}
 
@@ -147,7 +138,7 @@ abstract class FormControl {
 	 */
 	public function __toString(): string {
 
-		return $this->getLabelText();
+		return $this->render();
 
 	}
 
@@ -165,12 +156,12 @@ abstract class FormControl {
 	}
 
 	/**
-	 * Sets value for this control subclass.
+	 * Set value for this control subclass.
 	 */
 	public function value(string|int|float|\DateTime|NULL $value): static {
 
 		// special behavior for DateTime
-		if (is_a($value, 'DateTime') and is_a($this, 'Pair\Html\FormControl')) {
+		if (is_a($value, '\DateTime')) {
 
 			// if UTC date, set user timezone
 			if (defined('UTC_DATE') and UTC_DATE) {
@@ -374,6 +365,15 @@ abstract class FormControl {
 	}
 
 	/**
+	 * Print the HTML code of this FormControl.
+	 */
+	public function print(): void {
+
+		print $this->render();
+
+	}
+
+	/**
 	 * Print the control’s label tag even with required-field class.
 	 */
 	public function printLabel(): void {
@@ -398,17 +398,6 @@ abstract class FormControl {
 		$label .= '</label>';
 
 		print $label;
-
-	}
-
-	/**
-	 * Print the HTML code of this FormControl.
-	 *
-	 * @param	string	HTML name of the wanted control.
-	 */
-	public function printControl(): void {
-
-		print $this->render();
 
 	}
 
@@ -462,7 +451,35 @@ abstract class FormControl {
 
 	}
 
+	/**
+	 * Render and return the HTML form control.
+	 */
 	abstract public function render(): string;
+
+	/**
+	 * Render and return an HTML input form control of type: text, password, email, url, tel, number, search.
+	 */
+	protected function renderInput(string $type): string {
+
+		$ret = '<input ' . $this->nameProperty();
+
+		$ret .= ' type="' . $type . '" value="'. htmlspecialchars((string)$this->value) .'"';
+
+		// set minlength attribute
+		if ($this->minLength) {
+			$ret .= ' minlength="' . (int)$this->minLength . '"';
+		}
+
+		// set maxlength attribute
+		if ($this->maxLength) {
+			$ret .= ' maxlength="' . (int)$this->maxLength . '"';
+		}
+
+		$ret .= $this->processProperties() . ' />';
+
+		return $ret;
+
+	}
 
 	/**
 	 * This is the FormControl’s default validation method. Validates this control against empty values,
