@@ -26,7 +26,7 @@ class Number extends FormControl {
 	/**
 	 * Set step value for input field of number type. Chainable method.
 	 */
-	public function setStep(int|float $value): self {
+	public function step(int|float $value): self {
 
 		$this->step = $value;
 		return $this;
@@ -36,7 +36,7 @@ class Number extends FormControl {
 	/**
 	 * Set the minimum value for this control. Chainable method.
 	 */
-	public function setMin(int|float $minValue): self {
+	public function min(int|float $minValue): self {
 
 		$this->min = $minValue;
 		return $this;
@@ -46,7 +46,7 @@ class Number extends FormControl {
 	/**
 	 * Set the maximum value for this control. Chainable method.
 	 */
-	public function setMax(int|float $maxValue): self {
+	public function max(int|float $maxValue): self {
 
 		$this->max = $maxValue;
 		return $this;

@@ -2449,7 +2449,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 					// number with two decimals
 					case 'float':
-						$control = $form->number($propName)->setStep('0.01');
+						$control = $form->number($propName)->step('0.01');
 						break;
 
 					// integer

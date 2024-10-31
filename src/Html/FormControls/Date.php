@@ -9,9 +9,8 @@ class Date extends FormControl {
 
 	/**
 	 * Default date format.
-	 * @var string
 	 */
-	protected $dateFormat = 'Y-m-d';
+	protected string $dateFormat = 'Y-m-d';
 
 	/**
 	 * Minimum allowed length for value.
@@ -56,9 +55,9 @@ class Date extends FormControl {
 	/**
 	 * Set the minimum value for this control. It’s a chainable method.
 	 *
-	 * @param string|\DateTime If string, valid format is 'YYYY-MM-DD'.
+	 * @param string|\DateTime If string, valid format is 'y-m-d'.
 	 */
-	public function setMin(string|\DateTime $minValue): self {
+	public function min(string|\DateTime $minValue): self {
 
 		$this->min = is_a($minValue, 'DateTime')
 		? $minValue->format('Y-m-d')
@@ -71,9 +70,9 @@ class Date extends FormControl {
 	/**
 	 * Set the maximum value for this control. It’s a chainable method.
 	 *
-	 * @param string|\DateTime If string, valid format is 'YYYY-MM-DD'.
+	 * @param string|\DateTime If string, valid format is 'Y-m-d'.
 	 */
-	public function setMax(string|\DateTime $maxValue): self {
+	public function max(string|\DateTime $maxValue): self {
 
 		$this->max = is_a($maxValue, 'DateTime')
 		? $maxValue->format('Y-m-d')
