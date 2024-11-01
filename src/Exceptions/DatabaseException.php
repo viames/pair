@@ -2,12 +2,10 @@
 
 namespace Pair\Exceptions;
 
-use Exception;
-
 /**
  * Custom exception for handling errors when writing an ActiveRecord object to the database.
  */
-class DatabaseException extends Exception {
+class DatabaseException extends PairException {
 
 	/**
 	 * Generic database connection error.
@@ -56,7 +54,7 @@ class DatabaseException extends Exception {
 	 * @param int $code The error code, default to 0.
 	 * @param Exception|NULL $previous Optional previous exception for exception chaining.
 	 */
-	public function __construct($message = 'Database error', $code = 0, Exception $previous = NULL) {
+	public function __construct(string $message = 'Database error', int $code = 0, \Exception $previous = NULL) {
 
 		parent::__construct($message, $code, $previous);
 

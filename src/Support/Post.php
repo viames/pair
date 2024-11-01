@@ -16,7 +16,7 @@ class Post {
 	 * @param	string	HTTP parameter name.
 	 * @param	string	Default value to return, in case of null or empty.
 	 */
-	public static function array($name, $default=NULL): array {
+	public static function array(string $name, ?array $default=NULL): array {
 
 		return self::get($name, 'array', $default);
 
@@ -30,7 +30,7 @@ class Post {
 	 * @param	string	Type string -default-, int, bool, date or datetime will be casted.
 	 * @param	string	Default value to return, in case of null or empty.
 	 */
-	public static function get($name, $type='string', $default=NULL): mixed {
+	public static function get(string $name, string $type='string', mixed $default=NULL): mixed {
 
 		$val = "";
 
@@ -106,7 +106,7 @@ class Post {
 	 * @param	string	HTTP parameter name.
 	 * @param	string	Default value to return, in case of null or empty.
 	 */
-	public static function trim($name, $default=NULL): string {
+	public static function trim(string $name, ?string $default=NULL): string {
 
 		return self::get(trim($name), 'string', $default);
 
@@ -132,7 +132,7 @@ class Post {
 	 * @param	string	HTTP parameter name.
 	 * @param	string	Default value to return, in case of null or empty.
 	 */
-	public static function bool($name, $default=NULL): bool {
+	public static function bool(string $name, ?bool $default=NULL): bool {
 
 		return self::get($name, 'bool', $default);
 
@@ -145,7 +145,7 @@ class Post {
 	 * @param	string	HTTP parameter name.
 	 * @param	string	Default value to return, in case of null or empty.
 	 */
-	public static function date($name, $default=NULL): ?\DateTime {
+	public static function date(string $name, ?\DateTime $default=NULL): ?\DateTime {
 
 		return self::get($name, 'date', $default);
 
@@ -158,7 +158,7 @@ class Post {
 	 * @param	string	HTTP parameter name.
 	 * @param	string	Default value to return, in case of null or empty.
 	 */
-	public static function datetime($name, $default=NULL): ?\DateTime {
+	public static function datetime(string $name, ?\DateTime $default=NULL): ?\DateTime {
 
 		return self::get($name, 'datetime', $default);
 
@@ -171,7 +171,7 @@ class Post {
 	 * @param	string	Type string, int, bool, date or datetime will be casted.
 	 * @param	string	Default value to return, in case of null or empty.
 	 */
-	public static function byRegex($pattern, $type='string', $default=NULL): array {
+	public static function byRegex(string $pattern, $type='string', ?array $default=NULL): array {
 
 		$list = [];
 
@@ -209,7 +209,7 @@ class Post {
 	 * @param	mixed	Variable value.
 	 * @param	string	Variable type.
 	 */
-	private static function castTo($val, string $type): mixed {
+	private static function castTo(mixed $val, string $type): mixed {
 
 		$app = Application::getInstance();
 

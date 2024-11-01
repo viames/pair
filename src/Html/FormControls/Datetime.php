@@ -14,15 +14,13 @@ class Datetime extends FormControl {
 
 	/**
 	 * Minimum allowed length for value.
-	 * @var string
 	 */
-	protected $min;
+	protected string|DateTime|NULL $min = NULL;
 
 	/**
 	 * Maximum allowed length for value.
-	 * @var string
 	 */
-	protected $max;
+	protected string|DateTime|NULL $max = NULL;
 
 	/**
 	 * Extends parent constructor in order to sets default type to text.
@@ -35,7 +33,7 @@ class Datetime extends FormControl {
 		parent::__construct($name, $attributes);
 
 		if (Post::usingCustomDatetimepicker() and defined('PAIR_FORM_DATETIME_FORMAT')) {
-			$this->setDatetimeFormat(PAIR_FORM_DATETIME_FORMAT);
+			$this->datetimeFormat(PAIR_FORM_DATETIME_FORMAT);
 		}
 
 	}
@@ -45,7 +43,7 @@ class Datetime extends FormControl {
 	 *
 	 * @param	string	Datetime format.
 	 */
-	public function setDatetimeFormat(string $format): self {
+	public function datetimeFormat(string $format): self {
 
 		$this->datetimeFormat = $format;
 		return $this;

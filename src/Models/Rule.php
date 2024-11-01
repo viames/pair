@@ -46,7 +46,7 @@ class Rule extends ActiveRecord {
 	/**
 	 * Set for converts from string to Datetime, integer or boolean object in two ways.
 	 */
-	protected function init() {
+	protected function init(): void {
 	
 		$this->bindAsInteger('id');
 	

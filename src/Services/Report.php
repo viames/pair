@@ -3,6 +3,7 @@
 namespace Pair\Services;
 
 use Pair\Core\Application;
+use Pair\Core\Config;
 use Pair\Models\Locale;
 use Pair\Orm\Database;
 use Pair\Support\Translator;
@@ -45,9 +46,9 @@ abstract class Report {
 	private array $data = [];
 
 	/**
-	 * Contains the name of the builder class.
+	 * Contains the name of the builder library class.
 	 */
-	private string $builder = 'PhpSpreadsheet';
+	private string $library = 'PhpSpreadsheet';
 
 	/**
 	 * Populates the title and subject defaults of the Report document.
@@ -63,7 +64,7 @@ abstract class Report {
 	 * Adds to a property of the class, the specification of a column to be created, numbering it
 	 * with a zero-based index.
 	 */
-	protected function addColumn(string $head, string $format = NULL): self {
+	protected function addColumn(string $head, ?string $format = NULL): self {
 
 		$column = new \stdClass;
 
@@ -280,25 +281,16 @@ abstract class Report {
 
 		}
 
+		$creator = Config::get('PRODUCT_NAME') . ' ' . Config::get('PRODUCT_VERSION');
+
 		// set document properties
 		$spreadsheet->getProperties()
-			->setCreator(PRODUCT_NAME . ' ' . PRODUCT_VERSION)
-			->setLastModifiedBy(PRODUCT_NAME . ' ' . PRODUCT_VERSION)
+			->setCreator($creator)
+			->setLastModifiedBy($creator)
 			->setTitle($this->title)
 			->setSubject($this->subject);
 
 		return $spreadsheet;
-
-	}
-
-	/**
-	 * Set the builder library to use (CSV or PhpSpreadsheet).
-	 */
-	public function setBuilder(string $builder): self {
-
-		$this->builder = $builder;
-
-		return $this;
 
 	}
 
@@ -310,7 +302,7 @@ abstract class Report {
 		// hook for custom processing
 		$this->beforeSave();
 
-		if ('CSV' == $this->builder and defined('CSV2XLSX_PATH') and is_executable(CSV2XLSX_PATH)) {
+		if ('CSV' == $this->library and !is_null(Utilities::getExecutablePath('csv2xlsx', 'CSV2XLSX_PATH'))) {
 
 			$this->saveCsvAndConvert($filePath);
 
@@ -325,6 +317,17 @@ abstract class Report {
 		$this->afterSave();
 
 		return file_exists($filePath);
+
+	}
+
+	/**
+	 * Backward compatibility method.
+	 */
+	public function setBuilder(string $library): self {
+
+		$this->setLibrary($library);
+
+		return $this;
 
 	}
 
@@ -427,6 +430,17 @@ abstract class Report {
 	}
 
 	/**
+	 * Set the library to be used to build the Excel document.
+	 */
+	protected function setLibrary(string $library): self {
+
+		$this->library = $library;
+
+		return $this;
+
+	}
+
+	/**
 	 * Set up a SQL query that getSpreadsheet() will execute to easily populate data and columns.
 	 */
 	protected function setQuery(string $query): self {
@@ -469,10 +483,7 @@ abstract class Report {
 		fclose($fp);
 
 		// convert to Excel
-		$command = CSV2XLSX_PATH . ' -d "," -o ' . $filePath . ' ' . $csvFile;
-		shell_exec($command);
-
-		unlink($csvFile);
+		Utilities::convertCsvToExcel($csvFile, $filePath);
 
 	}
 

@@ -35,7 +35,7 @@ class Date extends FormControl {
 		parent::__construct($name, $attributes);
 
 		if (Post::usingCustomDatepicker() and defined('PAIR_FORM_DATE_FORMAT')) {
-			$this->setDateFormat(PAIR_FORM_DATE_FORMAT);
+			$this->dateFormat(PAIR_FORM_DATE_FORMAT);
 		}
 
 	}
@@ -45,7 +45,7 @@ class Date extends FormControl {
 	 *
 	 * @param	string	Date format.
 	 */
-	public function setDateFormat(string $format): self {
+	public function dateFormat(string $format): self {
 
 		$this->dateFormat = $format;
 		return $this;
