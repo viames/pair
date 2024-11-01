@@ -2,6 +2,8 @@
 
 namespace Pair\Orm;
 
+use Closure;
+use Pair\Exceptions\PairException;
 use Pair\Orm\ActiveRecord;
 
 /**
@@ -23,34 +25,6 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 * Create a new collection.
 	 */
 	public function __construct(?array $array=NULL) {
-
-		// ActiveRecord objects indexed by their ID doesn't work with Iterator valid() method
-
-		/*
-		// for performance reasons, only the first element of the array is checked for validity
-		if (is_array($array) and isset($array[0]) and $array[0] instanceof ActiveRecord) {
-
-			if ($array[0]::hasSimpleKey()) {
-
-				// if the first element is an ActiveRecord object, the array is indexed by the object ID
-				foreach ($array as $activeRecord) {
-					$this->items[$activeRecord->getId()] = $activeRecord;
-				}
-
-			} else {
-
-				foreach ($array as $activeRecord) {
-					$this->items[] = $activeRecord;
-				}
-
-			}
-
-		} else {
-
-			$this->items = (array)$array;
-
-		}
-		*/
 
 		$this->items = (array)$array;
 
@@ -98,7 +72,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	/**
 	 * Returns the average value of a given key.
 	 */
-	public function avg(string $key=NULL): float {
+	public function avg(?string $key=NULL): float {
 
 		$sum = $this->sum($key);
 
@@ -491,7 +465,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 */
 	public function first(): mixed {
 
-		return $this->items[0];
+		return $this->items[0] ?? NULL;
 
 	}
 
@@ -734,7 +708,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 * the method. You may pass a closure to the implode method if you would like to format the
 	 * values being imploded.
 	 */
-	public function implode(string $glue, string $key = NULL): string {
+	public function implode(string $glue, ?string $key = NULL): string {
 
 		if (is_null($key)) {
 			return implode($glue, $this->items);
@@ -860,7 +834,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 
 		try {
 			$items = array_map($callback, $this->items, $keys);
-		} catch (\Exception) {
+		} catch (PairException) {
 			$items = array_map($callback, $this->items);
 		}
 
@@ -876,7 +850,9 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 */
 	public function merge(array|Collection $items): Collection {
 
-		return new Collection(array_merge($this->items, $items instanceof Collection ? $items->all() : $items));
+		$this->items = array_merge($this->items, $items instanceof Collection ? $items->all() : $items);
+
+		return $this;
 
 	}
 
@@ -893,7 +869,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 * Returns the "mode value" of a given key. In statistics, the mode is the value that appears
 	 * most often in a set of data values.
 	 */
-	public function mode(string $key=NULL): mixed {
+	public function mode(?string $key=NULL): mixed {
 
 		$count = $this->countBy($key);
 
@@ -1035,7 +1011,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 * collection to be keyed. If duplicate keys exist, the last matching element will be inserted
 	 * into the plucked collection.
 	 */
-	public function pluck(string $value, string $key = NULL): Collection {
+	public function pluck(string $value, ?string $key = NULL): Collection {
 
 		$items = [];
 
@@ -1337,15 +1313,84 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	}
 
 	/**
-	 * Sorts the collection by the given key. The sorted collection keeps the
-	 * original array keys, so in the following example we will use the values
-	 * method to reset the keys to consecutively numbered indexes.
+	 * Sorts the collection by the given key. The sorted collection keeps the original array keys and
+	 * accepts sort flags as its second argument. Alternatively, you may pass your own closure to
+	 * determine how to sort the collection's values. If you would like to sort your collection by multiple
+	 * attributes, you may pass an array of sort operations to the sortBy method. Each sort operation
+	 * should be an array consisting of the attribute that you wish to sort by and the direction of the
+	 * desired sort. When sorting a collection by multiple attributes, you may also provide closures that
+	 * define each sort operation.
 	 */
-	public function sortBy(string $key, int $options = SORT_REGULAR, bool $descending = FALSE): Collection {
+	public function sortBy(array|string|Closure $key, int $options = SORT_REGULAR): Collection {
+
+		if (is_array($key)) {
+			return new Collection($this->sortByMultiple($key));
+		}
+
+		if ($key instanceof Closure) {
+			return new Collection($this->sortByCallback($key));
+		}
+
+		return new Collection($this->sortBySingle($key, $options));
+
+	}
+
+	/**
+	 * Sort the collection by a callback.
+	 */
+	protected function sortByCallback(Closure $callback): array {
 
 		$items = $this->items;
 
-		uasort($items, function ($a, $b) use ($key, $options, $descending) {
+		uasort($items, $callback);
+
+		return $items;
+
+	}
+
+	/**
+	 * Sort the collection by multiple attributes.
+	 */
+	protected function sortByMultiple(array $keys): array {
+
+		$items = $this->items;
+
+		usort($items, function ($a, $b) use ($keys) {
+
+			foreach ($keys as $key => $direction) {
+
+				$comparison = $this->sortBySingle($key, $direction, $a, $b);
+
+				if ($comparison !== 0) {
+					return $comparison;
+				}
+
+			}
+
+			return 0;
+
+		});
+
+		return $items;
+
+	}
+
+	/**
+	 * Sort the collection by a single attribute.
+	 */
+	protected function sortBySingle(string $key, int $options, mixed $a = NULL, mixed $b = NULL): int|array {
+
+		$items = $this->items;
+
+		if (is_null($a) or is_null($b)) {
+
+			uasort($items, function ($a, $b) use ($key, $options) {
+
+				return $this->sortBySingle($key, $options, $a, $b);
+
+			});
+
+		} else {
 
 			$a = is_object($a) ? $a->$key : $a[$key];
 			$b = is_object($b) ? $b->$key : $b[$key];
@@ -1354,15 +1399,15 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 				return 0;
 			}
 
-			if ($descending) {
-				return $a < $b ? 1 : -1;
+			if ($options & SORT_NATURAL) {
+				return $a > $b ? 1 : -1;
 			}
 
-			return $a < $b ? -1 : 1;
+			return $a <=> $b;
 
-		});
+		}
 
-		return new static($items);
+		return $items;
 
 	}
 
@@ -1517,7 +1562,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 * will be considered equal to an integer of the same value. Use the uniqueStrict method to
 	 * filter using "strict" comparisons.
 	 */
-	public function unique(string $key = NULL): Collection {
+	public function unique(?string $key = NULL): Collection {
 
 		if (is_null($key)) {
 			return new Collection(array_unique($this->items));

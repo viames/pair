@@ -9,70 +9,93 @@ class Session extends ActiveRecord {
 
 	/**
 	 * Property that binds db field id.
-	 * @var string
 	 */
-	protected $id;
+	protected string $id;
 
 	/**
 	 * Property that binds db field id_user.
-	 * @var int|NULL
 	 */
-	protected $idUser;
+	protected ?int $idUser = NULL;
 
 	/**
 	 * Property that binds db field start_time.
-	 * @var DateTime
 	 */
-	protected $startTime;
+	protected \DateTime $startTime;
 
 	/**
 	 * Property that binds db field timezone_offset.
-	 * @var float|NULL
 	 */
-	protected $timezoneOffset;
+	protected ?float $timezoneOffset = NULL;
 
 	/**
 	 * Property that binds db field timezone_name.
-	 * @var string|NULL
 	 */
-	protected $timezoneName;
+	protected ?string $timezoneName = NULL;
 
 	/**
 	 * Property that binds db field former_user_id.
-	 *
-	 * @var int|NULL
 	 */
-	protected $formerUserId;
+	protected ?int $formerUserId = NULL;
 
 	/**
 	 * Name of related db table.
-	 * @var string
 	 */
 	const TABLE_NAME = 'sessions';
 
 	/**
 	 * Name of primary key db field.
-	 * @var string
 	 */
 	const TABLE_KEY = 'id';
 
 	/**
-	 * Method called by constructor just after having populated the object.
+	 * Deletes expired sessions from database, based on sessionTime param and user’s time zone.
+	 *
+	 * @param	int		Session time in minutes.
 	 */
-	protected function init() {
+	public static function cleanOlderThan(int $sessionTime): void {
 
-		$this->bindAsDatetime('startTime');
+		// converts to current time zone
+		$dateTime  = new \DateTime();
+		$startTime = $dateTime->format('Y-m-d H:i:s');
 
-		$this->bindAsFloat('timezoneOffset');
-
-		$this->bindAsInteger('idUser', 'formerUserId');
+		Database::run('DELETE FROM `sessions` WHERE `start_time` < DATE_SUB(?, INTERVAL '. (int)$sessionTime .' MINUTE)', [$startTime]);
 
 	}
 
 	/**
+	 * Return the current Session object.
+	 */
+	public static function current(): self {
+
+		return new Session(session_id());
+
+	}
+
+	/**
+	 * Extends timeout updating startTime of this session, based on user’s time zone.
+	 */
+	public function extendTimeout() {
+
+		$this->startTime = new \DateTime();
+		$this->store();
+
+	}
+
+    /**
+     * Get a value from the session.
+     *
+     * @param string $key The key of the session value.
+     * @return mixed The session value or null if not found.
+     */
+
+	 public static function get(string $key): mixed {
+
+        return $_SESSION[$key] ?? null;
+
+    }
+
+	/**
 	 * Returns an array with the object property names and corresponding columns in the db.
-	 *
-	 * @return	array
 	 */
 	protected static function getBinds(): array {
 
@@ -90,69 +113,30 @@ class Session extends ActiveRecord {
 	}
 
 	/**
-	 * Extends timeout updating startTime of this session, based on user’s time zone.
+	 * Returns the former user associated to the session, if present.
 	 */
-	public function extendTimeout() {
+	public function getFormerUser(): ?User {
 
-		$this->startTime = new \DateTime();
-		$this->store();
-
-	}
-
-	/**
-	 * Deletes expired sessions from database, based on sessionTime param and user’s time zone.
-	 *
-	 * @param	int		Session time in minutes.
-	 */
-	public static function cleanOlderThan(int $sessionTime) {
-
-		// converts to current time zone
-		$dateTime  = new \DateTime();
-		$startTime = $dateTime->format('Y-m-d H:i:s');
-
-		Database::run('DELETE FROM `sessions` WHERE `start_time` < DATE_SUB(?, INTERVAL '. (int)$sessionTime .' MINUTE)', [$startTime]);
-
-	}
-
-	/**
-	 * Checks if a Session object is expired after sessionTime passed as parameter.
-	 *
-	 * @param	int		Session time in minutes.
-	 * @return	bool
-	 */
-	public function isExpired(int $sessionTime): bool {
-
-		if (is_null($this->startTime)) {
-			return TRUE;
+		if (!isset($this->formerUserId) or is_null($this->formerUserId)) {
+			return NULL;
 		}
 
-		// creates expiring date subtracting sessionTime interval
-		$expiring = new \DateTime('now', new \DateTimeZone(BASE_TIMEZONE));
-		$expiring->sub(new \DateInterval('PT' . (int)$sessionTime . 'M'));
+		if (!$this->issetCache('formerUser')) {
+			$userClass = PAIR_USER_CLASS;
+			$formerUser = new $userClass($this->formerUserId);
+			$this->setCache('formerUser', $formerUser->isLoaded() ? $formerUser : NULL);
+		}
 
-		return ($this->startTime < $expiring);
-
-	}
-
-	/**
-	 * Store the User or children object of this Session object into a cache.
-	 *
-	 * @param	User	User to set.
-	 */
-	public function setUser(User $user) {
-
-		$this->setCache('user', $user);
+		return $this->getCache('formerUser');
 
 	}
 
 	/**
 	 * Return the User object of this Session, if exists. Cached method.
-	 *
-	 * @return	User|NULL
 	 */
 	public function getUser(): ?User {
 
-		if (!$this->idUser) {
+		if (!isset($this->idUser) or is_null($this->idUser)) {
 			return NULL;
 		}
 
@@ -167,13 +151,61 @@ class Session extends ActiveRecord {
 	}
 
 	/**
+	 * Check if a value exists in the session.
+	 */
+	public static function has(string $key): bool {
+
+		return isset($_SESSION[$key]);
+
+	}
+
+	/**
 	 * Returns true if the session has a former user.
-	 *
-	 * @return boolean
 	 */
 	public function hasFormerUser(): bool {
 
-		return !in_array($this->formerUserId,  [null, '']);
+		return !in_array($this->__get('formerUserId'),  [NULL, '']);
+
+	}
+
+	/**
+	 * Method called by constructor just after having populated the object.
+	 */
+	protected function init(): void {
+
+		$this->bindAsDatetime('startTime');
+
+		$this->bindAsFloat('timezoneOffset');
+
+		$this->bindAsInteger('idUser', 'formerUserId');
+
+	}
+
+	/**
+	 * Checks if a Session object is expired after sessionTime passed as parameter.
+	 *
+	 * @param	int		Session time in minutes.
+	 */
+	public function isExpired(int $sessionTime): bool {
+
+		if (!isset($this->startTime) or is_null($this->startTime)) {
+			return TRUE;
+		}
+
+		// creates expiring date subtracting sessionTime interval
+		$expire = new \DateTime('now', new \DateTimeZone(BASE_TIMEZONE));
+		$expire->sub(new \DateInterval('PT' . (int)$sessionTime . 'M'));
+
+		return ($this->startTime < $expire);
+
+	}
+
+	/**
+	 * Set a value in the session.
+	 */
+	public static function set(string $key, mixed $value): void {
+
+		$_SESSION[$key] = $value;
 
 	}
 
@@ -189,34 +221,24 @@ class Session extends ActiveRecord {
 	}
 
 	/**
-	 * Returns the former user associated to the session, if present.
+	 * Store the User or children object of this Session object into a cache.
 	 *
-	 * @return User|null
+	 * @param	User	User to set.
 	 */
-	public function getFormerUser(): ?User {
+	public function setUser(User $user): void {
 
-		if (!$this->formerUserId) {
-			return NULL;
-		}
-
-		if (!$this->issetCache('formerUser')) {
-			$userClass = PAIR_USER_CLASS;
-			$formerUser = new $userClass($this->formerUserId);
-			$this->setCache('formerUser', $formerUser->isLoaded() ? $formerUser : NULL);
-		}
-
-		return $this->getCache('formerUser');
+		$this->setCache('user', $user);
 
 	}
 
 	/**
-	 * Return the current Session object.
-	 *
-	 * @return	Session
+	 * Unset a value from the session.
 	 */
-	public static function current(): self {
+	public static function unset(string $key): void {
 
-		return new Session(session_id());
+		if (isset($_SESSION[$key])) {
+			unset($_SESSION[$key]);
+		}
 
 	}
 

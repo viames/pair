@@ -91,6 +91,11 @@ class BootstrapMenu extends Menu {
 						'<ul class="sub-menu">' . $links . '</ul></li>';
 					break;
 
+				// separator rendering
+				case 'separator':
+					$ret .= '<li class="nav-heading">' . $item->title . '</li>';
+					break;
+
 			}
 
 		}

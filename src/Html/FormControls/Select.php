@@ -2,12 +2,14 @@
 
 namespace Pair\Html\FormControls;
 
-use Pair\Core\Application;
+use Pair\Exceptions\ErrorCodes;
+use Pair\Exceptions\FormException;
+use Pair\Exceptions\PairException;
+use Pair\Helpers\LogBar;
+use Pair\Helpers\Post;
+use Pair\Helpers\Translator;
 use Pair\Html\FormControl;
 use Pair\Orm\Collection;
-use Pair\Support\Post;
-use Pair\Support\Logger;
-use Pair\Support\Translator;
 
 class Select extends FormControl {
 
@@ -44,7 +46,7 @@ class Select extends FormControl {
 	 * @param	string	Name of property’s text or an existent object function.
 	 * @param 	string	Optional attributes [name=>value].
 	 */
-	public function options(array|Collection $list, string $propertyValue=NULL, string $propertyText=NULL, array $propertyAttributes=NULL): self {
+	public function options(array|Collection $list, ?string $propertyValue=NULL, ?string $propertyText=NULL, ?array $propertyAttributes=NULL): self {
 
 		$allowedValues = ['string','integer','double'];
 
@@ -70,6 +72,10 @@ class Select extends FormControl {
 
 		// for each item of the list, add an option
 		foreach ($list as $opt) {
+
+			if (!$propertyValue or !$propertyText) {
+				throw new FormException($this->name . ' select control requires a property for value and text', ErrorCodes::MALFORMED_SELECT);
+			}
 
 			$option = new \stdClass();
 			$option->value = $opt->$propertyValue;
@@ -104,7 +110,7 @@ class Select extends FormControl {
 	 * in turn contains a list of objects with the value and text properties. Chainable.
 	 * @param	array:\stdClass[]	Two-dimensional list.
 	 */
-	public function setGroupedList(array $list): self {
+	public function grouped(array $list): self {
 
 		$this->list = $list;
 
@@ -116,7 +122,7 @@ class Select extends FormControl {
 	 * Adds a null value as first item. Chainable method.
 	 * @param	string|NULL	Option text for first null value.
 	 */
-	public function empty(string $text=NULL): self {
+	public function empty(?string $text=NULL): self {
 
 		$this->emptyOption = is_null($text) ? Translator::do('SELECT_NULL_VALUE') : $text;
 
@@ -209,7 +215,7 @@ class Select extends FormControl {
 
 			}
 
-		} catch (\Exception $e) {
+		} catch (PairException $e) {
 
 			print $e->getMessage();
 
@@ -230,7 +236,7 @@ class Select extends FormControl {
 		// check if the value is required but empty
 		if ($this->required and (''==$value or is_null($value))) {
 
-			Logger::warning('Control validation on field “' . $this->name . '” has failed (required)');
+			LogBar::warning('Control validation on field “' . $this->name . '” has failed (required)');
 			$valid = FALSE;
 
 		// check if the value is in the allowed list
@@ -251,7 +257,7 @@ class Select extends FormControl {
 				}
 
 				if (!$valid) {
-					Logger::warning('Control validation on field “' . $this->name . '” has failed (value “' . $value . '” is not in list)');
+					LogBar::warning('Control validation on field “' . $this->name . '” has failed (value “' . $value . '” is not in list)');
 				}
 
 			}

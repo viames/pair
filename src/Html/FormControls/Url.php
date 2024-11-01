@@ -3,8 +3,8 @@
 namespace Pair\Html\FormControls;
 
 use Pair\Html\FormControl;
-use Pair\Support\Post;
-use Pair\Support\Logger;
+use Pair\Helpers\Post;
+use Pair\Helpers\LogBar;
 
 class Url extends FormControl {
 
@@ -23,7 +23,7 @@ class Url extends FormControl {
 		$value	= Post::get($this->name);
 
 		if ($this->required and !filter_var($value, FILTER_VALIDATE_URL)) {
-			Logger::event('Control validation on field “' . $this->name . '” has failed (url required)');
+			LogBar::event('Control validation on field “' . $this->name . '” has failed (url required)');
 			return FALSE;
 		}
 

@@ -2,8 +2,9 @@
 
 namespace Pair\Html\FormControls;
 
+use Pair\Core\Config;
 use Pair\Html\FormControl;
-use Pair\Support\Post;
+use Pair\Helpers\Post;
 
 class Date extends FormControl {
 
@@ -14,15 +15,13 @@ class Date extends FormControl {
 
 	/**
 	 * Minimum allowed length for value.
-	 * @var string
 	 */
-	protected $min;
+	protected string|DateTime|NULL $min = NULL;
 
 	/**
 	 * Maximum allowed length for value.
-	 * @var string
 	 */
-	protected $max;
+	protected string|DateTime|NULL $max = NULL;
 
 	/**
 	 * Extends parent constructor in order to sets default type to text.
@@ -34,8 +33,8 @@ class Date extends FormControl {
 
 		parent::__construct($name, $attributes);
 
-		if (Post::usingCustomDatepicker() and defined('PAIR_FORM_DATE_FORMAT')) {
-			$this->setDateFormat(PAIR_FORM_DATE_FORMAT);
+		if (Post::usingCustomDatepicker() and Config::get('PAIR_FORM_DATE_FORMAT')) {
+			$this->dateFormat(Config::get('PAIR_FORM_DATE_FORMAT'));
 		}
 
 	}
@@ -45,7 +44,7 @@ class Date extends FormControl {
 	 *
 	 * @param	string	Date format.
 	 */
-	public function setDateFormat(string $format): self {
+	public function dateFormat(string $format): self {
 
 		$this->dateFormat = $format;
 		return $this;
@@ -55,7 +54,7 @@ class Date extends FormControl {
 	/**
 	 * Set the minimum value for this control. It’s a chainable method.
 	 *
-	 * @param string|\DateTime If string, valid format is 'y-m-d'.
+	 * @param string|\DateTime If string, valid format is 'Y-m-d'.
 	 */
 	public function min(string|\DateTime $minValue): self {
 

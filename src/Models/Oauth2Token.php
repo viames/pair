@@ -58,7 +58,7 @@ class Oauth2Token extends ActiveRecord {
 	/**
 	 * Method called by constructor just after having populated the object.
 	 */
-	protected function init() {
+	protected function init(): void {
 
 		$this->bindAsInteger('id');
 
@@ -201,7 +201,7 @@ class Oauth2Token extends ActiveRecord {
 	 * @param string $status
 	 * @param null|string $detail
 	 */
-	private static function sendRfc2616Response(string $type, string $title, string $status, string $detail=NULL): void {
+	private static function sendRfc2616Response(string $type, string $title, string $status, ?string $detail=NULL): void {
 
 		header('Content-Type: application/json', TRUE, (int)$status);
 		$body = [

@@ -2,18 +2,20 @@
 
 namespace Pair\Core;
 
+use Pair\Exceptions\PairException;
+use Pair\Models\ErrorLog;
 use Pair\Orm\Collection;
 use Pair\Orm\Database;
 use Pair\Orm\Query;
-use Pair\Support\Logger;
 
 abstract class Model {
 
+	use \Pair\Traits\LogTrait;
+
 	/**
 	 * Application object.
-	 * @var Application
 	 */
-	protected $app;
+	protected Application $app;
 
 	/**
 	 * Pagination object, started from the View.
@@ -43,7 +45,11 @@ abstract class Model {
 
 		$this->db	= Database::getInstance();
 
-		$this->init();
+		try {
+			$this->init();
+		} catch (PairException $e) {
+			ErrorLog::snapshot($e->getMessage(), ErrorLog::ERROR);
+		}
 
 	}
 
@@ -67,10 +73,10 @@ abstract class Model {
 	 */
 	public function __call(string $name, array $arguments) {
 
-		if (Application::isDevelopmentHost()) {
+		if ('development' == Application::getEnvironment()) {
 
 			$backtrace = debug_backtrace();
-			Logger::error('Method '. get_called_class() . $backtrace[0]['type'] . $name .'(), which doesn’t exist, has been called by '. $backtrace[0]['file'] .' on line '. $backtrace[0]['line']);
+			$this->logError('Method '. get_called_class() . $backtrace[0]['type'] . $name .'(), which doesn’t exist, has been called by '. $backtrace[0]['file'] .' on line '. $backtrace[0]['line']);
 
 		}
 
@@ -79,7 +85,7 @@ abstract class Model {
 	/**
 	 * Start function, being executed before each method. Optional.
 	 */
-	protected function init() {}
+	protected function init(): void {}
 
 	/**
 	 * Adds an error to error list.
@@ -117,7 +123,7 @@ abstract class Model {
 	 * @param	string	Ordering db field.
 	 * @param	bool	Sorting direction ASC or DESC (optional)
 	 */
-	public function getActiveRecordObjects(string $class, string $orderBy=NULL, bool $descOrder=FALSE): Collection {
+	public function getActiveRecordObjects(string $class, ?string $orderBy=NULL, bool $descOrder=FALSE): Collection {
 
 		if (!class_exists($class) or !is_subclass_of($class, 'Pair\Orm\ActiveRecord')) {
 			return [];
@@ -178,7 +184,7 @@ abstract class Model {
 	 * @param	string		Active record class name.
 	 * @param	Query|string	Optional query.
 	 */
-	public function getItems(string $class, Query|string $optionalQuery=NULL): Collection {
+	public function getItems(string $class, Query|string|NULL $optionalQuery=NULL): Collection {
 
 		// class must inherit Pair\Orm\ActiveRecord
 		if (!class_exists($class) or !is_subclass_of($class, 'Pair\Orm\ActiveRecord')) {
@@ -196,7 +202,7 @@ abstract class Model {
 	 * @param	string		Active record class name.
 	 * @param	Query|string	Optional query.
 	 */
-	public function countItems(string $class, Query|string $optionalQuery=NULL): int {
+	public function countItems(string $class, Query|string|NULL $optionalQuery=NULL): int {
 
 		$type = gettype($optionalQuery);
 

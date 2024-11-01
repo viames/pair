@@ -1,6 +1,6 @@
 <?php
 
-namespace Pair\Support;
+namespace Pair\Helpers;
 
 use Pair\Core\Application;
 use Pair\Core\Router;;
@@ -11,37 +11,33 @@ use Pair\Models\User;
  * Singleton class that allows to trace query, API calls and custom events with partial
  * and total execution times.
  */
-class Logger {
+class LogBar {
 
 	/**
 	 * Singleton instance.
-	 * @var Logger
 	 */
-	private static $instance = NULL;
+	private static ?self $instance = NULL;
 
 	/**
 	 * Start time.
-	 * @var float
 	 */
-	private $timeStart;
+	private float $timeStart;
 
 	/**
 	 * Time chrono of last event.
-	 * @var float
 	 */
-	private $lastChrono;
+	private float $lastChrono;
 
 	/**
 	 * Full event list.
 	 * @var \stdClass[]
 	 */
-	private $events = [];
+	private array $events = [];
 
 	/**
 	 * Flag force log disabled.
-	 * @var bool
 	 */
-	private $disabled = FALSE;
+	private bool $disabled = FALSE;
 
 	/**
 	 * Disabled constructor.
@@ -50,10 +46,8 @@ class Logger {
 
 	/**
 	 * Singleton instance method.
-	 *
-	 * @return	Logger
 	 */
-	final public static function getInstance(): Logger {
+	final public static function getInstance(): self {
 
 		if (NULL == self::$instance) {
 			self::$instance = new self();
@@ -74,7 +68,7 @@ class Logger {
 	}
 
 	/**
-	 * Check that logger can be collected by checking "disabled" flag, cli,
+	 * Check that logBar can be collected by checking "disabled" flag, cli,
 	 * API, router module and Options.
 	 */
 	final public function isEnabled(): bool {
@@ -92,8 +86,6 @@ class Logger {
 
 	/**
 	 * Check if the log can appear in the current session.
-	 *
-	 * @return bool
 	 */
 	public function canBeShown(): bool {
 
@@ -389,9 +381,8 @@ class Logger {
 	 * Choose if use sec or millisec based on amount of time to show (for instance 1.23 s or 345 ms).
 	 *
 	 * @param	float	Time value to show (in seconds).
-	 * @return	string
 	 */
-	private function formatChrono($chrono): string {
+	private function formatChrono(float $chrono): string {
 
 		return ($chrono >= 1) ? round($chrono, 2).' s' : round($chrono*1000) .' ms';
 
@@ -399,8 +390,6 @@ class Logger {
 
 	/**
 	 * Returns count of registered error.
-	 *
-	 * @return	int
 	 */
 	final public function getErrorCount(): int {
 

@@ -6,27 +6,24 @@ use Pair\Core\Application;
 use Pair\Models\User;
 use Pair\Orm\ActiveRecord;
 use Pair\Orm\Database;
-use Pair\Support\Utilities;
+use Pair\Helpers\Utilities;
 
 class UserRemember extends ActiveRecord {
 
 	/**
 	 * This property maps “user_id” column.
-	 * @var int
 	 */
-	protected $userId;
+	protected int $userId;
 
 	/**
 	 * This property maps “remember_me column.
-	 * @var string
 	 */
-	protected $rememberMe;
+	protected string $rememberMe;
 
 	/**
 	 * This property maps “created_at” column.
-	 * @var DateTime|NULL
 	 */
-	protected $createdAt;
+	protected \DateTime $createdAt;
 
 	/**
 	 * Name of related db table.
@@ -48,19 +45,18 @@ class UserRemember extends ActiveRecord {
 	/**
 	 * Method called by constructor just after having populated the object.
 	 */
-	protected function init() {
+	protected function init(): void {
 
 		$this->bindAsDatetime('createdAt');
 
-		$this->bindAsInteger('user_id');
+		$this->bindAsInteger('userId');
 
 	}
 
 	/**
 	 * Return an user that matches remember_me string if created less than 1 month ago. NULL if not found.
 	 *
-	 * @param	string		RememberMe value.
-	 * @return	User|NULL
+	 * @param	string	RememberMe value.
 	 */
 	public static function getUserByRememberMe(string $rememberMe): ?User {
 
@@ -68,10 +64,10 @@ class UserRemember extends ActiveRecord {
 		Database::run('DELETE FROM `users_remembers` WHERE `created_at` < DATE_SUB(NOW(), INTERVAL 1 MONTH)');
 
 		$query =
-			'SELECT u.*' .
-			' FROM `users` AS u' .
-			' INNER JOIN `users_remembers` AS ur ON u.`id` = ur.`user_id`' .
-			' WHERE ur.`remember_me` = ?';
+			'SELECT u.*
+			FROM `users` AS u
+			INNER JOIN `users_remembers` AS ur ON u.`id` = ur.`user_id`
+			WHERE ur.`remember_me` = ?';
 
 		$userClass = PAIR_USER_CLASS;
 
@@ -119,8 +115,6 @@ class UserRemember extends ActiveRecord {
 
 	/**
 	 * Build and return the cookie name.
-	 *
-	 * @return string
 	 */
 	public static function getCookieName(): string {
 

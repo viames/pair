@@ -47,7 +47,7 @@ class Acl extends ActiveRecord {
 	/**
 	 * Method called by constructor just after having populated the object.
 	 */
-	protected function init() {
+	protected function init(): void {
 
 		$this->bindAsInteger('id', 'ruleId', 'groupId');
 
@@ -97,56 +97,47 @@ class Acl extends ActiveRecord {
 	 * @param	int		User group ID.
 	 * @param	string	Name of invoked module.
 	 * @param	string	Name of invoked action or null if any action is valid.
-	 *
-	 * @return	bool
 	 */
-	public static function checkPermission($admin, $groupId, $module, $action=NULL) {
+	public static function checkPermission($admin, $groupId, $module, $action=NULL): bool {
 
 		$db = Database::getInstance();
 
 		// login and logout are always allowed
 		if ('user'==$module or $admin) {
-
 			return TRUE;
-
-		} else {
-
-			$query =
-				'SELECT COUNT(*)' .
-				' FROM `rules` AS r' .
-				' INNER JOIN `acl` AS a ON a.rule_id = r.id'.
-				' WHERE a.group_id = ?' .
-				' AND r.admin_only = 0' .
-				' AND ((r.module = ? AND (r.action IS NULL OR r.action=""))' .
-				'  OR (r.module = ? AND r.action = ?))';
-
-			$db->setQuery($query);
-
-			$count = $db->loadCount([$groupId, $module, $module, $action]);
-
-			return (bool)$count;
-
 		}
+
+		$query =
+			'SELECT COUNT(*)
+			FROM `rules` AS r
+			INNER JOIN `acl` AS a ON a.`rule_id` = r.`id`
+			WHERE a.`group_id` = ?
+			AND r.`admin_only` = 0
+			AND (
+				(r.`module` = ? AND (r.`action` IS NULL OR r.`action`=""))
+				OR (r.module = ? AND r.action = ?)
+			)';
+
+		$db->setQuery($query);
+
+		$count = $db->loadCount([$groupId, $module, $module, $action]);
+
+		return (bool)$count;
 
 	}
 
 	/**
 	 * Returns module name for this ACL.
-	 *
-	 * @return	string
 	 */
-	public function getModuleName() {
+	public function getModuleName(): string {
 
 		$query =
-			' SELECT m.name' .
-			' FROM `rules` as r ' .
-			' INNER JOIN `modules` as m ON m.id = r.module_id'.
-			' WHERE r.id = ?';
+			'SELECT m.`name`
+			FROM `rules` as r
+			INNER JOIN `modules` as m ON m.`id` = r.`module_id`
+			WHERE r.`id` = ?';
 
-		$this->db->setQuery($query);
-		$name = $this->db->loadResult($this->ruleId);
-
-		return $name;
+		return Database::load($query, [$this->ruleId], PAIR_DB_RESULT);
 
 	}
 

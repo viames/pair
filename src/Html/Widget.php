@@ -2,7 +2,7 @@
 
 namespace Pair\Html;
 
-use Pair\Support\Logger;
+use Pair\Helpers\LogBar;
 
 /**
  * Class for management of an HTML widget.
@@ -20,7 +20,7 @@ class Widget {
 	 */
 	public function render(string $name): string {
 
-		Logger::event('Rendering ' . $name . ' widget');
+		LogBar::event('Rendering ' . $name . ' widget');
 
 		$file = $this->scriptPath . $name .'.php';
 

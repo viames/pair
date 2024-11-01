@@ -1,28 +1,27 @@
 <?php
 
-namespace Pair\Support;
+namespace Pair\Helpers;
 
+use Pair\Core\Config;
+use Pair\Exceptions\PairException;
 use Pair\Orm\Database;
 
 class Options {
 
 	/**
 	 * Singleton instance object.
-	 * @var Options|NULL
 	 */
-	private static $instance = NULL;
+	private static ?self $instance = NULL;
 
 	/**
 	 * DB connection object.
-	 * @var Database
 	 */
-	protected $db;
+	protected Database $db;
 
 	/**
 	 * Option list.
-	 * @var array
 	 */
-	private $list;
+	private ?array $list = NULL;
 
 	/**
 	 * Constructor, connects to database.
@@ -35,10 +34,8 @@ class Options {
 
 	/**
 	 * Returns this object’s singleton.
-	 *
-	 * @return	Options
 	 */
-	public static function getInstance() {
+	public static function getInstance(): self {
 
 		if (NULL == self::$instance) {
 			self::$instance = new self();
@@ -55,7 +52,7 @@ class Options {
 	 */
 	public function getAll(): array {
 
-		$this->checkPopulated();
+		$this->populate();
 
 		return $this->list;
 
@@ -65,27 +62,19 @@ class Options {
 	 * Proxy method to return an option’s value.
 	 *
 	 * @param	string	The option’s name.
-	 * @throws	Exception
 	 */
 	public static function get(string $name): mixed {
 
 		$self = static::getInstance();
 
-		$self->checkPopulated();
+		$self->populate();
 
-		try {
-
-			if (!static::exists($name)) {
-				throw new \Exception('Cannot read the value of option “'. $name .'” as it doesn’t exist.');
-			}
-
-			return $self->list[$name]->value;
-
-		} catch(\Exception $e) {
-
-			Logger::warning($e->getMessage());
-
+		if (!static::exists($name)) {
+			LogBar::warning('Option “'. $name .'” doesn’t exist.');
+			return NULL;
 		}
+
+		return $self->list[$name]->value;
 
 	}
 
@@ -93,10 +82,9 @@ class Options {
 	 * Proxy method to return an option’s value.
 	 *
 	 * @param	string	The option’s name.
-	 * @throws	Exception
-	 * @return	bool
+	 * @param	string	The option’s value.
 	 */
-	public static function set($name, $value): bool {
+	public static function set(string $name, mixed $value): bool {
 
 		$ret = FALSE;
 
@@ -104,13 +92,13 @@ class Options {
 		$self = static::getInstance();
 
 		// populate all the options by reading db once
-		$self->checkPopulated();
+		$self->populate();
 
 		// check if named option exists
 		try {
 
 			if (!array_key_exists($name, $self->list)) {
-				throw new \Exception('Cannot write the value of option “'. $name .'” as it doesn’t exist.');
+				throw new PairException('Cannot write the value of option “'. $name .'” as it doesn’t exist.');
 			}
 
 			switch ($self->list[$name]->type) {
@@ -121,9 +109,9 @@ class Options {
 
 				case 'password':
 					if ($self->isCryptAvailable()) {
-						$value = openssl_encrypt($value, 'AES128', OPTIONS_CRYPT_KEY);
+						$value = openssl_encrypt($value, 'AES128', Config::get('OPTIONS_CRYPT_KEY'));
 					} else {
-						throw new \Exception('OPTIONS_CRYPT_KEY constant must be defined into config.php file.');
+						throw new PairException('OPTIONS_CRYPT_KEY value must be set into .env configuration file.');
 					}
 					break;
 
@@ -135,9 +123,9 @@ class Options {
 			// update value into the singleton object
 			$self->list[$name]->value = $value;
 
-		} catch(\Exception $e) {
+		} catch(PairException $e) {
 
-			Logger::warning($e->getMessage());
+			LogBar::warning($e->getMessage());
 
 		}
 
@@ -148,27 +136,20 @@ class Options {
 	/**
 	 * Refresh the option values by loading from DB.
 	 */
-	public function refresh() {
+	public function refresh(): void {
 
 		$this->populate();
 
 	}
 
 	/**
-	 * If this option list is empty, start loading from DB.
-	 */
-	private function checkPopulated() {
-
-		if (!is_array($this->list)) {
-			$this->populate();
-		}
-
-	}
-
-	/**
 	 * Load from DB and sets all options to this object.
 	 */
-	private function populate() {
+	private function populate(): void {
+
+		if (is_array($this->list)) {
+			return;
+		}
 
 		$res = Database::load('SELECT * FROM `options` ORDER BY `group`');
 
@@ -210,10 +191,8 @@ class Options {
 	 *
 	 * @param	mixed	The variable value.
 	 * @param	string	the variable type (text, int, bool, custom, list).
-	 *
-	 * @return	mixed
 	 */
-	private function castTo($value, string $type) {
+	private function castTo(mixed $value, string $type): mixed {
 
 		switch ($type) {
 
@@ -231,9 +210,9 @@ class Options {
 
 			case 'password':
 				if ($this->isCryptAvailable()) {
-					$value = openssl_decrypt($value, 'AES128', OPTIONS_CRYPT_KEY);
+					$value = openssl_decrypt($value, 'AES128', Config::get('OPTIONS_CRYPT_KEY'));
 				} else {
-					Logger::warning('OPTIONS_CRYPT_KEY constant should be defined into config.php file.');
+					LogBar::warning('OPTIONS_CRYPT_KEY value must be defined into .env configuration file.');
 				}
 				break;
 
@@ -248,12 +227,10 @@ class Options {
 
 	/**
 	 * Check wheter options crypt key has been defined into config.php file.
-	 *
-	 * @return boolean
 	 */
 	public function isCryptAvailable(): bool {
 
-		return (defined('OPTIONS_CRYPT_KEY') and strlen(OPTIONS_CRYPT_KEY) > 0);
+		return (strlen((string)Config::get('OPTIONS_CRYPT_KEY')) > 0);
 
 	}
 
@@ -261,13 +238,11 @@ class Options {
 	 * Check if an option’s exists.
 	 *
 	 * @param	string	The option’s name.
-	 * @throws	Exception
-	 * @return	bool
 	 */
 	public static function exists(string $name): bool {
 
 		$self = static::getInstance();
-		$self->checkPopulated();
+		$self->populate();
 
 		return array_key_exists($name, $self->list);
 

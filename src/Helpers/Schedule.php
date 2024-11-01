@@ -1,6 +1,6 @@
 <?php
 
-namespace Pair\Support;
+namespace Pair\Helpers;
 
 class Schedule {
 
@@ -66,7 +66,7 @@ class Schedule {
 
 			$result = call_user_func($this->functionToRun, $this->params);
 
-		} catch (\Exception $e) {
+		} catch (PairException $e) {
 
 			return FALSE;
 

@@ -1,12 +1,13 @@
 <?php
 
-namespace Pair\Support;
+namespace Pair\Helpers;
 
 use Pair\Core\Application;
 use Pair\Core\Router;
+use Pair\Exceptions\PairException;
+use Pair\Helpers\LogBar;
 use Pair\Models\Locale;
 use Pair\Orm\Collection;
-use Pair\Support\Logger;
 
 class Translator {
 
@@ -240,13 +241,13 @@ class Translator {
 			// search into strings of default language
 			if (isset($self->defaultStrings) and is_array($self->defaultStrings) and array_key_exists($key, $self->defaultStrings) and $self->defaultStrings[$key]) {
 
-				Logger::warning('Language string ' . $key . ' is untranslated for current language [' . $self->currentLocale->code . ']');
+				LogBar::warning('Language string ' . $key . ' is untranslated for current language [' . $self->currentLocale->code . ']');
 				$string = $self->defaultStrings[$key];
 
 			// return the string constant, as debug info
 			} else {
 
-				Logger::warning('Language string ' . $key . ' is untranslated');
+				LogBar::warning('Language string ' . $key . ' is untranslated');
 				$string = '[' . $key . ']';
 
 			}
@@ -326,10 +327,10 @@ class Translator {
 			try {
 				$commonFileContent = parse_ini_file($common);
 				if (FALSE == $commonFileContent) {
-					throw new \Exception('File parsing failed: ' . $common);
+					throw new PairException('File parsing failed: ' . $common);
 				}
 				$this->strings = $commonFileContent;
-			} catch (\Exception $e) {
+			} catch (PairException $e) {
 				$this->strings = [];
 			}
 		}
@@ -340,12 +341,8 @@ class Translator {
 			// module strings in current language
 			$file1 = APPLICATION_PATH . '/modules/' . strtolower($this->module) . '/translations/' . $this->currentLocale->getRepresentation() . '.ini';
 			if (file_exists($file1)) {
-				try {
-					$moduleStrings = parse_ini_file($file1);
-					if (FALSE == $moduleStrings) {
-						throw new \Exception('File parsing failed: ' . $file1);
-					}
-				} catch (\Exception $e) {
+				$moduleStrings = parse_ini_file($file1);
+				if (FALSE == $moduleStrings) {
 					$moduleStrings = [];
 				}
 				$this->strings = array_merge($this->strings, $moduleStrings);
@@ -361,7 +358,7 @@ class Translator {
 			if (file_exists($common)) {
 				try {
 					$this->defaultStrings = @parse_ini_file($common);
-				} catch (\Exception $e) {
+				} catch (PairException $e) {
 					$this->defaultStrings = [];
 				}
 			}
@@ -374,7 +371,7 @@ class Translator {
 				if (file_exists($file2)) {
 					try {
 						$moduleStrings = @parse_ini_file($file2);
-					} catch (\Exception $e) {
+					} catch (PairException $e) {
 						$moduleStrings = [];
 					}
 					$this->defaultStrings = array_merge($this->defaultStrings, $moduleStrings);
@@ -435,7 +432,7 @@ class Translator {
 
 		try {
 			return self::$instance->getDefaultLocale()->getRepresentation() . '.ini';
-		} catch(\Exception $e) {
+		} catch(PairException $e) {
 			die('Translator instance has not been created yet');
 		}
 

@@ -2,10 +2,11 @@
 
 namespace Pair\Models;
 
+use Pair\Exceptions\PairException;
+use Pair\Helpers\LogBar;
+use Pair\Helpers\Utilities;
 use Pair\Orm\ActiveRecord;
 use Pair\Orm\Database;
-use Pair\Support\Logger;
-use Pair\Support\Utilities;
 
 class Locale extends ActiveRecord {
 
@@ -275,7 +276,7 @@ class Locale extends ActiveRecord {
 					touch($file);
 					chmod($file, 0777);
 
-				} catch (\Exception $e) {
+				} catch (PairException $e) {
 
 					trigger_error($e->getMessage());
 					return FALSE;
@@ -305,9 +306,9 @@ class Locale extends ActiveRecord {
 
 			$res = file_put_contents($file, $content);
 
-		} catch (\Exception $e) {
+		} catch (PairException $e) {
 
-			Logger::error('Translation file ' . $file . ' cannot be written due its permission');
+			LogBar::error('Translation file ' . $file . ' cannot be written due its permission');
 			$res = FALSE;
 
 		}

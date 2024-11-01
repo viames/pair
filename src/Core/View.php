@@ -2,77 +2,71 @@
 
 namespace Pair\Core;
 
+use Pair\Exceptions\PairException;
+use Pair\Helpers\LogBar;
+use Pair\Helpers\Options;
+use Pair\Helpers\Translator;
+use Pair\Helpers\Utilities;
 use Pair\Html\Pagination;
-use Pair\Models\ErrorLog;
 use Pair\Orm\ActiveRecord;
-use Pair\Support\Logger;
-use Pair\Support\Options;
-use Pair\Support\Translator;
-use Pair\Support\Utilities;
 
 /**
  * Base abstract class to manage the HTML layout layer.
  */
 abstract class View {
 
+	use \Pair\Traits\AppTrait;
+	use \Pair\Traits\LogTrait;
+
 	/**
 	 * Application object.
 	 */
-	protected $app;
+	protected Application $app;
 
 	/**
 	 * Path to the file, with trailing slash.
-	 * @var string
 	 */
-	private $scriptPath = 'layouts/';
+	private string $scriptPath = 'layouts/';
 
 	/**
 	 * Content variables for layout.
-	 * @var array
 	 */
-	private $vars = [];
+	private array $vars = [];
 
 	/**
 	 * Pagination variable.
-	 * @var Pagination
 	 */
-	private $pagination;
+	private Pagination $pagination;
 
 	/**
 	 * View name, without “View” suffix.
-	 * @var string
 	 */
-	private $name;
+	private string $name;
 
 	/**
 	 * Layout file name, default as view name set by __construct().
-	 * @var string
 	 */
-	protected $layout;
+	protected string $layout;
 
 	/**
 	 * Path to this module view with no trailing slash.
-	 * @var string
 	 */
-	private $modulePath;
+	private string $modulePath;
 
 	/**
 	 * Translator object.
-	 * @var Translator
 	 */
-	protected $translator;
+	protected Translator $translator;
 
 	/**
 	 * Public URL for this module with no trailing slash.
-	 * @var string
 	 */
-	private $moduleUrl;
+	private string $moduleUrl;
 
 	/**
 	 * Model class object.
-	 * @var mixed
 	 */
-	protected $model;
+	protected Model $model;
 
 	/**
 	 * Constructor.
@@ -80,8 +74,8 @@ abstract class View {
 	final public function __construct(Model $model) {
 
 		// singleton objects
-		$this->app		= Application::getInstance();
-		$router			= Router::getInstance();
+		$this->app = Application::getInstance();
+		$router	= Router::getInstance();
 		$this->translator = Translator::getInstance();
 
 		// sets view name and default layout
@@ -94,7 +88,7 @@ abstract class View {
 		$this->modulePath = dirname($ref->getFileName());
 
 		// url to the module
-		$this->moduleUrl = 'modules/' . strtolower($this->name); // BASE_HREF .
+		$this->moduleUrl = 'modules/' . strtolower($this->name);
 
 		// pagination
 		$this->pagination			= new Pagination();
@@ -108,6 +102,56 @@ abstract class View {
 		// sets the default menu item -- can be overwritten if needed
 		$this->app->activeMenuItem = $router->module;
 
+		try {
+			$this->init();
+		} catch (PairException $e) {
+			$this->logError('View initialization error: ' . $e->getMessage());
+		}
+
+	}
+
+	/**
+	 * Adds a variable-item to the object array “vars”.
+	 *
+	 * @param	string	Variable-item name.
+	 * @param	mixed	Variable-item value.
+	 */
+	public function assign($name, $val): void {
+
+		$this->vars[$name] = $val;
+
+	}
+
+	/**
+	 * Returns, if it exists, the variable assigned to the layout,
+	 * otherwise the property of the method, otherwise NULL.
+	 *
+	 * @param	string	Nome della proprietà richiesta.
+	 */
+	public function __get($name): mixed {
+
+		if (array_key_exists($name, $this->vars)) {
+			return $this->vars[$name];
+		} else if (property_exists($this, $name)) {
+			return $this->$name;
+		} else {
+			$this->logError('The ' . get_called_class() . '->' . $name. ' property doesn’t exist; Null will be returned');
+			return NULL;
+		}
+
+	}
+
+	/**
+	 * Management of unknown view’s function.
+	 *
+	 * @param	string	$name
+	 * @param	array	$arguments
+	 */
+	public function __call($name, $arguments): void {
+
+		$backtrace = debug_backtrace();
+		$this->logError('Method '. get_called_class() . $backtrace[0]['type'] . $name .'(), which doesn’t exist, has been called by '. $backtrace[0]['file'] .' on line '. $backtrace[0]['line']);
+
 	}
 
 	/**
@@ -115,7 +159,7 @@ abstract class View {
 	 *
 	 * @param	string	Layout file name without extension (.php).
 	 */
-	final public function display($name=NULL): void {
+	final public function display(?string $name=NULL): void {
 
 		$this->render();
 
@@ -153,68 +197,19 @@ abstract class View {
 
 		$file = $this->modulePath .'/'. $this->scriptPath . $name .'.php';
 
-		Logger::event('Applying ' . $this->layout . ' layout');
+		if (!file_exists($file)) {
+			throw new PairException('Layout “' . $name . '” was not found');
+		}
 
 		// includes layout file
-		try {
-
-			if (file_exists($file)) {
-				include $file;
-			} else {
-				throw new \Exception('Layout file ' . $file . ' was not found');
-			}
-
-		} catch (\Exception $e) {
-
-			$this->app->enqueueError($e->getMessage());
-
-		}
+		include $file;
 
 	}
 
 	/**
-	 * Adds a variable-item to the object array “vars”.
-	 *
-	 * @param	string	Variable-item name.
-	 * @param	mixed	Variable-item value.
+	 * Start function, being executed before each method. Optional.
 	 */
-	public function assign($name, $val): void {
-
-		$this->vars[$name] = $val;
-
-	}
-
-	/**
-	 * Returns, if it exists, the variable assigned to the layout,
-	 * otherwise the property of the method, otherwise NULL.
-	 *
-	 * @param	string	Nome della proprietà richiesta.
-	 */
-	public function __get($name): mixed {
-
-		if (array_key_exists($name, $this->vars)) {
-			return $this->vars[$name];
-		} else if (property_exists($this, $name)) {
-			return $this->$name;
-		} else {
-			Logger::error('The ' . get_called_class() . '->' . $name. ' property doesn’t exist; Null will be returned');
-			return NULL;
-		}
-
-	}
-
-	/**
-	 * Management of unknown view’s function.
-	 *
-	 * @param	string	$name
-	 * @param	array	$arguments
-	 */
-	public function __call($name, $arguments) {
-
-		$backtrace = debug_backtrace();
-		Logger::error('Method '. get_called_class() . $backtrace[0]['type'] . $name .'(), which doesn’t exist, has been called by '. $backtrace[0]['file'] .' on line '. $backtrace[0]['line']);
-
-	}
+	protected function init(): void {}
 
 	/**
 	 * Sets the requested session state variable.
@@ -237,33 +232,15 @@ abstract class View {
 	}
 
 	/**
-	 * Appends a text message to queue.
-	 *
-	 * @param	string	Message’s text.
-	 * @param	string	Optional title.
-	 * @param	string	Message’s type (info, error).
-	 */
-	public function enqueueMessage($text, $title='', $type=NULL) {
-
-		$this->app->enqueueMessage($text, $title, $type);
-
-	}
-
-	public function enqueueError($text, $title='') {
-
-		$this->app->enqueueError($text, $title);
-
-	}
-
-	/**
 	 * Proxy function that returns a translated string.
 	 *
 	 * @param	string	The language key.
-	 * @param	array	List of parameters to bind on string (optional).
+	 * @param	string|array|null	List of parameters to bind on string (optional).
+	 * @param	bool	Show a warning if the key is not found.
 	 */
-	public function lang($key, $vars=NULL) {
+	public function lang(string $key, string|array|NULL $vars=NULL, bool $warning=TRUE): string {
 
-		return Translator::do($key, $vars);
+		return Translator::do($key, $vars, $warning);
 
 	}
 
@@ -280,50 +257,10 @@ abstract class View {
 	}
 
 	/**
-	 * Alias of sortable() that prints a sortable column header.
-	 * @deprecated Use sortable() instead.
-	 */
-	public function printSortableColumn(string $title, int $ascOrder, int $descOrder): void {
-
-		$this->sortable($title, $ascOrder, $descOrder);
-
-	}
-
-	/**
-	 * Computes data and assigns values to layout.
-	 *
-	 * @return	string
-	 */
-	abstract function render();
-
-	/**
-	 * Return the HTML code of pagination bar.
-	 */
-	public function getPaginationBar(): string {
-
-		if (is_null($this->pagination->count)) {
-			Logger::error('The “count” parameter needed for pagination has not been set');
-		}
-
-		return $this->pagination->render();
-
-	}
-
-	/**
-	 * Determines whether the number of items displayed versus the number of items on the page
-	 * requires the pagination bar.
-	 */
-	public function mustUsePagination(array $itemsToShow): bool {
-
-		return (count($itemsToShow) >= $this->pagination->perPage or $this->pagination->page > 1);
-
-	}
-
-	/**
 	 * Return an A-Z list with link for build an alpha filter.
 	 * @param	string	Current selected list item, if any.
 	 */
-	public function getAlphaFilter(string $selected=NULL): \Generator {
+	public function getAlphaFilter(?string $selected=NULL): \Generator {
 
 		$router = Router::getInstance();
 
@@ -351,18 +288,13 @@ abstract class View {
 		$itemId = Router::get($pos ? abs($pos) : 0);
 
 		if (!$itemId) {
-			$this->enqueueError($this->lang('NO_ID_OF_ITEM_TO_EDIT', $class));
-			return NULL;
+			throw new PairException($this->lang('NO_ID_OF_ITEM_TO_EDIT', $class));
 		}
 
 		$object = new $class($itemId);
 
 		if (!$object->isLoaded()) {
-
-			$this->enqueueError($this->lang('ID_OF_ITEM_TO_EDIT_IS_NOT_VALID', $class));
-			Logger::error('Object ' . $class . ' id=' . $itemId . ' has not been loaded');
-			return NULL;
-
+			throw new PairException($this->lang('ID_OF_ITEM_TO_EDIT_IS_NOT_VALID', $class));
 		}
 
 		return $object;
@@ -370,9 +302,32 @@ abstract class View {
 	}
 
 	/**
+	 * Return the HTML code of pagination bar.
+	 */
+	public function getPaginationBar(): string {
+
+		if (is_null($this->pagination->count)) {
+			LogBar::error('The “count” parameter needed for pagination has not been set');
+		}
+
+		return $this->pagination->render();
+
+	}
+
+	/**
+	 * Determines whether the number of items displayed versus the number of items on the page
+	 * requires the pagination bar.
+	 */
+	public function mustUsePagination(array $itemsToShow): bool {
+
+		return (count($itemsToShow) >= $this->pagination->perPage or $this->pagination->page > 1);
+
+	}
+
+	/**
 	 * Prints the alpha filter bar.
 	 */
-	public function printAlphaFilter(string $selected=NULL): void {
+	public function printAlphaFilter(?string $selected=NULL): void {
 
 		$router = Router::getInstance();
 		$letters = $this->getAlphaFilter($selected);
@@ -385,27 +340,9 @@ abstract class View {
 	}
 
 	/**
-	 * Get error list from an ActiveRecord object and show it to the user.
-	 *
-	 * @param	ActiveRecord	The inherited object.
+	 * Computes data and assigns values to layout.
 	 */
-	protected function raiseError(ActiveRecord $object): void {
-
-		// get error list from the ActiveRecord object
-		$errors = $object->getErrors();
-
-		// choose the error messages
-		$message = $errors
-			? implode(" \n", $errors)
-			: $this->lang('ERROR_ON_LAST_REQUEST');
-
-		// enqueue error message for UI
-		$this->enqueueError($message);
-
-		// after the message has been queued, store the error data
-		ErrorLog::keepSnapshot('Failure in ' . \get_class($object) . ' class');
-
-	}
+	abstract function render(): void;
 
 	/**
 	 * Prints a column header with sorting link.

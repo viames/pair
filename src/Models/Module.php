@@ -2,12 +2,11 @@
 
 namespace Pair\Models;
 
+use Pair\Helpers\LogBar;
+use Pair\Helpers\Plugin;
+use Pair\Helpers\PluginInterface;
+use Pair\Helpers\Utilities;
 use Pair\Orm\ActiveRecord;
-use Pair\Orm\Database;
-use Pair\Support\Logger;
-use Pair\Support\Plugin;
-use Pair\Support\PluginInterface;
-use Pair\Support\Utilities;
 
 class Module extends ActiveRecord implements PluginInterface {
 
@@ -73,7 +72,7 @@ class Module extends ActiveRecord implements PluginInterface {
 	/**
 	 * Method called by constructor just after having populated the object.
 	 */
-	protected function init() {
+	protected function init(): void {
 
 		$this->bindAsDatetime('dateReleased', 'dateInstalled');
 
@@ -104,7 +103,7 @@ class Module extends ActiveRecord implements PluginInterface {
 	/**
 	 * Removes files of this Module object before its deletion.
 	 */
-	protected function beforeDelete() {
+	protected function beforeDelete(): void {
 
 		// delete plugin folder
 		$plugin = $this->getPlugin();
@@ -112,14 +111,14 @@ class Module extends ActiveRecord implements PluginInterface {
 
 		if ($res) {
 
-			Logger::event('Plugin folder ' . $plugin->baseFolder . ' has been deleted');
+			LogBar::event('Plugin folder ' . $plugin->baseFolder . ' has been deleted');
 
 		} else {
 
 			if (is_dir($plugin->baseFolder)) {
-				Logger::warning('Plugin folder ' . $plugin->baseFolder . ' has not been deleted due unexpected error');
+				LogBar::warning('Plugin folder ' . $plugin->baseFolder . ' has not been deleted due unexpected error');
 			} else {
-				Logger::warning('Plugin folder ' . $plugin->baseFolder . ' has not been found');
+				LogBar::warning('Plugin folder ' . $plugin->baseFolder . ' has not been found');
 			}
 		}
 

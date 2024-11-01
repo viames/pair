@@ -2,26 +2,26 @@
 
 namespace Pair\Services;
 
-use \Aws\S3\S3Client;
+use Aws\S3\S3Client;
 
-use \Etime\Flysystem\Plugin\AWS_S3\PresignedUrl;
+use Etime\Flysystem\Plugin\AWS_S3\PresignedUrl;
 
-use \League\Flysystem\AwsS3v3\AwsS3Adapter;
-use \League\Flysystem\Filesystem;
+use League\Flysystem\AwsS3v3\AwsS3Adapter;
+use League\Flysystem\Filesystem;
+
+use Pair\Core\Config;
+use Pair\Exceptions\PairException;
 
 class AmazonS3 {
 	/**
 	 * FileSystem Variable (for internal use)
-	 *
-	 * @var League\FlySystem\Filesystem
 	 */
-	protected $filesystem;
+	protected Filesystem $filesystem;
 
 	/**
 	 * List of all errors tracked.
-	 * @var array
 	 */
-	private $errors = [];
+	private array $errors = [];
 
 	/**
 	 * Starts S3 Driver
@@ -31,15 +31,15 @@ class AmazonS3 {
 		// Creates the S3 Client
 		$client = new S3Client([
 			'credentials' => [
-				'key'    => S3_ACCESS_KEY_ID,
-				'secret' => S3_SECRET_ACCESS_KEY,
+				'key'    => Config::get('S3_ACCESS_KEY_ID'),
+				'secret' => Config::get('S3_SECRET_ACCESS_KEY'),
 			],
-			'region' => S3_BUCKET_REGION,
+			'region' => Config::get('S3_BUCKET_REGION'),
 			'version' => 'latest',
 		]);
 
 		// Creates the S3 adapter to cast to the filesystem object
-		$adapter = new AwsS3Adapter($client, S3_BUCKET_NAME);
+		$adapter = new AwsS3Adapter($client, Config::get('S3_BUCKET_NAME'));
 
 		// Creates the filesystem object
 		$this->filesystem = new Filesystem($adapter);
@@ -66,7 +66,7 @@ class AmazonS3 {
 
 		try {
 			$result = $this->filesystem->put($destination, $fileContents);
-		} catch(\Exception $e) {
+		} catch(PairException $e) {
 			$this->addError($e->getMessage());
 			return FALSE;
 		}
@@ -82,7 +82,6 @@ class AmazonS3 {
 	 *
 	 * @param string $remoteFile
 	 * @param string $localFilePath
-	 * @return boolean
 	 */
 	public function get(string $remoteFile, string $localFilePath): bool {
 
@@ -91,7 +90,7 @@ class AmazonS3 {
 
 		try {
 			file_put_contents($localFilePath, $contents);
-		} catch(\Exception $e) {
+		} catch(PairException $e) {
 			$this->addError($e->getMessage());
 			return FALSE;
 		}
@@ -102,12 +101,11 @@ class AmazonS3 {
 	/**
 	 * Reads the remote file and returns the content
 	 */
-	public function read(string $remoteFile) {
+	public function read(string $remoteFile): ?string {
 
 		if (!$this->exists($remoteFile)) return null;
 
-		$contents = $this->filesystem->read($remoteFile);
-		return $contents;
+		return $this->filesystem->read($remoteFile);
 
 	}
 
@@ -128,7 +126,6 @@ class AmazonS3 {
 	 * Controls if the remote file (with its path) exists
 	 *
 	 * @param string $remoteFile
-	 * @return boolean
 	 */
 	public function exists(string $remoteFile): bool {
 
@@ -136,7 +133,7 @@ class AmazonS3 {
 
 		try {
 			if ($this->filesystem->has($remoteFile)) $res = TRUE;
-		} catch(\Exception $e) {
+		} catch(PairException $e) {
 			$this->addError($e->getMessage());
 		}
 
@@ -148,7 +145,6 @@ class AmazonS3 {
 	 * Deletes the remote file at the specified path
 	 *
 	 * @param string $remoteFile
-	 * @return boolean
 	 */
 	public function delete(string $remoteFile): bool {
 
@@ -156,7 +152,7 @@ class AmazonS3 {
 			if ($this->exists($remoteFile)) {
 				$this->filesystem->delete($remoteFile);
 			}
-		} catch(\Exception $e) {
+		} catch(PairException $e) {
 			$this->addError($e->getMessage());
 			return FALSE;
 		}
@@ -189,10 +185,8 @@ class AmazonS3 {
 
 	/**
 	 * Return text of latest error. In case of no errors, return FALSE.
-	 *
-	 * @return FALSE|string
 	 */
-	final public function getLastError() {
+	final public function getLastError(): FALSE|string {
 
 		return end($this->errors);
 
@@ -200,10 +194,8 @@ class AmazonS3 {
 
 	/**
 	 * Return an array with text of all errors.
-	 *
-	 * @return array
 	 */
-	final public function getErrors() {
+	final public function getErrors(): array {
 
 		return $this->errors;
 

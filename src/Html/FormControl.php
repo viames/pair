@@ -3,9 +3,11 @@
 namespace Pair\Html;
 
 use Pair\Core\Application;
-use Pair\Support\Logger;
-use Pair\Support\Post;
-use Pair\Support\Translator;
+use Pair\Core\Config;
+use Pair\Exceptions\PairException;
+use Pair\Helpers\LogBar;
+use Pair\Helpers\Post;
+use Pair\Helpers\Translator;
 
 abstract class FormControl {
 
@@ -114,7 +116,7 @@ abstract class FormControl {
 	public function __get(string $name): mixed {
 
 		if (!property_exists($this, $name)) {
-			throw new \Exception('Property “'. $name .'” doesn’t exist for object '. get_called_class());
+			throw new PairException('Property “'. $name .'” doesn’t exist for object '. get_called_class());
 		}
 
 		return $this->$name;
@@ -143,7 +145,8 @@ abstract class FormControl {
 	}
 
 	/**
-	 * Adds a single data attribute, prepending the string "data-" to the given name.
+	 * Adds a single data attribute, prepending the string "data-" to the given name. Chainable method.
+	 * 
 	 * @param	string	Data attribute name.
 	 * @param	string	Value.
 	 */
@@ -156,7 +159,7 @@ abstract class FormControl {
 	}
 
 	/**
-	 * Set value for this control subclass.
+	 * Set value for this control subclass. Chainable method.
 	 */
 	public function value(string|int|float|\DateTime|NULL $value): static {
 
@@ -164,15 +167,34 @@ abstract class FormControl {
 		if (is_a($value, '\DateTime')) {
 
 			// if UTC date, set user timezone
-			if (defined('UTC_DATE') and UTC_DATE) {
+			if (Config::get('UTC_DATE')) {
 				$app = Application::getInstance();
 				$value->setTimezone($app->currentUser->getDateTimeZone());
 			}
 
 			// can be datetime or just date
-			$format = (is_a($this, 'Pair\Html\FormControls\Date')) ? $this->dateFormat : $this->datetimeFormat;
-			$this->value = $value->format($format);
+			if (is_a($this, 'Pair\Html\FormControls\Date')) {
+				
+				$this->value = $value->format($this->dateFormat);
 
+			} else if (is_a($this, 'Pair\Html\FormControls\Datetime')) {
+
+				$this->value = $value->format($this->datetimeFormat);
+				
+			} else if (is_a($this, 'Pair\Html\FormControls\Month')) {
+
+				$this->value = $value->format('Y-m');
+
+			} else if (is_a($this, 'Pair\Html\FormControls\Time')) {
+
+				$this->value = $value->format('H:i');
+
+			} else {
+
+				$this->value = (string)$value;
+
+			}
+			
 		} else {
 
 			$this->value = (string)$value;
@@ -184,9 +206,9 @@ abstract class FormControl {
 	}
 
 	/**
-	 * Set the control ID.
+	 * Set the control ID. Chainable method.
 	 *
-	 * @param	string	Control identifier.
+	 * @param	string	Control unique identifier.
 	 */
 	public function id(string $id): static {
 
@@ -379,7 +401,7 @@ abstract class FormControl {
 	public function printLabel(): void {
 
 		$label = '<label for="' . htmlspecialchars($this->name) . '"';
-		
+
 		if (isset($this->labelClass) and $this->labelClass) {
 			$label .= ' class="' . $this->labelClass . '"';
 		}
@@ -491,19 +513,19 @@ abstract class FormControl {
 		$valid	= TRUE;
 
 		if ($this->required and ''==$value) {
-			Logger::event('Control validation on field “' . $this->name . '” has failed (required)');
+			LogBar::event('Control validation on field “' . $this->name . '” has failed (required)');
 			$valid = FALSE;
 		}
 
 		// check validity of minlength attribute
 		if ($this->minLength and ''!=$value and strlen($value) < $this->minLength) {
-			Logger::event('Control validation on field “' . $this->name . '” has failed (minLength=' . $this->minLength . ')');
+			LogBar::event('Control validation on field “' . $this->name . '” has failed (minLength=' . $this->minLength . ')');
 			$valid = FALSE;
 		}
 
 		// check validity of minlength attribute
 		if ($this->maxLength and strlen($value) > $this->maxLength) {
-			Logger::event('Control validation on field “' . $this->name . '” has failed (maxLength=' . $this->maxLength . ')');
+			LogBar::event('Control validation on field “' . $this->name . '” has failed (maxLength=' . $this->maxLength . ')');
 			$valid = FALSE;
 		}
 

@@ -2,12 +2,12 @@
 
 namespace Pair\Models;
 
+use Pair\Exceptions\PairException;
+use Pair\Helpers\LogBar;
+use Pair\Helpers\Plugin;
+use Pair\Helpers\PluginInterface;
+use Pair\Helpers\Utilities;
 use Pair\Orm\ActiveRecord;
-use Pair\Orm\Database;
-use Pair\Support\Logger;
-use Pair\Support\Plugin;
-use Pair\Support\PluginInterface;
-use Pair\Support\Utilities;
 
 class Template extends ActiveRecord implements PluginInterface {
 
@@ -84,7 +84,7 @@ class Template extends ActiveRecord implements PluginInterface {
 	/**
 	 * Method called by constructor just after having populated the object.
 	 */
-	protected function init() {
+	protected function init(): void {
 
 		$this->bindAsBoolean('default', 'derived');
 
@@ -123,7 +123,7 @@ class Template extends ActiveRecord implements PluginInterface {
 	/**
 	 * Removes files of this Module object before its deletion.
 	 */
-	protected function beforeDelete() {
+	protected function beforeDelete(): void {
 
 		// delete plugin folder
 		$plugin = $this->getPlugin();
@@ -131,14 +131,14 @@ class Template extends ActiveRecord implements PluginInterface {
 
 		if ($res) {
 
-			Logger::event('Plugin folder ' . $plugin->baseFolder . ' has been deleted');
+			LogBar::event('Plugin folder ' . $plugin->baseFolder . ' has been deleted');
 
 		} else {
 
 			if (is_dir($plugin->baseFolder)) {
-				Logger::warning('Plugin folder ' . $plugin->baseFolder . ' has not been deleted due unexpected error');
+				LogBar::warning('Plugin folder ' . $plugin->baseFolder . ' has not been deleted due unexpected error');
 			} else {
-				Logger::warning('Plugin folder ' . $plugin->baseFolder . ' has not been found');
+				LogBar::warning('Plugin folder ' . $plugin->baseFolder . ' has not been found');
 			}
 		}
 
@@ -241,7 +241,7 @@ class Template extends ActiveRecord implements PluginInterface {
 
 	}
 
-	public function loadStyle($styleName) {
+	public function loadStyle($styleName): void {
 
 		// by default load template style
 		$styleFile = $this->getBaseFolder() . '/' . strtolower($this->name) . '/' . $styleName . '.php';
@@ -252,15 +252,11 @@ class Template extends ActiveRecord implements PluginInterface {
 		}
 
 		if (!file_exists($styleFile)) {
-
-			throw new \Exception('Template style file ' . $styleFile . ' was not found');
-
-		} else {
-
-			// load the style page file
-			require $styleFile;
-
+			throw new PairException('Template style ' . $styleName . ' not found');
 		}
+
+		// load the style page file
+		require $styleFile;
 
 	}
 

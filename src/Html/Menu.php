@@ -3,7 +3,7 @@
 namespace Pair\Html;
 
 use Pair\Core\Application;
-use Pair\Support\Translator;
+use Pair\Helpers\Translator;
 
 class Menu {
 
@@ -17,28 +17,9 @@ class Menu {
 	 */
 	protected ?string $activeItem = NULL;
 
-	/**
-	 * Static method utility to create single-item object.
-	 * @param	string	Url of item.
-	 * @param	string	Title shown.
-	 * @param	string	Optional, can be an icon, a subtitle or icon placeholder.
-	 * @param	string	Optional, is CSS extra class definition.
-	 * @param	string	Optional, the anchor target.
-	 * @param	string	Optional, the badge type as Bootstrap class (ex. primary, info, error etc.).
-	 * @deprecated use Menu::item() instead.
-	 */
-	public static function getItemObject(string $url, string $title, string $badge=NULL, string $class=NULL, string $target=NULL, string $badgeType=NULL): \stdClass {
+	public function __toString(): string {
 
-		$item 			= new \stdClass();
-		$item->type		= 'single';
-		$item->url		= $url;
-		$item->title	= $title;
-		$item->badge	= $badge;
-		$item->class	= $class;
-		$item->target	= $target;
-		$item->badgeType= $badgeType ?? 'primary';
-
-		return $item;
+		return $this->render();
 
 	}
 
@@ -51,7 +32,7 @@ class Menu {
 	 * @param	string	Optional, the anchor target.
 	 * @param	string	Optional, the badge type as Bootstrap class (ex. primary, info, error etc.).
 	 */
-	public function item(string $url, string $title, string $class=NULL, string $badge=NULL, string $badgeType=NULL, string $target=NULL): void {
+	public function item(string $url, string $title, ?string $class=NULL, ?string $badge=NULL, ?string $badgeType=NULL, ?string $target=NULL): void {
 
 		$item 			= new \stdClass();
 		$item->type		= 'single';
@@ -72,7 +53,7 @@ class Menu {
 	 * @param	array	List of single-item menu entry.
 	 * @param	string	Optional, can be an icon, a subtitle or icon placeholder.
 	 */
-	public function multiItem(string $title, array $list, string $class=NULL): void {
+	public function multiItem(string $title, array $list, ?string $class=NULL): void {
 
 		$multi 			= new \stdClass();
 		$multi->type	= 'multi';
@@ -197,7 +178,7 @@ class Menu {
 
 			// trigger the menu open
 			if ($i->url == $this->activeItem) {
-				$active		= 'active';
+				$active	= 'active';
 				$menuLi	= ' active';
 				$menuA	= ' active subdrop';
 			} else {
@@ -243,7 +224,7 @@ class Menu {
 	 * Add a graphic or text separator to the menu.
 	 * @param	string	Separator title (optional).
 	 */
-	public function separator(string $title=NULL): void {
+	public function separator(?string $title=NULL): void {
 
 		$item 			= new \stdClass();
 		$item->type		= 'separator';

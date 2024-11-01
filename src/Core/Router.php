@@ -2,93 +2,82 @@
 
 namespace Pair\Core;
 
+use Pair\Exceptions\PairException;
+
 class Router {
 
 	/**
 	 * Singleton object.
-	 * @var Router
 	 */
-	static private $instance;
+	static private Router $instance;
 
 	/**
 	 * Request URL.
-	 * @var string
 	 */
-	private $url;
+	private ?string $url = NULL;
 
 	/**
 	 * Base URL for this web application.
-	 * @var string
 	 */
-	private $baseUrl;
+	private ?string $baseUrl = NULL;
 
 	/**
 	 * Flag that’s true if request is AJAX.
-	 * @var bool
 	 */
-	private $ajax = FALSE;
+	private bool $ajax = FALSE;
 
 	/**
 	 * Flag that’s true if page will avoid any templating.
-	 * @var bool
 	 */
-	private $raw = FALSE;
+	private bool $raw = FALSE;
 
 	/**
 	 * Module name.
-	 * @var NULL|string
 	 */
-	private $module;
+	private ?string $module = NULL;
 
 	/**
 	 * Action name.
-	 * @var NULL|string
 	 */
-	private $action;
+	private ?string $action = NULL;
 
 	/**
 	 * Extended variables.
-	 * @var array
 	 */
-	private $vars = [];
+	private array $vars = [];
 
 	/**
 	 * Defautls value when empty URL.
-	 * @var array
 	 */
-	private $defaults = ['module'=>NULL,'action'=>NULL];
+	private array $defaults = ['module'=>NULL,'action'=>NULL];
 
 	/**
 	 * Current page number.
-	 * @var NULL|int
 	 */
-	private $page;
+	private ?int $page = NULL;
 
 	/**
 	 * Current ordering value.
-	 * @var int
 	 */
-	private $order;
+	private ?int $order = NULL;
 
 	/**
 	 * List of custom routing paths.
-	 * @var array
 	 */
-	private $routes = [];
+	private array $routes = [];
 
 	/**
 	 * Flag for show log informations on AJAX calls.
-	 * @var bool
 	 */
-	private $sendLog = TRUE;
+	private bool $sendLog = TRUE;
 
 	/**
 	 * Private constructor, called by getInstance() method.
 	 */
 	private function __construct() {
 
-		// get the BASE_URI constant defined in config.php file
-		$this->baseUrl = BASE_URI;
+		// get the BASE_URI from .env file
+		$this->baseUrl = (string)Config::get('BASE_URI');
 
 		// request URL, NULL for CLI
 		$this->url = Application::isCli() ? NULL : $_SERVER['REQUEST_URI'];
@@ -103,7 +92,7 @@ class Router {
 
 	}
 
-	public function parseRoutes() {
+	public function parseRoutes(): void {
 
 		// parse, add and remove from URL any CGI param after question mark
 		$this->parseCgiParameters();
@@ -135,7 +124,7 @@ class Router {
 	 * Checks if there are any GET vars in the URL, adds these to object
 	 * vars and removes from URL.
 	 */
-	private function parseCgiParameters() {
+	private function parseCgiParameters(): void {
 
 		if (FALSE===strpos((string)$this->url, '?')) {
 			return;
@@ -166,8 +155,6 @@ class Router {
 
 	/**
 	 * Remove special prefixes (ajax, raw) and return all the parameters found in the URL.
-	 *
-	 * @return	array
 	 */
 	private function getParameters(): array {
 
@@ -205,7 +192,6 @@ class Router {
 	 * @param	array:string	List of URL parameters.
 	 * @param	string			Path to routes file.
 	 * @param	bool			Flag to set as module routes.
-	 * @return	bool
 	 */
 	private function parseCustomRoutes(array $params, string $routesFile, bool $moduleRoute=FALSE): bool {
 
@@ -326,7 +312,7 @@ class Router {
 	/**
 	 * Populates router variables by standard parameter login.
 	 *
-	 * @param	array:string	List of URL parameters.
+	 * @param	string[]	List of URL parameters.
 	 */
 	private function parseStandardRoutes(array $params) {
 
@@ -375,12 +361,10 @@ class Router {
 
 	/**
 	 * Create then return the singleton object.
-	 *
-	 * @return Router
 	 */
 	public static function getInstance(): self {
 
-		if (is_null(self::$instance)) {
+		if (!isset(self::$instance) or is_null(self::$instance)) {
 			self::$instance = new self();
 		}
 
@@ -392,25 +376,14 @@ class Router {
 	 * Will returns property’s value if set. Throw an exception and returns NULL if not set.
 	 *
 	 * @param	string	Property’s name.
-	 * @throws	Exception
-	 * @return	mixed|NULL
 	 */
-	public function __get(string $name) {
+	public function __get(string $name): mixed {
 
-		try {
-
-			if (!property_exists($this, $name)) {
-				throw new \Exception('Parameter “'. $name .'” was not set');
-			}
-
+		if (property_exists($this, $name)) {
 			return $this->$name;
-
-		} catch (\Exception $e) {
-
-			trigger_error($e->getMessage());
-			return NULL;
-
 		}
+
+		throw new PairException('Property “'. $name .'” doesn’t exist for this object '. get_called_class());
 
 	}
 
@@ -420,7 +393,7 @@ class Router {
 	 * @param	string	Property’s name.
 	 * @param	mixed
 	 */
-	public function __set(string $name, $value) {
+	public function __set(string $name, mixed $value): void {
 
 		$this->$name = $value;
 
@@ -431,10 +404,8 @@ class Router {
 	 *
 	 * @param	mixed	Parameter position (zero based) or Key name.
 	 * @param	bool	Flag to decode a previously encoded value as char-only.
-	 *
-	 * @return	string|NULL
 	 */
-	public static function get($paramIdx, bool $decode=FALSE): ?string {
+	public static function get(int|string $paramIdx, bool $decode=FALSE): ?string {
 
 		$self = static::$instance;
 
@@ -457,9 +428,8 @@ class Router {
 	 *
 	 * @param	mixed	Parameter position (zero based) or Key name.
 	 * @param	bool	Flag to decode a previously encoded value as char-only.
-	 * @return	string|NULL
 	 */
-	public function getParam($paramIdx, bool $decode=FALSE): ?string {
+	public function getParam(int|string $paramIdx, bool $decode=FALSE): ?string {
 
 		if (array_key_exists($paramIdx, $this->vars) and ''!=$this->vars[$paramIdx]) {
 			$value = $this->vars[$paramIdx];
@@ -480,7 +450,7 @@ class Router {
 	 * @param	string	Value to add.
 	 * @param	bool	Flag to encode as char-only the value.
 	 */
-	public function setParam($paramIdx, $value, bool $encode=FALSE) {
+	public function setParam(mixed $paramIdx, string $value, bool $encode=FALSE): void {
 
 		if ($encode) {
 			$value = rtrim(strtr(base64_encode(gzdeflate(json_encode($value), 9)), '+/', '-_'), '=');
@@ -493,7 +463,7 @@ class Router {
 	/**
 	 * Delete all parameters.
 	 */
-	public function resetParams() {
+	public function resetParams(): void {
 
 		$this->vars = [];
 
@@ -501,8 +471,6 @@ class Router {
 
 	/**
 	 * Return the current list page number.
-	 *
-	 * @return	int
 	 */
 	public function getPage(): int {
 
@@ -529,44 +497,34 @@ class Router {
 	 *
 	 * @param	int		Page number.
 	 */
-	public function setPage(int $number) {
+	public function setPage(int $number): void {
 
 		$number = (int)$number;
 
 		$this->page = $number;
 
 		// the cookie about persistent state
-		$cookieName = Application::getCookiePrefix() . ucfirst($this->module) . ucfirst($this->action);
+		$cookieName = Application::getCookiePrefix() . ucfirst((string)$this->module) . ucfirst((string)$this->action);
 
-		// set the persistent state
-		setcookie($cookieName, $number, [
-			'expires' => time() + 2592000, // 30 days
-			'path' => '/',
-			'samesite' => 'Lax',
-			'secure' => !Application::isDevelopmentHost()
-		]);
+		// set the persistent state, lifetime is 30 days
+		setcookie($cookieName, $number, Application::getCookieParams(time() + 2592000));
 
 	}
 
 	/**
 	 * Reset page number to 1.
 	 */
-	public function resetPage() {
+	public function resetPage(): void {
 
 		$this->page = 1;
 
 		// the cookie about persistent state
-		$cookieName = Application::getCookiePrefix() . ucfirst($this->module) . ucfirst($this->action);
+		$cookieName = Application::getCookiePrefix() . ucfirst((string)$this->module) . ucfirst((string)$this->action);
 
 		// unset the persistent state
 		if (isset($_COOKIE[$cookieName])) {
 			unset($_COOKIE[$cookieName]);
-			setcookie($cookieName, '', [
-				'expires' => -1,
-				'path' => '/',
-				'samesite' => 'Lax',
-				'secure' => !Application::isDevelopmentHost()
-			]);
+			setcookie($cookieName, '', Application::getCookieParams(-1));
 		}
 
 	}
@@ -576,7 +534,7 @@ class Router {
 	 *
 	 * @param	string	Module name.
 	 */
-	public function setModule(string $moduleName) {
+	public function setModule(string $moduleName): void {
 
 		if (!defined('MODULE_PATH')) {
 
@@ -591,7 +549,7 @@ class Router {
 	/**
 	 * Set the action
 	 *
-	 * @param  mixed	Action string or NULL.
+	 * @param  string|NULL	Action string or NULL.
 	 */
 	public function setAction(?string $action): void {
 
@@ -614,7 +572,7 @@ class Router {
 	 * @param	string	Default module name.
 	 * @param	string	Default action.
 	 */
-	public function setDefaults(string $module, string $action) {
+	public function setDefaults(string $module, string $action): void {
 
 		$this->defaults['module'] = $module;
 		$this->defaults['action'] = $action;
@@ -623,8 +581,6 @@ class Router {
 
 	/**
 	 * Returns URL of default module + default action.
-	 *
-	 * @return string
 	 */
 	public function getDefaultUrl(): string {
 
@@ -635,11 +591,11 @@ class Router {
 	/**
 	 * Set page to be viewed with no template, useful for ajax requests and API.
 	 */
-	public static function setRaw() {
+	public static function setRaw(): void {
 
 		try {
 			self::$instance->raw = TRUE;
-		} catch(\Exception $e) {
+		} catch(PairException $e) {
 			die('Router instance has not been created yet');
 		}
 
@@ -653,7 +609,7 @@ class Router {
 	 * @param	string|NULL	Optional module name.
 	 * @param	bool|NULL	Optional raw flag.
 	 */
-	public static function addRoute(string $path, string $action, string $module=NULL, ?bool $raw=FALSE) {
+	public static function addRoute(string $path, string $action, ?string $module=NULL, ?bool $raw=FALSE) {
 
 		// fix empty path
 		if ('' == $path) {
@@ -671,7 +627,7 @@ class Router {
 
 		try {
 			self::$instance->routes[] = $route;
-		} catch(\Exception $e) {
+		} catch(PairException $e) {
 			die('Router instance has not been created yet');
 		}
 
@@ -683,7 +639,6 @@ class Router {
 	 *
 	 * @param	string	The custom Route path.
 	 * @param	string	The URL to check.
-	 * @return	bool
 	 */
 	public function routePathMatchesUrl(string $path, string $url): bool {
 
@@ -703,7 +658,6 @@ class Router {
 	 * Return, if exists, the custom route object that matches the URL in param.
 	 *
 	 * @param	string	The URL as /module/action.
-	 * @return	\stdClass|NULL
 	 */
 	public function getModuleActionFromCustomUrl(string $url): ?\stdClass {
 
@@ -722,8 +676,6 @@ class Router {
 
 	/**
 	 * Returns current relative URL, with order and optional pagination.
-	 *
-	 * @return	string
 	 */
 	public function getUrl(): string {
 
@@ -769,10 +721,9 @@ class Router {
 	 * Proxy method to get the current URL with a different order value. If NULL param, will
 	 * reset ordering.
 	 *
-	 * @param	int		Optional order value to build the URL with.
-	 * @return	string
+	 * @param	int|NULL	Optional order value to build the URL with.
 	 */
-	public function getOrderUrl(int $val=NULL): string {
+	public function getOrderUrl(?int $val=NULL): string {
 
 		// save current order val
 		$tmp = $this->order;
@@ -790,10 +741,9 @@ class Router {
 	 * Special method to get the current URL with a different page number. If NULL param, will
 	 * reset pagination.
 	 *
-	 * @param	int		Optional page number to build the URL with.
-	 * @return	string
+	 * @param	int|NULL	Optional page number to build the URL with.
 	 */
-	public function getPageUrl(int $page=NULL): string {
+	public function getPageUrl(?int $page=NULL): string {
 
 		// save current order val
 		$tmp = $this->page;
@@ -809,8 +759,6 @@ class Router {
 
 	/**
 	 * Stampa l’URL calcolato in base ai parametri.
-	 *
-	 * @return	string
 	 */
 	public function __toString(): string {
 
@@ -824,8 +772,6 @@ class Router {
 
 	/**
 	 * Returns TRUE if request is raw (API) or ajax.
-	 *
-	 * @return boolean
 	 */
 	public function isRaw(): bool {
 
@@ -835,10 +781,8 @@ class Router {
 
 	/**
 	 * Returns TRUE if log must be printed to user via ajax.
-	 *
-	 * @return boolean
 	 */
-	public function sendLog() {
+	public function sendLog(): bool {
 
 		return $this->sendLog;
 
@@ -848,11 +792,11 @@ class Router {
 	 * If the page number is greater than 1, it returns the content to the first page. To be
 	 * used when there are no data to display in the lists with pagination.
 	 */
-	public static function exceedingPaginationFallback() {
+	public static function exceedingPaginationFallback(): void {
 
 		$self = static::$instance;
 
-		if (!$self) return NULL;
+		if (!$self) return;
 
 		if ($self->getPage() > 1) {
 			$self->resetPage();

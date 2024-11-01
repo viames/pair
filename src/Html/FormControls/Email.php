@@ -2,9 +2,9 @@
 
 namespace Pair\Html\FormControls;
 
+use Pair\Helpers\LogBar;
+use Pair\Helpers\Post;
 use Pair\Html\FormControl;
-use Pair\Support\Post;
-use Pair\Support\Logger;
 
 class Email extends FormControl {
 
@@ -23,7 +23,7 @@ class Email extends FormControl {
 		$value	= Post::get($this->name);
 
 		if ($this->required and !filter_var($value, FILTER_VALIDATE_EMAIL)) {
-			Logger::event('Control validation on field “' . $this->name . '” has failed (email required)');
+			LogBar::event('Control validation on field “' . $this->name . '” has failed (email required)');
 			return FALSE;
 		}
 
