@@ -40,7 +40,7 @@ class Group extends ActiveRecord {
 	/**
 	 * Set for converts from string to Datetime, integer or boolean object in two ways.
 	 */
-	protected function init() {
+	protected function init(): void {
 	
 		$this->bindAsInteger('id');
 	
@@ -102,7 +102,7 @@ class Group extends ActiveRecord {
 	/**
 	 * Deletes all Acl and User objects of this Group.
 	 */
-	protected function beforeDelete() {
+	protected function beforeDelete(): void {
 
 		$acls = Acl::getAllObjects(['groupId' => $this->id]);
 		foreach ($acls as $acl) {

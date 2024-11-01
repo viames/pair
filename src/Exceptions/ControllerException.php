@@ -2,12 +2,10 @@
 
 namespace Pair\Exceptions;
 
-use Exception;
-
 /**
  * Custom exception for handling errors in the controllers.
  */
-class ControllerException extends Exception {
+class ControllerException extends PairException {
 
 	/**
 	 * Error code for controller not found.
@@ -51,7 +49,7 @@ class ControllerException extends Exception {
 	 * @param int $code The error code, default to 0.
 	 * @param Exception|NULL $previous Optional previous exception for exception chaining.
 	 */
-	public function __construct($message = 'Error in controller', $code = 0, Exception $previous = NULL) {
+	public function __construct(string $message = 'Error in controller', int $code = 0, \Exception $previous = NULL) {
 
 		parent::__construct($message, $code, $previous);
 

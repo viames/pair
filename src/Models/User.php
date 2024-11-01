@@ -3,6 +3,7 @@
 namespace Pair\Models;
 
 use Pair\Core\Application;
+use Pair\Core\Config;
 use Pair\Core\Router;
 use Pair\Orm\ActiveRecord;
 use Pair\Orm\Collection;
@@ -23,51 +24,43 @@ class User extends ActiveRecord {
 
 	/**
 	 * User unique identifier.
-	 * @var int
 	 */
-	protected $id;
+	protected int $id;
 
 	/**
 	 * Id group belongs to this user.
-	 * @var int
 	 */
-	protected $groupId;
+	protected int $groupId;
 
 	/**
 	 * Id of user locale.
-	 * @var int
 	 */
-	protected $localeId;
+	protected int $localeId;
 
 	/**
 	 * Username for local authentication
-	 * @var string
 	 */
-	protected $username;
+	protected string $username;
 
 	/**
 	 * Password hash.
-	 * @var string
 	 */
-	protected $hash;
+	protected string $hash;
 
 	/**
 	 * User name.
-	 * @var string
 	 */
-	protected $name;
+	protected string $name;
 
 	/**
 	 * User surname.
-	 * @var string
 	 */
-	protected $surname;
+	protected string $surname;
 
 	/**
 	 * Property that binds db field email.
-	 * @var string
 	 */
-	protected $email;
+	protected ?string $email = NULL;
 
 	/**
 	 * If TRUE, this user is admin.
@@ -83,21 +76,18 @@ class User extends ActiveRecord {
 
 	/**
 	 * Last login’s date, properly converted when inserted into db.
-	 * @var DateTime|NULL
 	 */
-	protected $lastLogin;
+	protected ?\DateTime $lastLogin;
 
 	/**
 	 * Amount of wrong login.
-	 * @var int
 	 */
-	protected $faults;
+	protected int $faults = 0;
 
 	/**
 	 * Token to start password reset.
-	 * @var string
 	 */
-	protected $pwReset;
+	protected ?string $pwReset;
 
 	/**
 	 * Time zone offset in hours. Cached.
@@ -113,13 +103,11 @@ class User extends ActiveRecord {
 
 	/**
 	 * Name of related db table.
-	 * @var string
 	 */
 	const TABLE_NAME = 'users';
 
 	/**
 	 * Name of primary key db field.
-	 * @var string
 	 */
 	const TABLE_KEY = 'id';
 
@@ -128,7 +116,6 @@ class User extends ActiveRecord {
 	 * Name will returns firstName + secondName.
 	 *
 	 * @param	string	Property’s name.
-	 * @throws	Exception
 	 */
 	public function __get(string $name): mixed {
 
@@ -136,33 +123,28 @@ class User extends ActiveRecord {
 
 			case 'fullName':
 				return $this->name . ' ' . $this->surname;
-				break;
 
 			case 'groupName':
 				return $this->getGroup()->name;
-				break;
 
 			case 'tzName':
 				$this->loadTimezone();
 				return $this->tzName;
-				break;
 
 			case 'tzOffset':
 				$this->loadTimezone();
 				return $this->tzOffset;
 
-			default:
-				return parent::__get($name);
-				break;
-
 		}
+
+		return parent::__get($name);
 
 	}
 
 	/**
 	 * Set for converts from string to Datetime, integer or boolean object in two ways.
 	 */
-	protected function init() {
+	protected function init(): void {
 
 		$this->bindAsBoolean('admin', 'enabled');
 
@@ -209,7 +191,7 @@ class User extends ActiveRecord {
 	/**
 	 * Deletes sessions of an user before its deletion.
 	 */
-	protected function beforeDelete() {
+	protected function beforeDelete(): void {
 
 		// deletes user sessions
 		Database::run('DELETE FROM `sessions` WHERE `id_user` = ?', [$this->id]);
@@ -251,7 +233,7 @@ class User extends ActiveRecord {
 	 */
 	public static function checkPassword(string $password, string $hash): bool {
 
-		return ($hash == crypt($password, $hash) ? TRUE : FALSE);
+		return ($hash == crypt($password, $hash));
 
 	}
 
@@ -272,7 +254,7 @@ class User extends ActiveRecord {
 		$ret->userId	= NULL;
 		$ret->sessionId	= NULL;
 
-		$query = 'SELECT * FROM `users` WHERE `' . (PAIR_AUTH_BY_EMAIL ? 'email' : 'username') . '` = ?';
+		$query = 'SELECT * FROM `users` WHERE `' . (Config::get('PAIR_AUTH_BY_EMAIL') ? 'email' : 'username') . '` = ?';
 
 		// load user row
 		$row = Database::load($query, [$username], PAIR_DB_OBJECT);
@@ -324,13 +306,13 @@ class User extends ActiveRecord {
 				$ret->userId = $user->id;
 				$ret->sessionId = session_id();
 				$user->resetFaults();
-				
+
 				// clear any password-reset
 				if (!is_null($user->pwReset)) {
 					$user->pwReset = NULL;
 					$user->store();
 				}
-				
+
 				// hook for tasks to be executed after login
 				$user->afterLogin();
 
@@ -447,10 +429,11 @@ class User extends ActiveRecord {
 	/**
 	 * Starts a new session, writes on db and updates users table for last login.
 	 * Returns true if both db writing has been done succesfully.
+	 *
 	 * @param	string	IANA time zone identifier.
 	 * @param	int		Possible ID of the user before impersonation.
 	 */
-	private function createSession(string $timezone, ?int $formerUserId = null): bool {
+	private function createSession(string $timezone, ?int $formerUserId=NULL): bool {
 
 		// get a valid DateTimeZone object
 		$dateTimeZone = User::getValidTimeZone($timezone);
@@ -474,7 +457,7 @@ class User extends ActiveRecord {
 		$res1 = $session->create();
 
 		// deletes all other sessions for this user
-		if (defined('PAIR_SINGLE_SESSION') and PAIR_SINGLE_SESSION) {
+		if (Config::get('PAIR_SINGLE_SESSION')) {
 			Database::run('DELETE FROM `sessions` WHERE `id_user` = ? AND `id` != ?', [$this->id, session_id()]);
 		}
 
@@ -491,6 +474,7 @@ class User extends ActiveRecord {
 
 	/**
 	 * Does the logout action and returns TRUE if session is found and deleted.
+	 *
 	 * @param	string	Session ID to close.
 	 */
 	public static function doLogout(string $sid): bool {
@@ -498,11 +482,11 @@ class User extends ActiveRecord {
 		// get User object by Session
 		$session = new Session($sid);
 		$user = $session->getUser();
-		
+
 		if (is_null($user)) {
 			return FALSE;
 		}
-		
+
 		// hook for tasks to be executed before logout
 		$user->beforeLogout();
 
@@ -558,10 +542,11 @@ class User extends ActiveRecord {
 	/**
 	 * Check if this user has access permission to a module and optionally to a specific action.
 	 * Admin can access everything. This method use cache variable to load once from db.
+	 *
 	 * @param	string	Module name.
 	 * @param	string	Optional action name.
 	 */
-	public function canAccess(string $module, string $action=NULL): bool {
+	public function canAccess(string $module, ?string $action=NULL): bool {
 
 		// patch for public folder content
 		if ('public' == $module) {
@@ -616,7 +601,7 @@ class User extends ActiveRecord {
 				INNER JOIN `modules` AS m ON r.`module_id` = m.`id`
 				WHERE a.`group_id` = ?';
 
-			$this->setCache('acl', Rule::getObjectsByQuery($query, [$this->groupId]));
+			$this->setCache('acl', Rule::getObjectsByQuery($query, [$this->__get('groupId')]));
 
 		}
 
@@ -637,7 +622,7 @@ class User extends ActiveRecord {
 			WHERE a.`is_default` = 1
 			AND a.`group_id` = ?';
 
-		return Database::load($query, [$this->groupId], PAIR_DB_OBJECT);
+		return Database::load($query, [$this->__get('groupId')], PAIR_DB_OBJECT);
 
 	}
 
@@ -676,19 +661,6 @@ class User extends ActiveRecord {
 	}
 
 	/**
-	 * Get Group object for this user. Cached.
-	 */
-	public function getGroup(): Group {
-
-		if (!$this->issetCache('group')) {
-			$this->setCache('group', new Group($this->groupId));
-		}
-
-		return $this->getCache('group');
-
-	}
-
-	/**
 	 * Join the user’s name and surname and return it
 	 */
 	public function getFullName(): string {
@@ -702,7 +674,7 @@ class User extends ActiveRecord {
 	 */
 	public function isLocaleSet(): bool {
 
-		return (bool)$this->localeId;
+		return isset($this->localeId) ? (bool)$this->localeId : FALSE;
 
 	}
 
@@ -737,6 +709,7 @@ class User extends ActiveRecord {
 
 	/**
 	 * Return an user that matches pw_reset string. NULL if not found.
+	 *
 	 * @param	string		PwReset value.
 	 */
 	public static function getByPwReset(string $pwReset): ?User {
@@ -749,6 +722,7 @@ class User extends ActiveRecord {
 
 	/**
 	 * Apply a password reset for this User.
+	 *
 	 * @param	string	New password to set.
 	 * @param	string	IANA time zone identifier.
 	 */
@@ -773,6 +747,7 @@ class User extends ActiveRecord {
 
 	/**
 	 * Create a remember-me object, store it into DB and set the browser’s cookie.
+	 *
 	 * @param	string	IANA time zone identifier.
 	 */
 	public function createRememberMe(string $timezone): bool {
@@ -792,16 +767,11 @@ class User extends ActiveRecord {
 		// serialize an array with timezone and RememberMe string
 		$content = serialize([$timezone, $ur->rememberMe]);
 
-		// expire in 30 days
-		$expire = time() + 60*60*24*30;
+		// expire in 30 days 2592000
+		$expires = time() + 2592000;
 
 		// set cookie and return the result
-		return setcookie(UserRemember::getCookieName(), $content, [
-			'expires' => $expire,
-			'path' => '/',
-			'samesite' => 'Lax',
-			'secure' => !Application::isDevelopmentHost()
-		]);
+		return setcookie(UserRemember::getCookieName(), $content, Application::getCookieParams($expires));
 
 	}
 
@@ -824,16 +794,11 @@ class User extends ActiveRecord {
 		Database::run('UPDATE `users_remembers` SET `created_at` = NOW() WHERE `user_id` = ? AND `remember_me` = ?', [$this->id, $cookieContent->rememberMe]);
 		Database::run('DELETE FROM `users_remembers` WHERE `user_id` = ? AND `remember_me` != ?', [$this->id, $cookieContent->rememberMe]);
 
-		// expire in 30 days
-		$expire = time() + 60*60*24*30;
+		// expires in 30 days
+		$expires = time() + 2592000;
 
 		// set cookie and return the result
-		return setcookie($cookieName, $_COOKIE[$cookieName], [
-			'expires' => $expire,
-			'path' => '/',
-			'samesite' => 'Lax',
-			'secure' => !Application::isDevelopmentHost()
-		]);
+		return setcookie($cookieName, $_COOKIE[$cookieName], Application::getCookieParams($expires));
 
 	}
 
@@ -884,12 +849,7 @@ class User extends ActiveRecord {
 		Database::run('DELETE FROM `users_remembers` WHERE `user_id` = ? AND `remember_me` = ?', [$this->id, $cookieContent->rememberMe]);
 
 		// delete the current remember-me Cookie
-		return setcookie(UserRemember::getCookieName(), '', [
-			'expires' => -1,
-			'path' => '/',
-			'samesite' => 'Lax',
-			'secure' => !Application::isDevelopmentHost()
-		]);
+		return setcookie(UserRemember::getCookieName(), '', Application::getCookieParams(-1));
 
 	}
 

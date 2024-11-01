@@ -2,9 +2,11 @@
 
 namespace Pair\Orm;
 
+use Pair\Core\Config;
 use Pair\Exceptions\DatabaseException;
+use Pair\Exceptions\PairException;
+use Pair\Models\ErrorLog;
 use Pair\Support\Logger;
-
 
 define ('PAIR_DB_OBJECT_LIST',	1);
 define ('PAIR_DB_OBJECT',		2);
@@ -21,31 +23,21 @@ class Database {
 
 	/**
 	 * Singleton object for database.
-	 * @var Database|NULL
 	 */
-	protected static $instance = NULL;
+	protected static ?self $instance = NULL;
 
 	/**
 	 * DB Handler.
-	 * @var PDO
 	 */
 	private ?\PDO $handler = NULL;
 
 	/**
 	 * Temporary store for the SQL Query.
-	 * @var string
 	 */
 	private ?string $query;
 
 	/**
-	 * Registered error list.
-	 * @var array
-	 */
-	private array $errors = [];
-
-	/**
 	 * List of temporary table structures (describe, foreignKeys, inverseForeignKeys).
-	 * @var array
 	 */
 	private array $definitions = [];
 
@@ -56,8 +48,6 @@ class Database {
 
 	/**
 	 * Connects to db just the first time, returns singleton object everytime.
-	 *
-	 * @throws	Exception
 	 */
 	public static function getInstance(): self {
 
@@ -71,6 +61,7 @@ class Database {
 
 	/**
 	 * Proxy to open a persistent connection to DBMS if current PDO handler is NULL.
+	 *
 	 * @throws	PDOException
 	 */
 	public function connectPersistent(): void {
@@ -94,8 +85,6 @@ class Database {
 	 * Connects to DBMS with params only if PDO handler property is null, so not connected.
 	 *
 	 * @param	bool	Flag to open a persistent connection (TRUE). Default is FALSE.
-	 *
-	 * @throws	PDOException
 	 */
 	private function openConnection(bool $persistent=FALSE): void {
 
@@ -104,7 +93,7 @@ class Database {
 			return;
 		}
 
-		$dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME;
+		$dsn = 'mysql:host=' . Config::get('DB_HOST') . ';dbname=' . Config::get('DB_NAME');
 		$options = [
 			\PDO::ATTR_PERSISTENT			=> (bool)$persistent,
 			\PDO::MYSQL_ATTR_INIT_COMMAND	=> "SET NAMES utf8",
@@ -113,7 +102,7 @@ class Database {
 
 		try {
 
-			$this->handler = new \PDO($dsn, DB_USER, DB_PASS, $options);
+			$this->handler = new \PDO($dsn, Config::get('DB_USER'), Config::get('DB_PASS'), $options);
 
 			if (!is_a($this->handler, 'PDO')) {
 				throw new DatabaseException('Db handler is not valid, connection failed');
@@ -156,9 +145,10 @@ class Database {
 	 *
 	 * @param	string		SQL Query da eseguire.
 	 * @param	array|NULL	Parameters to bind on sql query in array or simple value.
-	 * @return	int	Number of affected items.
+	 * @return	int			Number of affected items.
+	 * @throws	DatabaseException
 	 */
-	public function exec(string $query, $params=[]): int {
+	public function exec(string $query, array $params=[]): int {
 
 		$this->openConnection();
 
@@ -172,32 +162,9 @@ class Database {
 
 		} catch (\PDOException $e) {
 
-			// logger
-			$this->logParamQuery($this->query, 0, $params);
+			ErrorLog::snapshot($e, ErrorLog::ERROR);
 
-			switch ($e->getCode()) {
-
-				// integrity constraint violation
-				/*
-				case '23000':
-					$message = 'Database integrity constraint violation';
-					break;
-				*/
-				default:
-					$message = $e->getMessage();
-					break;
-			}
-
-			$this->addError($message);
-
-			$affected = 0;
-
-		} catch (\Exception $e) {
-
-			// logger
-			$this->logParamQuery($this->query, 0, $params);
-			$this->addError($e->getMessage());
-			$affected = 0;
+			throw new DatabaseException($e->getMessage());
 
 		}
 
@@ -268,7 +235,7 @@ class Database {
 	 * @param	array	List of parameters to bind on the sql query.
 	 * @param	int		Returned type (see constants PAIR_DB_*). PAIR_DB_OBJECT_LIST is default.
 	 */
-	public static function load(string $query, array $params=[], int $option=NULL): array|Collection|\stdClass|string|int|NULL {
+	public static function load(string $query, array $params=[], ?int $option=NULL): array|Collection|\stdClass|string|int|NULL {
 
 		$self = static::getInstance();
 
@@ -282,11 +249,7 @@ class Database {
 			$stat = $self->handler->prepare($query);
 
 			// bind parameters
-			try {
-				$stat->execute($params);
-			} catch (\Throwable $e) {
-				throw new DatabaseException('Error binding parameters: ' . $e->getMessage());
-			}
+			$stat->execute($params);
 
 			switch ($option) {
 
@@ -352,8 +315,8 @@ class Database {
 	/**
 	 * Run a query with parameters and return TRUE if success. Support PDO parameters bind.
 	 *
-	 * @param	string		SQL query to run.
-	 * @param	array|NULL	List of parameters to bind on the sql query.
+	 * @param	string	SQL query to run.
+	 * @param	array	List of parameters to bind on the sql query.
 	 */
 	public static function run(string $query, array $params=[]): int {
 
@@ -377,28 +340,8 @@ class Database {
 			// logger
 			$self->logParamQuery($query, 0, $params);
 
-			switch ($e->getCode()) {
+			$self->handleException($e, $query, $params);
 
-				// integrity constraint violation
-				/*
-				 case '23000':
-					 $message = 'Database integrity constraint violation';
-					 break;
-				 */
-				default:
-					$message = $e->getMessage();
-					break;
-			}
-
-			$self->addError($message);
-
-			$affected = 0;
-
-		} catch (\Exception $e) {
-
-			// logger
-			$self->logParamQuery($query, 0, $params);
-			$self->addError($e->getMessage());
 			$affected = 0;
 
 		}
@@ -413,7 +356,7 @@ class Database {
 	/**
 	 * Returns a recordset executing the query previously set with setQuery() method and
 	 * optional parameters as array.
-	 * @param	array|NULL	List of parameters to bind on sql query.
+	 * @param	array		List of parameters to bind on sql query.
 	 * @return	stdClass[]
 	 */
 	public function loadObjectList(array $params=[]): ?array {
@@ -444,45 +387,12 @@ class Database {
 	}
 
 	/**
-	 * Returns array of first column value fetched from the resultset.
-	 *
-	 * @param	array|NULL	List of parameters to bind on sql query.
-	 * @return	array|NULL
-	 */
-	public function loadResultList(array $params=[]): ?array {
-
-		$this->openConnection();
-
-		$ret = NULL;
-
-		try {
-
-			$stat = $this->handler->prepare($this->query);
-			$stat->execute((array)$params);
-			$ret = $stat->fetchAll(\PDO::FETCH_COLUMN);
-
-			// logger
-			$this->logParamQuery($this->query, count($ret), $params);
-
-		} catch (\PDOException $e) {
-
-			$this->handleException($e, $this->query, $params);
-
-		}
-
-		$stat->closeCursor();
-
-		return $ret;
-
-	}
-
-	/**
 	 * Returns first column value or NULL if row is not found.
 	 *
 	 * @param	array|NULL	List of parameters to bind on sql query.
-	 * @return	string|NULL
+	 * @return	string|FALSE
 	 */
-	public function loadResult(array $params=[]): ?string {
+	private function loadResult(array $params=[]): FALSE|string {
 
 		$this->openConnection();
 
@@ -565,9 +475,9 @@ class Database {
 			if (is_null($v)) {
 				$columns[] = '`' . $column . '`';
 				$values[] = 'NULL';
-			} else if (defined('AES_CRYPT_KEY') and in_array($column, $encryptables)) {
+			} else if (Config::get('AES_CRYPT_KEY') and in_array($column, $encryptables)) {
 				$columns[] = '`' . $column . '`';
-				$values[] = 'AES_ENCRYPT(' . $this->quote($v) . ',' . $this->quote(AES_CRYPT_KEY) . ')';
+				$values[] = 'AES_ENCRYPT(' . $this->quote($v) . ',' . $this->quote(Config::get('AES_CRYPT_KEY')) . ')';
 			} else if (is_string($v) or is_numeric($v)) {
 				$columns[] = '`' . $column . '`';
 				$values[] = $this->quote($v);
@@ -617,8 +527,8 @@ class Database {
 
 				if (is_null($v)) {
 					$values[] = 'NULL';
-				} else if (defined('AES_CRYPT_KEY') and in_array($column, $encryptables)) {
-					$values[] = 'AES_ENCRYPT(' . $this->quote($v) . ',' . $this->quote(AES_CRYPT_KEY) . ')';
+				} else if (Config::get('AES_CRYPT_KEY') and in_array($column, $encryptables)) {
+					$values[] = 'AES_ENCRYPT(' . $this->quote($v) . ',' . $this->quote(Config::get('AES_CRYPT_KEY')) . ')';
 				} else {
 					$values[] = $this->quote($v);
 				}
@@ -672,8 +582,8 @@ class Database {
 
 			if (is_null($value)) {
 				$sets[] = '`' . $column . '`=NULL';
-			} else if (defined('AES_CRYPT_KEY') and in_array($column, $encryptables)) {
-				$sets[] = '`' . $column . '`=AES_ENCRYPT(' . $this->quote($value) . ',' . $this->quote(AES_CRYPT_KEY) . ')';
+			} else if (Config::get('AES_CRYPT_KEY') and in_array($column, $encryptables)) {
+				$sets[] = '`' . $column . '`=AES_ENCRYPT(' . $this->quote($value) . ',' . $this->quote(Config::get('AES_CRYPT_KEY')) . ')';
 			} else {
 				$sets[] = '`' . $column . '`=?';
 				$columnVal[] = $value;
@@ -687,10 +597,7 @@ class Database {
 		if (count($sets) and count($where)) {
 
 			// build the SQL query
-			$query =
-				'UPDATE `' . $table . '`' .
-				' SET ' . implode(', ', $sets) .
-				' WHERE ' . implode(' AND ', $where);
+			$query = 'UPDATE `' . $table . '` SET ' . implode(', ', $sets) . ' WHERE ' . implode(' AND ', $where);
 
 			// execute the SQL query
 			$res = $this->exec($query, $values);
@@ -731,9 +638,9 @@ class Database {
 			if (is_null($v)) {
 				$columns[] = '`' . $column . '`';
 				$values[]  = 'NULL';
-			} else if (defined('AES_CRYPT_KEY') and in_array($column, $encryptables)) {
+			} else if (Config::get('AES_CRYPT_KEY') and in_array($column, $encryptables)) {
 				$columns[] = '`' . $column . '`';
-				$values[]  = 'AES_ENCRYPT(' . $this->quote($v) . ',' . $this->quote(AES_CRYPT_KEY) . ')';
+				$values[]  = 'AES_ENCRYPT(' . $this->quote($v) . ',' . $this->quote(Config::get('AES_CRYPT_KEY')) . ')';
 			} else if (is_string($v) or is_numeric($v)) {
 				$columns[] = '`' . $column . '`';
 				$values[]  = $this->quote($v);
@@ -777,7 +684,7 @@ class Database {
 				AND k.`CONSTRAINT_NAME` = r.`CONSTRAINT_NAME`';
 
 			$params = [
-				'dbName' => DB_NAME,
+				'dbName' => Config::get('DB_NAME'),
 				'tableName' => $tableName
 			];
 
@@ -813,7 +720,7 @@ class Database {
 				AND k.CONSTRAINT_NAME = r.CONSTRAINT_NAME';
 
 			$params = [
-				'dbName' => DB_NAME,
+				'dbName' => Config::get('DB_NAME'),
 				'tableName' => $tableName
 			];
 
@@ -864,7 +771,7 @@ class Database {
 			}
 		}
 
-		$res = self::load('DESCRIBE `' . $tableName . '` `' . $column . '`', NULL, PAIR_DB_OBJECT);
+		$res = self::load('DESCRIBE `' . $tableName . '` `' . $column . '`', [], PAIR_DB_OBJECT);
 
 		return ($res ? $res : NULL);
 
@@ -957,7 +864,7 @@ class Database {
 	/**
 	 * Return the MySQL version number.
 	 */
-	public function getMysqlVersion(): ?string {
+	public function getMysqlVersion(): FALSE|string {
 
 		$this->setQuery('SELECT VERSION()');
 		return $this->loadResult();
@@ -979,7 +886,7 @@ class Database {
 
 			// prepare query to discover db user privileges
 			$stat = $this->handler->prepare('SELECT `PRIVILEGE_TYPE` FROM information_schema.user_privileges' .
-				' WHERE `GRANTEE` = \'' . DB_USER . '\'@\'' . DB_HOST . '\'');
+				' WHERE `GRANTEE` = \'' . Config::get('DB_USER') . '\'@\'' . Config::get('DB_HOST') . '\'');
 
 			// get user privileges
 			$privilegeType = $stat->fetch(\PDO::FETCH_COLUMN);
@@ -994,32 +901,11 @@ class Database {
 
 			}
 
-		} catch (\Exception $e) {
+		} catch (PairException $e) {
 
 			throw new DatabaseException('Error setting utf8mb4 charset and collation', 1002, $e);
 
 		}
-
-	}
-
-	/**
-	 * Add error to list.
-	 *
-	 * @param	string	Text error message.
-	 */
-	public function addError(string $message): void {
-
-		trigger_error($message);
-		$this->errors[] = $message;
-
-	}
-
-	/**
-	 * Returns text of latest error message, or FALSE if not errors.
-	 */
-	public function getLastError(): string|bool {
-
-		return end($this->errors);
 
 	}
 
@@ -1086,8 +972,9 @@ class Database {
 	 * @param	Exception|Throwable	Exception or Error object.
 	 * @param	string		SQL Query.
 	 * @param	array|NULL	Parameters.
+	 * @throws	DatabaseException
 	 */
-	private function handleException(\Exception|\Throwable $e, string $query, ?array $params): void {
+	private function handleException(PairException|\Throwable $e, string $query, ?array $params): void {
 
 		$params = (array)$params;
 
@@ -1111,7 +998,7 @@ class Database {
 
 		}
 
-		$this->addError($message);
+		throw new DatabaseException($message);
 
 	}
 

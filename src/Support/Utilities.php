@@ -3,7 +3,10 @@
 namespace Pair\Support;
 
 use Pair\Core\Application;
+use Pair\Core\Config;
 use Pair\Core\Router;
+use Pair\Exceptions\PairException;
+use Pair\Html\FormControls\File;
 use Pair\Orm\Collection;
 
 /**
@@ -17,123 +20,231 @@ class Utilities {
 	const RANDOM_STRING_CHARS = '123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
 	/**
-	 * Custom error handler.
-	 *
-	 * @param	int		Error number.
-	 * @param	string	Error text message.
-	 * @param	string	Error full file path.
-	 * @param	int		Error line.
-	 * @param	array	(Optional) it will be passed an array that points to the active symbol table at the point the error occurred.
+	 * Converts an array of strings to an array of integers.
+	 * @return int[]
 	 */
-	public static function customErrorHandler(int $errno, string $errstr, string $errfile, int $errline, ?array $errcontext=NULL): void {
+	public static function arrayToInt(array $array): array {
 
-		$backtrace = self::getDebugBacktrace();
-
-		// command line log has date and plain text
-		if ('cli' == php_sapi_name()) {
-
-			print "\n" . date(DATE_RFC2822) . "\n";
-			print "Error [" . $errno . ']: ' . $errstr . ' (' . $errfile . ' line ' . $errline . ")\n";
-
-			if ($backtrace) {
-				print "Debug backtrace:\n" . implode("\n", $backtrace) . "\n";
-		}
-
-		// list all errors in framework log
-		} else {
-
-			if (Options::get('show_log')) {
-
-				// start to show detailed error in log event
-				Logger::error('Debug backtrace for “' . $errstr .  '” in ' . $errfile . ' line ' . $errline);
-
-				foreach ($backtrace as $event) {
-					Logger::event($event);
-				}
-
-				Logger::event('Debug backtrace finished');
-
-			// show error in app because log is disabled
-			} else {
-
-				$app = Application::getInstance();
-				$app->enqueueError($errstr . ' (' . $errfile . ' line ' . $errline .')', 'Error [' . $errno . ']');
-
-			}
-
-		}
-
-		if (defined('SENTRY_DSN') and SENTRY_DSN) {
-			\Sentry\captureLastError();
-			Logger::event('The error was sent to Sentry');
-		}
+		return array_map('intval', $array);
 
 	}
 
 	/**
-	 * Manages fatal errors (out of memory etc.) sending email to all address in options.
+	 * Check if passed file is one of passed MIME Content Type.
+	 *
+	 * @param	string	Path to file.
+	 * @param	string	Expected MIME Content Type.
 	 */
-	public static function fatalErrorHandler(): void {
+	private static function checkFileMime($file, $validMime): bool {
 
-		// get fatal error array
-		$error = error_get_last();
+		if (!function_exists('mime_content_type')) {
+			throw new PairException('The PHP extention mime_content_type is not installed');
+		}
 
-		if (!is_null($error)) {
+		// force to array
+		$validMime = (array)$validMime;
 
-			// command line log has date and plain text
-			if ('cli' == php_sapi_name()) {
+		foreach ($validMime as $item) {
 
-				print date(DATE_RFC2822) . "\nFatal error (" . $error['type'] . ') on file ' .
-					$error['file'] . ' line ' . $error['line'] . ': ' . $error['message'] . "\n";
+			if ($item == mime_content_type($file)) {
+				return TRUE;
+			}
 
-			// format for an HTML web print
+		}
+
+		return FALSE;
+
+	}
+
+	/**
+	 * Convert a CSV file to an Excel file using the github.com/tealeg/csv2xlsx command line utility.
+	 */
+	public static function convertCsvToExcel(string $csvPath, ?string $excelPath=NULL, ?string $delimiter=NULL): string {
+
+		$execPath = self::getExecutablePath('csv2xlsx', 'CSV2XLSX_PATH');
+
+		if (is_null($execPath)) {
+			throw new PairException('CSV2XLSX command line utility is not available on this server');
+		}
+
+		// check if the file is a CSV
+		$fileMime = mime_content_type($csvPath);
+		if ('csv' != File::mimeCategory($fileMime)) {
+			throw new PairException('The file is not a CSV');
+		}
+
+		// create Excel file name as the CSV file with the extension changed
+		if (is_null($excelPath)) {
+			$fileName = substr($csvPath, 0, strrpos($csvPath, '.'));
+			$excelPath = $fileName ? $fileName . '.xlsx' : $csvPath . '.xlsx';
+		}
+
+		$command = $execPath . ' -d="' . ($delimiter ? $delimiter : ',') . '" -o=' . $excelPath . ' ' . $csvPath;
+
+		shell_exec($command);
+
+		if (!file_exists($excelPath)) {
+			throw new PairException('Conversion failed');
+		}
+
+		// remove the CSV file
+		unlink($csvPath);
+
+		return $excelPath;
+
+	}
+
+	/**
+	 * Replaces diacritics chars with similars in standard ascii.
+	 *
+	 * @param	string	Text to clean.
+	 */
+	public static function convertDiacritics(string $text): string {
+
+		$search = [
+			'à', 'á', 'â', 'ã', 'ä', 'å', 'æ', 'ß', 'ç', 'ð', 'è', 'é', 'ê', 'ë',
+			'ì', 'í', 'î', 'ï', 'ñ', 'ò', 'ó', 'ô', 'õ', 'ö', 'ø', 'œ', 'ù', 'ú',
+			'û', 'ü', 'Þ', 'þ', 'ÿ'
+		];
+
+		$replace = [
+			'a', 'a', 'a', 'a','ae', 'a','ae','ss', 'c', 'd', 'e', 'e', 'e', 'e',
+			'i', 'i', 'i', 'i', 'n', 'o', 'o', 'o', 'o','oe', 'o','oe', 'u', 'u',
+			'u','ue', 't', 't','yu'
+		];
+
+		return str_replace($search, $replace, $text);
+
+	}
+
+	/**
+	 * Deletes folder with all files and subfolders. Returns TRUE if deletion happens,
+	 * FALSE if folder or file is not found or in case of errors.
+	 *
+	 * @param	string	Relative or absolute directory.
+	 */
+	public static function deleteFolder($dir): bool {
+
+		if (!file_exists($dir)) return true;
+
+		if (!is_dir($dir) or is_link($dir)) return unlink($dir);
+
+		foreach (scandir($dir) as $item) {
+
+			if ($item == '.' or $item == '..') continue;
+
+			if (!self::deleteFolder($dir . "/" . $item)) {
+				chmod($dir . "/" . $item, 0777);
+				if (!self::deleteFolder($dir . "/" . $item)) return false;
+			}
+
+		}
+
+		return rmdir($dir);
+
+	}
+
+	/**
+	 * Download a CSV file with the lines passed in an array of objects.
+	 *
+	 * @param	array List of objects from which the header will be created from the first row.
+	 * @param	string Optional name for the document (with extension).
+	 * @return	bool
+	 */
+	public static function exportCsvForExcel(array $data, ?string $name=NULL): bool {
+
+		// field delimiter
+		$delimiter = ";";
+
+		// document name
+		$filename = $name ? $name : self::localCleanFilename(strtolower(Config::get('PRODUCT_NAME')) . '_export_' . date('YmdHis') . '.csv');
+
+		// file pointer
+		$file = fopen('php://memory', 'w');
+
+		// add BOM to set UTF-8 in Excel
+		fputs($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+		// if there is at least one row, it writes header and data rows
+		if (isset($data[0])) {
+
+			// properties of the first object in the list
+			$headValues = array_keys(get_object_vars($data[0]));
+
+			// first line with the object keys
+			fputcsv($file, $headValues, $delimiter);
+
+			// all subsequent lines
+			foreach ($data as $row) {
+				fputcsv($file, get_object_vars($row), $delimiter);
+			}
+
+		}
+
+		// rewinds the document
+		fseek($file, 0);
+
+		// set browser headers and force download
+		header('Content-Type: text/csv; charset=UTF-8');
+		header('Pragma: public'); // IE fix
+		header('Content-Disposition: attachment; filename="' . $filename . '";');
+
+		// writes the other data to a pointer to the file
+		fpassthru($file);
+
+		return TRUE;
+
+	}
+
+	/**
+	 * Returns the object with the property closest to the value passed as a parameter,
+	 * searching the indicated property of the object list passed.
+	 *
+	 * @param Collection|array List of objects to search.
+	 * @param string Name of the property that contains the name to compare.
+	 * @param string Value to search for.
+	 * @return object The closest object.
+	 */
+	public static function findSimilar(Collection|array $objectList, string $propertyName, string $searchedValue, ?bool $caseSensitive=FALSE): object {
+
+		// temporary list to sort by similarity
+		$similarity = [];
+
+		// check for similarity on each object
+		foreach ($objectList as $index => $item) {
+
+			// return the object that exactly matches
+
+			// assign the similarity percentage
+			if ($caseSensitive) {
+				if ($item->$propertyName == $searchedValue) return $item;
+				similar_text($item->$propertyName, $searchedValue, $percent);
 			} else {
-
-				print '<div style="background-color:#f1f1f1;border:2px solid red;margin:10px 0;padding:12px 16px">' .
-						PRODUCT_NAME . ' fatal error: ' . htmlspecialchars($error['message']) . '</div>';
-
+				$searchedValue = strtolower($searchedValue);
+				$propertyValue = strtolower($item->$propertyName);
+				if ($propertyValue == $searchedValue) return $item;
+				similar_text($propertyValue, $searchedValue, $percent);
 			}
 
-			// send email to every admin if no development environment
-			if (defined(PAIR_DEVELOPMENT) and PAIR_DEVELOPMENT) {
-
-				// get admin emails by options
-				$emails = array_filter(explode(',', Options::get('admin_emails')));
-
-				if (count($emails)) {
-
-					// get proper server description
-					if (isset($_SERVER['SERVER_NAME'])) {
-						$server = $_SERVER['SERVER_NAME'];
-					} else if (isset($_SERVER['SERVER_ADDR'])) {
-						$server = $_SERVER['SERVER_ADDR'];
-					} else {
-						$server = '[Unknown]';
-					}
-
-					// build email parameters
-					$subject = PRODUCT_NAME . ' fatal error on ' . $server;
-					$message = PRODUCT_NAME . ' generated a fatal error on server ' .  BASE_HREF . ' as of ' .
-						date(DATE_RFC2822) . " UTC." . PHP_EOL . PHP_EOL .
-						'Error [type ' . $error['type'] . ']: ' . PHP_EOL .
-						$error['message'] . ' (' . $error['file'] . ' line ' . $error['line'] . ')';
-					$headers = 'From: ' . PRODUCT_NAME . ' <' . strtolower(PRODUCT_NAME) . '@' . $server . '>';
-
-					// send email to each admin
-					foreach ($emails as $email) {
-						mail($email, $subject, $message, $headers);
-					}
-
-				}
-
-			}
+			$similarity[$index] = $percent;
 
 		}
 
-		if (defined('SENTRY_DSN') and SENTRY_DSN) {
-			\Sentry\captureLastError();
-			Logger::event('The error was sent to Sentry');
-		}
+		// get the array key of the maximum similarity value found
+		$maxSimilarity = array_search(max($similarity), $similarity);
+
+		return $objectList[$maxSimilarity];
+
+	}
+
+	/**
+	 * Checks and fixes path with missing trailing slash.
+	 *
+	 * @param	string	Path.
+	 */
+	public static function fixTrailingSlash(string &$path): void {
+
+		if (substr($path,strlen($path)-1, 1) != DIRECTORY_SEPARATOR) $path .= DIRECTORY_SEPARATOR;
 
 	}
 
@@ -174,404 +285,13 @@ class Utilities {
 	}
 
 	/**
-	 * Determines whether the brightness of the color code passed as a parameter is less
-	 * than 128, so it is a dark color. Useful for dynamically choosing a foreground or
-	 * background color that contrasts with the color passed.
-	 */
-	public static function isDarkColor(string $hexColor): bool {
-
-		// removes the # symbol, if present
-		$hexColor = ltrim($hexColor, '#');
-
-		// converts HEX color to RGB components
-		$r = hexdec(substr($hexColor, 0, 2));
-		$g = hexdec(substr($hexColor, 2, 2));
-		$b = hexdec(substr($hexColor, 4, 2));
-
-		// calculate brightness using the perceived formula
-		$brightness = ($r * 299 + $g * 587 + $b * 114) / 1000;
-
-		// if the brightness is less than 128, the color is dark
-		return $brightness < 128;
-
-	}
-
-	/**
-	 * Converts an array of strings to an array of integers.
-	 * @return int[]
-	 */
-	public static function arrayToInt(array $array): array {
-
-		return array_map('intval', $array);
-
-	}
-
-	/**
-	 * Creates a plain text string from any variable type.
-	 *
-	 * @param	mixed	Variable of any type.
-	 * @param	bool	Flag to hide var type.
-	 */
-	public static function varToText($var, bool $showTypes=TRUE, ?int $indent=0): string {
-
-		$getIndent = function(int $incr=0) use ($indent) {
-			$indent += $incr;
-			return str_repeat("\t", abs($indent));
-
-		};
-
-		$type = gettype($var);
-		$text = is_null($type) ?
-			'NULL' :
-			($showTypes ? $type . ':' : '');
-
-		switch ($type) {
-
-			case 'boolean':
-				$text .= $var ? 'true' : 'false';
-				break;
-
-			case 'integer':
-			case 'double':
-				$text .= $var;
-				break;
-
-			default:
-				if (self::isJson($var)) {
-					$text .= '"' . nl2br($var) . '"';
-				} else {
-					$text .= '"' . $var . '"';
-				}
-				break;
-
-			case 'array':
-				$parts = [];
-				foreach ($var as $k=>$v) {
-					$parts[] = $getIndent(1) . '"' . $k . '"=' . self::varToText($v, $showTypes, $indent+1);
-				}
-				$text .= $getIndent(1) . '[<br>' . implode(',<br>', $parts) . '<br>'. $getIndent(-1) . ']<br>';
-				break;
-
-			case 'object':
-				$text .= $getIndent(0) . get_class($var) . '{<br>' .
-					self::varToText(get_object_vars($var), $showTypes, $indent+1) .
-					$getIndent(0) . '}';
-				break;
-
-			case 'NULL':
-				$text .= 'null';
-				break;
-
-		}
-
-		return $text;
-
-	}
-
-	/**
-	 * Proxy method to print a JSON error message.
-	 *
-	 * @param	string	Error message to print on user.
-	 * @param	int|NULL	Error code (optional).
-	 * @param	int|NULL	HTTP code (optional, 400 by default).
-	 */
-	public static function pairJsonError(string $message, int $code=NULL, int $httpCode=NULL): void {
-
-		if (is_null($httpCode)) {
-			$httpCode = 400;
-		}
-
-		self::pairJsonData(NULL, $message, TRUE, $code, $httpCode);
-
-	}
-
-	/**
-	 * Prints a JSON object with three properties, useful for ajax returns: (string)message,
-	 * (bool)error, (string)log.
-	 *
-	 * @param	string	Error message to print on user.
-	 */
-	public static function pairJsonMessage(string $message): void {
-
-		self::pairJsonData(NULL, $message);
-
-	}
-
-	/**
-	 * Prints a JSON object with three properties, useful for ajax returns: (string)message,
-	 * (bool)error, (string)log.
-	 *
-	 * @param	string	Error message to print on user.
-	 */
-	public static function pairJsonSuccess(): void {
-
-		self::pairJsonData(NULL);
-
-	}
-
-	/**
-	 * Prints a JSON object with four properties, useful for ajax returns: (object)data,
-	 * (string)message, (bool)error, (string)log.
-	 *
-	 * @param	object	Structured object containing data.
-	 * @param	string	Error message to print on user (optional).
-	 * @param	bool	Error flag, set TRUE to notice about error (optional).
-	 * @param	bool	Error code (optional).
-	 * @param	int		HTTP code (optional).
-	 */
-	public static function pairJsonData(mixed $data, string $message=NULL, bool $error=FALSE, int $code=NULL, int $httpCode=NULL): void {
-
-		$ret = new \stdClass();
-
-		// per messaggi o errori, data non viene restituito
-		if (!is_null($data)) {
-			$ret->data = $data;
-		}
-
-		if (!is_null($message)) {
-			$ret->message = $message;
-		}
-
-		$ret->error = $error;
-
-		if (!is_null($code)) {
-			$ret->code = $code;
-		}
-
-		// contains events registered by Logger, if active
-		$logger = Logger::getInstance();
-		$eventList = $logger->getEventListForAjax();
-		if ($eventList) {
-			$ret->log = $logger->getEventListForAjax();
-		}
-
-		$json = json_encode($ret);
-
-		if (is_int($httpCode)) {
-			http_response_code($httpCode);
-		}
-
-		header('Content-Type: application/json', TRUE);
-		print $json;
-		exit((int)$error);
-
-	}
-
-	/**
-	 * Forces the HTTP response as download of an XML file
-	 *
-	 * @param	string	string containing XML data.
-	 * @param	string	name that the downloaded file will have on client.
-	 */
-	public static function printXmlData(string $data, string $filename): void {
-
-		header('Content-type: text/xml');
-		header('Content-Disposition: attachment; filename="' . $filename . '"');
-
-		print $data;
-		die();
-
-	}
-
-	/**
-	 * Proxy method to output HTML code that prints a JS popup notification in page at runtime.
-	 *
-	 * @param	string	Message title.
-	 * @param	string	Message text.
-	 * @param	string	Type, can be info, error or warning.
-	 */
-	public static function printJsMessage(string $title, string $message, string $type='info'): void {
-
-		print self::getJsMessage($title, $message, $type);
-
-	}
-
-	/**
-	 * Return the HTML code that show a JS popup notification in page at runtime.
-	 *
-	 * @param	string	Message title.
-	 * @param	string	Message text.
-	 * @param	string	Type, can be info, error or warning.
-	 */
-	public static function getJsMessage(string $title, string $message, string $type='info'): string {
-
-		$types = ['info', 'warning', 'error'];
-		if (!in_array($type, $types)) $type = 'info';
-
-		$message = '<script defer>pairMessage("'.
-				addslashes($title) .'","'.
-				addslashes($message) .'","'.
-				addslashes($type) .'");</script>';
-
-		return $message;
-
-	}
-
-	/**
-	 * Will returns a div tag with timeago content.
-	 *
-	 * @param	mixed	DateTime, integer-timestamp or string date.
-	 * @return	string
-	 */
-	public static function getTimeago($date): string {
-
-		$app = Application::getInstance();
-
-		// create DateTime object with int or strings
-		if (is_int($date)) {
-			$dateTime = new \DateTime();
-			$dateTime->setTimestamp($date);
-			$dateTime->setTimezone($app->currentUser->getDateTimeZone());
-		} else if (is_string($date)) {
-			if (0!==strpos($date, '0000-00-00 00:00:00')) {
-				$dateTime = new \DateTime($date);
-				$dateTime->setTimezone($app->currentUser->getDateTimeZone());
-			} else {
-				$dateTime = NULL;
-			}
-		} else if (is_a($date,'\DateTime')) {
-			$dateTime = $date;
-			$dateTime->setTimezone($app->currentUser->getDateTimeZone());
-		} else {
-			$dateTime = NULL;
-		}
-
-		// if date valid, create the expected object
-		if (is_a($dateTime,'\DateTime')) {
-
-			$humanDate = self::intlFormat(NULL, $dateTime);
-
-			return '<span class="timeago" title="' . $dateTime->format(DATE_W3C) . '">' . $humanDate . '</span>';
-
-		// otherwise return n.a. date
-		} else {
-
-			return '<span class="timeago">' . Translator::do('NOT_AVAILABLE') . '</span>';
-
-		}
-
-	}
-
-	/**
-	 * Prints a message "NoData..." in a special container.
-	 *
-	 * @param	string	Custom message to print in the container.
-	 */
-	public static function printNoDataMessageBox(string $customMessage=NULL) {
-
-		Router::exceedingPaginationFallback();
-
-		?><div class="messageNodata"><?php print ($customMessage ? $customMessage : Translator::do('NOTHING_TO_SHOW')) ?></div><?php
-
-	}
-
-	/**
-	 * Checks and fixes path with missing trailing slash.
-	 *
-	 * @param	string	Path.
-	 * @return	void
-	 */
-	public static function fixTrailingSlash(string &$path): void {
-
-		if (substr($path,strlen($path)-1, 1) != DIRECTORY_SEPARATOR) $path .= DIRECTORY_SEPARATOR;
-
-	}
-
-	/**
-	 * Cleans out a string from any unwanted char. Useful for URLs, file-names.
-	 *
-	 * @param	string	Original string.
-	 * @param	string	Optional separator.
-	 * @return	string	Sanitized string.
-	 */
-	public static function localCleanFilename(string $string, $sep=NULL): string {
-
-		$string = strtolower($string);
-
-		// cleans accents and unify separators -
-		$pattern = ['_',' ','\'','à','è','é','ì','ò','ù'];
-		$replace = ['-','-','-', 'a','e','e','i','o','u'];
-		$string	= str_replace($pattern,$replace,$string);
-
-		// deletes everything is not words, numbers, dots and minus
-		$string = preg_replace('/([^[:alnum:]\.\-]*)/', '', $string);
-
-		// reduces multiple separators
-		$string	= preg_replace('/([-]+)/', ($sep ? $sep : '-'), $string);
-
-		// trim separators in name only
-		$dot	= strrpos($string,'.');
-		$ext	= substr($string,$dot);
-		$name	= trim(substr($string,0,$dot), '-');
-		$string	= $name . $ext;
-
-		return $string;
-
-	}
-
-	/**
-	 * Rename a file if another with same name exists, adding hash of current date. It keep safe
-	 * the filename extension.
-	 *
-	 * @param	string	Original file-name with or without extension.
-	 * @param	string	Path to file, with or without trailing slash.
-	 *
-	 * @return	string
-	 */
-	public static function uniqueFilename(string $filename, string $path): string {
-
-		// fixes path if not containing trailing slash
-		self::fixTrailingSlash($path);
-
-		if (file_exists($path . $filename)) {
-			$dot  = strrpos($filename,'.');
-			$ext  = substr($filename,$dot);
-			$name = substr($filename,0,$dot);
-			$hash = substr(md5(time()),0,6);
-			$filename = $name . '-' . $hash . $ext;
-		}
-
-		return $filename;
-
-	}
-
-	/**
-	 * Creates a random file name and checks it doesn’t exists.
-	 *
-	 * @param	string	File extension or the whole filename.
-	 * @param	string	Path to file, with or without trailing slash.
-	 *
-	 * @return	string
-	 */
-	public static function randomFilename(string $extension, string $path): string {
-
-		// fixes path if not containing trailing slash
-		self::fixTrailingSlash($path);
-
-		$pathParts = pathinfo($extension);
-		$ext = isset($pathParts['extension']) ? $pathParts['extension'] : $extension;
-
-		$newName	= substr(md5(microtime(TRUE)),0,10);
-		$filename	= $newName . '.' . $ext;
-
-		// in case exists, create a new name
-		while (file_exists($path . $filename)) {
-			$newName = substr(md5(microtime(TRUE)),0,10);
-			$filename = $newName . '.' . $ext;
-		}
-
-		return $filename;
-
-	}
-
-	/**
 	 * List of directory’s file recursively with subfolders.
 	 *
 	 * @param	string	Relative path of the interested folder to scan.
 	 * @param	string	Internal, subfolder recursive name-cache.
 	 * @param	array	Internal, empty array at first scan.
 	 */
-	public static function getDirectoryFilenames(string $path, string $subfolder=NULL, array $fileList=[]): array {
+	public static function getDirectoryFilenames(string $path, ?string $subfolder=NULL, array $fileList=[]): array {
 
 		// usually insignificant files
 		$excludes = ['..', '.', '.DS_Store', 'thumbs.db', '.htaccess'];
@@ -582,7 +302,7 @@ class Utilities {
 			$filelist = scandir($path, 0);
 
 			if (!$filelist) {
-				throw new \Exception('Unable to scan directory ' . $path);
+				throw new PairException('Unable to scan directory ' . $path);
 			}
 
 			$filenames = array_diff($filelist, $excludes);
@@ -608,7 +328,7 @@ class Utilities {
 
 			}
 
-		} catch (\Exception $e) {
+		} catch (PairException $e) {
 
 			trigger_error($e->getMessage());
 			return [];
@@ -616,57 +336,6 @@ class Utilities {
 		}
 
 		return $fileList;
-
-	}
-
-	/**
-	 * Deletes folder with all files and subfolders. Returns TRUE if deletion happens,
-	 * FALSE if folder or file is not found or in case of errors.
-	 *
-	 * @param	string	Relative or absolute directory.
-	 */
-	public static function deleteFolder($dir) {
-
-		if (!file_exists($dir)) return true;
-
-		if (!is_dir($dir) or is_link($dir)) return unlink($dir);
-
-		foreach (scandir($dir) as $item) {
-
-			if ($item == '.' or $item == '..') continue;
-
-			if (!self::deleteFolder($dir . "/" . $item)) {
-				chmod($dir . "/" . $item, 0777);
-				if (!self::deleteFolder($dir . "/" . $item)) return false;
-			}
-
-		}
-
-		return rmdir($dir);
-
-	}
-
-	/**
-	 * Replaces diacritics chars with similars in standard ascii.
-	 *
-	 * @param	string	Text to clean.
-	 * @return	string
-	 */
-	public static function convertDiacritics(string $text): string {
-
-		$search = [
-			'à', 'á', 'â', 'ã', 'ä', 'å', 'æ', 'ß', 'ç', 'ð', 'è', 'é', 'ê', 'ë',
-			'ì', 'í', 'î', 'ï', 'ñ', 'ò', 'ó', 'ô', 'õ', 'ö', 'ø', 'œ', 'ù', 'ú',
-			'û', 'ü', 'Þ', 'þ', 'ÿ'
-		];
-
-		$replace = [
-			'a', 'a', 'a', 'a','ae', 'a','ae','ss', 'c', 'd', 'e', 'e', 'e', 'e',
-			'i', 'i', 'i', 'i', 'n', 'o', 'o', 'o', 'o','oe', 'o','oe', 'u', 'u',
-			'u','ue', 't', 't','yu'
-		];
-
-		return str_replace($search, $replace, $text);
 
 	}
 
@@ -820,6 +489,73 @@ class Utilities {
 	}
 
 	/**
+	 * Will returns a div tag with timeago content.
+	 *
+	 * @param	mixed	DateTime, integer-timestamp or string date.
+	 */
+	public static function getTimeago($date): string {
+
+		$app = Application::getInstance();
+
+		// create DateTime object with int or strings
+		if (is_int($date)) {
+			$dateTime = new \DateTime();
+			$dateTime->setTimestamp($date);
+			$dateTime->setTimezone($app->currentUser->getDateTimeZone());
+		} else if (is_string($date)) {
+			if (0!==strpos($date, '0000-00-00 00:00:00')) {
+				$dateTime = new \DateTime($date);
+				$dateTime->setTimezone($app->currentUser->getDateTimeZone());
+			} else {
+				$dateTime = NULL;
+			}
+		} else if (is_a($date,'\DateTime')) {
+			$dateTime = $date;
+			$dateTime->setTimezone($app->currentUser->getDateTimeZone());
+		} else {
+			$dateTime = NULL;
+		}
+
+		// if date valid, create the expected object
+		if (is_a($dateTime,'\DateTime')) {
+
+			$humanDate = self::intlFormat(NULL, $dateTime);
+
+			return '<span class="timeago" title="' . $dateTime->format(DATE_W3C) . '">' . $humanDate . '</span>';
+
+		// otherwise return n.a. date
+		} else {
+
+			return '<span class="timeago">' . Translator::do('NOT_AVAILABLE') . '</span>';
+
+		}
+
+	}
+
+	/**
+	 * Determines whether the brightness of the color code passed as a parameter is less
+	 * than 128, so it is a dark color. Useful for dynamically choosing a foreground or
+	 * background color that contrasts with the color passed.
+	 */
+	public static function isDarkColor(string $hexColor): bool {
+
+		// removes the # symbol, if present
+		$hexColor = ltrim($hexColor, '#');
+
+		// converts HEX color to RGB components
+		$r = hexdec(substr($hexColor, 0, 2));
+		$g = hexdec(substr($hexColor, 2, 2));
+		$b = hexdec(substr($hexColor, 4, 2));
+
+		// calculate brightness using the perceived formula
+		$brightness = ($r * 299 + $g * 587 + $b * 114) / 1000;
+
+		// if the brightness is less than 128, the color is dark
+		return $brightness < 128;
+
+	}
+
+	/**
 	 * Check if the server’s user agent contains a word about mobile devices and return TRUE if found.
 	 */
 	public static function isUserAgentMobile(): bool {
@@ -839,136 +575,65 @@ class Utilities {
 
 	}
 
-	/**
-	 * Sends a 401 error to the browser with a "Unauthorized" JSON message, useful for raw/ajax requests.
-	 */
-	public static function jsonResponseSessionExpired(): void {
+	public static function loadEnv($filePath = __DIR__ . '/.env') {
 
-		http_response_code(401); // Unauthorized
-		print json_encode(['error' => Translator::do('USER_SESSION_EXPIRED')]);
-		exit();
-
-	}
-
-	/**
-	 * Convert a snake case variable name into camel case.
-	 *
-	 * @param	string	Snake case variable name.
-	 * @param	bool	Optional to have first letter capital case.
-	 * @return	string
-	 */
-	public static function getCamelCase(string $varName, bool $capFirst=FALSE): string {
-
-		$camelCase = str_replace(' ', '', ucwords(str_replace('_', ' ', $varName)));
-
-		if (!$capFirst and strlen($camelCase)>0) {
-			$camelCase[0] = lcfirst($camelCase[0]);
+		if (!file_exists($filePath)) {
+			throw new PairException("File .env non trovato: {$filePath}");
 		}
 
-		return $camelCase;
+		$lines = file($filePath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
 
-	}
+		foreach ($lines as $line) {
 
-	/**
-	 * Check if there is an executable available in the operating system for direct execution. If the path
-	 * cannot be changed in the system, the path to the executable can be specified in the Pair configuration.
-	 */
-	public static function getExecutablePath(string $executable, string $configConst=NULL): ?string {
+			if (strpos(trim($line), '#') === 0) {
+				continue; // Salta i commenti
+			}
 
-		if (!is_null($configConst) and defined($configConst) and is_executable(constant($configConst))) {
-			return constant($configConst);
-		}
+			if (strpos($line, '=') !== false) {
 
-		exec('which ' . $executable, $output, $resultCode);
+				list($key, $value) = explode('=', $line, 2);
 
-		if (!isset($output[0]) or !is_executable($output[0])) {
-			Logger::error($executable . ' is not available on this server');
-		}
+				$key = trim($key);
+				$value = trim($value);
 
-		return ($output[0] ?? NULL);
+				if (!array_key_exists($key, $_ENV)) {
+					$_ENV[$key] = $value; // Popola $_ENV
+				}
 
-	}
-
-	/**
-	 * Check if passed file is an Adobe PDF document.
-	 *
-	 * @param	string	Path to file.
-	 */
-	public static function isPdf($file): bool {
-
-		return self::checkFileMime($file, ['application/pdf']);
-
-	}
-
-	/**
-	 * Check if passed file is an image.
-	 *
-	 * @param	string	Path to file.
-	 *
-	 * @return	bool
-	 */
-	public static function isImage($file): bool {
-
-		$validMime = [
-			'image/png',
-			'image/jpeg',
-			'image/pjpeg',
-			'image/heif',
-			'image/heic',
-			'image/gif',
-			'image/bmp',
-			'image/vnd.microsoft.icon',
-			'image/tiff',
-			'image/svg+xml'];
-
-		return self::checkFileMime($file, $validMime);
-
-	}
-
-	/**
-	 * Check if passed file is one of passed MIME Content Type.
-	 *
-	 * @param	string	Path to file.
-	 * @param	string	Expected MIME Content Type.
-	 *
-	 * @return	bool
-	 */
-	private static function checkFileMime($file, $validMime): bool {
-
-		if (!function_exists('mime_content_type')) {
-			$app = Application::getInstance();
-			$app->enqueueError('The PHP extention mime_content_type is not installed');
-			return FALSE;
-		}
-
-		// force to array
-		$validMime = (array)$validMime;
-
-		foreach ($validMime as $item) {
-
-			if ($item == mime_content_type($file)) {
-				return TRUE;
 			}
 
 		}
 
-		return FALSE;
-
 	}
 
 	/**
-	 * Returns the list of all declared classes, using the cache.
-	 * @return array
+	 * Cleans out a string from any unwanted char. Useful for URLs, file-names.
+	 *
+	 * @param	string	Original string.
+	 * @param	string	Optional separator.
 	 */
-	public static final function getDeclaredClasses(): array {
+	public static function localCleanFilename(string $string, $sep=NULL): string {
 
-		$app = Application::getInstance();
+		$string = strtolower($string);
 
-		if (!$app->issetState('declaredClasses')) {
-			$app->setState('declaredClasses', \get_declared_classes());
-		}
+		// cleans accents and unify separators -
+		$pattern = ['_',' ','\'','à','è','é','ì','ò','ù'];
+		$replace = ['-','-','-', 'a','e','e','i','o','u'];
+		$string	= str_replace($pattern,$replace,$string);
 
-		return $app->getState('declaredClasses');
+		// deletes everything is not words, numbers, dots and minus
+		$string = preg_replace('/([^[:alnum:]\.\-]*)/', '', $string);
+
+		// reduces multiple separators
+		$string	= preg_replace('/([-]+)/', ($sep ? $sep : '-'), $string);
+
+		// trim separators in name only
+		$dot	= strrpos($string,'.');
+		$ext	= substr($string,$dot);
+		$name	= trim(substr($string,0,$dot), '-');
+		$string	= $name . $ext;
+
+		return $string;
 
 	}
 
@@ -1054,60 +719,9 @@ class Utilities {
 	}
 
 	/**
-	 * Return public URL of a document by its path in the file system.
-	 *
-	 * @param	string		Full path into the file system.
-	 * @param	bool		If TRUE, add timestamp of the last file edit. Default FALSE.
-	 *
-	 * @return	string
-	 *
-	 * @throws	\Exception
-	 */
-	public static function getFileUrl($filePath, $addTimestamp = FALSE) {
-
-		if (!file_exists($filePath)) {
-			throw new \Exception('File not found at path ' . $filePath);
-		}
-
-		// check if valid path
-		if (FALSE === strpos($filePath, APPLICATION_PATH)) {
-			throw new \Exception('File path doesn’t match the application root folder ' . APPLICATION_PATH);
-		}
-
-		// BASE_HREF has trailing slash
-		$url = BASE_HREF . substr($filePath, strlen(APPLICATION_PATH)+1);
-
-		if ($addTimestamp) {
-			$timestamp = filemtime($filePath);
-			// check if valid timestamp
-			if (FALSE == $timestamp) {
-				throw new \Exception('File last change timestamp failed for ' . $filePath);
-			}
-			$url .= '?' . $timestamp;
-		}
-
-		return $url;
-
-	}
-
-	/**
-	 * Return a random alpha-numeric string of specified length.
-	 *
-	 * @param	int 	Wanted string length.
-	 * @return	string
-	 */
-	public static function getRandomString(int $length): string {
-
-		// create a random string
-		return substr(str_shuffle(self::RANDOM_STRING_CHARS . self::RANDOM_STRING_CHARS), 0, $length);
-
-	}
-
-	/**
 	 * Return a standard ascii one or a predefined icon HTML as constant.
 	 *
 	 * @param	bool	Value to show as an icon.
-	 * @return	string
 	 */
 	public static function getBoolIcon(bool $value): string {
 
@@ -1120,86 +734,103 @@ class Utilities {
 	}
 
 	/**
-	 * Check if a string is in JSON format.
-	 * @param mixed $string
-	 * @return bool
-	 */
-	public static function isJson($string): bool {
-
-		if (!is_string($string)) {
-			return FALSE;
-		}
-
-		json_decode($string);
-		return json_last_error() === JSON_ERROR_NONE;
-
-	}
-
-	/**
-	 * Return a date in the local language using the IntlDateFormatter::format() method.
-	 * @param	string		Formatting pattern, for example “dd MMMM Y hh:mm”.
-	 * @param	\DateTime	The date object to be formatted, it will be the current date if NULL.
-	 * @return	string
-	 */
-	public static function intlFormat(string $format=NULL, \DateTime $dateTime=NULL): string {
-
-		$formatter = new \IntlDateFormatter(NULL, \IntlDateFormatter::MEDIUM, \IntlDateFormatter::SHORT);
-		if ($format) {
-			$formatter->setPattern($format);
-		}
-        return $formatter->format($dateTime ?? new \DateTime());
-
-	}
-
-	/**
-	 * Download a CSV file with the lines passed in an array of objects.
+	 * Convert a snake case variable name into camel case.
 	 *
-	 * @param	array List of objects from which the header will be created from the first row.
-	 * @param	string Optional name for the document (with extension).
-	 * @return	bool
+	 * @param	string	Snake case variable name.
+	 * @param	bool	Optional to have first letter capital case.
 	 */
-	public static function exportCsvForExcel(array $data, string $name=NULL): bool {
+	public static function getCamelCase(string $varName, bool $capFirst=FALSE): string {
 
-		// field delimiter
-		$delimiter = ";";
+		$camelCase = str_replace(' ', '', ucwords(str_replace('_', ' ', $varName)));
 
-		// document name
-		$filename = $name ? $name : self::localCleanFilename(strtolower(PRODUCT_NAME) . '_export_' . date('YmdHis') . '.csv');
-
-		// file pointer
-		$file = fopen('php://memory', 'w');
-
-		// add BOM to set UTF-8 in Excel
-		fputs($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
-
-		// if there is at least one row, it writes header and data rows
-		if (isset($data[0])) {
-
-			// properties of the first object in the list
-			$headValues = array_keys(get_object_vars($data[0]));
-
-			// first line with the object keys
-			fputcsv($file, $headValues, $delimiter);
-
-			// all subsequent lines
-			foreach ($data as $row) {
-				fputcsv($file, get_object_vars($row), $delimiter);
-			}
-
+		if (!$capFirst and strlen($camelCase)>0) {
+			$camelCase[0] = lcfirst($camelCase[0]);
 		}
 
-		// rewinds the document
-		fseek($file, 0);
+		return $camelCase;
 
-		// set browser headers and force download
-		header('Content-Type: text/csv; charset=UTF-8');
-		header('Pragma: public'); // IE fix
-		header('Content-Disposition: attachment; filename="' . $filename . '";');
+	}
 
-		// writes the other data to a pointer to the file
-		fpassthru($file);
+	/**
+	 * Returns the list of all declared classes, using the cache.
+	 */
+	public static final function getDeclaredClasses(): array {
 
-		return TRUE;
+		$app = Application::getInstance();
+
+		if (!$app->issetState('declaredClasses')) {
+			$app->setState('declaredClasses', \get_declared_classes());
+		}
+
+		return $app->getState('declaredClasses');
+
+	}
+
+	/**
+	 * Check if there is an executable available in the operating system for direct execution. If the path
+	 * cannot be changed in the system, the path to the executable can be specified in the Pair .env
+	 * configuration file. Return the path to the executable if it is available, otherwise NULL.
+	 */
+	public static function getExecutablePath(string $executable, ?string $envKey=NULL): ?string {
+
+		if (Config::get($envKey) and is_executable(Config::get($envKey))) {
+			return Config::get($envKey);
+		}
+
+		exec('which ' . $executable, $output, $resultCode);
+
+		if (!isset($output[0]) or !is_executable($output[0])) {
+			Logger::error($executable . ' is not available on this server');
+		}
+
+		return ($output[0] ?? NULL);
+
+	}
+
+	/**
+	 * Return public URL of a document by its path in the file system.
+	 *
+	 * @param	string		Full path into the file system.
+	 * @param	bool		If TRUE, add timestamp of the last file edit. Default FALSE.
+	 *
+	 * @throws	PairException
+	 */
+	public static function getFileUrl($filePath, $addTimestamp = FALSE) {
+
+		if (!file_exists($filePath)) {
+			throw new PairException('File not found at path ' . $filePath);
+		}
+
+		// check if valid path
+		if (FALSE === strpos($filePath, APPLICATION_PATH)) {
+			throw new PairException('File path doesn’t match the application root folder ' . APPLICATION_PATH);
+		}
+
+		// BASE_HREF has trailing slash
+		$url = BASE_HREF . substr($filePath, strlen(APPLICATION_PATH)+1);
+
+		if ($addTimestamp) {
+			$timestamp = filemtime($filePath);
+			// check if valid timestamp
+			if (FALSE == $timestamp) {
+				throw new PairException('File last change timestamp failed for ' . $filePath);
+			}
+			$url .= '?' . $timestamp;
+		}
+
+		return $url;
+
+	}
+
+	/**
+	 * Return a random alpha-numeric string of specified length.
+	 *
+	 * @param	int 	Wanted string length.
+	 */
+	public static function getRandomString(int $length): string {
+
+		// create a random string
+		return substr(str_shuffle(self::RANDOM_STRING_CHARS . self::RANDOM_STRING_CHARS), 0, $length);
 
 	}
 
@@ -1251,42 +882,338 @@ class Utilities {
 	}
 
 	/**
-	 * Returns the object with the property closest to the value passed as a parameter,
-	 * searching the indicated property of the object list passed.
-	 * @param Collection|array List of objects to search.
-	 * @param string Name of the property that contains the name to compare.
-	 * @param string Value to search for.
-	 * @return object The closest object.
+	 * Check if passed file is an image.
+	 *
+	 * @param	string	Path to file.
 	 */
-	public static function findSimilar(Collection|array $objectList, string $propertyName, string $searchedValue, ?bool $caseSensitive=FALSE): object {
+	public static function isImage($file): bool {
 
-		// temporary list to sort by similarity
-		$similarity = [];
+		$validMime = [
+			'image/png',
+			'image/jpeg',
+			'image/pjpeg',
+			'image/heif',
+			'image/heic',
+			'image/gif',
+			'image/bmp',
+			'image/vnd.microsoft.icon',
+			'image/tiff',
+			'image/svg+xml'];
 
-		// check for similarity on each object
-		foreach ($objectList as $index => $item) {
+		return self::checkFileMime($file, $validMime);
 
-			// return the object that exactly matches
+	}
 
-			// assign the similarity percentage
-			if ($caseSensitive) {
-				if ($item->$propertyName == $searchedValue) return $item;
-				similar_text($item->$propertyName, $searchedValue, $percent);
-			} else {
-				$searchedValue = strtolower($searchedValue);
-				$propertyValue = strtolower($item->$propertyName);
-				if ($propertyValue == $searchedValue) return $item;
-				similar_text($propertyValue, $searchedValue, $percent);
-			}
+	/**
+	 * Check if a string is in JSON format.
+	 *
+	 * @param mixed $string
+	 */
+	public static function isJson($string): bool {
 
-			$similarity[$index] = $percent;
+		if (!is_string($string)) {
+			return FALSE;
+		}
+
+		json_decode($string);
+		return json_last_error() === JSON_ERROR_NONE;
+
+	}
+
+	/**
+	 * Check if passed file is an Adobe PDF document.
+	 *
+	 * @param	string	Path to file.
+	 */
+	public static function isPdf($file): bool {
+
+		return self::checkFileMime($file, ['application/pdf']);
+
+	}
+
+	/**
+	 * Return a date in the local language using the IntlDateFormatter::format() method.
+	 * @param	string		Formatting pattern, for example “dd MMMM Y hh:mm”.
+	 * @param	\DateTime	The date object to be formatted, it will be the current date if NULL.
+	 * @return	string
+	 */
+	public static function intlFormat(?string $format=NULL, \DateTime|NULL $dateTime=NULL): string {
+
+		$formatter = new \IntlDateFormatter(NULL, \IntlDateFormatter::MEDIUM, \IntlDateFormatter::SHORT);
+		if ($format) {
+			$formatter->setPattern($format);
+		}
+        return $formatter->format($dateTime ?? new \DateTime());
+
+	}
+
+	/**
+	 * Sends a 401 error to the browser with a "Unauthorized" JSON message, useful for raw/ajax requests.
+	 */
+	public static function jsonResponseSessionExpired(): void {
+
+		http_response_code(401); // Unauthorized
+		print json_encode(['error' => Translator::do('USER_SESSION_EXPIRED')]);
+		exit();
+
+	}
+
+	/**
+	 * Proxy method to print a JSON error message.
+	 *
+	 * @param	string	Error message to print on user.
+	 * @param	int|NULL	Error code (optional).
+	 * @param	int|NULL	HTTP code (optional, 400 by default).
+	 */
+	public static function pairJsonError(string $message, ?int $code=NULL, ?int $httpCode=NULL): void {
+
+		if (is_null($httpCode)) {
+			$httpCode = 400;
+		}
+
+		self::pairJsonData(NULL, $message, TRUE, $code, $httpCode);
+
+	}
+
+	/**
+	 * Prints a JSON object with three properties, useful for ajax returns: (string)message,
+	 * (bool)error, (string)log.
+	 *
+	 * @param	string	Error message to print on user.
+	 */
+	public static function pairJsonMessage(string $message): void {
+
+		self::pairJsonData(NULL, $message);
+
+	}
+
+	/**
+	 * Prints a JSON object with three properties, useful for ajax returns: (string)message,
+	 * (bool)error, (string)log.
+	 *
+	 * @param	string	Error message to print on user.
+	 */
+	public static function pairJsonSuccess(): void {
+
+		self::pairJsonData(NULL);
+
+	}
+
+	/**
+	 * Prints a JSON object with four properties, useful for ajax returns: (object)data,
+	 * (string)message, (bool)error, (string)log.
+	 *
+	 * @param	object	Structured object containing data.
+	 * @param	string	Error message to print on user (optional).
+	 * @param	bool	Error flag, set TRUE to notice about error (optional).
+	 * @param	bool	Error code (optional).
+	 * @param	int		HTTP code (optional).
+	 */
+	public static function pairJsonData(mixed $data, ?string $message=NULL, bool $error=FALSE, ?int $code=NULL, ?int $httpCode=NULL): void {
+
+		$ret = new \stdClass();
+
+		// per messaggi o errori, data non viene restituito
+		if (!is_null($data)) {
+			$ret->data = $data;
+		}
+
+		if (!is_null($message)) {
+			$ret->message = $message;
+		}
+
+		$ret->error = $error;
+
+		if (!is_null($code)) {
+			$ret->code = $code;
+		}
+
+		// contains events registered by Logger, if active
+		$logger = Logger::getInstance();
+		$eventList = $logger->getEventListForAjax();
+		if ($eventList) {
+			$ret->log = $logger->getEventListForAjax();
+		}
+
+		$json = json_encode($ret);
+
+		if (is_int($httpCode)) {
+			http_response_code($httpCode);
+		}
+
+		header('Content-Type: application/json', TRUE);
+		print $json;
+		exit((int)$error);
+
+	}
+
+	/**
+	 * Prints a message "NoData..." in a special container.
+	 *
+	 * @param	string	Custom message to print in the container.
+	 */
+	public static function printNoDataMessageBox(?string $customMessage=NULL) {
+
+		Router::exceedingPaginationFallback();
+
+		?><div class="messageNodata"><?php print ($customMessage ? $customMessage : Translator::do('NOTHING_TO_SHOW')) ?></div><?php
+
+	}
+
+	/**
+	 * Forces the HTTP response as download of an XML file
+	 *
+	 * @param	string	string containing XML data.
+	 * @param	string	name that the downloaded file will have on client.
+	 */
+	public static function printXmlData(string $data, string $filename): void {
+
+		header('Content-type: text/xml');
+		header('Content-Disposition: attachment; filename="' . $filename . '"');
+
+		print $data;
+		die();
+
+	}
+
+	/**
+	 * Creates a random file name and checks it doesn’t exists.
+	 *
+	 * @param	string	File extension or the whole filename.
+	 * @param	string	Path to file, with or without trailing slash.
+	 */
+	public static function randomFilename(string $extension, string $path): string {
+
+		// fixes path if not containing trailing slash
+		self::fixTrailingSlash($path);
+
+		$pathParts = pathinfo($extension);
+		$ext = isset($pathParts['extension']) ? $pathParts['extension'] : $extension;
+
+		$newName	= substr(md5(microtime(TRUE)),0,10);
+		$filename	= $newName . '.' . $ext;
+
+		// in case exists, create a new name
+		while (file_exists($path . $filename)) {
+			$newName = substr(md5(microtime(TRUE)),0,10);
+			$filename = $newName . '.' . $ext;
+		}
+
+		return $filename;
+
+	}
+
+	/**
+	 * Rename a file if another with same name exists, adding hash of current date. It keep safe
+	 * the filename extension.
+	 *
+	 * @param	string	Original file-name with or without extension.
+	 * @param	string	Path to file, with or without trailing slash.
+	 */
+	public static function uniqueFilename(string $filename, string $path): string {
+
+		// fixes path if not containing trailing slash
+		self::fixTrailingSlash($path);
+
+		if (file_exists($path . $filename)) {
+			$dot  = strrpos($filename,'.');
+			$ext  = substr($filename,$dot);
+			$name = substr($filename,0,$dot);
+			$hash = substr(md5(time()),0,6);
+			$filename = $name . '-' . $hash . $ext;
+		}
+
+		return $filename;
+
+	}
+
+	/**
+	 * Extracts a ZIP archive into a custom folder and returns the list of files extracted.
+	 */
+	public static function unzipFile(string $filePath, string $folder): array {
+
+		$zip = new \ZipArchive();
+
+		// open the zip file
+		if (TRUE !== $zip->open($filePath)) {
+			throw new PairException('Unable to open the ZIP file ' . $filePath);
+		}
+
+		// create the folder if not exists
+		if (!is_dir($folder)) {
+			mkdir($folder, 0777, TRUE);
+		}
+
+		// extract all files
+		$zip->extractTo($folder);
+
+		// close the zip file
+		$zip->close();
+
+		// return the list of extracted files
+		return self::getDirectoryFilenames($folder);
+
+	}
+
+	/**
+	 * Creates a plain text string from any variable type.
+	 *
+	 * @param	mixed	Variable of any type.
+	 * @param	bool	Flag to hide var type.
+	 */
+	public static function varToText($var, bool $showTypes=TRUE, ?int $indent=0): string {
+
+		$getIndent = function(int $incr=0) use ($indent) {
+			$indent += $incr;
+			return str_repeat("\t", abs($indent));
+
+		};
+
+		$type = gettype($var);
+		$text = is_null($type) ?
+			'NULL' :
+			($showTypes ? $type . ':' : '');
+
+		switch ($type) {
+
+			case 'boolean':
+				$text .= $var ? 'true' : 'false';
+				break;
+
+			case 'integer':
+			case 'double':
+				$text .= $var;
+				break;
+
+			default:
+				if (self::isJson($var)) {
+					$text .= '"' . nl2br($var) . '"';
+				} else {
+					$text .= '"' . $var . '"';
+				}
+				break;
+
+			case 'array':
+				$parts = [];
+				foreach ($var as $k=>$v) {
+					$parts[] = $getIndent(1) . '"' . $k . '"=' . self::varToText($v, $showTypes, $indent+1);
+				}
+				$text .= $getIndent(1) . '[<br>' . implode(',<br>', $parts) . '<br>'. $getIndent(-1) . ']<br>';
+				break;
+
+			case 'object':
+				$text .= $getIndent(0) . get_class($var) . '{<br>' .
+					self::varToText(get_object_vars($var), $showTypes, $indent+1) .
+					$getIndent(0) . '}';
+				break;
+
+			case 'NULL':
+				$text .= 'null';
+				break;
 
 		}
 
-		// get the array key of the maximum similarity value found
-		$maxSimilarity = array_search(max($similarity), $similarity);
-
-		return $objectList[$maxSimilarity];
+		return $text;
 
 	}
 

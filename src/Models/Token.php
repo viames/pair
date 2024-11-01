@@ -69,7 +69,7 @@ class Token extends ActiveRecord {
 	/**
 	 * Method called by constructor just after having populated the object.
 	 */
-	protected function init() {
+	protected function init(): void {
 
 		$this->bindAsBoolean('enabled');
 

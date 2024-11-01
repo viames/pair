@@ -515,7 +515,7 @@ class Form {
 	 * @param	string	Type (text -default-, password, email, url, etc.).
 	 * @param	array	More parameters as associative array tag=>value (optional).
 	 */
-	public static function buildInput(string $name, string $value=NULL, string $type=NULL, array $attributes=[]): string {
+	public static function buildInput(string $name, ?string $value=NULL, ?string $type=NULL, array $attributes=[]): string {
 
 		if (!$type) {
 			$type = 'text';
@@ -555,7 +555,7 @@ class Form {
 	 * @param	string	More parameters as associative array tag=>value (optional).
 	 * @param	string	Name of Font Awesome icon class (optional).
 	 */
-	public static function buildButton(string $value, string $type='submit', string $name=NULL, $attributes=[], $faIcon=NULL): string {
+	public static function buildButton(string $value, string $type='submit', ?string $name=NULL, $attributes=[], $faIcon=NULL): string {
 
 		$control = new Button($name, $attributes);
 		$control->type($type)->faIcon($faIcon)->value($value);

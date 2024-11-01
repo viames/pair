@@ -2,7 +2,11 @@
 
 namespace Pair\Core;
 
+use Pair\Exceptions\PairException;
+use Pair\Html\IziToast;
+use Pair\Html\SweetAlert;
 use Pair\Models\Audit;
+use Pair\Models\ErrorLog;
 use Pair\Models\Oauth2Token;
 use Pair\Models\Session;
 use Pair\Models\Template;
@@ -22,105 +26,99 @@ class Application {
 
 	/**
 	 * Singleton property.
-	 * @var Application|NULL
 	 */
-	static protected $instance;
+	static protected ?self $instance;
 
 	/**
 	 * List of temporary variables.
-	 * @var mixed[]
 	 */
-	private $state = [];
+	private array $state = [];
 
 	/**
 	 * List of temporary variables, stored also in the browser cookie.
-	 * @var mixed[]
 	 */
-	private $persistentState = [];
+	private array $persistentState = [];
 
 	/**
 	 * Multi-array cache as list of class-names with list of ActiveRecord’s objects.
-	 * @var \stdClass[ActiveRecord[]]
 	 */
-	private $activeRecordCache = [];
+	private array $activeRecordCache = [];
 
 	/**
 	 * Web page title, in plain text.
-	 * @var string
 	 */
-	private $pageTitle = '';
+	private string $pageTitle = '';
 
 	/**
 	 * HTML content of web page.
-	 * @var string
 	 */
-	private $pageContent = '';
+	private string $pageContent = '';
 
 	/**
 	 * Contains a list of plain text script to add.
-	 * @var string[]
 	 */
-	private $scriptContent = [];
+	private array $scriptContent = [];
 
 	/**
 	 * Contains all external script files to load.
-	 * @var \stdClass[]
 	 */
-	private $scriptFiles = [];
+	private array $scriptFiles = [];
 
 	/**
 	 * Contains all CSS files to load.
-	 * @var string[]
 	 */
-	private $cssFiles = [];
+	private array $cssFiles = [];
 
 	/**
 	 * Contains Manifest files to load.
-	 * @var string[]
 	 */
-	private $manifestFiles = [];
+	private array $manifestFiles = [];
 
 	/**
-	 * Message list.
-	 * @var \stdClass[]
+	 * Toast notifications, to be shown on page load.
+	 * @var IziToast[]
 	 */
-	private $messages = [];
+	private array $toasts = [];
+
+	/**
+	 * Modal alert to be shown on page load.
+	 */
+	private ?SweetAlert $modal = NULL;
 
 	/**
 	 * Currently connected user.
-	 * @var User|NULL
 	 */
-	private $currentUser;
+	private ?User $currentUser = NULL;
 
 	/**
 	 * Contents variables for layouts.
-	 * @var array
 	 */
-	private $vars = [];
+	private array $vars = [];
 
 	/**
 	 * URL of the active menu item.
-	 * @var string
 	 */
-	private $activeMenuItem;
+	private ?string $activeMenuItem = NULL;
 
 	/**
 	 * Template’s object.
-	 * @var NULL|Template
 	 */
-	private $template;
+	private ?Template $template = NULL;
 
 	/**
 	 * Template-style’s file name (without extension).
-	 * @var string
 	 */
-	private $style = 'default';
+	private string $style = 'default';
 
 	/**
 	 * List of modules that can run with no authentication required.
-	 * @var string[]
 	 */
-	private $guestModules = [];
+	private array $guestModules = [];
+
+	/**
+	 * Contains the page scripts to be loaded at the end of the page.
+	 */
+	protected string $pageScripts = '';
 
 	/**
 	 * Private constructor called by getInstance(). No Logger calls here.
@@ -142,66 +140,25 @@ class Application {
 		// Pair folder
 		define('PAIR_FOLDER', substr(dirname(dirname(__FILE__)), strlen(APPLICATION_PATH)+1));
 
-		$config = APPLICATION_PATH . '/config.php';
-
 		// check config file or start installation
-		if (!file_exists($config)) {
-			if (file_exists(APPLICATION_PATH . '/installer/start.php')) {
-				include APPLICATION_PATH . '/installer/start.php';
-			} else {
-				die ('Configuration file is missing.');
-			}
-			exit();
+		if (!Config::envFileExists() and file_exists(APPLICATION_PATH . '/installer/start.php')) {
+			include APPLICATION_PATH . '/installer/start.php';
+			die();
 		}
 
 		// load configuration constants
-		require $config;
-
-		// default constants
-		$defaults = [
-			'PAIR_AUTH_BY_EMAIL' => TRUE,
-			'BASE_URI' => '',
-			'DBMS' => 'mysql',
-			'DB_UTF8' => TRUE,
-			'PRODUCT_NAME' => 'NewProduct',
-			'PRODUCT_VERSION' => '1.0',
-			'UTC_DATE' => TRUE,
-			'OAUTH2_TOKEN_LIFETIME' => Oauth2Token::LIFETIME,
-			'PAIR_SINGLE_SESSION' => FALSE,
-			'PAIR_DEVELOPMENT' => FALSE,
-			'PAIR_DEBUG' => FALSE,
-			'PAIR_AUDIT_PASSWORD_CHANGED' => FALSE,
-			'PAIR_AUDIT_LOGIN_FAILED' => FALSE,
-			'PAIR_AUDIT_LOGIN_SUCCESSFUL' => FALSE,
-			'PAIR_AUDIT_LOGOUT' => FALSE,
-			'PAIR_AUDIT_SESSION_EXPIRED' => FALSE,
-			'PAIR_AUDIT_REMEMBER_ME_LOGIN' => FALSE,
-			'PAIR_AUDIT_USER_CREATED' => FALSE,
-			'PAIR_AUDIT_USER_DELETED' => FALSE,
-			'PAIR_AUDIT_USER_CHANGED' => FALSE,
-			'PAIR_AUDIT_PERMISSIONS_CHANGED' => FALSE,
-			'S3_ACCESS_KEY_ID' => FALSE,
-			'S3_SECRET_ACCESS_KEY' => FALSE,
-			'S3_BUCKET_REGION' => FALSE,
-			'S3_BUCKET_NAME' => FALSE,
-			'SENTRY_DSN' => NULL,
-			'TEMP_PATH' => APPLICATION_PATH . '/temp/'
-		];
-
-		// set default constants in case of missing
-		foreach ($defaults as $key=>$val) {
-			if (!defined($key)) {
-				define($key, $val);
-			}
-		}
+		Config::load();
 
 		// set the default user class if not customized
 		if (!defined('PAIR_USER_CLASS')) {
 			define ('PAIR_USER_CLASS', 'Pair\Models\User');
 		}
 
+		// path to temporary folder
+		define('TEMP_PATH', APPLICATION_PATH . '/temp/');
+
 		// force php server date to UTC
-		if (UTC_DATE) {
+		if (Config::get('UTC_DATE')) {
 			ini_set('date.timezone', 'UTC');
 			define('BASE_TIMEZONE', 'UTC');
 		} else {
@@ -215,34 +172,39 @@ class Application {
 		// define full URL to web page index with trailing slash or NULL
 		} else {
 			$protocol = ($_SERVER['SERVER_PORT'] == 443 or (isset($_SERVER['HTTPS']) and $_SERVER['HTTPS'] !== 'off')) ? "https://" : "http://";
-			$baseHref = isset($_SERVER['HTTP_HOST']) ? $protocol . $_SERVER['HTTP_HOST'] . BASE_URI . '/' : NULL;
+			$baseHref = isset($_SERVER['HTTP_HOST']) ? $protocol . $_SERVER['HTTP_HOST'] . $_ENV['BASE_URI'] . '/' : NULL;
 		}
 		define('BASE_HREF', $baseHref);
 
-		if (SENTRY_DSN) {
+		if (Config::get('SENTRY_DSN')) {
 			\Sentry\init([
-				'dsn' => SENTRY_DSN,
-				'environment' => (PAIR_DEVELOPMENT ? 'development' : 'production')
+				'dsn' => Config::get('SENTRY_DSN'),
+				'environment' => self::getEnvironment()
 			]);
 			Logger::event('Sentry activated');
-		};
+		}
+
+		if (Config::get('BUGSNAG_API_KEY')) {
+			Logger::event('BugSnag activated');
+		}
 
 		// error management
-		set_error_handler('\Pair\Support\Utilities::customErrorHandler');
-		register_shutdown_function('\Pair\Support\Utilities::fatalErrorHandler');
+		set_error_handler('\Pair\Models\ErrorLog::errorHandler');
+		set_exception_handler('\Pair\Models\ErrorLog::exceptionHandler');
+		register_shutdown_function('\Pair\Models\ErrorLog::shutdownHandler');
 
 		// routing initialization
 		$router = Router::getInstance();
 		$router->parseRoutes();
 
 		// force utf8mb4
-		if (DB_UTF8) {
+		if (Config::get('DB_UTF8')) {
 			$db = Database::getInstance();
 			$db->setUtf8unicode();
 		}
 
 		// default page title, maybe overwritten
-		$this->pageTitle = PRODUCT_NAME;
+		$this->pageTitle = Config::get('PRODUCT_NAME');
 
 		// raw calls will jump templates inclusion, so turn-out output buffer
 		if (!$router->isRaw()) {
@@ -250,7 +212,7 @@ class Application {
 			$gzip  = (isset($_SERVER['HTTP_ACCEPT_ENCODING']) and substr_count($_SERVER['HTTP_ACCEPT_ENCODING'], 'gzip'));
 
 			// if supported, output is compressed with gzip
-			if (!PAIR_DEBUG and $gzip and extension_loaded('zlib') and !ini_get('zlib.output_compression')) {
+			if ($gzip and extension_loaded('zlib') and !ini_get('zlib.output_compression')) {
 				ob_start('ob_gzhandler');
 			} else {
 				ob_start();
@@ -258,12 +220,26 @@ class Application {
 
 		}
 
-		// retrieve all cookie messages and puts in queue
-		$persistentMsg = $this->getPersistentState('EnqueuedMessages');
-		if (is_array($persistentMsg)) {
-			$this->messages = $persistentMsg;
+		// retrieve cookie modal and puts in queue
+		$persistentModal = $this->getPersistentState('Modal');
+		$this->unsetPersistentState('Modal');
+		if (!is_null($persistentModal)) {
+			$modal = unserialize($persistentModal);
+			$this->modal = is_a($modal, 'Pair\Html\SweetAlert') ? $modal : NULL;
 		}
-		$this->unsetPersistentState('EnqueuedMessages');
+
+		// retrieve all cookie toasts and puts in queue
+		$persistentToasts = $this->getPersistentState('ToastNotifications');
+		$this->unsetPersistentState('ToastNotifications');
+		if (!is_null($persistentToasts)) {
+			$toasts = unserialize($persistentToasts);
+			foreach ($toasts as $toast) {
+				if (is_a($toast, 'Pair\Html\IziToast')) {
+					$this->toasts[]= $toast;
+				}
+			}
+
+		}
 
 	}
 
@@ -393,14 +369,57 @@ class Application {
 
 	}
 
+	final public function getAllNotificationsMessages(): array {
+
+		$messages = [];
+
+		if ($this->modal) {
+			$messages[] = $this->modal->getText();
+		}
+
+		foreach ($this->toasts as $toast) {
+			$messages[] = $toast->getText();
+		}
+
+		return $messages;
+
+	}
+
+	/**
+	 * Return a list of common parameters for cookies with custom expiration time.
+	 */
+	public static function getCookieParams(int $expires): array {
+
+		return [
+			'expires' => $expires,
+			'path' => '/',
+			'samesite' => 'Lax',
+			'secure' => 'development' != Application::getEnvironment()
+		];
+
+	}
+
 	/**
 	 * Return a cookie prefix based on product name, like ProductName.
 	 */
 	public static function getCookiePrefix(): string {
 
-		return str_replace(' ', '', ucwords(str_replace('_', ' ', PRODUCT_NAME)));
+		return str_replace(' ', '', ucwords(str_replace('_', ' ', Config::get('PRODUCT_NAME'))));
 
 	}
+
+	/**
+	 * Return 'development', 'staging' or 'production' (default).
+     */
+    public static function getEnvironment(): string {
+
+		if (in_array(Config::get('PAIR_ENVIRONMENT'), ['development','staging'])) {
+        	return Config::get('PAIR_ENVIRONMENT');
+		}
+
+		return 'production';
+
+    }
 
 	/**
 	 * Create singleton Application object and return it.
@@ -410,7 +429,7 @@ class Application {
 		// could be this class or inherited
 		$class = get_called_class();
 
-		if (is_null(static::$instance)) {
+		if (!isset(static::$instance) or is_null(static::$instance)) {
 			static::$instance = new $class();
 		}
 
@@ -419,25 +438,23 @@ class Application {
 	}
 
 	/**
-	 * Returns javascript code for displaying a front-end user message.
+	 * Returns javascript code for displaying a modal alert.
 	 */
-	private function getMessageScript(): string {
+	private function getModalScript(): string {
+
+		return $this->modal ? $this->modal->render() : '';
+
+	}
+
+	/**
+	 * Returns javascript code for displaying toast notifications.
+	 */
+	private function getToastsScript(): string {
 
 		$script = '';
 
-		if (count($this->messages)) {
-
-			foreach ($this->messages as $m) {
-
-				$types = ['info', 'warning', 'error'];
-				if (!in_array($m->type, $types)) $m->type = 'info';
-				$script .= 'pairMessage("' .
-					addslashes($m->title) . '","' .
-					addcslashes($m->text,"\"\n\r") . '","' . // removes carriage returns and quotes
-					addslashes($m->type) . "\");\n";
-
-			}
-
+		foreach ($this->toasts as $toast) {
+			$script .= $toast->render();
 		}
 
 		return $script;
@@ -449,12 +466,12 @@ class Application {
 	 */
 	public function getPersistentState(string $name): mixed {
 
-		$stateName = $this->persistentStateName($name);
+		$stateName = $this->getPersistentStateName($name);
 
 		if (array_key_exists($stateName, $this->persistentState)) {
 			return $this->persistentState[$stateName];
 		} else if (isset($_COOKIE[$stateName])) {
-			return json_decode($_COOKIE[$stateName]);
+			return json_decode(base64_decode($_COOKIE[$stateName]));
 		} else {
 			return NULL;
 		}
@@ -478,7 +495,6 @@ class Application {
 
 	/**
 	 * Returns the time zone of the logged in user, otherwise the default for the application.
-	 * @return \DateTimeZone
 	 */
 	public static final function getTimeZone(): \DateTimeZone {
 
@@ -502,7 +518,7 @@ class Application {
 		}
 
 		if (!$this->template) {
-			throw new \Exception('Template keys are not populated');
+			throw new PairException('Template keys are not populated');
 		}
 
 		// if this is derived template, load derived.php file
@@ -525,21 +541,11 @@ class Application {
 	}
 
 	/**
-	 * Return TRUE if this host is a developer server.
-	 */
-	final public static function isDevelopmentHost(): bool {
-
-		// can be defined in config.php, default is false
-		return PAIR_DEVELOPMENT;
-
-	}
-
-	/**
 	 * Retrieves variables of any type form a cookie named like in param.
 	 */
 	public function issetPersistentState(string $name): bool {
 
-		$stateName = $this->persistentStateName($name);
+		$stateName = $this->getPersistentStateName($name);
 
 		return (array_key_exists($stateName, $this->persistentState) or isset($_COOKIE[$stateName]));
 
@@ -553,36 +559,6 @@ class Application {
 	final public function issetState(string $name): bool {
 
 		return (array_key_exists($name, $this->state));
-
-	}
-
-	/**
-	 * Proxy function to append an error message to queue.
-	 *
-	 * @param	string	Message’s text.
-	 * @param	string	Optional title.
-	 */
-	public function enqueueError(string $text, string $title=''): void {
-
-		$this->enqueueMessage($text, ($title ? $title : 'Error'), 'error');
-
-	}
-
-	/**
-	 * Appends a text message to queue.
-	 *
-	 * @param	string	Message’s text.
-	 * @param	string	Optional title.
-	 * @param	string	Message’s type (info, error).
-	 */
-	public function enqueueMessage(string $text, string $title='', string $type=NULL): void {
-
-		$message		= new \stdClass();
-		$message->text	= $text;
-		$message->title	= ($title ? $title : 'Info');
-		$message->type	= ($type  ? $type  : 'info');
-
-		$this->messages[] = $message;
 
 	}
 
@@ -616,10 +592,7 @@ class Application {
 	 * @param	bool	Async attribute (default FALSE).
 	 * @param	array	Optional attribute list (type, integrity, crossorigin, charset).
 	 */
-	public function loadScript($src, $defer = FALSE, $async = FALSE, $attribs=[]) {
-
-		// force casting to array
-		$attribs = (array)$attribs;
+	public function loadScript(string $src, bool $defer = FALSE, bool $async = FALSE, array $attribs=[]) {
 
 		// the script object
 		$script = new \stdClass();
@@ -653,11 +626,11 @@ class Application {
 	}
 
 	/**
-	 * Store enqueued messages for next retrievement.
+	 * Stores toast notifications for retrieval on next web page load.
 	 */
-	public function makeQueuedMessagesPersistent(): void {
+	public function makeToastNotificationsPersistent(): void {
 
-		$this->setPersistentState('EnqueuedMessages', $this->messages);
+		$this->setPersistentState('ToastNotifications', serialize($this->toasts));
 
 	}
 
@@ -712,7 +685,7 @@ class Application {
 				// sends js message about session expired
 				if ($router->isRaw()) {
 
-					Utilities::printJsonError($comment);
+					Utilities::pairJsonError($comment);
 					exit();
 
 				// redirects to login page
@@ -726,8 +699,8 @@ class Application {
 						$this->setPersistentState('lastRequestedUrl', $router->getUrl());
 					}
 
-					// queue a message for the connected user
-					$this->enqueueMessage($comment);
+					// queue a toast notification for the connected user
+					$this->toast($comment);
 
 					// goes to login page
 					$this->redirect('user/login');
@@ -760,18 +733,11 @@ class Application {
 
 				$resource = $router->module . '/' . $router->action;
 
-				// checking permission
-				if ($this->currentUser->canAccess((string)$router->module, $router->action)) {
-
-					// access granted
-					Logger::event('Access granted on resource ' . $resource);
-
-				} else {
-
-					// access denied
-					$this->enqueueError(Translator::do('ACCESS_FORBIDDEN', $resource));
-					$this->redirect($router->defaults['module'] . '/' . $router->defaults['action']);
-
+				// access denied
+				if (!$this->currentUser->canAccess((string)$router->module, $router->action)) {
+					$landing = $user->getLanding();
+					$this->toastError('Access denied to ' . $resource);
+					$this->redirect($landing->module . '/' . $landing->action);
 				}
 
 			}
@@ -798,9 +764,106 @@ class Application {
 
 	}
 
-	private function persistentStateName(string $name): string {
+	/**
+	 * Add an alert modal to the page and return the object for further customization.
+	 */
+	public function modal(string $title, string $text, ?string $icon = NULL): SweetAlert {
+
+		$this->modal = new SweetAlert($title, $text, $icon);
+
+		return $this->modal;
+
+	}
+
+	private function getPersistentStateName(string $name): string {
 
 		return static::getCookiePrefix() . ucfirst($name);
+
+	}
+
+	/**
+	 * Prints the page Javascript content.
+	 */
+	final public function printScripts(): void {
+
+		$pageScripts = '';
+
+		// collect script files
+		foreach ($this->scriptFiles as $file) {
+
+			// initialize attributes render
+			$attribsRender = '';
+
+			// render each attribute based on its variable type (string or boolean)
+			foreach ($file as $tag => $value) {
+				$attribsRender .= ' ' . (is_bool($value) ? $tag : $tag . '="' . htmlspecialchars((string)$value) . '"');
+			}
+
+			// add each script
+			$pageScripts .= '<script' . $attribsRender . '></script>' . "\n";
+
+		}
+
+		// add BugSnag script for error tracking and performance monitoring
+		if (Config::get('BUGSNAG_API_KEY')) {
+			$pageScripts .= '<script src="https://cdn.jsdelivr.net/npm/bugsnag-js" crossorigin="anonymous"></script>' . "\n";
+			$pageScripts .= '<script type="module">import BugsnagPerformance from "//d2wy8f7a9ursnm.cloudfront.net/v1/bugsnag-performance.min.js";BugsnagPerformance.start({apiKey:"3d6ddafb8c62284198276702f6ce4364"})</script>' . "\n";
+		}
+
+		// collect plain text scripts
+		if (count($this->scriptContent) or $this->modal or count($this->toasts)) {
+
+			$pageScripts .= "<div id=\"pair-script-container\"><script defer>\n";
+
+			foreach ($this->scriptContent as $s) {
+				$pageScripts .= $s ."\n";
+			}
+
+			// add modal and toasts
+			$pageScripts .= "document.addEventListener('DOMContentLoaded', function() {\n";
+			$pageScripts .= $this->getModalScript();
+			$pageScripts .= $this->getToastsScript();
+			$pageScripts .= "});\n";
+			$pageScripts .= "</script></div>";
+
+		}
+
+		print $pageScripts;
+
+	}
+
+	/**
+	 * Prints the page stylesheets.
+	 */
+	final public function printStyles(): void {
+
+		$pageStyles = '';
+
+		// collect stylesheets
+		foreach ($this->cssFiles as $href) {
+
+			$pageStyles .= '<link rel="stylesheet" href="' . $href . '">' . "\n";
+
+		}
+
+		// collect manifest
+		foreach ($this->manifestFiles as $href) {
+
+			$pageStyles .= '<link rel="manifest" href="' . $href . '">' . "\n";
+
+		}
+
+		print $pageStyles;
+
+	}
+
+	public function persistentModal(string $title, string $text, ?string $icon = NULL): SweetAlert {
+
+		$modal = $this->modal($title, $text, $icon);
+
+		$this->setPersistentState('Modal', serialize($modal));
+
+		return $modal;
 
 	}
 
@@ -821,7 +884,7 @@ class Application {
 	}
 
 	/**
-	 * Redirect HTTP on the URL param. Relative path as default. Queued messages
+	 * Redirect HTTP on the URL param. Relative path as default. Queued toast notifications
 	 * get a persistent storage in a cookie in order to being retrieved later.
 	 *
 	 * @param	string	Location URL.
@@ -834,8 +897,9 @@ class Application {
 			$url = $router->module;
 		}
 
-		// stores enqueued messages for next retrievement
-		$this->makeQueuedMessagesPersistent();
+		// stores modal and toast notifications for next retrievement
+		$this->setPersistentState('Modal', serialize($this->modal));
+		$this->makeToastNotificationsPersistent();
 
 		if (!$url) return;
 
@@ -872,7 +936,7 @@ class Application {
 
 		}
 
-		exit();
+		die();
 
 	}
 
@@ -984,13 +1048,13 @@ class Application {
 		// unauthorized request
 		} else {
 
-			Oauth2Token::unauthorized(PRODUCT_NAME . '-API: Authentication failed');
+			Oauth2Token::unauthorized(Config::get('PRODUCT_NAME') . '-API: Authentication failed');
 
 		}
 
 		try {
 			$apiCtl->$action();
-		} catch (\Exception $e) {
+		} catch (PairException $e) {
 			$apiCtl->sendError(4, [$e->getMessage()]);
 		}
 
@@ -1039,12 +1103,9 @@ class Application {
 
 		$this->persistentState[$stateName] = $value;
 
-		setcookie($stateName, json_encode($value), [
-			'expires' => time() + 2592000, // 30 days
-			'path' => '/',
-			'samesite' => 'Lax',
-			'secure' => !self::isDevelopmentHost()
-		]);
+		// cookie lifetime is 30 days
+		$params = self::getCookieParams(time() + 2592000);
+		setcookie($stateName, base64_encode(json_encode($value)), $params);
 
 	}
 
@@ -1063,7 +1124,7 @@ class Application {
 	/**
 	 * Parse template file, replace variables and return it.
 	 *
-	 * @throws \Exception
+	 * @throws PairException
 	 */
 	final public function startMvc(): void {
 
@@ -1072,7 +1133,7 @@ class Application {
 		// make sure to have a template set
 		try {
 			$template = $this->getTemplate();
-		} catch (\Exception $e) {
+		} catch (PairException $e) {
 			print 'Template not found';
 			http_response_code(404);
 			exit();
@@ -1083,7 +1144,7 @@ class Application {
 		// check controller file existence
 		if (!file_exists($controllerFile) or '404' == $router->url) {
 
-			$this->enqueueError(Translator::do('RESOURCE_NOT_FOUND', $router->url));
+			$this->toastError(Translator::do('RESOURCE_NOT_FOUND', $router->url));
 			$this->style = '404';
 			$this->pageTitle = 'HTTP 404 error';
 			http_response_code(404);
@@ -1094,7 +1155,6 @@ class Application {
 
 			// build controller object
 			$controllerName = ucfirst($router->module) . 'Controller';
-			$controller = new $controllerName();
 
 			// set the action
 			$action = $router->action ? $router->action . 'Action' : 'defaultAction';
@@ -1116,10 +1176,28 @@ class Application {
 			}
 
 			try {
-				$controller->$action();
-			} catch (\Exception $e) {
-				$this->enqueueError($e->getMessage());
-				$this->redirect();
+
+				$controller = new $controllerName();
+
+				if (method_exists($controller, $action)) {
+					$controller->$action();
+				} else {
+					Logger::event('Method ' . $controllerName . '->' . $action . '() not found');
+				}
+
+			} catch (PairException $e) {
+
+				if (!$router->isRaw()) {
+
+					$this->modal('Error', $e->getMessage(), 'error')->confirm('OK');
+
+					//$destUrl = $router->action ? $router->module . '/' . $router->action : $router->module;
+					//$this->redirect($destUrl);
+
+				}
+
+				ErrorLog::snapshot($e->getMessage(), ErrorLog::ERROR);
+
 			}
 
 			// raw calls will jump controller->display, ob and log
@@ -1139,57 +1217,10 @@ class Application {
 		// populate the placeholder for the content
 		$this->pageContent = ob_get_clean();
 
-		// initialize CSS and scripts
-		$this->pageStyles = '';
-		$this->pageScripts = '';
-
-		// collect stylesheets
-		foreach ($this->cssFiles as $href) {
-
-			$this->pageStyles .= '<link rel="stylesheet" href="' . $href . '">' . "\n";
-
-		}
-
-		// collect manifest
-		foreach ($this->manifestFiles as $href) {
-
-			$this->pageStyles .= '<link rel="manifest" href="' . $href . '">' . "\n";
-
-		}
-
-		// collect script files
-		foreach ($this->scriptFiles as $script) {
-
-			// initialize attributes render
-			$attribsRender = '';
-
-			// render each attribute based on its variable type (string or boolean)
-			foreach ($script as $tag => $value) {
-				$attribsRender .= ' ' . (is_bool($value) ? $tag : $tag . '="' . htmlspecialchars((string)$value) . '"');
-			}
-
-			// add each script
-			$this->pageScripts .= '<script' . $attribsRender . '></script>' . "\n";
-
-		}
-
-		// collect plain text scripts
-		if (count($this->scriptContent) or count($this->messages)) {
-
-			$this->pageScripts .= "<div id=\"pair-script-container\"><script defer>\n";
-
-			foreach ($this->scriptContent as $s) {
-				$this->pageScripts .= $s ."\n";
-			}
-
-			$this->pageScripts .= $this->getMessageScript();
-			$this->pageScripts .= "</script></div>";
-
-		}
-
 		try {
 			$template->loadStyle($this->style);
-		} catch (\Exception $e) {
+		} catch (PairException $e) {
+			ErrorLog::snapshot($e->getMessage(), ErrorLog::ERROR);
 			print $e->getMessage();
 		}
 
@@ -1197,6 +1228,55 @@ class Application {
 		$page = ob_get_clean();
 
 		print $page;
+
+	}
+
+	/**
+	 * Appends a toast notification message to queue.
+	 */
+	public function toast(string $title, string $message='', ?string $type=NULL): IziToast {
+
+		$toast = new IziToast($title, $message, $type);
+		$this->toasts[] = $toast;
+		return $toast;
+
+	}
+
+	/**
+	 * Proxy function to append an error toast notification to queue.
+	 *
+	 * @param	string	Toast’s error message.
+	 * @param	string	Title, optional.
+	 */
+	public function toastError(string $title, string $message=''): IziToast {
+
+		return $this->toast($title, $message, 'error');
+
+	}
+
+	/**
+	 * Proxy function to append an error toast notification to queue and redirect.
+	 */
+	public function toastErrorRedirect(string $title, string $message='', ?string $url=NULL): IziToast {
+
+		$toast = $this->toast($title, $message, 'error');
+		$this->makeToastNotificationsPersistent();
+		$this->redirect($url);
+		
+		return $toast;
+
+	}
+
+	/**
+	 * Proxy function to append a toast notification to queue and redirect.
+	 */
+	public function toastRedirect(string $title, string $message='', ?string $url=NULL): IziToast {
+
+		$toast = $this->toast($title, $message, 'success');
+		$this->makeToastNotificationsPersistent();
+		$this->redirect($url);
+		
+		return $toast;
 
 	}
 
@@ -1220,18 +1300,13 @@ class Application {
 	 */
 	public function unsetPersistentState(string $name): void {
 
-		$stateName = $this->persistentStateName($name);
+		$stateName = $this->getPersistentStateName($name);
 
 		unset($this->persistentState[$stateName]);
 
 		if (isset($_COOKIE[$stateName])) {
 			unset($_COOKIE[$stateName]);
-			setcookie($stateName, '', [
-				'expires' => -1,
-				'path' => '/',
-				'samesite' => 'Lax',
-				'secure' => !self::isDevelopmentHost()
-			]);
+			setcookie($stateName, '', self::getCookieParams(-1));
 		}
 
 	}

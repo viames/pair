@@ -3,6 +3,8 @@
 namespace Pair\Html;
 
 use Pair\Core\Application;
+use Pair\Core\Config;
+use Pair\Exceptions\PairException;
 use Pair\Support\Logger;
 use Pair\Support\Post;
 use Pair\Support\Translator;
@@ -114,7 +116,7 @@ abstract class FormControl {
 	public function __get(string $name): mixed {
 
 		if (!property_exists($this, $name)) {
-			throw new \Exception('Property “'. $name .'” doesn’t exist for object '. get_called_class());
+			throw new PairException('Property “'. $name .'” doesn’t exist for object '. get_called_class());
 		}
 
 		return $this->$name;
@@ -164,7 +166,7 @@ abstract class FormControl {
 		if (is_a($value, '\DateTime')) {
 
 			// if UTC date, set user timezone
-			if (defined('UTC_DATE') and UTC_DATE) {
+			if (Config::get('UTC_DATE')) {
 				$app = Application::getInstance();
 				$value->setTimezone($app->currentUser->getDateTimeZone());
 			}
@@ -379,7 +381,7 @@ abstract class FormControl {
 	public function printLabel(): void {
 
 		$label = '<label for="' . htmlspecialchars($this->name) . '"';
-		
+
 		if (isset($this->labelClass) and $this->labelClass) {
 			$label .= ' class="' . $this->labelClass . '"';
 		}
