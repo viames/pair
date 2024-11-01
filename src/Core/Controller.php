@@ -3,55 +3,51 @@
 namespace Pair\Core;
 
 use Pair\Exceptions\ControllerException;
+use Pair\Exceptions\PairException;
+use Pair\Html\IziToast;
 use Pair\Models\ErrorLog;
 use Pair\Orm\ActiveRecord;
-use Pair\Support\Logger;
 use Pair\Support\Translator;
 use Pair\Support\Utilities;
 
 abstract class Controller {
 
+	use \Pair\Traits\LogTrait;
+
 	/**
 	 * Application object.
-	 * @var	Application
 	 */
-	protected $app;
+	protected Application $app;
 
 	/**
 	 * Router object.
-	 * @var	Router
 	 */
-	protected $router;
+	protected Router $router;
 
 	/**
 	 * Model for this MVC stack.
-	 * @var mixed
 	 */
-	protected $model;
+	protected Model $model;
 
 	/**
 	 * View’s file name, without file extension.
-	 * @var string
 	 */
-	protected $view;
+	protected string $view;
 
 	/**
 	 * Translator object.
-	 * @var Translator
 	 */
-	protected $translator;
+	protected Translator $translator;
 
 	/**
 	 * Controller’s name, without “Controller” suffix.
-	 * @var string
 	 */
-	private $name;
+	private string $name;
 
 	/**
 	 * Path to the module for this controller.
-	 * @var string
 	 */
-	private $modulePath;
+	private string $modulePath;
 
 	final public function __construct() {
 
@@ -74,7 +70,11 @@ abstract class Controller {
 		// sets same view as the controller action
 		$this->view = $this->router->action ? $this->router->action : 'default';
 
-		$this->init();
+		try {
+			$this->init();
+		} catch (ControllerException $e) {
+			$this->logError('Controller initialization error: ' . $e->getMessage());
+		}
 
 		// if a model is not specified, load the default one
 		if (!isset($this->model) or is_null($this->model)) {
@@ -98,89 +98,66 @@ abstract class Controller {
 
 	}
 
-	/**
-	 * Start function, being executed before each method. Optional.
-	 */
-	protected function init() {}
-
-	/**
-	 * Empty function, could be overloaded.
-	 */
-	public function defaultAction() {}
-
-	public function __get($name) {
-
-		if ('route' == $name) {
-			Logger::warning('$this->route is deprecated');
-			return $this->router;
-		}
+	public function __get(string $name): mixed {
 
 		try {
 			if (!isset($this->$name)) {
-				throw new \Exception('Property “'. $name .'” doesn’t exist for this object '. get_called_class());
+				throw new PairException('Property “'. $name .'” doesn’t exist for this object '. get_called_class());
 			}
 			return $this->$name;
-		} catch(\Exception $e) {
+		} catch(PairException $e) {
 			return NULL;
 		}
 
 	}
 
-	public function __set($name, $value) {
+	public function __set(string $name, mixed $value): void {
 
 		try {
 			$this->$name = $value;
-		} catch(\Exception $e) {
+		} catch(PairException $e) {
 			print $e->getMessage();
 		}
 
 	}
 
 	/**
-	 * Notices developer about a call to unexistent method.
-	 *
-	 * @param	string	Method name.
-	 * @param	array	Method arguments.
-	 */
-	public function __call($name, $arguments) {
-
-		// do nothing
-
-	}
-
-	/**
-	 * Print an error message and redirect to default action.
+	 * Print a toast notification and redirect to default action.
 	 *
 	 * @param	string	Optional message to enqueue.
 	 */
-	protected function accessDenied(string $message=NULL) {
+	protected function accessDenied(?string $message=NULL): void {
 
-		$this->enqueueError(($message ? $message : Translator::do('ACCESS_DENIED')));
+		$this->app->toastError(($message ? $message : Translator::do('ACCESS_DENIED')));
 		$this->redirect(strtolower($this->name));
 
 	}
 
 	/**
-	 * Proxy to set a variable within global scope.
-	 *
-	 * @param	string	Variable name.
-	 *
-	 * @return	mixed	Any variable type.
+	 * Include the file for View formatting. Display an error with a toast notification and
+	 * redirect to default view as fallback in case of view not found for non-ajax requests.
 	 */
-	final public function setState($name, $value) {
+	public function display(): void {
 
-		$this->app->setState($name, $value);
+		try {
+			$view = $this->getView();
+		} catch (PairException $e) {
+			$this->redirectWithError($e->getMessage());
+		}
 
-	}
+		if (!is_subclass_of($view, 'Pair\Core\View')) {
+			if (!$this->router->isRaw()) {
+				$this->app->modal('Error', Translator::do('RESOURCE_NOT_FOUND', $this->router->module . '/' . $this->router->action))->confirm('OK');
+			}
+			$this->redirect();
+		}
 
-	/**
-	 * Proxy to unset a state variable.
-	 *
-	 * @param	string	Variable name.
-	 */
-	final public function unsetState($name) {
-
-		$this->app->unsetState($name);
+		try {
+			$view->display();
+		} catch (PairException $e) {
+			$this->app->modal('Error',$e->getMessage(), 'error')->confirm('OK');
+			$this->redirect();
+		}
 
 	}
 
@@ -189,36 +166,16 @@ abstract class Controller {
 	 *
 	 * @param	string	Variable name.
 	 */
-	final public function getState($name) {
+	final public function getState(string $name): mixed {
 
 		return $this->app->getState($name);
 
 	}
 
 	/**
-	 * Proxy to append a text message to queue.
-	 *
-	 * @param	string	Message’s text.
-	 * @param	string	Optional title.
-	 * @param	string	Message’s type (info, error).
+	 * Start function, being executed before each method. Optional.
 	 */
-	final public function enqueueMessage($text, $title='', $type=NULL) {
-
-		$this->app->enqueueMessage($text, $title, $type);
-
-	}
-
-	/**
-	 * Proxy to queue an error message.
-	 *
-	 * @param	string	Message’s text.
-	 * @param	string	Optional title.
-	 */
-	final public function enqueueError($text, $title='') {
-
-		$this->app->enqueueError($text, $title);
-
-	}
+	protected function init(): void {}
 
 	/**
 	 * Load a custom model.
@@ -226,7 +183,7 @@ abstract class Controller {
 	public function loadModel(string $modelName): void {
 
 		if (!file_exists($this->modulePath .'/'. $modelName .'.php')) {
-			throw new \Exception('Model file '. $this->modulePath .'/'. $modelName .'.php has not been found');
+			throw new PairException('Model file '. $this->modulePath .'/'. $modelName .'.php has not been found');
 		}
 
 		include ($this->modulePath .'/'. $modelName .'.php');
@@ -247,86 +204,11 @@ abstract class Controller {
 	}
 
 	/**
-	 * Return View object related to this controller.
-	 * @throws Exception
-	 */
-	public function getView(): ?View {
-
-		try {
-
-			if ($this->view) {
-
-				$file = $this->modulePath .'/view'. ucfirst($this->view) .'.php';
-
-				if (!file_exists($file)) {
-					if ($this->app->currentUser->areKeysPopulated()) {
-						throw new \Exception('View file '. $file .' has not been found');
-					} else {
-						die('Access denied');
-					}
-				}
-
-				include_once($file);
-
-				$viewName = ucfirst($this->name) .'View'. ucfirst($this->view);
-
-				if (!class_exists($viewName)) {
-					throw new \Exception('Class ' . $viewName . ' was not found in file ' . $file);
-				}
-
-				return new $viewName($this->model);
-
-			} else {
-
-				throw new \Exception('No view file has been set');
-
-			}
-
-		} catch (\Exception $e) {
-
-			// set the error in the log
-			Logger::error($e->getMessage());
-
-			// get a fall-back referer or default and redirect the user
-			$url = $_SERVER['REFERER'] ?? BASE_HREF;
-			$this->redirect((string)$url, TRUE);
-
-		}
-
-		return NULL;
-
-	}
-
-	/**
-	 * Include the file for View formatting. Display an error message and
-	 * redirect to default view as fallback in case of view not found for non-ajax requests.
-	 */
-	public function display() {
-
-		try {
-			$view = $this->getView();
-		} catch (\Exception $e) {
-			$this->enqueueError($e->getMessage());
-			$this->redirect($this->router->module);
-		}
-
-		if (is_subclass_of($view, 'Pair\Core\View')) {
-			$view->display();
-		} else {
-			if (!$this->router->isRaw()) {
-				$this->enqueueError(Translator::do('RESOURCE_NOT_FOUND', $this->router->module . '/' . $this->router->action));
-			}
-			$this->redirect($this->router->module);
-		}
-
-	}
-
-	/**
-	 * Shortcut to enqueue an error message and set a view.
+	 * Shortcut to send an error with a toast notification and set a view.
 	 */
 	public function fallBackWithError(string $message, string $view='default'): void {
 
-		$this->enqueueError($message);
+		$this->app->toastError($message);
 		$this->view = $view;
 
 	}
@@ -335,31 +217,60 @@ abstract class Controller {
 	 * Returns the object of inherited class when called with id as first parameter.
 	 *
 	 * @param	string	Expected object class type.
-	 * @return	object|NULL
 	 */
-	protected function getObjectRequestedById(string $class) {
+	protected function getObjectRequestedById(string $class): ?ActiveRecord {
 
 		// reads from url requested item id
 		$itemId = Router::get(0);
 
 		if (!$itemId) {
-			$this->enqueueError($this->lang('NO_ID_OF_ITEM_TO_EDIT', $class));
-			return NULL;
+			throw new ControllerException($this->lang('ID_OF_ITEM_TO_EDIT_IS_NOT_VALID', $class));
 		}
 
 		$object = new $class($itemId);
 
-		if ($object->isLoaded()) {
-
-			return $object;
-
-		} else {
-
-			$this->enqueueError($this->lang('ID_OF_ITEM_TO_EDIT_IS_NOT_VALID', $class));
-			Logger::error('Object ' . $class . ' id=' . $itemId . ' has not been loaded');
-			return NULL;
-
+		if (!$object->isLoaded()) {
+			throw new ControllerException($this->lang('ID_OF_ITEM_TO_EDIT_IS_NOT_VALID', $class));
 		}
+
+		return $object;
+
+	}
+
+	/**
+	 * Return View object related to this controller.
+	 * @throws ControllerException
+	 */
+	public function getView(): ?View {
+
+		if (!$this->view) {
+			throw new ControllerException('View page not set for module ' . $this->name);
+		}
+
+		$file = $this->modulePath .'/view'. ucfirst($this->view) .'.php';
+
+		if (!file_exists($file)) {
+			$this->view = 'default';
+			$file = $this->modulePath .'/view'. ucfirst($this->view) .'.php';
+		}
+
+		if (!file_exists($file)) {
+			if ($this->app->currentUser and $this->app->currentUser->areKeysPopulated()) {
+				throw new ControllerException('The page ' . $this->name . '/' . $this->view . ' does not exist');
+			} else {
+				die('Access denied');
+			}
+		}
+
+		include_once($file);
+
+		$viewName = ucfirst($this->name) .'View'. ucfirst($this->view);
+
+		if (!class_exists($viewName)) {
+			throw new ControllerException('Class ' . $viewName . ' was not found in file ' . $file);
+		}
+
+		return new $viewName($this->model);
 
 	}
 
@@ -369,7 +280,7 @@ abstract class Controller {
 	 * @param	string	The language key.
 	 * @param	string|array|NULL	Parameter or list of parameters to bind on translation string (optional).
 	 */
-	public function lang(string $key, string|array|NULL $vars=NULL) {
+	public function lang(string $key, string|array|NULL $vars=NULL): string {
 
 		return Translator::do($key, (array)$vars);
 
@@ -380,7 +291,7 @@ abstract class Controller {
 	 *
 	 * @param	ActiveRecord	The inherited object.
 	 */
-	protected function raiseError(ActiveRecord $object) {
+	protected function raiseError(ActiveRecord $object): void {
 
 		// get error list from the ActiveRecord object
 		$errors = $object->getErrors();
@@ -390,11 +301,11 @@ abstract class Controller {
 			? implode(" \n", $errors)
 			: $this->lang('ERROR_ON_LAST_REQUEST');
 
-		// enqueue error message for UI
+		// enqueue a toast notification to the UI
 		throw new ControllerException($message);
 
 		// after the message has been queued, store the error data
-		ErrorLog::keepSnapshot('Failure in ' . \get_class($object) . ' class');
+		ErrorLog::snapshot('Failure in ' . \get_class($object) . ' class', ErrorLog::ERROR);
 
 	}
 
@@ -404,29 +315,76 @@ abstract class Controller {
 	 * @param	string	Location URL.
 	 * @param	bool	If TRUE, will avoids to add base url (default FALSE).
 	 */
-	public function redirect(string $url=NULL, bool $absoluteUrl=FALSE): void {
+	public function redirect(?string $url=NULL, bool $absoluteUrl=FALSE): void {
 
 		$this->app->redirect($url, $absoluteUrl);
 
 	}
 
 	/**
-	 * Shortcut to HTTP redirect with an enqueue notification error.
+	 * Shortcut to HTTP redirect and show a toast notification error.
 	 */
-	public function redirectWithError(string $message, string $url=NULL): void {
+	public function redirectWithError(string $message, ?string $url=NULL): void {
 
-		$this->enqueueError($message);
+		$this->app->toastError($message);
 		$this->redirect($url);
 
 	}
 
 	/**
-	 * Shortcut to HTTP redirect with an enqueue notification message.
+	 * Shortcut to HTTP redirect and show a toast notification.
 	 */
-	public function redirectWithMessage(string $message, string $url=NULL): void {
+	public function toastRedirect(string $message, ?string $url=NULL): void {
 
-		$this->enqueueMessage($message);
+		$this->toast($message);
 		$this->redirect($url);
+
+	}
+
+	/**
+	 * Proxy to set a variable within global scope.
+	 *
+	 * @param	string	Variable name.
+	 */
+	final public function setState(string $name, mixed $value): void {
+
+		$this->app->setState($name, $value);
+
+	}
+
+	/**
+	 * Proxy to append a toast notification message to queue.
+	 *
+	 * @param	string	Message’s text.
+	 * @param	string	Optional title.
+	 * @param	string	Message’s type (info, error).
+	 */
+	final public function toast(string $message, ?string $title='', ?string $type=NULL): IziToast {
+
+		return $this->app->toast($message, $title, $type);
+
+	}
+
+	/**
+	 * Proxy method to queue an error with a toast notification.
+	 *
+	 * @param	string	Message’s text.
+	 * @param	string	Optional title.
+	 */
+	final public function toastError(string $text, ?string $title=''): IziToast {
+
+		return $this->app->toastError($text, $title);
+
+	}
+
+	/**
+	 * Proxy to unset a state variable.
+	 *
+	 * @param	string	Variable name.
+	 */
+	final public function unsetState(string $name): void {
+
+		$this->app->unsetState($name);
 
 	}
 

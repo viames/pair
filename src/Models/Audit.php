@@ -12,43 +12,36 @@ class Audit extends ActiveRecord {
 	
 	/**
 	 * This property maps “id” column.
-	 * @var int
 	 */
-	protected $id;
+	protected int $id;
 
 	/**
 	 * This property maps “user_id” column.
-	 * @var int
 	 */
-	protected $userId;
+	protected ?int $userId = NULL;
 
 	/**
 	 * This property maps “event” column.
-	 * @var string
 	 */
-	protected $event;
+	protected ?string $event = NULL;
 
 	/**
 	 * This property maps “created_at” column.
-	 * @var DateTime
 	 */
-	protected $createdAt;
+	protected \DateTime $createdAt;
 
 	/**
 	 * This property maps “details” column.
-	 * @var \stdClass
 	 */
-	protected $details;
+	protected ?\stdClass $details = NULL;
 	
 	/**
 	 * Name of related db table.
-	 * @var string
 	 */
 	const TABLE_NAME = 'audit';
 	
 	/**
 	 * Name of primary key db field.
-	 * @var string|array
 	 */
 	const TABLE_KEY = 'id';
 
@@ -60,7 +53,7 @@ class Audit extends ActiveRecord {
 	/**
 	 * Method called by constructor just after having populated the object.
 	 */
-	protected function init() {
+	protected function init(): void {
 
 		$this->bindAsDatetime('createdAt');
 
@@ -112,7 +105,7 @@ class Audit extends ActiveRecord {
 	 */
 	public static function passwordChanged(User $subject): bool {
 
-		if (!defined('PAIR_AUDIT_PASSWORD_CHANGED') or !PAIR_AUDIT_PASSWORD_CHANGED) {
+		if (!isset($_ENV['PAIR_AUDIT_PASSWORD_CHANGED']) or !$_ENV['PAIR_AUDIT_PASSWORD_CHANGED']) {
 			return FALSE;
 		}
 
@@ -128,7 +121,7 @@ class Audit extends ActiveRecord {
 	
 	public static function loginFailed(string $username, ?string $ipAddress, ?string $userAgent): bool {
 
-		if (!defined('PAIR_AUDIT_LOGIN_FAILED') or !PAIR_AUDIT_LOGIN_FAILED) {
+		if (!isset($_ENV['PAIR_AUDIT_LOGIN_FAILED']) or !$_ENV['PAIR_AUDIT_LOGIN_FAILED']) {
 			return FALSE;
 		}
 
@@ -147,7 +140,7 @@ class Audit extends ActiveRecord {
 
 	public static function loginSuccessful(User $user, ?string $ipAddress, ?string $userAgent): bool {
 
-		if (!defined('PAIR_AUDIT_LOGIN_SUCCESSFUL') or !PAIR_AUDIT_LOGIN_SUCCESSFUL) {
+		if (!isset($_ENV['PAIR_AUDIT_LOGIN_SUCCESSFUL']) or !$_ENV['PAIR_AUDIT_LOGIN_SUCCESSFUL']) {
 			return FALSE;
 		}
 
@@ -166,7 +159,7 @@ class Audit extends ActiveRecord {
 
 	public static function logout(User $user): bool {
 
-		if (!defined('PAIR_AUDIT_LOGOUT') or !PAIR_AUDIT_LOGOUT) {
+		if (!isset($_ENV['PAIR_AUDIT_LOGOUT']) or !$_ENV['PAIR_AUDIT_LOGOUT']) {
 			return FALSE;
 		}
 
@@ -181,7 +174,7 @@ class Audit extends ActiveRecord {
 
 	public static function sessionExpired(Session $session): bool {
 
-		if (!defined('PAIR_AUDIT_SESSION_EXPIRED') or !PAIR_AUDIT_SESSION_EXPIRED) {
+		if (!isset($_ENV['PAIR_AUDIT_SESSION_EXPIRED']) or !$_ENV['PAIR_AUDIT_SESSION_EXPIRED']) {
 			return FALSE;
 		}
 
@@ -196,22 +189,20 @@ class Audit extends ActiveRecord {
 
 	}
 
-	public static function rememberMeLogin() {
+	public static function rememberMeLogin(): void {
 
-		if (!defined('PAIR_AUDIT_REMEMBER_ME_LOGIN') or !PAIR_AUDIT_REMEMBER_ME_LOGIN) {
-			return FALSE;
+		if (isset($_ENV['PAIR_AUDIT_REMEMBER_ME_LOGIN']) and $_ENV['PAIR_AUDIT_REMEMBER_ME_LOGIN']) {
+		
+			$audit = new Audit();
+			$audit->event = 'remember_me_login';
+			$audit->store();
 		}
-
-		$audit = new Audit();
-		$audit->event = 'remember_me_login';
-
-		return $audit->store();
 
 	}
 
-	public static function userCreated(User $subject) {
+	public static function userCreated(User $subject): bool {
 
-		if (!defined('PAIR_AUDIT_USER_CREATED') or !PAIR_AUDIT_USER_CREATED) {
+		if (!isset($_ENV['PAIR_AUDIT_USER_CREATED']) or !$_ENV['PAIR_AUDIT_USER_CREATED']) {
 			return FALSE;
 		}
 
@@ -225,9 +216,9 @@ class Audit extends ActiveRecord {
 
 	}
 
-	public static function userDeleted(User $subject) {
+	public static function userDeleted(User $subject): bool {
 
-		if (!defined('PAIR_AUDIT_USER_DELETED') or !PAIR_AUDIT_USER_DELETED) {
+		if (!isset($_ENV['PAIR_AUDIT_USER_DELETED']) or !$_ENV['PAIR_AUDIT_USER_DELETED']) {
 			return FALSE;
 		}
 
@@ -246,11 +237,10 @@ class Audit extends ActiveRecord {
 	 * 
 	 * @param	User	The old user object.
 	 * @param	User	The new user object.
-	 * @return	bool
 	 */
 	public static function userChanged(User $oldUser, User $newUser): bool {
 
-		if (!defined('PAIR_AUDIT_USER_CHANGED') or !PAIR_AUDIT_USER_CHANGED) {
+		if (!isset($_ENV['PAIR_AUDIT_USER_CHANGED']) or !$_ENV['PAIR_AUDIT_USER_CHANGED']) {
 			return FALSE;
 		}
 
@@ -289,9 +279,8 @@ class Audit extends ActiveRecord {
 	 * Add a new ACL into an existent Audit record or create a new one.
 	 *
 	 * @param  Acl	Object to set as removed.
-	 * @return bool
 	 */
-	public static function aclAdded(Acl $acl) {
+	public static function aclAdded(Acl $acl): bool {
 
 		// create a new detail item
 		$detail = new \stdClass();
@@ -308,7 +297,6 @@ class Audit extends ActiveRecord {
 	 * Remove an ACL from an existent Audit record or create a new one.
 	 *
 	 * @param  Acl	Object to set as removed.
-	 * @return bool
 	 */
 	public static function aclRemoved(Acl $acl): bool {
 
@@ -325,14 +313,13 @@ class Audit extends ActiveRecord {
 
 	private static function permissionsChanged(\stdClass $detail): bool {
 
-		if (!defined('PAIR_AUDIT_PERMISSIONS_CHANGED') or !PAIR_AUDIT_PERMISSIONS_CHANGED) {
+		if (!isset($_ENV['PAIR_AUDIT_PERMISSIONS_CHANGED']) or !$_ENV['PAIR_AUDIT_PERMISSIONS_CHANGED']) {
 			return FALSE;
 		}
 
-
 		$audit = new Audit();
 		$audit->event = 'permissions_changed';
-		$audit->details = [$detail];
+		$audit->details = $detail;
 		
 		// get last audit item by the same user and date
 		$lastAudit = Audit::getMyLatestPermissionsChanged();
@@ -350,8 +337,6 @@ class Audit extends ActiveRecord {
 
 	/**
 	 * Get last audit item by the same user and date.
-	 * 
-	 * @return	Audit|NULL
 	 */
 	private static function getMyLatestPermissionsChanged(): ?Audit {
 

@@ -73,7 +73,7 @@ class Module extends ActiveRecord implements PluginInterface {
 	/**
 	 * Method called by constructor just after having populated the object.
 	 */
-	protected function init() {
+	protected function init(): void {
 
 		$this->bindAsDatetime('dateReleased', 'dateInstalled');
 
@@ -104,7 +104,7 @@ class Module extends ActiveRecord implements PluginInterface {
 	/**
 	 * Removes files of this Module object before its deletion.
 	 */
-	protected function beforeDelete() {
+	protected function beforeDelete(): void {
 
 		// delete plugin folder
 		$plugin = $this->getPlugin();

@@ -84,7 +84,7 @@ class Template extends ActiveRecord implements PluginInterface {
 	/**
 	 * Method called by constructor just after having populated the object.
 	 */
-	protected function init() {
+	protected function init(): void {
 
 		$this->bindAsBoolean('default', 'derived');
 
@@ -123,7 +123,7 @@ class Template extends ActiveRecord implements PluginInterface {
 	/**
 	 * Removes files of this Module object before its deletion.
 	 */
-	protected function beforeDelete() {
+	protected function beforeDelete(): void {
 
 		// delete plugin folder
 		$plugin = $this->getPlugin();
@@ -253,7 +253,7 @@ class Template extends ActiveRecord implements PluginInterface {
 
 		if (!file_exists($styleFile)) {
 
-			throw new \Exception('Template style file ' . $styleFile . ' was not found');
+			throw new PairException('Template style ' . $styleName . ' not found');
 
 		} else {
 
