@@ -2,9 +2,10 @@
 
 namespace Pair\Orm;
 
+use Pair\Core\Config;
 use Pair\Exceptions\DatabaseException;
+use Pair\Exceptions\PairException;
 use Pair\Support\Logger;
-
 
 define ('PAIR_DB_OBJECT_LIST',	1);
 define ('PAIR_DB_OBJECT',		2);
@@ -21,31 +22,26 @@ class Database {
 
 	/**
 	 * Singleton object for database.
-	 * @var Database|NULL
 	 */
-	protected static $instance = NULL;
+	protected static ?self $instance = NULL;
 
 	/**
 	 * DB Handler.
-	 * @var PDO
 	 */
 	private ?\PDO $handler = NULL;
 
 	/**
 	 * Temporary store for the SQL Query.
-	 * @var string
 	 */
 	private ?string $query;
 
 	/**
 	 * Registered error list.
-	 * @var array
 	 */
 	private array $errors = [];
 
 	/**
 	 * List of temporary table structures (describe, foreignKeys, inverseForeignKeys).
-	 * @var array
 	 */
 	private array $definitions = [];
 
@@ -56,8 +52,6 @@ class Database {
 
 	/**
 	 * Connects to db just the first time, returns singleton object everytime.
-	 *
-	 * @throws	Exception
 	 */
 	public static function getInstance(): self {
 
@@ -71,6 +65,7 @@ class Database {
 
 	/**
 	 * Proxy to open a persistent connection to DBMS if current PDO handler is NULL.
+	 * 
 	 * @throws	PDOException
 	 */
 	public function connectPersistent(): void {
@@ -94,8 +89,6 @@ class Database {
 	 * Connects to DBMS with params only if PDO handler property is null, so not connected.
 	 *
 	 * @param	bool	Flag to open a persistent connection (TRUE). Default is FALSE.
-	 *
-	 * @throws	PDOException
 	 */
 	private function openConnection(bool $persistent=FALSE): void {
 
@@ -104,7 +97,7 @@ class Database {
 			return;
 		}
 
-		$dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME;
+		$dsn = 'mysql:host=' . Config::get('DB_HOST') . ';dbname=' . Config::get('DB_NAME');
 		$options = [
 			\PDO::ATTR_PERSISTENT			=> (bool)$persistent,
 			\PDO::MYSQL_ATTR_INIT_COMMAND	=> "SET NAMES utf8",
@@ -113,7 +106,7 @@ class Database {
 
 		try {
 
-			$this->handler = new \PDO($dsn, DB_USER, DB_PASS, $options);
+			$this->handler = new \PDO($dsn, Config::get('DB_USER'), Config::get('DB_PASS'), $options);
 
 			if (!is_a($this->handler, 'PDO')) {
 				throw new DatabaseException('Db handler is not valid, connection failed');
@@ -156,9 +149,9 @@ class Database {
 	 *
 	 * @param	string		SQL Query da eseguire.
 	 * @param	array|NULL	Parameters to bind on sql query in array or simple value.
-	 * @return	int	Number of affected items.
+	 * @return	int			Number of affected items.
 	 */
-	public function exec(string $query, $params=[]): int {
+	public function exec(string $query, array $params=[]): int {
 
 		$this->openConnection();
 
@@ -192,7 +185,7 @@ class Database {
 
 			$affected = 0;
 
-		} catch (\Exception $e) {
+		} catch (PairException $e) {
 
 			// logger
 			$this->logParamQuery($this->query, 0, $params);
@@ -268,7 +261,7 @@ class Database {
 	 * @param	array	List of parameters to bind on the sql query.
 	 * @param	int		Returned type (see constants PAIR_DB_*). PAIR_DB_OBJECT_LIST is default.
 	 */
-	public static function load(string $query, array $params=[], int $option=NULL): array|Collection|\stdClass|string|int|NULL {
+	public static function load(string $query, array $params=[], ?int $option=NULL): array|Collection|\stdClass|string|int|NULL {
 
 		$self = static::getInstance();
 
@@ -394,7 +387,7 @@ class Database {
 
 			$affected = 0;
 
-		} catch (\Exception $e) {
+		} catch (PairException $e) {
 
 			// logger
 			$self->logParamQuery($query, 0, $params);
@@ -777,7 +770,7 @@ class Database {
 				AND k.`CONSTRAINT_NAME` = r.`CONSTRAINT_NAME`';
 
 			$params = [
-				'dbName' => DB_NAME,
+				'dbName' => Config::get('DB_NAME'),
 				'tableName' => $tableName
 			];
 
@@ -813,7 +806,7 @@ class Database {
 				AND k.CONSTRAINT_NAME = r.CONSTRAINT_NAME';
 
 			$params = [
-				'dbName' => DB_NAME,
+				'dbName' => Config::get('DB_NAME'),
 				'tableName' => $tableName
 			];
 
@@ -979,7 +972,7 @@ class Database {
 
 			// prepare query to discover db user privileges
 			$stat = $this->handler->prepare('SELECT `PRIVILEGE_TYPE` FROM information_schema.user_privileges' .
-				' WHERE `GRANTEE` = \'' . DB_USER . '\'@\'' . DB_HOST . '\'');
+				' WHERE `GRANTEE` = \'' . Config::get('DB_USER') . '\'@\'' . Config::get('DB_HOST') . '\'');
 
 			// get user privileges
 			$privilegeType = $stat->fetch(\PDO::FETCH_COLUMN);
@@ -994,7 +987,7 @@ class Database {
 
 			}
 
-		} catch (\Exception $e) {
+		} catch (PairException $e) {
 
 			throw new DatabaseException('Error setting utf8mb4 charset and collation', 1002, $e);
 
@@ -1087,7 +1080,7 @@ class Database {
 	 * @param	string		SQL Query.
 	 * @param	array|NULL	Parameters.
 	 */
-	private function handleException(\Exception|\Throwable $e, string $query, ?array $params): void {
+	private function handleException(PairException|\Throwable $e, string $query, ?array $params): void {
 
 		$params = (array)$params;
 

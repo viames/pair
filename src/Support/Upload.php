@@ -118,7 +118,7 @@ class Upload {
 					$this->setErrorMessage();
 				}	
 
-			} catch (\Exception $e) {
+			} catch (PairException $e) {
 
 				$this->setError('Unexpected $_FILES[\'' . $fieldName . '\' struct raised an error: ' . $e->getMessage());
 
@@ -147,7 +147,7 @@ class Upload {
 	 *
 	 * @return	bool	TRUE if no errors.
 	 */
-	public function save(string $path, string $name=NULL, bool $random=FALSE): bool {
+	public function save(string $path, ?string $name=NULL, bool $random=FALSE): bool {
 
 		// check upload errors
 		if (UPLOAD_ERR_OK != $this->fileError) {

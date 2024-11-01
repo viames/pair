@@ -75,7 +75,7 @@ class Pagination {
 
 		try {
 			$this->$name = $value;
-		} catch (\Exception $e) {
+		} catch (PairException $e) {
 			print $e->getMessage();
 		}
 

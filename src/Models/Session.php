@@ -9,40 +9,33 @@ class Session extends ActiveRecord {
 
 	/**
 	 * Property that binds db field id.
-	 * @var string
 	 */
-	protected $id;
+	protected string $id;
 
 	/**
 	 * Property that binds db field id_user.
-	 * @var int|NULL
 	 */
-	protected $idUser;
+	protected ?int $idUser = NULL;
 
 	/**
 	 * Property that binds db field start_time.
-	 * @var DateTime
 	 */
-	protected $startTime;
+	protected \DateTime $startTime;
 
 	/**
 	 * Property that binds db field timezone_offset.
-	 * @var float|NULL
 	 */
-	protected $timezoneOffset;
+	protected ?float $timezoneOffset = NULL;
 
 	/**
 	 * Property that binds db field timezone_name.
-	 * @var string|NULL
 	 */
-	protected $timezoneName;
+	protected ?string $timezoneName = NULL;
 
 	/**
 	 * Property that binds db field former_user_id.
-	 *
-	 * @var int|NULL
 	 */
-	protected $formerUserId;
+	protected ?int $formerUserId = NULL;
 
 	/**
 	 * Name of related db table.
@@ -59,7 +52,7 @@ class Session extends ActiveRecord {
 	/**
 	 * Method called by constructor just after having populated the object.
 	 */
-	protected function init() {
+	protected function init(): void {
 
 		$this->bindAsDatetime('startTime');
 
@@ -71,8 +64,6 @@ class Session extends ActiveRecord {
 
 	/**
 	 * Returns an array with the object property names and corresponding columns in the db.
-	 *
-	 * @return	array
 	 */
 	protected static function getBinds(): array {
 
@@ -104,7 +95,7 @@ class Session extends ActiveRecord {
 	 *
 	 * @param	int		Session time in minutes.
 	 */
-	public static function cleanOlderThan(int $sessionTime) {
+	public static function cleanOlderThan(int $sessionTime): void {
 
 		// converts to current time zone
 		$dateTime  = new \DateTime();
@@ -118,19 +109,18 @@ class Session extends ActiveRecord {
 	 * Checks if a Session object is expired after sessionTime passed as parameter.
 	 *
 	 * @param	int		Session time in minutes.
-	 * @return	bool
 	 */
 	public function isExpired(int $sessionTime): bool {
 
-		if (is_null($this->startTime)) {
+		if (!isset($this->startTime) or is_null($this->startTime)) {
 			return TRUE;
 		}
 
 		// creates expiring date subtracting sessionTime interval
-		$expiring = new \DateTime('now', new \DateTimeZone(BASE_TIMEZONE));
-		$expiring->sub(new \DateInterval('PT' . (int)$sessionTime . 'M'));
+		$expire = new \DateTime('now', new \DateTimeZone(BASE_TIMEZONE));
+		$expire->sub(new \DateInterval('PT' . (int)$sessionTime . 'M'));
 
-		return ($this->startTime < $expiring);
+		return ($this->startTime < $expire);
 
 	}
 
@@ -152,7 +142,7 @@ class Session extends ActiveRecord {
 	 */
 	public function getUser(): ?User {
 
-		if (!$this->idUser) {
+		if (!isset($this->idUser) or is_null($this->idUser)) {
 			return NULL;
 		}
 
@@ -168,12 +158,10 @@ class Session extends ActiveRecord {
 
 	/**
 	 * Returns true if the session has a former user.
-	 *
-	 * @return boolean
 	 */
 	public function hasFormerUser(): bool {
 
-		return !in_array($this->formerUserId,  [null, '']);
+		return !in_array($this->__get('formerUserId'),  [NULL, '']);
 
 	}
 
@@ -190,12 +178,10 @@ class Session extends ActiveRecord {
 
 	/**
 	 * Returns the former user associated to the session, if present.
-	 *
-	 * @return User|null
 	 */
 	public function getFormerUser(): ?User {
 
-		if (!$this->formerUserId) {
+		if (!isset($this->formerUserId) or is_null($this->formerUserId)) {
 			return NULL;
 		}
 
@@ -211,8 +197,6 @@ class Session extends ActiveRecord {
 
 	/**
 	 * Return the current Session object.
-	 *
-	 * @return	Session
 	 */
 	public static function current(): self {
 

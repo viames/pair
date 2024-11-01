@@ -2,7 +2,6 @@
 
 namespace Pair\Html\FormControls;
 
-use Pair\Core\Application;
 use Pair\Html\FormControl;
 use Pair\Orm\Collection;
 use Pair\Support\Post;
@@ -44,7 +43,7 @@ class Select extends FormControl {
 	 * @param	string	Name of property’s text or an existent object function.
 	 * @param 	string	Optional attributes [name=>value].
 	 */
-	public function options(array|Collection $list, string $propertyValue=NULL, string $propertyText=NULL, array $propertyAttributes=NULL): self {
+	public function options(array|Collection $list, ?string $propertyValue=NULL, ?string $propertyText=NULL, ?array $propertyAttributes=NULL): self {
 
 		$allowedValues = ['string','integer','double'];
 
@@ -104,7 +103,7 @@ class Select extends FormControl {
 	 * in turn contains a list of objects with the value and text properties. Chainable.
 	 * @param	array:\stdClass[]	Two-dimensional list.
 	 */
-	public function setGroupedList(array $list): self {
+	public function grouped(array $list): self {
 
 		$this->list = $list;
 
@@ -116,7 +115,7 @@ class Select extends FormControl {
 	 * Adds a null value as first item. Chainable method.
 	 * @param	string|NULL	Option text for first null value.
 	 */
-	public function empty(string $text=NULL): self {
+	public function empty(?string $text=NULL): self {
 
 		$this->emptyOption = is_null($text) ? Translator::do('SELECT_NULL_VALUE') : $text;
 
@@ -209,7 +208,7 @@ class Select extends FormControl {
 
 			}
 
-		} catch (\Exception $e) {
+		} catch (PairException $e) {
 
 			print $e->getMessage();
 

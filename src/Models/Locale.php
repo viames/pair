@@ -275,7 +275,7 @@ class Locale extends ActiveRecord {
 					touch($file);
 					chmod($file, 0777);
 
-				} catch (\Exception $e) {
+				} catch (PairException $e) {
 
 					trigger_error($e->getMessage());
 					return FALSE;
@@ -305,7 +305,7 @@ class Locale extends ActiveRecord {
 
 			$res = file_put_contents($file, $content);
 
-		} catch (\Exception $e) {
+		} catch (PairException $e) {
 
 			Logger::error('Translation file ' . $file . ' cannot be written due its permission');
 			$res = FALSE;

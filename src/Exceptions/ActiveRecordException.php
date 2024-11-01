@@ -5,7 +5,7 @@ namespace Pair\Exceptions;
 /**
  * Custom exception for handling errors when writing an ActiveRecord object to the database.
  */
-class ActiveRecordException extends \Exception {
+class ActiveRecordException extends PairException {
 
 	/**
 	 * Error connecting to the database.
@@ -58,13 +58,18 @@ class ActiveRecordException extends \Exception {
 	const ERROR_METHOD_NOT_FOUND = 1010;
 
 	/**
+	 * Invalid date format.
+	 */
+	const ERROR_INVALID_DATE_FORMAT = 1011;
+
+	/**
 	 * Constructor for the ActiveRecordException.
 	 *
 	 * @param string $message The error message, default to 'Error writing ActiveRecord to database'.
 	 * @param int $code The error code, default to 0.
 	 * @param Exception|NULL $previous Optional previous exception for exception chaining.
 	 */
-	public function __construct($message = 'Error writing ActiveRecord to database', $code = 0, \Exception $previous = NULL) {
+	public function __construct(string $message = 'Error writing ActiveRecord to database', int $code = 0, \Exception $previous = NULL) {
 
 		parent::__construct($message, $code, $previous);
 
