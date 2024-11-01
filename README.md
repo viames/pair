@@ -7,15 +7,17 @@
 
 ## Features
 
-Pair is simple and fast, few frills, maybe none. It was written with simplicity in mind, while trying to achieve the most frequent needs of web applications. It implements [Model-View-Controller](https://en.wikipedia.org/wiki/Model-View-Controller) pattern and a search friendly [route logic](https://github.com/viames/pair/wiki/Router) by default.
+Pair is a simple and fast PHP framework with little or no frills. It was written with simplicity in mind, trying to satisfy the most frequent needs of web applications. It implements the [Model-View-Controller](https://en.wikipedia.org/wiki/Model-View-Controller) pattern and intuitive, search engine friendly [routing](https://github.com/viames/pair/wiki/Router) by default.
 
-Everyone knows that you do not need a truck to go shopping. You do not even need the car to go and buy the newspaper at the nearby newsstand. You need the right medium for everything.
+Pair is a simple and fast PHP framework with little or no frills. It was written with simplicity in mind, trying to satisfy the most frequent needs of web applications. It implements the Model-View-Controller pattern and intuitive routing logic by default.
 
-If you’re already tired of starting a new web project due to the complexity of the famous frameworks used around, you should take a look at Pair. For a small or medium web project, it fits really well.
+Everyone knows that you don't need a truck to go grocery shopping. You don't even need a car to go to the local newsstand to buy the newspaper. You need the right vehicle for every occasion.
 
-Pair acquires the logical connections of the database tables and automatically uses caching functions to reuse the data that has already been retrieved. While Pair sends the ready-made web page to the browser, some of the most popular frameworks haven't even loaded all the libraries yet.
+If starting a new web project is a hassle because of the complexity and slowness of the famous pachyderm frameworks used around, you should take a look at Pair. For a small or medium web project, it might surprise you.
 
-Using also the advanced functions of Pair for the efficient management of the information already extracted from the DB, it is possible to create a web page of an application that reads millions of records and many related tables in an astounding time of just 10 ms.
+Pair learns the referential constraints of database tables and automatically uses magic functions to reuse the data already read via cache. While Pair sends the complete web page to the browser, some of the most popular frameworks still have to load all the server-side libraries.
+
+Additionally using Pair's advanced features for efficiently managing information already extracted from the DB, you can create a web page of an application that reads millions of records and numerous related tables in the incredible time of just 10 ms.
 
 #### ActiveRecord
 

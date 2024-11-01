@@ -3,8 +3,7 @@
 namespace Pair\Orm;
 
 use Pair\Core\Application;
-use Pair\Exception\ActiveRecordReadException;
-use Pair\Exception\ActiveRecordWriteException;
+use Pair\Exceptions\ActiveRecordException;
 use Pair\Html\Form;
 use Pair\Support\Post;
 use Pair\Support\Logger;
@@ -357,13 +356,19 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 			}
 
-		// or notify the problem only to developers
+		// notify the problem only to the developers
 		} else if (Application::isDevelopmentHost()) {
-
+			
 			$backtrace = debug_backtrace();
 			Logger::error('Method '. get_called_class() . $backtrace[0]['type'] . $name .'(), which doesn’t exist, has been called by '. $backtrace[0]['file'] .' on line '. $backtrace[0]['line']);
-
+			
 		}
+
+		// build the Exception message
+		$msg = 'Method '. get_called_class() . '::' . $name .'() doesn’t exist';
+		$code = ActiveRecordException::ERROR_METHOD_NOT_FOUND;
+
+		throw new ActiveRecordException($msg, $code);
 
 	}
 
@@ -838,10 +843,10 @@ abstract class ActiveRecord implements \JsonSerializable {
 			if (!$autoIncrement and !$this->areKeysPopulated()) {
 
 				$errCode = static::hasSimpleKey()
-				? ActiveRecordWriteException::ERROR_PRIMARY_KEY_NOT_POPULATED
-				: ActiveRecordWriteException::ERROR_COMPOSITE_PRIMARY_KEY_NOT_POPULATED;
+				? ActiveRecordException::ERROR_PRIMARY_KEY_NOT_POPULATED
+				: ActiveRecordException::ERROR_COMPOSITE_PRIMARY_KEY_NOT_POPULATED;
 
-				throw new ActiveRecordWriteException(implode(', ', $this->keyProperties) . ' not populated', $errCode);
+				throw new ActiveRecordException(implode(', ', $this->keyProperties) . ' not populated', $errCode);
 
 			}
 
@@ -939,10 +944,10 @@ abstract class ActiveRecord implements \JsonSerializable {
 			if (!$this->areKeysPopulated()) {
 			
 				$errCode = static::hasSimpleKey()
-				? ActiveRecordWriteException::ERROR_PRIMARY_KEY_NOT_POPULATED
-				: ActiveRecordWriteException::ERROR_COMPOSITE_PRIMARY_KEY_NOT_POPULATED;
+				? ActiveRecordException::ERROR_PRIMARY_KEY_NOT_POPULATED
+				: ActiveRecordException::ERROR_COMPOSITE_PRIMARY_KEY_NOT_POPULATED;
 
-				throw new ActiveRecordWriteException(implode(', ', $this->keyProperties) . ' not populated', $errCode);
+				throw new ActiveRecordException(implode(', ', $this->keyProperties) . ' not populated', $errCode);
 
 			}
 
@@ -2707,14 +2712,14 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * Search an object in the database with the primary key equivalent to the value passed in the parameter
 	 * and returns it as an ActiveRecord of this class, if found. If not found, throws an exception.
 	 * 
-	 * @throws	ActiveRecordReadException
+	 * @throws	ActiveRecordException
 	 */
 	public static function findOrFail(int|string|array $primaryKey): ActiveRecord {
 
 		$obj = static::find($primaryKey);
 
 		if (!$obj) {
-			throw new ActiveRecordReadException('Object not found', 1004);
+			throw new ActiveRecordException('Object not found', 1004);
 		}
 
 		return $obj;

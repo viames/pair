@@ -827,7 +827,12 @@ class Application {
 	 * @param	string	Location URL.
 	 * @param	bool	If TRUE, will avoids to add base url (default FALSE).
 	 */
-	public function redirect(string $url, bool $externalUrl=FALSE): void {
+	public function redirect(?string $url=NULL, bool $externalUrl=FALSE): void {
+
+		if (is_null($url)) {
+			$router = Router::getInstance();
+			$url = $router->module;
+		}
 
 		// stores enqueued messages for next retrievement
 		$this->makeQueuedMessagesPersistent();
@@ -921,13 +926,12 @@ class Application {
 			$token = Token::getByValue((string)$tokenValue);
 
 			// set token and start controller
-			if ($token) {
-				$token->updateLastUse();
-				$apiCtl->setToken($token);
-				$apiCtl->$action();
-			} else {
+			if (!$token) {
 				$apiCtl->sendError(19);
 			}
+
+			$token->updateLastUse();
+			$apiCtl->setToken($token);
 
 		// or check for Oauth2 Bearer token via http header
 		} else if ($bearerToken) {
@@ -939,7 +943,6 @@ class Application {
 
 			// verify that the bearer token is valid
 			$apiCtl->setBearerToken($bearerToken);
-			$apiCtl->$action();
 
 		} else if ('login' == $router->action) {
 
@@ -947,21 +950,14 @@ class Application {
 			session_destroy();
 			session_start();
 
-			// user controller
-			$apiCtl->$action();
-
 		} else if ('logout' == $router->action) {
 
 			session_start();
 
-			// user controller
-			$apiCtl->$action();
-
 		// signup
 		} else if ('signup' == $router->action) {
 
-			// user controller
-			$apiCtl->$action();
+			// continue with apiCtl action
 
 		// all the other requests with sid
 		} else if ($sid) {
@@ -984,13 +980,18 @@ class Application {
 
 			// set session and start controller
 			$apiCtl->setSession($session);
-			$apiCtl->$action();
 
 		// unauthorized request
 		} else {
 
 			Oauth2Token::unauthorized(PRODUCT_NAME . '-API: Authentication failed');
 
+		}
+
+		try {
+			$apiCtl->$action();
+		} catch (\Exception $e) {
+			$apiCtl->sendError(4, [$e->getMessage()]);
 		}
 
 		exit();
@@ -1114,8 +1115,12 @@ class Application {
 
 			}
 
-			// run the action
-			$controller->$action();
+			try {
+				$controller->$action();
+			} catch (\Exception $e) {
+				$this->enqueueError($e->getMessage());
+				$this->redirect();
+			}
 
 			// raw calls will jump controller->display, ob and log
 			if ($router->isRaw()) {

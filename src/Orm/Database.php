@@ -2,7 +2,7 @@
 
 namespace Pair\Orm;
 
-use Pair\Exception\DatabaseException;
+use Pair\Exceptions\DatabaseException;
 use Pair\Support\Logger;
 
 
@@ -116,7 +116,7 @@ class Database {
 			$this->handler = new \PDO($dsn, DB_USER, DB_PASS, $options);
 
 			if (!is_a($this->handler, 'PDO')) {
-				throw new \PDOException('Db handler is not valid, connection failed');
+				throw new DatabaseException('Db handler is not valid, connection failed');
 			}
 
 			$this->handler->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
@@ -264,11 +264,11 @@ class Database {
 	 * Return data in various formats by third string parameter. Default is PAIR_DB_OBJECT_LIST parameters
 	 * as array. Support PDO parameters bind.
 	 *
-	 * @param	string		SQL query.
-	 * @param	array|NULL	List of parameters to bind on the sql query.
-	 * @param	int			Returned type (see constants PAIR_DB_*). PAIR_DB_OBJECT_LIST is default.
+	 * @param	string	SQL query.
+	 * @param	array	List of parameters to bind on the sql query.
+	 * @param	int		Returned type (see constants PAIR_DB_*). PAIR_DB_OBJECT_LIST is default.
 	 */
-	public static function load(string $query, $params=[], int $option=NULL): array|Collection|\stdClass|string|int|NULL {
+	public static function load(string $query, array $params=[], int $option=NULL): array|Collection|\stdClass|string|int|NULL {
 
 		$self = static::getInstance();
 
@@ -282,7 +282,11 @@ class Database {
 			$stat = $self->handler->prepare($query);
 
 			// bind parameters
-			$stat->execute((array)$params);
+			try {
+				$stat->execute($params);
+			} catch (\Throwable $e) {
+				throw new DatabaseException('Error binding parameters: ' . $e->getMessage());
+			}
 
 			switch ($option) {
 
@@ -350,15 +354,12 @@ class Database {
 	 *
 	 * @param	string		SQL query to run.
 	 * @param	array|NULL	List of parameters to bind on the sql query.
-	 * @return	int			Number of affected items.
 	 */
-	public static function run(string $query, $params=[]): int {
+	public static function run(string $query, array $params=[]): int {
 
 		$self = static::getInstance();
 
 		$self->openConnection();
-
-		$ret = NULL;
 
 		try {
 
@@ -415,7 +416,7 @@ class Database {
 	 * @param	array|NULL	List of parameters to bind on sql query.
 	 * @return	stdClass[]
 	 */
-	public function loadObjectList($params=[]): ?array {
+	public function loadObjectList(array $params=[]): ?array {
 
 		$this->openConnection();
 
@@ -448,7 +449,7 @@ class Database {
 	 * @param	array|NULL	List of parameters to bind on sql query.
 	 * @return	array|NULL
 	 */
-	public function loadResultList($params=[]): ?array {
+	public function loadResultList(array $params=[]): ?array {
 
 		$this->openConnection();
 
@@ -481,7 +482,7 @@ class Database {
 	 * @param	array|NULL	List of parameters to bind on sql query.
 	 * @return	string|NULL
 	 */
-	public function loadResult($params=[]): ?string {
+	public function loadResult(array $params=[]): ?string {
 
 		$this->openConnection();
 
@@ -514,7 +515,7 @@ class Database {
 	 *
 	 * @param	array|NULL	List of parameters to bind on sql query.
 	 */
-	public function loadCount($params=[]): int {
+	public function loadCount(array $params=[]): int {
 
 		$this->openConnection();
 
@@ -1056,6 +1057,12 @@ class Database {
 				$value = "'$value'";
 			} else if (is_null($value)) {
 				$value = 'NULL';
+			} else if (is_bool($value)) {
+				$value = $value ? 'TRUE' : 'FALSE';
+			} else if (is_array($value)) {
+				$value = 'Array';
+			} else if (is_object($value)) {
+				$value = get_class($value);
 			} else {
 				$value = (string)$value;
 			}
@@ -1076,11 +1083,11 @@ class Database {
 	/**
 	 * Log query, switch error and add to DB class error list.
 	 *
-	 * @param	Exception	Error object.
+	 * @param	Exception|Throwable	Exception or Error object.
 	 * @param	string		SQL Query.
 	 * @param	array|NULL	Parameters.
 	 */
-	private function handleException(\Exception $e, string $query, ?array $params): void {
+	private function handleException(\Exception|\Throwable $e, string $query, ?array $params): void {
 
 		$params = (array)$params;
 

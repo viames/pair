@@ -10,6 +10,19 @@ use Pair\Core\Application;
 class Post {
 
 	/**
+	 * Get data by POST or GET array returning an array. In case
+	 * of not found, return default value.
+	 *
+	 * @param	string	HTTP parameter name.
+	 * @param	string	Default value to return, in case of null or empty.
+	 */
+	public static function array($name, $default=NULL): array {
+
+		return self::get($name, 'array', $default);
+
+	}
+
+	/**
 	 * Get data by POST or GET array returning the specified type or default value. In case
 	 * of not found, return default value. Manage array inputs.
 	 *
