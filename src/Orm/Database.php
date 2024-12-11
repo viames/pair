@@ -185,12 +185,7 @@ class Database {
 
 			$affected = 0;
 
-		} catch (PairException $e) {
-
-			// logger
-			$this->logParamQuery($this->query, 0, $params);
-			$this->addError($e->getMessage());
-			$affected = 0;
+			throw new DatabaseException($message);
 
 		}
 

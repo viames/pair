@@ -3,9 +3,11 @@
 namespace Pair\Orm;
 
 use Pair\Core\Application;
+use Pair\Core\Config;
 use Pair\Exceptions\ActiveRecordException;
 use Pair\Exceptions\PairException;
 use Pair\Html\Form;
+use Pair\Models\ErrorLog;
 use Pair\Support\Post;
 use Pair\Support\Logger;
 use Pair\Support\Translator;
@@ -62,8 +64,14 @@ abstract class ActiveRecord implements \JsonSerializable {
 	const TABLE_KEY = 'FAKE_KEY';
 
 	/**
+	 * Return the table name of the object.
+	 */
+	const TABLE_NAME = 'FAKE_TABLE';
+
+	/**
 	 * Constructor, if param is db-row, will bind it on this object, if it’s id,
 	 * with load the object data from db, otherwise the object will be empty.
+	 * 
 	 * @param	mixed	Record object from db table or just table key value (int, string or array, optional).
 	 */
 	final public function __construct($initParam=NULL) {
@@ -762,13 +770,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		// insert the object as db record
 		$dbObj = $this->prepareData($props);
-		$res = $this->db->insertObject(static::TABLE_NAME, $dbObj, static::getEncryptableFields());
 
-		if (!$res) {
-			Logger::event('Failed to create a new ' . $class . ' object');
-			$this->addError($this->db->getLastError());
-			return FALSE;
-		}
+		$this->db->insertObject(static::TABLE_NAME, $dbObj, static::getEncryptableFields());
 
 		// get last insert id if not compound key
 		if (!static::hasCompoundKey() and $autoIncrement) {
@@ -794,7 +797,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// hook for tasks to be executed after creation
 		$this->afterCreate();
 
-		return $res;
+		return TRUE;
 
 	}
 
@@ -2501,7 +2504,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$dtz = Application::getTimeZone();
 
 		// timestamp is acquired in UTC only, any DTZ doesn't affect its value
-		if (defined('UTC_DATE') and UTC_DATE and (is_int($value) or ctype_digit($value))) {
+		if (Config::get('UTC_DATE') and (is_int($value) or ctype_digit($value))) {
 
 			$castedValue = new \DateTime('@' . (int)$value);
 			$castedValue->setTimezone($dtz);
@@ -2565,12 +2568,18 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// hook for tasks to be executed before store
 		$this->beforeStore();
 
-		$result = $update ? $this->update() : $this->create();
+		try {
+			$update ? $this->update() : $this->create();
+		} catch (PairException $e) {
+			Logger::event($e->getMessage());
+			ErrorLog::snapshot($e);
+			$this->addError($e->getMessage());
+		}
 
 		// hook for tasks to be executed after store
 		$this->afterStore();
 
-		return $result;
+		return TRUE;
 
 	}
 
@@ -2697,13 +2706,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		}
 
-		$res = (bool)$this->db->updateObject($class::TABLE_NAME, $dbObj, $dbKey, static::getEncryptableFields());
-
-		if (!$res) {
-			Logger::event('Failed to update ' . $class . ' object');
-			$this->addError($this->db->getLastError());
-			return FALSE;
-		}
+		$this->db->updateObject($class::TABLE_NAME, $dbObj, $dbKey, static::getEncryptableFields());
 
 		// reset updated-properties tracker
 		$this->updatedProperties = [];
@@ -2720,7 +2723,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// hook for tasks to be executed after creation
 		$this->afterUpdate();
 
-		return $res;
+		return TRUE;
 
 	}
 
