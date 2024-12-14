@@ -4,7 +4,6 @@ namespace Pair\Core;
 
 use Pair\Exceptions\PairException;
 use Pair\Html\Pagination;
-use Pair\Models\ErrorLog;
 use Pair\Orm\ActiveRecord;
 use Pair\Support\Logger;
 use Pair\Support\Options;
@@ -16,6 +15,7 @@ use Pair\Support\Utilities;
  */
 abstract class View {
 
+	use \Pair\Traits\AppTrait;
 	use \Pair\Traits\LogTrait;
 
 	/**

@@ -2,6 +2,7 @@
 
 namespace Pair\Core;
 
+use Pair\Exceptions\ErrorCodes;
 use Pair\Exceptions\PairException;
 use Pair\Models\Oauth2Token;
 
@@ -61,7 +62,7 @@ class Config {
 	/**
 	 * Returns the value of the specified key from the environment variables.
 	 *
-	 * @param	string	$key		The key to search for.
+	 * @param	string	The key to search for.
 	 */
 	public static function get(string $key): mixed {
 
@@ -75,7 +76,7 @@ class Config {
 	public static function load(): void {
 
 		if (!self::envFileExists()) {
-			throw new PairException(PairException::ERROR_LOADING_ENV);
+			throw new PairException('Error loading .env configuration file', ErrorCodes::LOADING_ENV);
 		}
 
 		$lines = file(self::FILE, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);

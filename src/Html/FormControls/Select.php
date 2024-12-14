@@ -2,6 +2,8 @@
 
 namespace Pair\Html\FormControls;
 
+use Pair\Exceptions\ErrorCodes;
+use Pair\Exceptions\FormException;
 use Pair\Html\FormControl;
 use Pair\Orm\Collection;
 use Pair\Support\Post;
@@ -69,6 +71,10 @@ class Select extends FormControl {
 
 		// for each item of the list, add an option
 		foreach ($list as $opt) {
+
+			if (!$propertyValue or !$propertyText) {
+				throw new FormException($this->name . ' select control requires a property for value and text', ErrorCodes::MALFORMED_SELECT);
+			}
 
 			$option = new \stdClass();
 			$option->value = $opt->$propertyValue;

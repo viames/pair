@@ -5,9 +5,9 @@ namespace Pair\Orm;
 use Pair\Core\Application;
 use Pair\Core\Config;
 use Pair\Exceptions\ActiveRecordException;
+use Pair\Exceptions\ErrorCodes;
 use Pair\Exceptions\PairException;
 use Pair\Html\Form;
-use Pair\Models\ErrorLog;
 use Pair\Support\Post;
 use Pair\Support\Logger;
 use Pair\Support\Translator;
@@ -71,7 +71,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	/**
 	 * Constructor, if param is db-row, will bind it on this object, if it’s id,
 	 * with load the object data from db, otherwise the object will be empty.
-	 * 
+	 *
 	 * @param	mixed	Record object from db table or just table key value (int, string or array, optional).
 	 */
 	final public function __construct($initParam=NULL) {
@@ -142,7 +142,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 				foreach (static::FOREIGN_KEYS as $fk) {
 					if ($class::TABLE_NAME == $fk['REFERENCED_TABLE_NAME']) {
 						$property = (string)static::getMappedProperty($fk['COLUMN_NAME']);
-						return $this->getRelated($property);
+						return $this->getParent($property);
 					}
 				}
 
@@ -158,7 +158,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 					// when found, return the related object
 					if (static::TABLE_NAME == $ifk->TABLE_NAME) {
 						$property = (string)static::getMappedProperty($ifk->COLUMN_NAME);
-						return $this->getRelated($property, $class);
+						return $this->getParent($property, $class);
 					}
 
 				}
@@ -169,7 +169,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		};
 
-		$getInverseRelatedObjects = function(string $class): Collection {
+		$getRelatedObjects = function(string $class): Collection {
 
 			// foreign keys list
 			$foreignKeys = $this->db->getForeignKeys($class::TABLE_NAME);
@@ -181,7 +181,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 				if (static::TABLE_NAME == $ifk->REFERENCED_TABLE_NAME) {
 					$property = (string)$class::getMappedProperty($ifk->REFERENCED_COLUMN_NAME);
 					$refProperty = (string)$class::getMappedProperty($ifk->COLUMN_NAME);
-					return $this->getInverseRelateds($property, $class, $refProperty);
+					return $this->getRelateds($property, $class, $refProperty);
 				}
 
 			}
@@ -213,11 +213,11 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 			} else if (is_subclass_of($multiPairClass,'Pair\Orm\ActiveRecord')) {
 
-				return $getInverseRelatedObjects($multiPairClass);
+				return $getRelatedObjects($multiPairClass);
 
 			} else if (is_subclass_of($multiClass,'Pair\Orm\ActiveRecord')) {
 
-				return $getInverseRelatedObjects($multiClass);
+				return $getRelatedObjects($multiClass);
 
 			}
 
@@ -231,7 +231,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		// build the Exception message
 		$msg = 'Method '. get_called_class() . '::' . $name .'() doesn’t exist';
-		$code = ActiveRecordException::ERROR_METHOD_NOT_FOUND;
+		$code = ErrorCodes::METHOD_NOT_FOUND;
 
 		throw new ActiveRecordException($msg, $code);
 
@@ -276,6 +276,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 	/**
 	 * Return property’s value if set. Throw an exception and return NULL if not set.
+	 * 
 	 * @param	string	Property’s name.
 	 * @throws	ActiveRecordException
 	 */
@@ -293,7 +294,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 
 		// property not found
-		throw new ActiveRecordException('Property “' . $name . '” not found', ActiveRecordException::ERROR_PROPERTY_NOT_FOUND);
+		throw new ActiveRecordException('Property “' . $name . '” not found', ErrorCodes::PROPERTY_NOT_FOUND);
 
 	}
 
@@ -307,8 +308,8 @@ abstract class ActiveRecord implements \JsonSerializable {
     }
 
 	/**
-	 * Magic method to set an object property value. If DateTime property, will properly
-	 * manage integer or string date.
+	 * Magic method to set an object property value. If DateTime property, will properly manage integer or string date.
+	 * 
 	 * @param	string	Property’s name.
 	 * @param	mixed	Property’s value.
 	 */
@@ -728,8 +729,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 			if (!$autoIncrement and !$this->areKeysPopulated()) {
 
 				$errCode = static::hasSimpleKey()
-				? ActiveRecordException::ERROR_PRIMARY_KEY_NOT_POPULATED
-				: ActiveRecordException::ERROR_COMPOSITE_PRIMARY_KEY_NOT_POPULATED;
+				? ErrorCodes::PRIMARY_KEY_NOT_POPULATED
+				: ErrorCodes::COMPOSITE_PRIMARY_KEY_NOT_POPULATED;
 
 				throw new ActiveRecordException(implode(', ', $this->keyProperties) . ' not populated', $errCode);
 
@@ -866,12 +867,13 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	final public function existsInDb(): bool {
 
-		$class = get_called_class();
 		$conds = implode(' AND ', $this->getSqlKeyConditions());
 
-		$this->db->setQuery('SELECT COUNT(1) FROM `' . $class::TABLE_NAME . '` WHERE ' . $conds);
-
-		return (bool)$this->db->loadCount($this->getId());
+		return (bool)Database::load(
+			'SELECT COUNT(1) FROM `' . static::TABLE_NAME . '` WHERE ' . $conds,
+			$this->getSqlKeyValues(),
+			PAIR_DB_COUNT
+		);
 
 	}
 
@@ -1145,7 +1147,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 
 	/**
-	 * Returns array with matching object property name on related db columns.
+	 * Returns array with matching object property name on mapped db columns.
 	 */
 	protected static function getBinds(): array {
 
@@ -1442,12 +1444,46 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 
 	/**
-	 * Return the Pair\Orm\ActiveRecord(s) inherited object related to this by a ForeignKey in DB-table. Cached method.
+	 * Return the ActiveRecord object related to this by a ForeignKey in DB-table.
+	 * 
+	 * @param	string	Class name of the related object.
+	 */
+	final public function getRelated(string $activeRecordClassName): ?ActiveRecord {
+
+		if (!class_exists($activeRecordClassName)) {
+			throw new ActiveRecordException('Class ' . $activeRecordClassName . ' not found', ErrorCodes::CLASS_NOT_FOUND);
+		}
+
+		// foreign keys list
+		$foreignkeys = $this->db->getForeignKeys($activeRecordClassName::TABLE_NAME);
+
+		// search for the object property that matches db fk
+		foreach ($foreignkeys as $fk) {
+
+			// when found, return the related object
+			if (static::TABLE_NAME == $fk->REFERENCED_TABLE_NAME) {
+
+				$property = (string)$activeRecordClassName::getMappedProperty($fk->REFERENCED_COLUMN_NAME);
+				$refProperty = (string)$activeRecordClassName::getMappedProperty($fk->COLUMN_NAME);
+				
+				return $this->getRelateds($property, $activeRecordClassName, $refProperty)->first();
+
+			}
+
+		}
+
+		return NULL;
+
+	}
+
+	/**
+	 * Return the ActiveRecord(s) inherited object related to this by a ForeignKey in DB-table.
+	 * 
+	 * @param	string	Property name of this object that contains the foreign key.
 	 * @param	string	Class name of the referenced object.
 	 * @param	string	Referenced property name.
-	 * @param	string	Self property name.
 	 */
-	final protected function getInverseRelateds(string $property, string $refClass, string $refProperty): Collection {
+	final protected function getRelateds(string $selfProperty, string $refClass, string $refProperty): Collection {
 
 		// the table referenced by fk
 		$referencedTable = $refClass::TABLE_NAME;
@@ -1471,17 +1507,11 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		// the class was not found
 		if (!class_exists($refClass) or !is_subclass_of($refClass, 'Pair\Orm\ActiveRecord')) {
-			$this->addError('Table ' . $referencedTable . ' has not any Pair-class mapping');
-			return [];
+			throw new ActiveRecordException('Table ' . $referencedTable . ' has not any Pair-class mapping', 1009);
 		}
 
 		// load the new wanted Pair objects
-		$objs = $refClass::getAllObjects([$refProperty=>$this->$property]);
-
-		// related object is being registered in cache of this object
-		//$this->setCache($cacheName, $objs);
-
-		return $objs;
+		return $refClass::getAllObjects([$refProperty=>$this->$selfProperty]);
 
 	}
 
@@ -1735,17 +1765,17 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 
 	/**
-	 * Return the Pair\Orm\ActiveRecord inherited object related to this by a ForeignKey in DB-table. Cached method.
+	 * Return the Pair\Orm\ActiveRecord inherited object parented to this by a ForeignKey in DB-table. Cached method.
 	 *
-	 * @param	string	Related property name.
-	 * @param	string	Related object class.
+	 * @param	string	Parent property name.
+	 * @param	string	Parent object class.
 	 */
-	final public function getRelated(string $relatedProperty, ?string $className=NULL): ?self {
+	final public function getParent(string $parentProperty, ?string $className=NULL): ?self {
 
-		$cacheName = $relatedProperty . 'RelatedObject';
+		$cacheName = $parentProperty . 'RelatedObject';
 
 		// object exists in cache, return it
-		if (!$this->isInSharedCache($relatedProperty) and $this->issetCache($cacheName)) {
+		if (!$this->isInSharedCache($parentProperty) and $this->issetCache($cacheName)) {
 			return $this->getCache($cacheName);
 		}
 
@@ -1769,14 +1799,14 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 
 		// get field name by mapped property
-		$relatedField = (string)static::getMappedField($relatedProperty);
+		$parentField = (string)static::getMappedField($parentProperty);
 
 		// the table referenced by fk
 		$referencedTable = NULL;
 
 		// search the fk-table
 		foreach ($foreignKeys as $fk) {
-			if ($fk->COLUMN_NAME == $relatedField) {
+			if ($fk->COLUMN_NAME == $parentField) {
 				$referencedTable  = $fk->REFERENCED_TABLE_NAME;
 				break;
 			}
@@ -1784,29 +1814,29 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		// if not table is referenced, raise an error
 		if (!$referencedTable) {
-			$this->addError('Property ' . $relatedProperty . ' has not a foreign-key mapped into DB');
+			$this->addError('Property ' . $parentProperty . ' has not a foreign-key mapped into DB');
 			return NULL;
 		}
 
-		// class that maps the referenced table
-		$relatedClass = NULL;
-		$loadedClasses = Utilities::getDeclaredClasses();
-
+		// class that maps the parent table
+		$parentClass = NULL;
+		
 		// if the class name is specified, it quickly searches the array
-		if (!is_null($className) and in_array($className, $loadedClasses) and is_subclass_of($className, 'Pair\Orm\ActiveRecord') and defined($className . '::TABLE_NAME') and $className::TABLE_NAME == $referencedTable) {
-			$relatedClass = $className;
-		// otherwise it must iterate all the loaded classes
+		if (!is_null($className) and is_subclass_of($className, 'Pair\Orm\ActiveRecord') and defined($className . '::TABLE_NAME') and $className::TABLE_NAME == $referencedTable) {
+			$parentClass = $className;
+			// otherwise it must iterate all the loaded classes
 		} else {
+			$loadedClasses = Utilities::getDeclaredClasses();
 			foreach ($loadedClasses as $c) {
 				if (is_subclass_of($c, 'Pair\Orm\ActiveRecord') and defined($c . '::TABLE_NAME') and $c::TABLE_NAME == $referencedTable) {
-					$relatedClass = $c;
+					$parentClass = $c;
 					break;
 				}
 			}
 		}
 
 		// class cannot be found
-		if (!$relatedClass) {
+		if (!$parentClass) {
 
 			// if not found, search in the whole application
 			$classes = Utilities::getActiveRecordClasses();
@@ -1815,7 +1845,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 			foreach ($classes as $class => $opts) {
 				if ($opts['tableName'] == $referencedTable) {
 					include_once($opts['folder'] . '/' . $opts['file']);
-					$relatedClass = $class;
+					$parentClass = $class;
 					break;
 				}
 			}
@@ -1823,29 +1853,29 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 
 		// class cannot be found
-		if (!$relatedClass) {
+		if (!$parentClass) {
 			$this->addError('Table ' . $referencedTable . ' has not any Pair-class mapping');
 			return NULL;
 		}
 
-		$relatedValue = $this->__get($relatedProperty);
+		$parentValue = $this->__get($parentProperty);
 
 		//  check if is managed by common cache
-		if ($relatedValue and $this->isInSharedCache($relatedProperty)) {
+		if ($parentValue and $this->isInSharedCache($parentProperty)) {
 
 			$app = Application::getInstance();
 
 			// assemble any composite key
-			$obj = $app->getActiveRecordCache($relatedClass, $relatedValue);
+			$obj = $app->getActiveRecordCache($parentClass, $parentValue);
 
 			// if got it from common cache, return it
 			if ($obj) {
 				return $obj;
 			// otherwise load from DB, store into common cache and return it
 			} else {
-				$obj = new $relatedClass($relatedValue);
+				$obj = new $parentClass($parentValue);
 				if ($obj->isLoaded()) {
-					$app->putActiveRecordCache($relatedClass, $obj);
+					$app->putActiveRecordCache($parentClass, $obj);
 					return $obj;
 				}
 			}
@@ -1853,12 +1883,12 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 
 		// no common cache, so proceed to load the new wanted Pair object
-		$obj = new $relatedClass($relatedValue);
+		$obj = new $parentClass($parentValue);
 
 		// if loaded, return it otherwise NULL
 		$ret = ($obj->isLoaded() ? $obj : NULL);
 
-		// related object is being registered in cache of this object
+		// parent object is being registered in cache of this object
 		$this->setCache($cacheName, $ret);
 
 		return $ret;
@@ -1866,15 +1896,15 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 
 	/**
-	 * Extended method to return a property value of the Pair\Orm\ActiveRecord inherited object related to
+	 * Extended method to return a property value of the Pair\Orm\ActiveRecord inherited object parent to
 	 * this by a ForeignKey in DB-table. Cached method.
 	 *
-	 * @param	string	Related property name, belongs to this object.
-	 * @param	string	Wanted property name, belongs to related object.
+	 * @param	string	Parent property name, belongs to this object.
+	 * @param	string	Wanted property name, belongs to parent object.
 	 */
-	final public function getRelatedProperty(string $relatedProperty, string $wantedProperty): mixed {
+	final public function getParentProperty(string $parentProperty, string $wantedProperty): mixed {
 
-		$obj = $this->getRelated($relatedProperty);
+		$obj = $this->getParent($parentProperty);
 
 		if ($obj) {
 			return $obj->$wantedProperty;
@@ -2504,7 +2534,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$dtz = Application::getTimeZone();
 
 		// timestamp is acquired in UTC only, any DTZ doesn't affect its value
-		if (Config::get('UTC_DATE') and (is_int($value) or ctype_digit($value))) {
+		if (Config::get('UTC_DATE') and (is_int($value) or (is_string($value) and ctype_digit($value)))) {
 
 			$castedValue = new \DateTime('@' . (int)$value);
 			$castedValue->setTimezone($dtz);
@@ -2522,7 +2552,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 				try {
 					$castedValue = new \DateTime($value, $dtz);
 				} catch (\Exception $e) {
-					throw new ActiveRecordException('Invalid date format: ' . $value, ActiveRecordException::ERROR_INVALID_DATE_FORMAT);
+					throw new ActiveRecordException('Invalid date format: ' . $value, ErrorCodes::INVALID_DATE_FORMAT);
 				}
 
 			}
@@ -2571,7 +2601,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		try {
 			$update ? $this->update() : $this->create();
 		} catch (PairException $e) {
-			throw new ActiveRecordException('Error storing ' . get_called_class() . ' object', ActiveRecordException::ERROR_STORE);
+			throw new ActiveRecordException('Error storing ' . get_called_class() . ' object', ErrorCodes::STORE_FAILED);
 		}
 
 		// hook for tasks to be executed after store
@@ -2649,8 +2679,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 			if (!$this->areKeysPopulated()) {
 
 				$errCode = static::hasSimpleKey()
-				? ActiveRecordException::ERROR_PRIMARY_KEY_NOT_POPULATED
-				: ActiveRecordException::ERROR_COMPOSITE_PRIMARY_KEY_NOT_POPULATED;
+				? ErrorCodes::PRIMARY_KEY_NOT_POPULATED
+				: ErrorCodes::COMPOSITE_PRIMARY_KEY_NOT_POPULATED;
 
 				throw new ActiveRecordException(implode(', ', $this->keyProperties) . ' not populated', $errCode);
 

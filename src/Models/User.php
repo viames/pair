@@ -9,7 +9,6 @@ use Pair\Orm\ActiveRecord;
 use Pair\Orm\Collection;
 use Pair\Orm\Database;
 use Pair\Models\Audit;
-use Pair\Models\Group;
 use Pair\Models\Locale;
 use Pair\Models\Rule;
 use Pair\Models\Session;
@@ -110,6 +109,11 @@ class User extends ActiveRecord {
 	 * Name of primary key db field.
 	 */
 	const TABLE_KEY = 'id';
+
+	/**
+	 * Properties that are stored in the shared cache.
+	 */
+	const SHARED_CACHE_PROPERTIES = ['groupId', 'localeId'];
 
 	/**
 	 * Will returns property’s value if set. Throw an exception and returns NULL if not set.

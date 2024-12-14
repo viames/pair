@@ -2,6 +2,7 @@
 
 namespace Pair\Core;
 
+use Pair\Exceptions\ErrorCodes;
 use Pair\Exceptions\PairException;
 use Pair\Html\IziToast;
 use Pair\Html\SweetAlert;
@@ -162,8 +163,7 @@ class Application {
 			ini_set('date.timezone', 'UTC');
 			define('BASE_TIMEZONE', 'UTC');
 		} else {
-			$tz = date_default_timezone_get();
-			define('BASE_TIMEZONE', ($tz ? $tz : 'UTC'));
+			define('BASE_TIMEZONE', (date_default_timezone_get() ?? 'UTC'));
 		}
 
 		// base URL is NULL
@@ -478,6 +478,12 @@ class Application {
 
 	}
 
+	private function getPersistentStateName(string $name): string {
+
+		return static::getCookiePrefix() . ucfirst($name);
+
+	}
+
 	/**
 	 * Returns the requested session state variable.
 	 *
@@ -518,7 +524,7 @@ class Application {
 		}
 
 		if (!$this->template) {
-			throw new PairException('Template keys are not populated');
+			throw new PairException('No valid template found', ErrorCodes::TEMPLATE_NOT_FOUND);
 		}
 
 		// if this is derived template, load derived.php file
@@ -775,12 +781,6 @@ class Application {
 
 	}
 
-	private function getPersistentStateName(string $name): string {
-
-		return static::getCookiePrefix() . ucfirst($name);
-
-	}
-
 	/**
 	 * Prints the page Javascript content.
 	 */
@@ -857,13 +857,14 @@ class Application {
 
 	}
 
-	public function persistentModal(string $title, string $text, ?string $icon = NULL): SweetAlert {
+	/**
+	 * Set a modal alert queued for next page load.
+	 */
+	public function persistentModal(string $title, string $text, ?string $icon = NULL): void {
 
-		$modal = $this->modal($title, $text, $icon);
+		$modal = new SweetAlert($title, $text, $icon);
 
 		$this->setPersistentState('Modal', serialize($modal));
-
-		return $modal;
 
 	}
 
@@ -1262,7 +1263,7 @@ class Application {
 		$toast = $this->toast($title, $message, 'error');
 		$this->makeToastNotificationsPersistent();
 		$this->redirect($url);
-		
+
 		return $toast;
 
 	}
@@ -1275,7 +1276,7 @@ class Application {
 		$toast = $this->toast($title, $message, 'success');
 		$this->makeToastNotificationsPersistent();
 		$this->redirect($url);
-		
+
 		return $toast;
 
 	}

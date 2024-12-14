@@ -265,7 +265,7 @@ class IziToast {
 			//'titleColor: "",' .
 			//'titleSize: "",' .
 			//'titleLineHeight: "",' .
-			'message: "' . $this->message . '",' .
+			'message: "' . str_replace('"', '\"', $this->message) . '",' .
 			//'messageColor: "",' .
 			//'messageSize: "",' .
 			//'messageLineHeight: "",' .

@@ -47,26 +47,11 @@ class Database {
 	private function __construct() {}
 
 	/**
-	 * Connects to db just the first time, returns singleton object everytime.
+	 * Commits a transaction.
 	 */
-	public static function getInstance(): self {
+	public static function commit(): void {
 
-		if (is_null(self::$instance)) {
-			self::$instance = new self();
-		}
-
-		return self::$instance;
-
-	}
-
-	/**
-	 * Proxy to open a persistent connection to DBMS if current PDO handler is NULL.
-	 *
-	 * @throws	PDOException
-	 */
-	public function connectPersistent(): void {
-
-		$this->openConnection(TRUE);
+		static::run('COMMIT');
 
 	}
 
@@ -82,39 +67,57 @@ class Database {
 	}
 
 	/**
-	 * Connects to DBMS with params only if PDO handler property is null, so not connected.
+	 * Proxy to open a persistent connection to DBMS if current PDO handler is NULL.
 	 *
-	 * @param	bool	Flag to open a persistent connection (TRUE). Default is FALSE.
+	 * @throws	PDOException
 	 */
-	private function openConnection(bool $persistent=FALSE): void {
+	public function connectPersistent(): void {
 
-		// continue only if not already connected
-		if (is_a($this->handler, 'PDO')) {
-			return;
-		}
+		$this->openConnection(TRUE);
 
-		$dsn = 'mysql:host=' . Config::get('DB_HOST') . ';dbname=' . Config::get('DB_NAME');
-		$options = [
-			\PDO::ATTR_PERSISTENT			=> (bool)$persistent,
-			\PDO::MYSQL_ATTR_INIT_COMMAND	=> "SET NAMES utf8",
-			\PDO::MYSQL_ATTR_FOUND_ROWS		=> TRUE
-		];
+	}
 
-		try {
+	/**
+	 * Return data about a column scheme trying to load table description records by object cache.
+	 * FALSE in case of unvalid column name.
+	 *
+	 * @param	string	Name of table to describe.
+	 * @param	string	Column name.
+	 */
+	public function describeColumn(string $tableName, string $column): ?\stdClass {
 
-			$this->handler = new \PDO($dsn, Config::get('DB_USER'), Config::get('DB_PASS'), $options);
-
-			if (!is_a($this->handler, 'PDO')) {
-				throw new DatabaseException('Db handler is not valid, connection failed');
+		// search in cached table structure
+		if (isset($this->definitions[$tableName]['describe'])) {
+			foreach ($this->definitions[$tableName]['describe'] as $d) {
+				if ($column == $d->Field) {
+					return $d;
+				}
 			}
+		}
 
-			$this->handler->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+		$res = self::load('DESCRIBE `' . $tableName . '` `' . $column . '`', [], PAIR_DB_OBJECT);
 
-		} catch (\Exception $e) {
+		return ($res ? $res : NULL);
 
-			exit($e->getMessage());
+	}
+
+	/**
+	 * Return data about table scheme. Memory cached.
+	 *
+	 * @param	string	Name of table to describe.
+	 * @return	\stdClass[]
+	 */
+	public function describeTable(string $tableName): array {
+
+		// check if was set in the object cache property
+		if (!isset($this->definitions[$tableName]['describe'])) {
+
+			$res = self::load('DESCRIBE `' . $tableName . '`');
+			$this->definitions[$tableName]['describe'] = is_null($res) ? [] : $res;
 
 		}
+
+		return $this->definitions[$tableName]['describe'];
 
 	}
 
@@ -130,13 +133,13 @@ class Database {
 	}
 
 	/**
-	 * Set query for next result-set load.
+	 * Wrap a column name in a couple of backticks.
 	 *
-	 * @param	string	SQL query.
+	 * @param	string	The column name.
 	 */
-	public function setQuery(string $query): void {
+	public function escape(string $text): string {
 
-		$this->query = $query;
+		return '`' . $text . '`';
 
 	}
 
@@ -176,279 +179,166 @@ class Database {
 	}
 
 	/**
-	 * Starts a transaction.
-	 */
-	public static function start(): void {
-
-		static::run('START TRANSACTION');
-
-	}
-
-	/**
-	 * Commits a transaction.
-	 */
-	public static function commit(): void {
-
-		static::run('COMMIT');
-
-	}
-
-	/**
-	 * Does the rollback of the transaction.
-	 */
-	public static function rollback(): void {
-
-		static::run('ROLLBACK');
-
-	}
-
-	/**
-	 * Quotes a string for use in a query.
+	 * Returns the list of columns that are restricting a passed DB-table, an fk list.
+	 * Require grant on “references” permissions of connected db-user. Memory cached.
 	 *
-	 * @param	string	String to quote.
-	 * @return	string
+	 * @param	string	Name of table to check.
+	 * @return	\stdClass[]
 	 */
-	public function quote(string $text): string {
+	public function getForeignKeys(string $tableName): array {
+
+		// check the internal memory-cache
+		if (!isset($this->definitions[$tableName]['foreignKeys'])) {
+
+			// old-style join because of speedness
+			$query =
+				'SELECT k.`CONSTRAINT_NAME`, k.`COLUMN_NAME`, k.`REFERENCED_TABLE_NAME`,
+				k.`REFERENCED_COLUMN_NAME`, r.`UPDATE_RULE`, r.`DELETE_RULE`
+				FROM information_schema.`KEY_COLUMN_USAGE` AS k
+				JOIN information_schema.`REFERENTIAL_CONSTRAINTS` AS r
+				WHERE k.`CONSTRAINT_NAME` != "PRIMARY"
+				AND k.`TABLE_SCHEMA` = :dbName AND k.`TABLE_NAME` = :tableName
+				AND r.`CONSTRAINT_SCHEMA` = :dbName AND r.`TABLE_NAME` = :tableName
+				AND k.`CONSTRAINT_NAME` = r.`CONSTRAINT_NAME`';
+
+			$params = [
+				'dbName' => Config::get('DB_NAME'),
+				'tableName' => $tableName
+			];
+
+			$this->definitions[$tableName]['foreignKeys'] = self::load($query, $params);
+
+		}
+
+		return $this->definitions[$tableName]['foreignKeys'];
+
+	}
+
+	/**
+	 * Connects to db just the first time, returns singleton object everytime.
+	 */
+	public static function getInstance(): self {
+
+		if (is_null(self::$instance)) {
+			self::$instance = new self();
+		}
+
+		return self::$instance;
+
+	}
+
+	/**
+	 * Load and return the list of columns that are restricted by a passed DB-table, the inverse fk list.
+	 * Require grant on “references” permissions of connected db-user. Memory cached.
+	 *
+	 * @param	string	Name of external table to check.
+	 * @return	\stdClass[]
+	 */
+	public function getInverseForeignKeys(string $tableName): array {
+
+		// check the internal memory-cache
+		if (!isset($this->definitions[$tableName]['inverseForeignKeys'])) {
+
+			// old-style join because of speedness
+			$query =
+				'SELECT k.CONSTRAINT_NAME, k.REFERENCED_COLUMN_NAME, k.TABLE_NAME,
+				k.COLUMN_NAME, r.UPDATE_RULE, r.DELETE_RULE
+				FROM information_schema.`KEY_COLUMN_USAGE` AS k
+				JOIN information_schema.`REFERENTIAL_CONSTRAINTS` AS r
+				WHERE k.CONSTRAINT_NAME != "PRIMARY"
+				AND k.TABLE_SCHEMA = :dbName AND k.REFERENCED_TABLE_NAME = :tableName
+				AND r.CONSTRAINT_SCHEMA = :dbName AND r.REFERENCED_TABLE_NAME = :tableName
+				AND k.CONSTRAINT_NAME = r.CONSTRAINT_NAME';
+
+			$params = [
+				'dbName' => Config::get('DB_NAME'),
+				'tableName' => $tableName
+			];
+
+			$this->definitions[$tableName]['inverseForeignKeys'] = self::load($query, $params);
+
+		}
+
+		return $this->definitions[$tableName]['inverseForeignKeys'];
+
+	}
+
+	/**
+	 * Returns last inserted ID, if any.
+	 */
+	public function getLastInsertId(): string|bool {
 
 		$this->openConnection();
 
-		return $this->handler->quote($text);
+		return $this->handler->lastInsertId();
 
 	}
 
 	/**
-	 * Wrap a column name in a couple of backticks.
-	 *
-	 * @param	string	The column name.
+	 * Return the MySQL version number.
 	 */
-	public function escape(string $text): string {
+	public function getMysqlVersion(): FALSE|string {
 
-		return '`' . $text . '`';
+		$this->setQuery('SELECT VERSION()');
+		return $this->loadResult();
 
 	}
 
 	/**
-	 * Return data in various formats by third string parameter. Default is PAIR_DB_OBJECT_LIST parameters
-	 * as array. Support PDO parameters bind.
+	 * Return an array of table-key names by using cached methods.
 	 *
-	 * @param	string	SQL query.
-	 * @param	array	List of parameters to bind on the sql query.
-	 * @param	int		Returned type (see constants PAIR_DB_*). PAIR_DB_OBJECT_LIST is default.
+	 * @param	string	Name of table to which get the keys.
+	 * @return	string[]
 	 */
-	public static function load(string $query, array $params=[], ?int $option=NULL): array|Collection|\stdClass|string|int|NULL {
+	public function getTableKeys(string $tableName): array {
 
-		$self = static::getInstance();
+		$keys = [];
 
-		$self->openConnection();
+		$columns = $this->describeTable($tableName);
 
-		$res = NULL;
-
-		try {
-
-			// prepare query
-			$stat = $self->handler->prepare($query);
-
-			// bind parameters
-			$stat->execute($params);
-
-			switch ($option) {
-
-				// list of \stdClass objects
-				default:
-				case PAIR_DB_OBJECT_LIST:
-					$res = $stat->fetchAll(\PDO::FETCH_OBJ);
-					$count = count($res);
-					break;
-
-				// first row as \stdClass object
-				case PAIR_DB_OBJECT:
-					$res = $stat->fetch(\PDO::FETCH_OBJ);
-					if (!$res) $res = NULL;
-					$count = (bool)$res;
-					break;
-
-				// array of first column results
-				case PAIR_DB_RESULT_LIST:
-					$res = $stat->fetchAll(\PDO::FETCH_COLUMN);
-					$count = count($res);
-					break;
-
-				// first column of first row
-				case PAIR_DB_RESULT:
-					$res = $stat->fetch(\PDO::FETCH_COLUMN);
-					$count = $self->handler->query('SELECT FOUND_ROWS()')->fetchColumn();
-					break;
-
-				// result count as integer
-				case PAIR_DB_COUNT:
-					$res = (int)$stat->fetch(\PDO::FETCH_COLUMN);
-					$count = $res;
-					break;
-
-				// associative array
-				case PAIR_DB_DICTIONARY:
-					$res = $stat->fetchAll(\PDO::FETCH_ASSOC);
-					$count = count($res);
-					break;
-
-				case PAIR_DB_COLLECTION:
-					$res = new Collection($stat->fetchAll(\PDO::FETCH_OBJ));
-					$count = $res->count();
-					break;
-
+		foreach ($columns as $column) {
+			if ('PRI' == $column->Key) {
+				$keys[] = $column->Field;
 			}
-
-			$self->logParamQuery($query, $count, $params);
-
-		} catch (\PDOException $e) {
-
-			$self->handleException($e, $query, $params);
-
 		}
 
-		$stat->closeCursor();
-
-		return $res;
+		return $keys;
 
 	}
 
 	/**
-	 * Run a query with parameters and return TRUE if success. Support PDO parameters bind.
+	 * Log query, switch error and add to DB class error list.
 	 *
-	 * @param	string	SQL query to run.
-	 * @param	array	List of parameters to bind on the sql query.
+	 * @param	Exception|Throwable	Exception or Error object.
+	 * @param	string		SQL Query.
+	 * @param	array|NULL	Parameters.
+	 * @throws	DatabaseException
 	 */
-	public static function run(string $query, array $params=[]): int {
+	private function handleException(PairException|\Throwable $e, string $query, ?array $params): void {
 
-		$self = static::getInstance();
+		$params = (array)$params;
 
-		$self->openConnection();
+		// logger
+		$this->logParamQuery($query, 0, $params);
 
-		try {
+		switch ($e->getCode()) {
 
-			// prepare query
-			$stat = $self->handler->prepare($query);
+			// calls with wrong params type or count
+			case 'HY093':
+				if (is_array($params)) {
+					$message = 'Parameters count is ' . count($params) . ', an array with different number is expected by function call';
+				} else {
+					$message = 'Parameters are expected in array format by function call, type ' . gettype($params) . ' was passed';
+				}
+				break;
 
-			// bind parameters
-			$stat->execute((array)$params);
-
-			// count affected rows
-			$affected = $stat->rowCount();
-
-		} catch (\PDOException $e) {
-
-			// logger
-			$self->logParamQuery($query, 0, $params);
-
-			$self->handleException($e, $query, $params);
-
-			$affected = 0;
+			default:
+				$message = $e->getMessage();
+				break;
 
 		}
 
-		$stat->closeCursor();
-		$self->logParamQuery($query, $affected, $params);
-
-		return $affected;
-
-	}
-
-	/**
-	 * Returns a recordset executing the query previously set with setQuery() method and
-	 * optional parameters as array.
-	 * @param	array		List of parameters to bind on sql query.
-	 * @return	stdClass[]
-	 */
-	public function loadObjectList(array $params=[]): ?array {
-
-		$this->openConnection();
-
-		$ret = NULL;
-
-		try {
-
-			$stat = $this->handler->prepare($this->query);
-			$stat->execute((array)$params);
-			$ret = $stat->fetchAll(\PDO::FETCH_OBJ);
-
-			// logger
-			$this->logParamQuery($this->query, count($ret), $params);
-
-		} catch (\PDOException $e) {
-
-			$this->handleException($e, $this->query, $params);
-
-		}
-
-		$stat->closeCursor();
-
-		return $ret;
-
-	}
-
-	/**
-	 * Returns first column value or NULL if row is not found.
-	 *
-	 * @param	array|NULL	List of parameters to bind on sql query.
-	 * @return	string|FALSE
-	 */
-	private function loadResult(array $params=[]): FALSE|string {
-
-		$this->openConnection();
-
-		$res = NULL;
-
-		try {
-
-			$stat = $this->handler->prepare($this->query);
-			$stat->execute((array)$params);
-
-			// logger
-			$count = $this->handler->query('SELECT FOUND_ROWS()')->fetchColumn();
-			$this->logParamQuery($this->query, $count, $params);
-			$res = $stat->fetch(\PDO::FETCH_COLUMN);
-
-		} catch (\PDOException $e) {
-
-			$this->handleException($e, $this->query, $params);
-
-		}
-
-		$stat->closeCursor();
-
-		return $res;
-
-	}
-
-	/**
-	 * Return the query count as integer number.
-	 *
-	 * @param	array|NULL	List of parameters to bind on sql query.
-	 */
-	public function loadCount(array $params=[]): int {
-
-		$this->openConnection();
-
-		$res = 0;
-
-		try {
-
-			$stat = $this->handler->prepare($this->query);
-			$stat->execute((array)$params);
-			$res = (int)$stat->fetch(\PDO::FETCH_COLUMN);
-
-			// logger
-			$this->logParamQuery($this->query, $res, $params);
-
-		} catch (\PDOException $e) {
-
-			$this->handleException($e, $this->query, $params);
-
-		}
-
-		$stat->closeCursor();
-
-		return $res;
+		throw new DatabaseException($message);
 
 	}
 
@@ -550,6 +440,504 @@ class Database {
 	}
 
 	/**
+	 * Insert a row into a table or update it if present based on the Primary columns
+	 * or Unique.
+	 *
+	 * @param	string		Table name.
+	 * @param	\stdClass	Object with properties that equal columns name.
+	 * @param	array		Optional list of encryptable columns.
+	 */
+	public function insertUpdateObject(string $table, \stdClass $object, ?array $encryptables=[]): bool {
+
+		$this->openConnection();
+
+		$columns = [];
+		$values  = [];
+		$updates = [];
+
+		foreach (get_object_vars($object) as $column => $v) {
+
+			// skip virtual generated columns
+			if ($this->isVirtualGenerated($table, $column)) {
+				continue;
+			}
+
+			if (is_null($v)) {
+				$columns[] = '`' . $column . '`';
+				$values[]  = 'NULL';
+			} else if (Config::get('AES_CRYPT_KEY') and in_array($column, $encryptables)) {
+				$columns[] = '`' . $column . '`';
+				$values[]  = 'AES_ENCRYPT(' . $this->quote($v) . ',' . $this->quote(Config::get('AES_CRYPT_KEY')) . ')';
+			} else if (is_string($v) or is_numeric($v)) {
+				$columns[] = '`' . $column . '`';
+				$values[]  = $this->quote($v);
+			}
+
+			$updates[] = $v!==NULL ? $column.'='.$this->quote($v) : $column.'=NULL';
+
+		}
+
+		$sql = 'INSERT INTO `'. $table .'` (%s) VALUES (%s) ON DUPLICATE KEY UPDATE %s';
+
+		$query = sprintf($sql, implode(', ', $columns), implode(', ', $values), implode(', ', $updates));
+
+		$res = static::run($query);
+
+		return (bool)$res;
+
+	}
+
+	/**
+	 * Check if parameter table has auto-increment primary key by using cached method.
+	 *
+	 * @param	string	Name of table to check auto-increment flag.
+	 */
+	public function isAutoIncrement(string $tableName): bool {
+
+		$columns = $this->describeTable($tableName);
+
+		foreach ($columns as $column) {
+			if ('auto_increment' == $column->Extra) {
+				return TRUE;
+			}
+		}
+
+		return FALSE;
+
+	}
+
+	/**
+	 * Checks if the indicated column is generated automatically and in this case returns TRUE
+	 *
+	 * @param	string	Name of table to check.
+	 * @param	string	Name of the column in the table to check
+	 */
+	public function isVirtualGenerated(string $tableName, string $columnName): bool {
+
+		$columns = $this->describeTable($tableName);
+
+		foreach ($columns as $column) {
+			if ($column->Field == $columnName) {
+				return ('VIRTUAL GENERATED' == $column->Extra);
+			}
+		}
+
+		return FALSE;
+
+	}
+
+	/**
+	 * Return data in various formats by third string parameter. Default is PAIR_DB_OBJECT_LIST parameters
+	 * as array. Support PDO parameters bind.
+	 *
+	 * @param	string	SQL query.
+	 * @param	array	List of parameters to bind on the sql query.
+	 * @param	int		Returned type (see constants PAIR_DB_*). PAIR_DB_OBJECT_LIST is default.
+	 */
+	public static function load(string $query, array $params=[], ?int $option=NULL): array|Collection|\stdClass|string|int|NULL {
+
+		$self = static::getInstance();
+
+		$self->openConnection();
+
+		$res = NULL;
+
+		try {
+
+			// prepare query
+			$stat = $self->handler->prepare($query);
+
+			// bind parameters
+			$stat->execute($params);
+
+			switch ($option) {
+
+				// list of \stdClass objects
+				default:
+				case PAIR_DB_OBJECT_LIST:
+					$res = $stat->fetchAll(\PDO::FETCH_OBJ);
+					$count = count($res);
+					break;
+
+				// first row as \stdClass object
+				case PAIR_DB_OBJECT:
+					$res = $stat->fetch(\PDO::FETCH_OBJ);
+					if (!$res) $res = NULL;
+					$count = (bool)$res;
+					break;
+
+				// array of first column results
+				case PAIR_DB_RESULT_LIST:
+					$res = $stat->fetchAll(\PDO::FETCH_COLUMN);
+					$count = count($res);
+					break;
+
+				// first column of first row
+				case PAIR_DB_RESULT:
+					$res = $stat->fetch(\PDO::FETCH_COLUMN);
+					$count = $self->handler->query('SELECT FOUND_ROWS()')->fetchColumn();
+					break;
+
+				// result count as integer
+				case PAIR_DB_COUNT:
+					$res = (int)$stat->fetch(\PDO::FETCH_COLUMN);
+					$count = $res;
+					break;
+
+				// associative array
+				case PAIR_DB_DICTIONARY:
+					$res = $stat->fetchAll(\PDO::FETCH_ASSOC);
+					$count = count($res);
+					break;
+
+				case PAIR_DB_COLLECTION:
+					$res = new Collection($stat->fetchAll(\PDO::FETCH_OBJ));
+					$count = $res->count();
+					break;
+
+			}
+
+			$self->logParamQuery($query, $count, $params);
+
+		} catch (\PDOException $e) {
+
+			$self->handleException($e, $query, $params);
+
+		}
+
+		$stat->closeCursor();
+
+		return $res;
+
+	}
+
+	/**
+	 * Return the query count as integer number.
+	 *
+	 * @param	array	Optional list of parameters to bind on sql query.
+	 */
+	public function loadCount(array $params=[]): int {
+
+		$this->openConnection();
+
+		$res = 0;
+
+		try {
+
+			$stat = $this->handler->prepare($this->query);
+			$stat->execute((array)$params);
+			$res = (int)$stat->fetch(\PDO::FETCH_COLUMN);
+
+			// logger
+			$this->logParamQuery($this->query, $res, $params);
+
+		} catch (\PDOException $e) {
+
+			$this->handleException($e, $this->query, $params);
+
+		}
+
+		$stat->closeCursor();
+
+		return $res;
+
+	}
+
+	/**
+	 * Returns a recordset executing the query previously set with setQuery() method and
+	 * optional parameters as array.
+	 * @param	array		List of parameters to bind on sql query.
+	 * @return	stdClass[]
+	 */
+	public function loadObjectList(array $params=[]): ?array {
+
+		$this->openConnection();
+
+		$ret = NULL;
+
+		try {
+
+			$stat = $this->handler->prepare($this->query);
+			$stat->execute((array)$params);
+			$ret = $stat->fetchAll(\PDO::FETCH_OBJ);
+
+			// logger
+			$this->logParamQuery($this->query, count($ret), $params);
+
+		} catch (\PDOException $e) {
+
+			$this->handleException($e, $this->query, $params);
+
+		}
+
+		$stat->closeCursor();
+
+		return $ret;
+
+	}
+
+	/**
+	 * Returns first column value or NULL if row is not found.
+	 *
+	 * @param	array|NULL	List of parameters to bind on sql query.
+	 * @return	string|FALSE
+	 */
+	private function loadResult(array $params=[]): FALSE|string {
+
+		$this->openConnection();
+
+		$res = NULL;
+
+		try {
+
+			$stat = $this->handler->prepare($this->query);
+			$stat->execute((array)$params);
+
+			// logger
+			$count = $this->handler->query('SELECT FOUND_ROWS()')->fetchColumn();
+			$this->logParamQuery($this->query, $count, $params);
+			$res = $stat->fetch(\PDO::FETCH_COLUMN);
+
+		} catch (\PDOException $e) {
+
+			$this->handleException($e, $this->query, $params);
+
+		}
+
+		$stat->closeCursor();
+
+		return $res;
+
+	}
+
+	/**
+	 * Proxy for logQuery() that binds query parameters.
+	 *
+	 * @param	string	SQL query.
+	 * @param	int		Number of items in result-set or affected rows.
+	 * @param	array	Optional parameters to bind.
+	 */
+	private function logParamQuery(string $query, int $result, array $params=[]): void {
+
+		$params = (array)$params;
+
+		// indexed is binding with "?"
+		$indexed = $params==array_values($params);
+
+		foreach ($params as $column=>$value) {
+
+			if (is_string($value)) {
+				$value = "'$value'";
+			} else if (is_null($value)) {
+				$value = 'NULL';
+			} else if (is_bool($value)) {
+				$value = $value ? 'TRUE' : 'FALSE';
+			} else if (is_array($value)) {
+				$value = 'Array';
+			} else if (is_object($value)) {
+				$value = get_class($value);
+			} else {
+				$value = (string)$value;
+			}
+
+			// fix omitted ":" on named parameters
+			if (':'!=substr($column,0,1)) {
+				$column = ':'.$column;
+			}
+
+			$query = $indexed ? preg_replace('/\?/', $value, $query, 1) : str_replace($column, $value, $query);
+
+		}
+
+		$this->logQuery($query, $result);
+
+	}
+
+	/**
+	 * Adds an entry item on system log.
+	 *
+	 * @param	string	SQL query.
+	 * @param	int		Number of items in result-set or affected rows.
+	 */
+	private function logQuery(string $query, int $result): void {
+
+		$subtext = (int)$result . ' ' . (1==$result ? 'row' : 'rows');
+
+		Logger::event($query, 'query', $subtext);
+
+	}
+
+	/**
+	 * Connects to DBMS with params only if PDO handler property is null, so not connected.
+	 *
+	 * @param	bool	Flag to open a persistent connection (TRUE). Default is FALSE.
+	 */
+	private function openConnection(bool $persistent=FALSE): void {
+
+		// continue only if not already connected
+		if (is_a($this->handler, 'PDO')) {
+			return;
+		}
+
+		$dsn = 'mysql:host=' . Config::get('DB_HOST') . ';dbname=' . Config::get('DB_NAME');
+		$options = [
+			\PDO::ATTR_PERSISTENT			=> (bool)$persistent,
+			\PDO::MYSQL_ATTR_INIT_COMMAND	=> "SET NAMES utf8",
+			\PDO::MYSQL_ATTR_FOUND_ROWS		=> TRUE
+		];
+
+		try {
+
+			$this->handler = new \PDO($dsn, Config::get('DB_USER'), Config::get('DB_PASS'), $options);
+
+			if (!is_a($this->handler, 'PDO')) {
+				throw new DatabaseException('Db handler is not valid, connection failed');
+			}
+
+			$this->handler->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+
+		} catch (\Exception $e) {
+
+			exit($e->getMessage());
+
+		}
+
+	}
+
+	/**
+	 * Quotes a string for use in a query.
+	 *
+	 * @param	string	String to quote.
+	 */
+	public function quote(string $text): string {
+
+		$this->openConnection();
+
+		return $this->handler->quote($text);
+
+	}
+
+	/**
+	 * Does the rollback of the transaction.
+	 */
+	public static function rollback(): void {
+
+		static::run('ROLLBACK');
+
+	}
+
+	/**
+	 * Run a query with parameters and return TRUE if success. Support PDO parameters bind.
+	 *
+	 * @param	string	SQL query to run.
+	 * @param	array	List of parameters to bind on the sql query.
+	 */
+	public static function run(string $query, array $params=[]): int {
+
+		$self = static::getInstance();
+
+		$self->openConnection();
+
+		try {
+
+			// prepare query
+			$stat = $self->handler->prepare($query);
+
+			// bind parameters
+			$stat->execute((array)$params);
+
+			// count affected rows
+			$affected = $stat->rowCount();
+
+		} catch (\PDOException $e) {
+
+			// logger
+			$self->logParamQuery($query, 0, $params);
+
+			$self->handleException($e, $query, $params);
+
+			$affected = 0;
+
+		}
+
+		$stat->closeCursor();
+		$self->logParamQuery($query, $affected, $params);
+
+		return $affected;
+
+	}
+
+	/**
+	 * Set query for next result-set load.
+	 *
+	 * @param	string	SQL query.
+	 */
+	public function setQuery(string $query): void {
+
+		$this->query = $query;
+
+	}
+
+	/**
+	 * Set MySQL connection as UTF8mb4 and collation as utf8mb4_unicode_ci, useful to
+	 * support extended unicode like Emoji.
+	 */
+	public function setUtf8unicode(): void {
+
+		$this->openConnection();
+
+		try {
+
+			// set names
+			$this->handler->exec('SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci');
+
+			// prepare query to discover db user privileges
+			$stat = $this->handler->prepare('SELECT `PRIVILEGE_TYPE` FROM information_schema.user_privileges' .
+				' WHERE `GRANTEE` = \'' . Config::get('DB_USER') . '\'@\'' . Config::get('DB_HOST') . '\'');
+
+			// get user privileges
+			$privilegeType = $stat->fetch(\PDO::FETCH_COLUMN);
+
+			if (in_array($privilegeType, ['SUPER', 'SYSTEM_VARIABLES_ADMIN', 'SESSION_VARIABLES_ADMIN'])) {
+
+				$this->handler->exec(
+					'SET character_set_client = "utf8mb4", character_set_connection = "utf8mb4",
+					character_set_database = "utf8mb4", character_set_results = "utf8mb4",
+					character_set_server = "utf8mb4", collation_connection = "utf8mb4_unicode_ci",
+					collation_database = "utf8mb4_unicode_ci", collation_server = "utf8mb4_unicode_ci"');
+
+			}
+
+		} catch (PairException $e) {
+
+			throw new DatabaseException('Error setting utf8mb4 charset and collation', 1002, $e);
+
+		}
+
+	}
+
+	/**
+	 * Starts a transaction.
+	 */
+	public static function start(): void {
+
+		static::run('START TRANSACTION');
+
+	}
+
+	/**
+	 * Check wheter a table exists by its name.
+	 *
+	 * @param	string	Table name.
+	 */
+	public function tableExists(string $tableName): bool {
+
+		$this->setQuery('SHOW TABLES LIKE ?');
+		return (bool)$this->loadResult([$tableName]);
+
+	}
+
+	/**
 	 * Update record of given key on the param object. Properly manage NULL values.
 	 *
 	 * @param	string		Table name.
@@ -609,396 +997,6 @@ class Database {
 		}
 
 		return $res;
-
-	}
-
-	/**
-	 * Insert a row into a table or update it if present based on the Primary columns
-	 * or Unique.
-	 *
-	 * @param	string		Table name.
-	 * @param	\stdClass	Object with properties that equal columns name.
-	 * @param	array		Optional list of encryptable columns.
-	 */
-	public function insertUpdateObject(string $table, \stdClass $object, ?array $encryptables=[]): bool {
-
-		$this->openConnection();
-
-		$columns = [];
-		$values  = [];
-		$updates = [];
-
-		foreach (get_object_vars($object) as $column => $v) {
-
-			// skip virtual generated columns
-			if ($this->isVirtualGenerated($table, $column)) {
-				continue;
-			}
-
-			if (is_null($v)) {
-				$columns[] = '`' . $column . '`';
-				$values[]  = 'NULL';
-			} else if (Config::get('AES_CRYPT_KEY') and in_array($column, $encryptables)) {
-				$columns[] = '`' . $column . '`';
-				$values[]  = 'AES_ENCRYPT(' . $this->quote($v) . ',' . $this->quote(Config::get('AES_CRYPT_KEY')) . ')';
-			} else if (is_string($v) or is_numeric($v)) {
-				$columns[] = '`' . $column . '`';
-				$values[]  = $this->quote($v);
-			}
-
-			$updates[] = $v!==NULL ? $column.'='.$this->quote($v) : $column.'=NULL';
-
-		}
-
-		$sql = 'INSERT INTO `'. $table .'` (%s) VALUES (%s) ON DUPLICATE KEY UPDATE %s';
-
-		$query = sprintf($sql, implode(', ', $columns), implode(', ', $values), implode(', ', $updates));
-
-		$res = static::run($query);
-
-		return (bool)$res;
-
-	}
-
-	/**
-	 * Returns the list of columns that are restricting a passed DB-table, an fk list.
-	 * Require grant on “references” permissions of connected db-user. Memory cached.
-	 *
-	 * @param	string	Name of table to check.
-	 * @return	\stdClass[]
-	 */
-	public function getForeignKeys(string $tableName): array {
-
-		// check the internal memory-cache
-		if (!isset($this->definitions[$tableName]['foreignKeys'])) {
-
-			// old-style join because of speedness
-			$query =
-				'SELECT k.`CONSTRAINT_NAME`, k.`COLUMN_NAME`, k.`REFERENCED_TABLE_NAME`,
-				k.`REFERENCED_COLUMN_NAME`, r.`UPDATE_RULE`, r.`DELETE_RULE`
-				FROM information_schema.`KEY_COLUMN_USAGE` AS k
-				JOIN information_schema.`REFERENTIAL_CONSTRAINTS` AS r
-				WHERE k.`CONSTRAINT_NAME` != "PRIMARY"
-				AND k.`TABLE_SCHEMA` = :dbName AND k.`TABLE_NAME` = :tableName
-				AND r.`CONSTRAINT_SCHEMA` = :dbName AND r.`TABLE_NAME` = :tableName
-				AND k.`CONSTRAINT_NAME` = r.`CONSTRAINT_NAME`';
-
-			$params = [
-				'dbName' => Config::get('DB_NAME'),
-				'tableName' => $tableName
-			];
-
-			$this->definitions[$tableName]['foreignKeys'] = self::load($query, $params);
-
-		}
-
-		return $this->definitions[$tableName]['foreignKeys'];
-
-	}
-
-	/**
-	 * Load and return the list of columns that are restricted by a passed DB-table, the inverse fk list.
-	 * Require grant on “references” permissions of connected db-user. Memory cached.
-	 *
-	 * @param	string	Name of external table to check.
-	 * @return	\stdClass[]
-	 */
-	public function getInverseForeignKeys(string $tableName): array {
-
-		// check the internal memory-cache
-		if (!isset($this->definitions[$tableName]['inverseForeignKeys'])) {
-
-			// old-style join because of speedness
-			$query =
-				'SELECT k.CONSTRAINT_NAME, k.REFERENCED_COLUMN_NAME, k.TABLE_NAME,
-				k.COLUMN_NAME, r.UPDATE_RULE, r.DELETE_RULE
-				FROM information_schema.`KEY_COLUMN_USAGE` AS k
-				JOIN information_schema.`REFERENTIAL_CONSTRAINTS` AS r
-				WHERE k.CONSTRAINT_NAME != "PRIMARY"
-				AND k.TABLE_SCHEMA = :dbName AND k.REFERENCED_TABLE_NAME = :tableName
-				AND r.CONSTRAINT_SCHEMA = :dbName AND r.REFERENCED_TABLE_NAME = :tableName
-				AND k.CONSTRAINT_NAME = r.CONSTRAINT_NAME';
-
-			$params = [
-				'dbName' => Config::get('DB_NAME'),
-				'tableName' => $tableName
-			];
-
-			$this->definitions[$tableName]['inverseForeignKeys'] = self::load($query, $params);
-
-		}
-
-		return $this->definitions[$tableName]['inverseForeignKeys'];
-
-	}
-
-	/**
-	 * Return data about table scheme. Memory cached.
-	 *
-	 * @param	string	Name of table to describe.
-	 * @return	\stdClass[]
-	 */
-	public function describeTable(string $tableName): array {
-
-		// check if was set in the object cache property
-		if (!isset($this->definitions[$tableName]['describe'])) {
-
-			$res = self::load('DESCRIBE `' . $tableName . '`');
-			$this->definitions[$tableName]['describe'] = is_null($res) ? [] : $res;
-
-		}
-
-		return $this->definitions[$tableName]['describe'];
-
-	}
-
-	/**
-	 * Return data about a column scheme trying to load table description records by object cache.
-	 * FALSE in case of unvalid column name.
-	 *
-	 * @param	string	Name of table to describe.
-	 * @param	string	Column name.
-	 * @return	\stdClass|NULL
-	 */
-	public function describeColumn(string $tableName, string $column): ?\stdClass {
-
-		// search in cached table structure
-		if (isset($this->definitions[$tableName]['describe'])) {
-			foreach ($this->definitions[$tableName]['describe'] as $d) {
-				if ($column == $d->Field) {
-					return $d;
-				}
-			}
-		}
-
-		$res = self::load('DESCRIBE `' . $tableName . '` `' . $column . '`', [], PAIR_DB_OBJECT);
-
-		return ($res ? $res : NULL);
-
-	}
-
-	/**
-	 * Return an array of table-key names by using cached methods.
-	 *
-	 * @param	string	Name of table to which get the keys.
-	 * @return	string[]
-	 */
-	public function getTableKeys(string $tableName): array {
-
-		$keys = [];
-
-		$columns = $this->describeTable($tableName);
-
-		foreach ($columns as $column) {
-			if ('PRI' == $column->Key) {
-				$keys[] = $column->Field;
-			}
-		}
-
-		return $keys;
-
-	}
-
-	/**
-	 * Check if parameter table has auto-increment primary key by using cached method.
-	 *
-	 * @param	string	Name of table to check auto-increment flag.
-	 */
-	public function isAutoIncrement(string $tableName): bool {
-
-		$columns = $this->describeTable($tableName);
-
-		foreach ($columns as $column) {
-			if ('auto_increment' == $column->Extra) {
-				return TRUE;
-			}
-		}
-
-		return FALSE;
-
-	}
-
-	/**
-	 * Checks if the indicated column is generated automatically and in this case returns TRUE
-	 *
-	 * @param	string	Name of table to check.
-	 * @param	string	Name of the column in the table to check
-	 */
-	public function isVirtualGenerated(string $tableName, string $columnName): bool {
-
-		$columns = $this->describeTable($tableName);
-
-		foreach ($columns as $column) {
-			if ($column->Field == $columnName) {
-				return ('VIRTUAL GENERATED' == $column->Extra);
-			}
-		}
-
-		return FALSE;
-
-	}
-
-	/**
-	 * Check wheter a table exists by its name.
-	 *
-	 * @param	string	Table name.
-	 */
-	public function tableExists(string $tableName): bool {
-
-		$this->setQuery('SHOW TABLES LIKE ?');
-		return (bool)$this->loadResult([$tableName]);
-
-	}
-
-	/**
-	 * Returns last inserted ID, if any.
-	 */
-	public function getLastInsertId(): string|bool {
-
-		$this->openConnection();
-
-		return $this->handler->lastInsertId();
-
-	}
-
-	/**
-	 * Return the MySQL version number.
-	 */
-	public function getMysqlVersion(): FALSE|string {
-
-		$this->setQuery('SELECT VERSION()');
-		return $this->loadResult();
-
-	}
-
-	/**
-	 * Set MySQL connection as UTF8mb4 and collation as utf8mb4_unicode_ci, useful to
-	 * support extended unicode like Emoji.
-	 */
-	public function setUtf8unicode(): void {
-
-		$this->openConnection();
-
-		try {
-
-			// set names
-			$this->handler->exec('SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci');
-
-			// prepare query to discover db user privileges
-			$stat = $this->handler->prepare('SELECT `PRIVILEGE_TYPE` FROM information_schema.user_privileges' .
-				' WHERE `GRANTEE` = \'' . Config::get('DB_USER') . '\'@\'' . Config::get('DB_HOST') . '\'');
-
-			// get user privileges
-			$privilegeType = $stat->fetch(\PDO::FETCH_COLUMN);
-
-			if (in_array($privilegeType, ['SUPER', 'SYSTEM_VARIABLES_ADMIN', 'SESSION_VARIABLES_ADMIN'])) {
-
-				$this->handler->exec(
-					'SET character_set_client = "utf8mb4", character_set_connection = "utf8mb4",
-					character_set_database = "utf8mb4", character_set_results = "utf8mb4",
-					character_set_server = "utf8mb4", collation_connection = "utf8mb4_unicode_ci",
-					collation_database = "utf8mb4_unicode_ci", collation_server = "utf8mb4_unicode_ci"');
-
-			}
-
-		} catch (PairException $e) {
-
-			throw new DatabaseException('Error setting utf8mb4 charset and collation', 1002, $e);
-
-		}
-
-	}
-
-	/**
-	 * Adds an entry item on system log.
-	 *
-	 * @param	string	SQL query.
-	 * @param	int		Number of items in result-set or affected rows.
-	 */
-	private function logQuery(string $query, int $result): void {
-
-		$subtext = (int)$result . ' ' . (1==$result ? 'row' : 'rows');
-
-		Logger::event($query, 'query', $subtext);
-
-	}
-
-	/**
-	 * Proxy for logQuery() that binds query parameters.
-	 *
-	 * @param	string	SQL query.
-	 * @param	int		Number of items in result-set or affected rows.
-	 * @param	array	Optional parameters to bind.
-	 */
-	private function logParamQuery(string $query, int $result, array $params=[]): void {
-
-		$params = (array)$params;
-
-		// indexed is binding with "?"
-		$indexed = $params==array_values($params);
-
-		foreach ($params as $column=>$value) {
-
-			if (is_string($value)) {
-				$value = "'$value'";
-			} else if (is_null($value)) {
-				$value = 'NULL';
-			} else if (is_bool($value)) {
-				$value = $value ? 'TRUE' : 'FALSE';
-			} else if (is_array($value)) {
-				$value = 'Array';
-			} else if (is_object($value)) {
-				$value = get_class($value);
-			} else {
-				$value = (string)$value;
-			}
-
-			// fix omitted ":" on named parameters
-			if (':'!=substr($column,0,1)) {
-				$column = ':'.$column;
-			}
-
-			$query = $indexed ? preg_replace('/\?/', $value, $query, 1) : str_replace($column, $value, $query);
-
-		}
-
-		$this->logQuery($query, $result);
-
-	}
-
-	/**
-	 * Log query, switch error and add to DB class error list.
-	 *
-	 * @param	Exception|Throwable	Exception or Error object.
-	 * @param	string		SQL Query.
-	 * @param	array|NULL	Parameters.
-	 * @throws	DatabaseException
-	 */
-	private function handleException(PairException|\Throwable $e, string $query, ?array $params): void {
-
-		$params = (array)$params;
-
-		// logger
-		$this->logParamQuery($query, 0, $params);
-
-		switch ($e->getCode()) {
-
-			// calls with wrong params type or count
-			case 'HY093':
-				if (is_array($params)) {
-					$message = 'Parameters count is ' . count($params) . ', an array with different number is expected by function call';
-				} else {
-					$message = 'Parameters are expected in array format by function call, type ' . gettype($params) . ' was passed';
-				}
-				break;
-
-			default:
-				$message = $e->getMessage();
-				break;
-
-		}
-
-		throw new DatabaseException($message);
 
 	}
 

@@ -3,8 +3,8 @@
 namespace Pair\Core;
 
 use Pair\Exceptions\ControllerException;
+use Pair\Exceptions\ErrorCodes;
 use Pair\Exceptions\PairException;
-use Pair\Html\IziToast;
 use Pair\Models\ErrorLog;
 use Pair\Orm\ActiveRecord;
 use Pair\Support\Translator;
@@ -12,8 +12,8 @@ use Pair\Support\Utilities;
 
 abstract class Controller {
 
+	use \Pair\Traits\AppTrait;
 	use \Pair\Traits\LogTrait;
-	use \Pair\Traits\ToastTrait;
 
 	/**
 	 * Application object.
@@ -163,7 +163,7 @@ abstract class Controller {
 		} catch (\Exception $e) {
 
 			ErrorLog::snapshot($e->getMessage(), ErrorLog::ERROR);
-			throw new PairException('Error in view display: ' . $e->getMessage());
+			throw new PairException($e->getMessage());
 
 		}
 
@@ -265,7 +265,7 @@ abstract class Controller {
 		$viewName = ucfirst($this->name) .'View'. ucfirst($this->view);
 
 		if (!class_exists($viewName)) {
-			throw new ControllerException('Class ' . $viewName . ' was not found in file ' . $file);
+			throw new ControllerException('Class ' . $viewName . ' was not found in file ' . $file, ErrorCodes::CLASS_NOT_FOUND);
 		}
 
 		return new $viewName($this->model);
@@ -308,18 +308,6 @@ abstract class Controller {
 	}
 
 	/**
-	 * Proxy to redirect HTTP on the URL param. Relative path as default.
-	 *
-	 * @param	string	Location URL.
-	 * @param	bool	If TRUE, will avoids to add base url (default FALSE).
-	 */
-	public function redirect(?string $url=NULL, bool $absoluteUrl=FALSE): void {
-
-		$this->app->redirect($url, $absoluteUrl);
-
-	}
-
-	/**
 	 * Shortcut to HTTP redirect and show a toast notification error.
 	 */
 	public function redirectWithError(string $message, ?string $url=NULL): void {
@@ -347,7 +335,7 @@ abstract class Controller {
 	 */
 	final public function unsetState(string $name): void {
 
-		$this->app->unsetState($name);
+		$this->unsetState($name);
 
 	}
 

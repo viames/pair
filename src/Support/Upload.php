@@ -81,7 +81,7 @@ class Upload {
 
 		// check on field name
 		if (!isset($_FILES[$fieldName])) {
-			throw new PairException('Field name “' . $fieldName . '” not found in $_FILES array.');
+			throw new PairException('Field name “' . $fieldName . '” not found in $_FILES array');
 		}
 
 		// shortcut

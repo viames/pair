@@ -141,6 +141,11 @@ class ErrorLog extends ActiveRecord {
 	const TABLE_KEY = 'id';
 
 	/**
+	 * Properties that are stored in the shared cache.
+	 */
+	const SHARED_CACHE_PROPERTIES = ['userId'];
+
+	/**
 	 * Method called by constructor just after having populated the object.
 	 */
 	protected function init(): void {
@@ -280,7 +285,7 @@ class ErrorLog extends ActiveRecord {
 			// remove the absolute path to the file until the project root
 			$file = substr($e->getFile(), strlen(APPLICATION_PATH));
 
-			$fullDescription = get_class($e) . ' in ' . $file . ' line ' . $e->getLine() . ': ' . $e->getMessage();
+			$fullDescription = get_class($e) . ' ' . $e->getCode() . ' in ' . $file . ' line ' . $e->getLine() . ': ' . $e->getMessage();
 
 			ErrorLog::snapshot($fullDescription, ErrorLog::ERROR);
 
