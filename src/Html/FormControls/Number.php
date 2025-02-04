@@ -2,9 +2,9 @@
 
 namespace Pair\Html\FormControls;
 
-use Pair\Html\FormControl;
+use Pair\Core\Logger;
 use Pair\Helpers\Post;
-use Pair\Helpers\LogBar;
+use Pair\Html\FormControl;
 
 class Number extends FormControl {
 
@@ -105,29 +105,29 @@ class Number extends FormControl {
 		$valid	= TRUE;
 
 		if ($this->required and !is_numeric($value)) {
-			LogBar::event('Control validation on field “' . $this->name . '” has failed (number required)');
+			Logger::notice('Control validation on field “' . $this->name . '” has failed (number required)');
 			$valid = FALSE;
 		}
 
 		if ($this->min and $value < $this->min) {
-			LogBar::event('Control validation on field “' . $this->name . '” has failed (min=' . $this->min . ')');
+			Logger::notice('Control validation on field “' . $this->name . '” has failed (min=' . $this->min . ')');
 			$valid = FALSE;
 		}
 
 		if ($this->max and $value > $this->max) {
-			LogBar::event('Control validation on field “' . $this->name . '” has failed (max=' . $this->max . ')');
+			Logger::notice('Control validation on field “' . $this->name . '” has failed (max=' . $this->max . ')');
 			$valid = FALSE;
 		}
 
 		// check validity of minlength attribute
 		if ($this->minLength and ''!=$value and strlen($value) < $this->minLength) {
-			LogBar::event('Control validation on field “' . $this->name . '” has failed (minLength=' . $this->minLength . ')');
+			Logger::notice('Control validation on field “' . $this->name . '” has failed (minLength=' . $this->minLength . ')');
 			$valid = FALSE;
 		}
 
 		// check validity of minlength attribute
 		if ($this->maxLength and strlen($value) > $this->maxLength) {
-			LogBar::event('Control validation on field “' . $this->name . '” has failed (maxLength=' . $this->maxLength . ')');
+			Logger::notice('Control validation on field “' . $this->name . '” has failed (maxLength=' . $this->maxLength . ')');
 			$valid = FALSE;
 		}
 

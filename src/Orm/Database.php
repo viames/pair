@@ -3,18 +3,10 @@
 namespace Pair\Orm;
 
 use Pair\Core\Config;
-use Pair\Exceptions\DatabaseException;
+use Pair\Core\Logger;
+use Pair\Exceptions\CriticalException;
+use Pair\Exceptions\ErrorCodes;
 use Pair\Exceptions\PairException;
-use Pair\Models\ErrorLog;
-use Pair\Helpers\LogBar;
-
-define ('PAIR_DB_OBJECT_LIST',	1);
-define ('PAIR_DB_OBJECT',		2);
-define ('PAIR_DB_RESULT_LIST',	3);
-define ('PAIR_DB_RESULT',		4);
-define ('PAIR_DB_COUNT',		5);
-define ('PAIR_DB_DICTIONARY',	6);
-define ('PAIR_DB_COLLECTION',	7);
 
 /**
  * Manages a PDO DB connection using the singleton pattern.
@@ -42,6 +34,41 @@ class Database {
 	private array $definitions = [];
 
 	/**
+	 * Constant for array of objects return of the load() method.
+	 */
+	const OBJECT_LIST = 1;
+
+	/**
+	 * Costant for single object return of the load() method.
+	 */
+	const OBJECT = 2;
+
+	/**
+	 * Constant for array of results return of the load() method.
+	 */
+	const RESULT_LIST = 3;
+
+	/**
+	 * Constant for single result return of the load() method.
+	 */
+	const RESULT = 4;
+
+	/**
+	 * Constant for count of results return of the load() method.
+	 */
+	const COUNT = 5;
+
+	/**
+	 * Constant for dictionary return of the load() method.
+	 */
+	const DICTIONARY = 6;
+
+	/**
+	 * Constant for Collection return of the load() method.
+	 */
+	const COLLECTION = 7;
+
+	/**
 	 * Private constructor.
 	 */
 	private function __construct() {}
@@ -55,10 +82,24 @@ class Database {
 
 	}
 
+	private function castParams(&$params): void {
+
+		foreach ($params as $key=>$value) {
+			if (is_bool($value)) {
+				$params[$key] = $value ? 1 : 0;
+			} else if (is_null($value)) {
+				$params[$key] = NULL;
+			} else if (is_a($value, \DateTime::class)) {
+				$params[$key] = $value->format('Y-m-d H:i:s');
+			}
+		}
+
+	}
+
 	/**
 	 * Proxy to open a connection to DBMS if current PDO handler is NULL.
 	 *
-	 * @throws	PDOException
+	 * @throws	PairException
 	 */
 	public function connect(): void {
 
@@ -69,7 +110,7 @@ class Database {
 	/**
 	 * Proxy to open a persistent connection to DBMS if current PDO handler is NULL.
 	 *
-	 * @throws	PDOException
+	 * @throws	PairException
 	 */
 	public function connectPersistent(): void {
 
@@ -95,7 +136,7 @@ class Database {
 			}
 		}
 
-		$res = self::load('DESCRIBE `' . $tableName . '` `' . $column . '`', [], PAIR_DB_OBJECT);
+		$res = self::load('DESCRIBE `' . $tableName . '` `' . $column . '`', [], Database::OBJECT);
 
 		return ($res ? $res : NULL);
 
@@ -128,7 +169,7 @@ class Database {
 
 		unset($this->handler);
 
-		LogBar::event('Database is disconnected');
+		Logger::notice('Database connection closed', 'info');
 
 	}
 
@@ -149,28 +190,22 @@ class Database {
 	 * @param	string		SQL Query da eseguire.
 	 * @param	array|NULL	Parameters to bind on sql query in array or simple value.
 	 * @return	int			Number of affected items.
-	 * @throws	DatabaseException
+	 * @throws	PairException
 	 */
 	public function exec(string $query, array $params=[]): int {
 
 		$this->openConnection();
 
 		$this->query = $query;
+		$stat = $this->handler->prepare($this->query);
 
 		try {
-
-			$stat = $this->handler->prepare($this->query);
-			$stat->execute((array)$params);
-			$affected = $stat->rowCount();
-
-		} catch (\PDOException $e) {
-
-			ErrorLog::snapshot($e, ErrorLog::ERROR);
-
-			throw new DatabaseException($e->getMessage());
-
+			$stat->execute($params);
+		} catch (\PDOException $e) {	
+			throw new PairException($e->getMessage(), ErrorCodes::DB_QUERY_FAILED, $e);
 		}
-
+		
+		$affected = $stat->rowCount();
 		$stat->closeCursor();
 		$this->logParamQuery($this->query, $affected, $params);
 
@@ -307,42 +342,6 @@ class Database {
 	}
 
 	/**
-	 * Log query, switch error and add to DB class error list.
-	 *
-	 * @param	Exception|Throwable	Exception or Error object.
-	 * @param	string		SQL Query.
-	 * @param	array|NULL	Parameters.
-	 * @throws	DatabaseException
-	 */
-	private function handleException(PairException|\Throwable $e, string $query, ?array $params): void {
-
-		$params = (array)$params;
-
-		// logBar
-		$this->logParamQuery($query, 0, $params);
-
-		switch ($e->getCode()) {
-
-			// calls with wrong params type or count
-			case 'HY093':
-				if (is_array($params)) {
-					$message = 'Parameters count is ' . count($params) . ', an array with different number is expected by function call';
-				} else {
-					$message = 'Parameters are expected in array format by function call, type ' . gettype($params) . ' was passed';
-				}
-				break;
-
-			default:
-				$message = $e->getMessage();
-				break;
-
-		}
-
-		throw new DatabaseException($message);
-
-	}
-
-	/**
 	 * Inserts a new row in param table with all properties value as columns value.
 	 *
 	 * @param	string	Table name.
@@ -385,109 +384,6 @@ class Database {
 	}
 
 	/**
-	 * Insert more than one row into param table.
-	 *
-	 * @param	string	Table name.
-	 * @param	array	Object list, named as the table columns.
-	 * @param	array	Optional list of encryptable columns.
-	 */
-	public function insertObjects(string $table, array $list, ?array $encryptables=[]): int {
-
-		if (!is_array($list) or 0==count($list)) {
-			return 0;
-		}
-
-		$records = [];
-		$columns = [];
-
-		foreach ($list as $object) {
-
-			$values = [];
-
-			foreach (get_object_vars($object) as $column => $v) {
-
-				// skip virtual generated columns
-				if ($this->isVirtualGenerated($table, $column)) {
-					continue;
-				}
-
-				if (!count($records))	{
-					$columns[] = '`' . $column . '`';
-				}
-
-				if (is_null($v)) {
-					$values[] = 'NULL';
-				} else if (Config::get('AES_CRYPT_KEY') and in_array($column, $encryptables)) {
-					$values[] = 'AES_ENCRYPT(' . $this->quote($v) . ',' . $this->quote(Config::get('AES_CRYPT_KEY')) . ')';
-				} else {
-					$values[] = $this->quote($v);
-				}
-
-			}
-
-			$records[] = '('. implode(',', $values) .')';
-
-		}
-
-		$sql = 'INSERT INTO `'. $table .'` (%s) VALUES %s';
-
-		$this->query = sprintf($sql, implode(',', $columns), implode(',', $records));
-
-		$res = $this->exec($this->query);
-
-		return $res;
-
-	}
-
-	/**
-	 * Insert a row into a table or update it if present based on the Primary columns
-	 * or Unique.
-	 *
-	 * @param	string		Table name.
-	 * @param	\stdClass	Object with properties that equal columns name.
-	 * @param	array		Optional list of encryptable columns.
-	 */
-	public function insertUpdateObject(string $table, \stdClass $object, ?array $encryptables=[]): bool {
-
-		$this->openConnection();
-
-		$columns = [];
-		$values  = [];
-		$updates = [];
-
-		foreach (get_object_vars($object) as $column => $v) {
-
-			// skip virtual generated columns
-			if ($this->isVirtualGenerated($table, $column)) {
-				continue;
-			}
-
-			if (is_null($v)) {
-				$columns[] = '`' . $column . '`';
-				$values[]  = 'NULL';
-			} else if (Config::get('AES_CRYPT_KEY') and in_array($column, $encryptables)) {
-				$columns[] = '`' . $column . '`';
-				$values[]  = 'AES_ENCRYPT(' . $this->quote($v) . ',' . $this->quote(Config::get('AES_CRYPT_KEY')) . ')';
-			} else if (is_string($v) or is_numeric($v)) {
-				$columns[] = '`' . $column . '`';
-				$values[]  = $this->quote($v);
-			}
-
-			$updates[] = $v!==NULL ? $column.'='.$this->quote($v) : $column.'=NULL';
-
-		}
-
-		$sql = 'INSERT INTO `'. $table .'` (%s) VALUES (%s) ON DUPLICATE KEY UPDATE %s';
-
-		$query = sprintf($sql, implode(', ', $columns), implode(', ', $values), implode(', ', $updates));
-
-		$res = static::run($query);
-
-		return (bool)$res;
-
-	}
-
-	/**
 	 * Check if parameter table has auto-increment primary key by using cached method.
 	 *
 	 * @param	string	Name of table to check auto-increment flag.
@@ -503,6 +399,15 @@ class Database {
 		}
 
 		return FALSE;
+
+	}
+
+	/**
+	 * Check if the current instance is connected to the DBMS.
+	 */
+	public function isConnected(): bool {
+
+		return is_a($this->handler, 'PDO');
 
 	}
 
@@ -527,83 +432,78 @@ class Database {
 	}
 
 	/**
-	 * Return data in various formats by third string parameter. Default is PAIR_DB_OBJECT_LIST parameters
+	 * Return data in various formats by third string parameter. Default is self::OBJECT_LIST parameters
 	 * as array. Support PDO parameters bind.
 	 *
 	 * @param	string	SQL query.
 	 * @param	array	List of parameters to bind on the sql query.
-	 * @param	int		Returned type (see constants PAIR_DB_*). PAIR_DB_OBJECT_LIST is default.
+	 * @param	int		Returned type (see class constants). self::OBJECT_LIST is default.
+	 * @throws	PairException
 	 */
-	public static function load(string $query, array $params=[], ?int $option=NULL): array|Collection|\stdClass|string|int|NULL {
-
-		$self = static::getInstance();
-
-		$self->openConnection();
+	public static function load(string $query, array $params=[], int $option=self::OBJECT_LIST): array|Collection|\stdClass|string|int|NULL {
 
 		$res = NULL;
 
+		$self = static::getInstance();
+		$self->openConnection();
+		$self->castParams($params);
+
+		$stat = $self->handler->prepare($query);
+
 		try {
-
-			// prepare query
-			$stat = $self->handler->prepare($query);
-
-			// bind parameters
 			$stat->execute($params);
-
-			switch ($option) {
-
-				// list of \stdClass objects
-				default:
-				case PAIR_DB_OBJECT_LIST:
-					$res = $stat->fetchAll(\PDO::FETCH_OBJ);
-					$count = count($res);
-					break;
-
-				// first row as \stdClass object
-				case PAIR_DB_OBJECT:
-					$res = $stat->fetch(\PDO::FETCH_OBJ);
-					if (!$res) $res = NULL;
-					$count = (bool)$res;
-					break;
-
-				// array of first column results
-				case PAIR_DB_RESULT_LIST:
-					$res = $stat->fetchAll(\PDO::FETCH_COLUMN);
-					$count = count($res);
-					break;
-
-				// first column of first row
-				case PAIR_DB_RESULT:
-					$res = $stat->fetch(\PDO::FETCH_COLUMN);
-					$count = $self->handler->query('SELECT FOUND_ROWS()')->fetchColumn();
-					break;
-
-				// result count as integer
-				case PAIR_DB_COUNT:
-					$res = (int)$stat->fetch(\PDO::FETCH_COLUMN);
-					$count = $res;
-					break;
-
-				// associative array
-				case PAIR_DB_DICTIONARY:
-					$res = $stat->fetchAll(\PDO::FETCH_ASSOC);
-					$count = count($res);
-					break;
-
-				case PAIR_DB_COLLECTION:
-					$res = new Collection($stat->fetchAll(\PDO::FETCH_OBJ));
-					$count = $res->count();
-					break;
-
-			}
-
-			$self->logParamQuery($query, $count, $params);
-
 		} catch (\PDOException $e) {
+			throw new PairException($e->getMessage(), ErrorCodes::DB_QUERY_FAILED, $e);
+		}
 
-			$self->handleException($e, $query, $params);
+		switch ($option) {
+
+			// list of \stdClass objects
+			default:
+			case self::OBJECT_LIST:
+				$res = $stat->fetchAll(\PDO::FETCH_OBJ);
+				$count = count($res);
+				break;
+
+			// first row as \stdClass object
+			case self::OBJECT:
+				$res = $stat->fetch(\PDO::FETCH_OBJ);
+				if (!$res) $res = NULL;
+				$count = (bool)$res;
+				break;
+
+			// array of first column results
+			case self::RESULT_LIST:
+				$res = $stat->fetchAll(\PDO::FETCH_COLUMN);
+				$count = count($res);
+				break;
+
+			// first column of first row
+			case self::RESULT:
+				$res = $stat->fetch(\PDO::FETCH_COLUMN);
+				$count = $self->handler->query('SELECT FOUND_ROWS()')->fetchColumn();
+				break;
+
+			// result count as integer
+			case self::COUNT:
+				$res = (int)$stat->fetch(\PDO::FETCH_COLUMN);
+				$count = $res;
+				break;
+
+			// associative array
+			case self::DICTIONARY:
+				$res = $stat->fetchAll(\PDO::FETCH_ASSOC);
+				$count = count($res);
+				break;
+
+			case self::COLLECTION:
+				$res = new Collection($stat->fetchAll(\PDO::FETCH_OBJ));
+				$count = $res->count();
+				break;
 
 		}
+
+		$self->logParamQuery($query, $count, $params);
 
 		$stat->closeCursor();
 
@@ -615,27 +515,23 @@ class Database {
 	 * Return the query count as integer number.
 	 *
 	 * @param	array	Optional list of parameters to bind on sql query.
+	 * @throws	PairException
 	 */
 	public function loadCount(array $params=[]): int {
 
 		$this->openConnection();
 
 		$res = 0;
+		$stat = $this->handler->prepare($this->query);
 
 		try {
-
-			$stat = $this->handler->prepare($this->query);
-			$stat->execute((array)$params);
-			$res = (int)$stat->fetch(\PDO::FETCH_COLUMN);
-
-			// logBar
-			$this->logParamQuery($this->query, $res, $params);
-
+			$stat->execute($params);
 		} catch (\PDOException $e) {
-
-			$this->handleException($e, $this->query, $params);
-
+			throw new PairException($e->getMessage(), ErrorCodes::DB_QUERY_FAILED, $e);			
 		}
+		
+		$this->logParamQuery($this->query, $res, $params);
+		$res = (int)$stat->fetch(\PDO::FETCH_COLUMN);
 
 		$stat->closeCursor();
 
@@ -646,29 +542,28 @@ class Database {
 	/**
 	 * Returns a recordset executing the query previously set with setQuery() method and
 	 * optional parameters as array.
+	 * 
 	 * @param	array		List of parameters to bind on sql query.
-	 * @return	stdClass[]
+	 * @throws	PairException
 	 */
-	public function loadObjectList(array $params=[]): ?array {
-
-		$this->openConnection();
+	public function loadObjectList(array $params=[]): array {
 
 		$ret = NULL;
+		
+		$this->openConnection();
+
+		$stat = $this->handler->prepare($this->query);
 
 		try {
-
-			$stat = $this->handler->prepare($this->query);
-			$stat->execute((array)$params);
-			$ret = $stat->fetchAll(\PDO::FETCH_OBJ);
-
-			// logBar
-			$this->logParamQuery($this->query, count($ret), $params);
-
+			$stat->execute($params);		
 		} catch (\PDOException $e) {
-
-			$this->handleException($e, $this->query, $params);
-
+			throw new PairException($e->getMessage(), ErrorCodes::DB_QUERY_FAILED, $e);
 		}
+		
+		$ret = $stat->fetchAll(\PDO::FETCH_OBJ);
+
+		// logBar
+		$this->logParamQuery($this->query, count($ret), $params);
 
 		$stat->closeCursor();
 
@@ -680,29 +575,26 @@ class Database {
 	 * Returns first column value or NULL if row is not found.
 	 *
 	 * @param	array|NULL	List of parameters to bind on sql query.
-	 * @return	string|FALSE
+	 * @throws	PairException
 	 */
 	private function loadResult(array $params=[]): FALSE|string {
 
 		$this->openConnection();
 
 		$res = NULL;
+		$stat = $this->handler->prepare($this->query);
 
 		try {
-
-			$stat = $this->handler->prepare($this->query);
 			$stat->execute((array)$params);
-
-			// logBar
-			$count = $this->handler->query('SELECT FOUND_ROWS()')->fetchColumn();
-			$this->logParamQuery($this->query, $count, $params);
-			$res = $stat->fetch(\PDO::FETCH_COLUMN);
-
 		} catch (\PDOException $e) {
-
-			$this->handleException($e, $this->query, $params);
-
+			throw new PairException($e->getMessage(), ErrorCodes::DB_QUERY_FAILED, $e);
 		}
+
+		$res = $stat->fetch(\PDO::FETCH_COLUMN);
+
+		// logBar
+		$count = $this->handler->query('SELECT FOUND_ROWS()')->fetchColumn();
+		$this->logParamQuery($this->query, $count, $params);
 
 		$stat->closeCursor();
 
@@ -718,8 +610,6 @@ class Database {
 	 * @param	array	Optional parameters to bind.
 	 */
 	private function logParamQuery(string $query, int $result, array $params=[]): void {
-
-		$params = (array)$params;
 
 		// indexed is binding with "?"
 		$indexed = $params==array_values($params);
@@ -763,7 +653,7 @@ class Database {
 
 		$subtext = (int)$result . ' ' . (1==$result ? 'row' : 'rows');
 
-		LogBar::event($query, 'query', $subtext);
+		Logger::query($query, $subtext);
 
 	}
 
@@ -771,6 +661,7 @@ class Database {
 	 * Connects to DBMS with params only if PDO handler property is null, so not connected.
 	 *
 	 * @param	bool	Flag to open a persistent connection (TRUE). Default is FALSE.
+	 * @throws	CriticalException
 	 */
 	private function openConnection(bool $persistent=FALSE): void {
 
@@ -781,26 +672,22 @@ class Database {
 
 		$dsn = 'mysql:host=' . Config::get('DB_HOST') . ';dbname=' . Config::get('DB_NAME');
 		$options = [
-			\PDO::ATTR_PERSISTENT			=> (bool)$persistent,
+			\PDO::ATTR_PERSISTENT			=> $persistent,
 			\PDO::MYSQL_ATTR_INIT_COMMAND	=> "SET NAMES utf8",
 			\PDO::MYSQL_ATTR_FOUND_ROWS		=> TRUE
 		];
 
 		try {
-
 			$this->handler = new \PDO($dsn, Config::get('DB_USER'), Config::get('DB_PASS'), $options);
-
-			if (!is_a($this->handler, 'PDO')) {
-				throw new DatabaseException('Db handler is not valid, connection failed');
-			}
-
-			$this->handler->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-
-		} catch (\Exception $e) {
-
-			exit($e->getMessage());
-
+		} catch (\PDOException $e) {
+			throw new CriticalException($e->getMessage(), ErrorCodes::DB_CONNECTION_FAILED, $e);
 		}
+
+		if (!is_a($this->handler, 'PDO')) {
+			throw new CriticalException('PDO connection failed', ErrorCodes::DB_CONNECTION_FAILED);
+		}
+
+		$this->handler->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
 
 	}
 
@@ -831,34 +718,23 @@ class Database {
 	 *
 	 * @param	string	SQL query to run.
 	 * @param	array	List of parameters to bind on the sql query.
+	 * @throws	PairException
 	 */
 	public static function run(string $query, array $params=[]): int {
 
 		$self = static::getInstance();
-
 		$self->openConnection();
 
+		$stat = $self->handler->prepare($query);
+
 		try {
-
-			// prepare query
-			$stat = $self->handler->prepare($query);
-
-			// bind parameters
 			$stat->execute((array)$params);
-
-			// count affected rows
-			$affected = $stat->rowCount();
-
 		} catch (\PDOException $e) {
-
-			// logBar
-			$self->logParamQuery($query, 0, $params);
-
-			$self->handleException($e, $query, $params);
-
-			$affected = 0;
-
+			throw new PairException($e->getMessage(), ErrorCodes::DB_QUERY_FAILED, $e);
 		}
+		
+		// count affected rows
+		$affected = $stat->rowCount();
 
 		$stat->closeCursor();
 		$self->logParamQuery($query, $affected, $params);
@@ -908,9 +784,9 @@ class Database {
 
 			}
 
-		} catch (PairException $e) {
+		} catch (\PDOException $e) {
 
-			throw new DatabaseException('Error setting utf8mb4 charset and collation', 1002, $e);
+			throw new PairException('Error setting utf8mb4 charset and collation', ErrorCodes::DB_QUERY_FAILED, $e);
 
 		}
 

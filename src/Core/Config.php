@@ -2,8 +2,6 @@
 
 namespace Pair\Core;
 
-use Pair\Exceptions\ErrorCodes;
-use Pair\Exceptions\PairException;
 use Pair\Models\Oauth2Token;
 
 class Config {
@@ -17,7 +15,6 @@ class Config {
 	 * Default configuration values.
 	 */
 	const DEFAULTS = [
-		'BASE_URI' => '',
 		'DB_UTF8' => TRUE,
 		'OAUTH2_TOKEN_LIFETIME' => Oauth2Token::LIFETIME,
 		'PAIR_SINGLE_SESSION' => TRUE,
@@ -78,7 +75,16 @@ class Config {
 	public static function load(): void {
 
 		if (!self::envFileExists()) {
-			throw new PairException('Error loading .env configuration file', ErrorCodes::LOADING_ENV);
+
+			//throw new CriticalException('Error loading .env configuration file', ErrorCodes::LOADING_ENV_FILE);
+
+			// load all defaults as fallback
+			foreach (self::DEFAULTS as $key => $value) {
+				$_ENV[$key] = $value;
+			}
+
+			return;
+
 		}
 
 		$lines = file(self::FILE, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);

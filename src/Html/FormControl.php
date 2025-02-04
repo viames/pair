@@ -4,8 +4,9 @@ namespace Pair\Html;
 
 use Pair\Core\Application;
 use Pair\Core\Config;
+use Pair\Core\Logger;
+use Pair\Exceptions\ErrorCodes;
 use Pair\Exceptions\PairException;
-use Pair\Helpers\LogBar;
 use Pair\Helpers\Post;
 use Pair\Helpers\Translator;
 
@@ -108,19 +109,19 @@ abstract class FormControl {
 	}
 
 	/**
-	 * Return property’s value if set. Throw an exception and returns NULL if not set.
+	 * Returns property’s value or NULL.
 	 *
 	 * @param	string	Property’s name.
-	 * @throws	Exception
+	 * @throws	PairException	If property doesn’t exist.
 	 */
 	public function __get(string $name): mixed {
 
 		if (!property_exists($this, $name)) {
-			throw new PairException('Property “'. $name .'” doesn’t exist for object '. get_called_class());
+			throw new PairException('Property “'. $name .'” doesn’t exist for '. get_called_class(), ErrorCodes::PROPERTY_NOT_FOUND);
 		}
-
-		return $this->$name;
-
+		
+		return isset($this->$name) ? $this->$name : NULL;
+	
 	}
 
 	/**
@@ -513,19 +514,19 @@ abstract class FormControl {
 		$valid	= TRUE;
 
 		if ($this->required and ''==$value) {
-			LogBar::event('Control validation on field “' . $this->name . '” has failed (required)');
+			Logger::notice('Control validation on field “' . $this->name . '” has failed (required)');
 			$valid = FALSE;
 		}
 
 		// check validity of minlength attribute
 		if ($this->minLength and ''!=$value and strlen($value) < $this->minLength) {
-			LogBar::event('Control validation on field “' . $this->name . '” has failed (minLength=' . $this->minLength . ')');
+			Logger::notice('Control validation on field “' . $this->name . '” has failed (minLength=' . $this->minLength . ')');
 			$valid = FALSE;
 		}
 
 		// check validity of minlength attribute
 		if ($this->maxLength and strlen($value) > $this->maxLength) {
-			LogBar::event('Control validation on field “' . $this->name . '” has failed (maxLength=' . $this->maxLength . ')');
+			Logger::notice('Control validation on field “' . $this->name . '” has failed (maxLength=' . $this->maxLength . ')');
 			$valid = FALSE;
 		}
 

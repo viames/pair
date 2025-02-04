@@ -2,8 +2,8 @@
 
 namespace Pair\Models;
 
+use Pair\Core\Logger;
 use Pair\Exceptions\PairException;
-use Pair\Helpers\LogBar;
 use Pair\Helpers\Utilities;
 use Pair\Orm\ActiveRecord;
 use Pair\Orm\Database;
@@ -270,23 +270,14 @@ class Locale extends ActiveRecord {
 
 			if (is_dir($folder) and is_writable($folder)) {
 
-				try {
-
-					// creates new language file
-					touch($file);
-					chmod($file, 0777);
-
-				} catch (PairException $e) {
-
-					trigger_error($e->getMessage());
-					return FALSE;
-
-				}
+				// creates new language file
+				touch($file);
+				chmod($file, 0777);
 
 			} else {
 
-				trigger_error('Translation file ' . $file . ' cannot be read');
-				return FALSE;
+				throw new PairException('Translation folder ' . $folder . ' does not exist or is not writable');
+
 			}
 
 		}
@@ -302,18 +293,7 @@ class Locale extends ActiveRecord {
 
 		$content = implode("\n", $lines);
 
-		try {
-
-			$res = file_put_contents($file, $content);
-
-		} catch (PairException $e) {
-
-			LogBar::error('Translation file ' . $file . ' cannot be written due its permission');
-			$res = FALSE;
-
-		}
-
-		return $res;
+		return file_put_contents($file, $content);
 
 	}
 

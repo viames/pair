@@ -4,6 +4,7 @@ namespace Pair\Services;
 
 use Pair\Core\Config;
 use Pair\Exceptions\PairException;
+use Pair\Exceptions\ErrorCodes;
 
 /**
  * This class sends messages to Telegram users that have started a chat with the bot.
@@ -27,6 +28,15 @@ class TelegramNotifier {
 		}
 
 		$this->botToken = $botToken ?? Config::get('TELEGRAM_BOT_TOKEN');
+
+	}
+
+	/**
+	 * Check if the bot token is set.
+	 */
+	public function botTokenSet(): bool {
+
+		return (bool)$this->botToken;
 
 	}
 
@@ -83,6 +93,10 @@ class TelegramNotifier {
 	 */
 	public function sendMessage(int $chatId, string $message): void {
 
+		if ($chatId < 1) {
+			throw new PairException('Telegram Chat ID value not valid (' . $chatId . ')', ErrorCodes::TELEGRAM_FAILURE);
+		}
+
 		$url = $this->getBaseUrl() . '/sendMessage';
 
 		$postData = [
@@ -93,30 +107,33 @@ class TelegramNotifier {
 		$ch = curl_init();
 
 		curl_setopt($ch, CURLOPT_URL, $url);
-		curl_setopt($ch, CURLOPT_POST, true);
+		curl_setopt($ch, CURLOPT_POST, TRUE);
 		curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
 
 		$response = curl_exec($ch);
 
 		if (FALSE === $response) {
-			throw new PairException('Telegram API response error');
+			throw new PairException('Telegram API response error', ErrorCodes::TELEGRAM_FAILURE);
 		}
 
 		$json = json_decode($response);
 
 		if (!is_object($json) or !isset($json->ok)) {
-			throw new PairException('Telegram API response error: ' . $response);
+			throw new PairException('Telegram API response error: ' . $response, ErrorCodes::TELEGRAM_FAILURE);
 		}
 
 		if (!$json->ok) {
-			throw new PairException('Telegram API error: ' . $json->description . ' (' . $json->error_code . ')');
+			$msg = 400 == $json->error_code
+				? 'Error ' . $json->error_code . ' Telegram Chat ID value not valid ' . ' (' . $chatId . ')'
+				: $json->description . ' (' . $json->error_code . ')';
+			throw new PairException($msg, ErrorCodes::TELEGRAM_FAILURE);
 		}
 
 		$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
 		if (!$httpCode or $httpCode !== 200) {
-			throw new PairException('Telegram API not reachable: HTTP ' . $httpCode);
+			throw new PairException('Telegram API not reachable: HTTP ' . $httpCode, ErrorCodes::TELEGRAM_FAILURE);
 		}
 
 		curl_close($ch);

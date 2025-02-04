@@ -2,7 +2,7 @@
 
 namespace Pair\Models;
 
-use Pair\Helpers\LogBar;
+use Pair\Core\Logger;
 use Pair\Helpers\Plugin;
 use Pair\Helpers\PluginInterface;
 use Pair\Helpers\Utilities;
@@ -111,14 +111,14 @@ class Module extends ActiveRecord implements PluginInterface {
 
 		if ($res) {
 
-			LogBar::event('Plugin folder ' . $plugin->baseFolder . ' has been deleted');
+			Logger::notice('Plugin folder ' . $plugin->baseFolder . ' has been deleted');
 
 		} else {
 
 			if (is_dir($plugin->baseFolder)) {
-				LogBar::warning('Plugin folder ' . $plugin->baseFolder . ' has not been deleted due unexpected error');
+				Logger::warning('Plugin folder ' . $plugin->baseFolder . ' has not been deleted due unexpected error');
 			} else {
-				LogBar::warning('Plugin folder ' . $plugin->baseFolder . ' has not been found');
+				Logger::warning('Plugin folder ' . $plugin->baseFolder . ' has not been found');
 			}
 		}
 

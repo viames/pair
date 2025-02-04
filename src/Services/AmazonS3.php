@@ -10,6 +10,7 @@ use League\Flysystem\AwsS3v3\AwsS3Adapter;
 use League\Flysystem\Filesystem;
 
 use Pair\Core\Config;
+use Pair\Exceptions\ErrorCodes;
 use Pair\Exceptions\PairException;
 
 class AmazonS3 {
@@ -51,12 +52,9 @@ class AmazonS3 {
 
 	/**
 	 * Loads local file on S3 bucket.
-	 * $filePath is the local file path
-	 * $destination is the remote file path (including file name)
 	 *
-	 * @param string $filePath
-	 * @param string $destination
-	 * @return bool
+	 * @param string Local file path.
+	 * @param string Remote file path (including file name).
 	 */
 	public function put(string $filePath, string $destination): bool {
 
@@ -66,9 +64,8 @@ class AmazonS3 {
 
 		try {
 			$result = $this->filesystem->put($destination, $fileContents);
-		} catch(PairException $e) {
-			$this->addError($e->getMessage());
-			return FALSE;
+		} catch (\Exception $e) {
+			throw new PairException($e->getMessage(), ErrorCodes::AMAZON_S3_ERROR, $e);
 		}
 
 		return $result;
@@ -76,12 +73,10 @@ class AmazonS3 {
 	}
 
 	/**
-	 * Downloads the remote file on local filesystem
-	 * $remoteFile is the path of the remote file
-	 * $localFilePath is the path of the local file (including file name)
+	 * Downloads the remote file on local filesystem.
 	 *
-	 * @param string $remoteFile
-	 * @param string $localFilePath
+	 * @param string Path of the remote file.
+	 * @param string Path of the local file (including file name).
 	 */
 	public function get(string $remoteFile, string $localFilePath): bool {
 
@@ -90,16 +85,17 @@ class AmazonS3 {
 
 		try {
 			file_put_contents($localFilePath, $contents);
-		} catch(PairException $e) {
-			$this->addError($e->getMessage());
-			return FALSE;
+		} catch (\Exception $e) {
+			throw new PairException($e->getMessage(), ErrorCodes::AMAZON_S3_ERROR, $e);
 		}
 
 		return TRUE;
 	}
 
 	/**
-	 * Reads the remote file and returns the content
+	 * Reads the remote file and returns the content.
+	 * 
+	 * @param string Path of the remote file.
 	 */
 	public function read(string $remoteFile): ?string {
 
@@ -110,7 +106,9 @@ class AmazonS3 {
 	}
 
 	/**
-	 * Returns the file URL if file exists, null otherwise
+	 * Returns the file URL if file exists, null otherwise.
+	 * 
+	 * @param string Path of the remote file.
 	 */
 	public function getLink(string $remoteFile): ?string {
 
@@ -123,9 +121,9 @@ class AmazonS3 {
 	}
 
 	/**
-	 * Controls if the remote file (with its path) exists
+	 * Controls if the remote file (with its path) exists.
 	 *
-	 * @param string $remoteFile
+	 * @param string Path of the remote file.
 	 */
 	public function exists(string $remoteFile): bool {
 
@@ -133,8 +131,8 @@ class AmazonS3 {
 
 		try {
 			if ($this->filesystem->has($remoteFile)) $res = TRUE;
-		} catch(PairException $e) {
-			$this->addError($e->getMessage());
+		} catch (\Exception $e) {
+			throw new PairException($e->getMessage(), ErrorCodes::AMAZON_S3_ERROR, $e);
 		}
 
 		return $res;
@@ -142,9 +140,9 @@ class AmazonS3 {
 	}
 
 	/**
-	 * Deletes the remote file at the specified path
+	 * Deletes the remote file at the specified path.
 	 *
-	 * @param string $remoteFile
+	 * @param string Path of the remote file.
 	 */
 	public function delete(string $remoteFile): bool {
 
@@ -152,9 +150,8 @@ class AmazonS3 {
 			if ($this->exists($remoteFile)) {
 				$this->filesystem->delete($remoteFile);
 			}
-		} catch(PairException $e) {
-			$this->addError($e->getMessage());
-			return FALSE;
+		} catch (\Exception $e) {
+			throw new PairException($e->getMessage(), ErrorCodes::AMAZON_S3_ERROR, $e);
 		}
 
 		return TRUE;

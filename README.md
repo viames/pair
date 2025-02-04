@@ -4,6 +4,11 @@
 [![Total Downloads](https://poser.pugx.org/viames/pair/downloads)](https://packagist.org/packages/viames/pair)
 [![Latest Unstable Version](https://poser.pugx.org/viames/pair/v/unstable)](https://packagist.org/packages/viames/pair)
 [![License](https://poser.pugx.org/viames/pair/license)](https://packagist.org/packages/viames/pair)
+[![PHP Version Require](https://poser.pugx.org/viames/pair/require/php)](https://packagist.org/packages/viames/pair)
+
+## What’s New
+
+**Welcome to Pair [version 2](https://github.com/viames/pair/tree/2.0.0-alpha)**. Many new features have been introduced and existing ones improved. Among these improvements are `Migrations`, `Collections`, and many third-party products and services incorporated into Pair to make it easy to create lightning-fast server-side web applications.
 
 ## Features
 
@@ -11,7 +16,7 @@ Pair is a simple and fast PHP framework with little or no frills. It was written
 
 Pair is a simple and fast PHP framework with little or no frills. It was written with simplicity in mind, trying to satisfy the most frequent needs of web applications. It implements the Model-View-Controller pattern and intuitive routing logic by default.
 
-Everyone knows that you don't need a truck to go grocery shopping. You don't even need a car to go to the local newsstand to buy the newspaper. You need the right vehicle for every occasion.
+Everyone knows that you don’t need a truck to go grocery shopping. You don't even need a car to go to the local newsstand to buy the newspaper. You need the right vehicle for every occasion.
 
 If starting a new web project is a hassle because of the complexity and slowness of the famous pachyderm frameworks used around, you should take a look at Pair. For a small or medium web project, it might surprise you.
 
@@ -90,8 +95,8 @@ Please consult the [Wiki](https://github.com/viames/pair/wiki) of this project. 
 | Software | Recommended | Minimum | Configuration          |
 | ---      |    :---:    |  :---:  | ---                    |
 | Apache   | 2.4+        | 2.2     | `modules:` mod_rewrite |
-| MySQL    | 8.5         | 8.0     | `character_set:` utf8mb4 <br> `collation:` utf8mb4\_unicode_ci <br> `storage_engine:` InnoDB |
-| PHP      | 8.3+        | 8.0     | `extensions:` fileinfo, json, pcre, PDO, pdo_mysql, Reflection |
+| MySQL    | 9.2         | 8.0     | `character_set:` utf8mb4 <br> `collation:` utf8mb4\_unicode_ci <br> `storage_engine:` InnoDB |
+| PHP      | 8.3        | 8.3     | `extensions:` fileinfo, json, pcre, PDO, pdo_mysql, Reflection |
 
 ## Examples
 
@@ -99,11 +104,13 @@ The [pair_boilerplate](https://github.com/viames/pair_boilerplate) is a good sta
 
 ## Contributing
 
+Feedback, code integration, and documentation adjustments are welcome.
+
 If you would like to contribute to this project, please feel free to submit a pull request.
 
 ## Update from Pair v1 to v2
 
-Instructions for upgrading from version 1 to version 2 are available in the file [UPGRADE.md](UPGRADE.md).
+Instructions and a script for upgrading applications from Pair 1 to Pair 2 are available in the file [UPGRADE.md](UPGRADE.md).
 
 # License
 

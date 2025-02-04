@@ -4,10 +4,9 @@ namespace Pair\Orm;
 
 use Pair\Core\Application;
 use Pair\Core\Config;
-use Pair\Exceptions\ActiveRecordException;
+use Pair\Core\Logger;
 use Pair\Exceptions\ErrorCodes;
 use Pair\Exceptions\PairException;
-use Pair\Helpers\LogBar;
 use Pair\Helpers\Post;
 use Pair\Helpers\Translator;
 use Pair\Helpers\Utilities;
@@ -100,8 +99,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		try {
 			$this->init();
-		} catch (PairException $e) {
-			LogBar::error('Object initialization error: ' . $e->getMessage());
+		} catch (\Exception $e) {
+
 		}
 
 		// db row, will populate each property with bound field value
@@ -134,7 +133,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * Handles calls to dummy methods that return objects linked by foreign keys of the db between
 	 * the table of this object and other tables in two directions. Furthermore, it prevents fatal
 	 * errors on non-existent functions.
-	 * 
+	 *
 	 * @param	string	Called method name.
 	 * @param	array	Arguments.
 	 */
@@ -210,7 +209,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		} else if ('development' == Application::getEnvironment()) {
 
 			$backtrace = debug_backtrace();
-			LogBar::error('Method '. get_called_class() . $backtrace[0]['type'] . $name .'(), which doesn’t exist, has been called by '. $backtrace[0]['file'] .' on line '. $backtrace[0]['line']);
+			Logger::error('Method '. get_called_class() . $backtrace[0]['type'] . $name .'(), which doesn’t exist, has been called by '. $backtrace[0]['file'] .' on line '. $backtrace[0]['line']);
 
 		}
 
@@ -218,7 +217,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$msg = 'Method '. get_called_class() . '::' . $name .'() doesn’t exist';
 		$code = ErrorCodes::METHOD_NOT_FOUND;
 
-		throw new ActiveRecordException($msg, $code);
+		throw new PairException($msg, $code);
 
 	}
 
@@ -228,7 +227,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		// reset primary key
 		foreach((array)$this->keyProperties as $keyProperty) {
-			$this->$keyProperty = NULL;
+			$this->$keyProperty = ('int' == $this->getPropertyType($keyProperty) ? 0 : NULL);
 		}
 
 		// reset updated properties
@@ -238,7 +237,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$this->resetErrors();
 
 		// log the reload
-		LogBar::event('Cloned ' . $class . ' object');
+		Logger::notice('Cloned ' . $class . ' object');
 
 	}
 
@@ -261,9 +260,9 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 	/**
 	 * Return property’s value if set. Throw an exception and return NULL if not set.
-	 * 
+	 *
 	 * @param	string	Property’s name.
-	 * @throws	ActiveRecordException
+	 * @throws	PairException
 	 */
 	public function __get(string $name): mixed {
 
@@ -279,7 +278,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 
 		// property not found
-		throw new ActiveRecordException('Property “' . $name . '” not found for class ' . get_called_class(), ErrorCodes::PROPERTY_NOT_FOUND);
+		throw new PairException('Property “' . $name . '” not found for class ' . get_called_class(), ErrorCodes::PROPERTY_NOT_FOUND);
 
 	}
 
@@ -294,7 +293,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 	/**
 	 * Magic method to set an object property value. If DateTime property, will properly manage integer or string date.
-	 * 
+	 *
 	 * @param	string	Property’s name.
 	 * @param	mixed	Property’s value.
 	 */
@@ -389,7 +388,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 			$collection->push($object);
 		}
 
-		LogBar::event('Loaded ' . count($records) . ' ' . $class . ' objects');
+		$className = basename(str_replace('\\', '/', $class));
+		Logger::notice('Loaded ' . count($records) . ' ' . $className . ' objects');
 
 		return $collection;
 
@@ -405,7 +405,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$keys = (array)$this->getId();
 
 		if (!count($keys)) {
-			throw new ActiveRecordException('No key properties found for ' . get_called_class());
+			throw new PairException('No key properties found for ' . get_called_class());
 		}
 
 		foreach ($keys as $k) {
@@ -614,7 +614,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$query = 'SELECT COUNT(1) FROM `' . $table . '` WHERE ' . $column . ' = ?';
 
 		// search the record into the db
-		return (bool)Database::load($query, (array) $value, PAIR_DB_COUNT);
+		return (bool)Database::load($query, (array) $value, Database::COUNT);
 
 	}
 
@@ -689,9 +689,9 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		// runs query
 		$query = 'SELECT COUNT(1) FROM `' . $class::TABLE_NAME . '`' . $where;
-		$count = Database::load($query, [], PAIR_DB_COUNT);
+		$count = Database::load($query, [], Database::COUNT);
 
-		LogBar::event('Counted ' . $count . ' ' . $class . ' objects' . $whereLog);
+		Logger::notice('Counted ' . $count . ' ' . $class . ' objects' . $whereLog);
 
 		return $count;
 
@@ -709,22 +709,13 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		$autoIncrement = $this->db->isAutoIncrement(static::TABLE_NAME);
 
-		try {
+		if (!$autoIncrement and !$this->areKeysPopulated()) {
 
-			if (!$autoIncrement and !$this->areKeysPopulated()) {
-
-				$errCode = static::hasSimpleKey()
+			$errCode = static::hasSimpleKey()
 				? ErrorCodes::PRIMARY_KEY_NOT_POPULATED
 				: ErrorCodes::COMPOSITE_PRIMARY_KEY_NOT_POPULATED;
 
-				throw new ActiveRecordException(implode(', ', $this->keyProperties) . ' not populated', $errCode);
-
-			}
-
-		} catch (ActiveRecordException $e) {
-
-			$this->addError($e->getMessage());
-			return FALSE;
+			throw new PairException(implode(', ', $this->keyProperties) . ' not populated', $errCode);
 
 		}
 
@@ -778,7 +769,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$this->updatedProperties = [];
 
 		// log as application event
-		LogBar::event('Created a new ' . $class . ' object with ' . $this->getKeysForEventlog());
+		Logger::notice('Created a new ' . $class . ' object with ' . $this->getKeysForEventlog());
 
 		// hook for tasks to be executed after creation
 		$this->afterCreate();
@@ -815,8 +806,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 		foreach ($this as $key => $value) {
 			if (!in_array($key, $activeRecordsProperties)) {
 				unset($this->$key);
-			}	
-		}	
+			}
+		}
 
 		$this->loadedFromDb = FALSE;
 		$this->errors = [];
@@ -843,7 +834,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$query = 'SELECT COUNT(1) FROM `' . static::TABLE_NAME . '` WHERE ' . implode(' AND ', $conds);
 
 		// execute and return value
-		return (bool)Database::load($query, (array)$keys, PAIR_DB_COUNT);
+		return (bool)Database::load($query, (array)$keys, Database::COUNT);
 
 	}
 
@@ -857,7 +848,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		return (bool)Database::load(
 			'SELECT COUNT(1) FROM `' . static::TABLE_NAME . '` WHERE ' . $conds,
 			$this->getSqlKeyValues(),
-			PAIR_DB_COUNT
+			Database::COUNT
 		);
 
 	}
@@ -866,7 +857,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * Search an object in the database with the primary key equivalent to the value passed in the parameter
 	 * and returns it as an ActiveRecord of this class, if found. NULL if not found.
 	 */
-	public static function find(int|string|array $primaryKey): ?ActiveRecord {
+	public static function find(int|string|array $primaryKey): ?static {
 
 		$self = new static();
 
@@ -932,14 +923,14 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * Search an object in the database with the primary key equivalent to the value passed in the parameter
 	 * and returns it as an ActiveRecord of this class, if found. If not found, throws an exception.
 	 *
-	 * @throws	ActiveRecordException
+	 * @throws	PairException
 	 */
-	public static function findOrFail(int|string|array $primaryKey): ActiveRecord {
+	public static function findOrFail(int|string|array $primaryKey): static {
 
 		$obj = static::find($primaryKey);
 
 		if (!$obj) {
-			throw new ActiveRecordException('Object not found', 1004);
+			throw new PairException(Translator::do('OBJECT_NOT_FOUND'), ErrorCodes::RECORD_NOT_FOUND);
 		}
 
 		return $obj;
@@ -1004,7 +995,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * @param	array	Optional array of query filters, [property_name => value].
 	 * @param	array	Optional array of order by, [property_name] or [property_name => 'DESC'].
 	 */
-	final public static function getAllObjects($filters = [], $orderBy = []): Collection {
+	final public static function getAllObjects(?array $filters = [], string|array $orderBy = []): Collection {
 
 		$db			= Database::getInstance();
 		$class		= get_called_class();
@@ -1039,7 +1030,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 				} else {
 
-					trigger_error('In method ' . $class . '::getAllObjects() unexistent property “' . $property . '” can’t be used as filter');
+					throw new PairException('In method ' . $class . '::getAllObjects() unexistent property “' . $property . '” can’t be used as filter');
 
 				}
 
@@ -1105,7 +1096,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		}
 
-		LogBar::event('Loaded ' . count($objects) . ' ' . $class . ' objects' . $whereLog);
+		$className = basename(str_replace('\\', '/', $class));
+		Logger::notice('Loaded ' . count($objects) . ' ' . $className . ' objects' . $whereLog);
 
 		return new Collection($objects);
 
@@ -1145,7 +1137,11 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 			// get a camelCase name, with first low case
 			$property = lcfirst(str_replace(' ', '', ucwords(str_replace(['_','\\'], ' ', $col->Field))));
-			$maps[$property] = $col->Field;
+			
+			// if property doesn’t exist in the class, it will be handled as dynamic property
+			if (property_exists(static::class, $property)) {
+				$maps[$property] = $col->Field;
+			}
 
 		}
 
@@ -1428,6 +1424,10 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 	}
 
+	/**
+	 * Return a list of ActiveRecord objects related to this object. Can be filtered by a
+	 * specific class. If no related objects are found, an empty Collection is returned.
+	 */
 	final public function getRelateds(?string $refClass=NULL): Collection {
 
 		// foreign keys flag
@@ -1437,7 +1437,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		// retrieves all related objects for each foreign key
 		if (is_null($refClass)) {
-			
+
 			$inverseForeignKeys = $this->db->getInverseForeignKeys(static::TABLE_NAME);
 
 			foreach ($inverseForeignKeys as $ifk) {
@@ -1446,7 +1446,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 				$refClass = Utilities::getActiveRecordClassByTable($ifk->TABLE_NAME);
 
 				if (!$refClass) {
-					throw new ActiveRecordException('Class not found for table ' . $ifk->TABLE_NAME, ErrorCodes::CLASS_NOT_FOUND);
+					throw new PairException('Class not found for table ' . $ifk->TABLE_NAME, ErrorCodes::CLASS_NOT_FOUND);
 				}
 
 				$foreignKeyFound = TRUE;
@@ -1458,37 +1458,43 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 			}
 
-		} else {
+		} else if (class_exists($refClass)) {
 
 			$foreignKeys = $this->db->getForeignKeys($refClass::TABLE_NAME);
-	
+
 			// the class was not found
 			if (!class_exists($refClass) or !is_subclass_of($refClass, 'Pair\Orm\ActiveRecord')) {
-				throw new ActiveRecordException('Class ' . $refClass . ' not found', ErrorCodes::CLASS_NOT_FOUND);
-			}	
+				throw new PairException('Class ' . $refClass . ' not found', ErrorCodes::CLASS_NOT_FOUND);
+			}
 
 			// search for the object property that matches db fk
 			foreach ($foreignKeys as $fk) {
-	
+
 				// when found, return the related object
 				if (static::TABLE_NAME == $fk->REFERENCED_TABLE_NAME) {
-	
+
 					$foreignKeyFound = TRUE;
-	
+
 					$selfProperty = (string)$refClass::getMappedProperty($fk->REFERENCED_COLUMN_NAME);
 					$refProperty = (string)$refClass::getMappedProperty($fk->COLUMN_NAME);
-	
+
 					// load the new wanted Pair objects
 					$relateds->merge($refClass::getAllObjects([$refProperty=>$this->$selfProperty]));
-				
+
 				}
-	
+
 			}
 
 		}
 
 		if (!$foreignKeyFound) {
-			throw new ActiveRecordException('No useful foreign key found for ' . static::TABLE_NAME, ErrorCodes::NO_FOREIGN_KEY);
+
+			$message = $refClass
+				? Translator::do('NO_USEFUL_FOREIGN_KEY_FOR_CLASS', [$refClass, static::TABLE_NAME])
+				: Translator::do('NO_USEFUL_FOREIGN_KEY', [static::TABLE_NAME]);
+
+			throw new PairException($message, ErrorCodes::NO_FOREIGN_KEY);
+
 		}
 
 		return $relateds;
@@ -1594,7 +1600,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	final public static function getObjectByQuery(string $query, array $params=[]): ?static {
 
 		// run query
-		$row = Database::load($query, $params, PAIR_DB_OBJECT);
+		$row = Database::load($query, $params, Database::OBJECT);
 
 		// initializes the binding of the dynamic properties
 		$dynamicBinds = [];
@@ -1626,7 +1632,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// turn on loaded-from-db flag
 		$object->loadedFromDb = TRUE;
 
-		LogBar::event('Loaded a ' . $class . ' object' . (count($dynamicBinds) ? ' with custom columns ' . implode(',', $dynamicBinds) : ''));
+		$className = basename(str_replace('\\', '/', $class));
+		Logger::notice('Loaded a ' . $className . ' object' . (count($dynamicBinds) ? ' with custom columns ' . implode(',', $dynamicBinds) : ''));
 
 		return $object;
 
@@ -1684,7 +1691,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		}
 
-		LogBar::event('Loaded ' . count($objects) . ' ' . $class . ' objects with custom columns ' . implode(',', $dynamicBinds));
+		$className = basename(str_replace('\\', '/', $class));
+		Logger::notice('Loaded ' . count($objects) . ' ' . $className . ' objects with custom columns ' . implode(',', $dynamicBinds));
 
 		return new Collection($objects);
 
@@ -1796,7 +1804,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		// class that maps the parent table
 		$parentClass = NULL;
-		
+
 		// if the class name is specified, it quickly searches the array
 		if (!is_null($className) and is_subclass_of($className, 'Pair\Orm\ActiveRecord') and defined($className . '::TABLE_NAME') and $className::TABLE_NAME == $referencedTable) {
 			$parentClass = $className;
@@ -1830,7 +1838,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		// class cannot be found
 		if (!$parentClass) {
-			throw new ActiveRecordException('Table ' . $referencedTable . ' has not any Pair-class mapping', ErrorCodes::CLASS_NOT_FOUND);
+			throw new PairException('Table ' . $referencedTable . ' has not any Pair-class mapping', ErrorCodes::CLASS_NOT_FOUND);
 		}
 
 		$parentValue = $this->__get($parentProperty);
@@ -2138,7 +2146,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 			// count for existing records that references
 			$query = 'SELECT COUNT(*) FROM `' . $r->TABLE_NAME . '` WHERE `' . $r->COLUMN_NAME . '` = ?';
-			$count = Database::load($query, [$this->$property], PAIR_DB_COUNT);
+			$count = Database::load($query, [$this->$property], Database::COUNT);
 
 			// set flag as true
 			if ($count) $exists = TRUE;
@@ -2184,7 +2192,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		// load the requested record
 		$query = 'SELECT ' . static::getQueryColumns() . ' FROM `' . $class::TABLE_NAME . '`' . $where . ' LIMIT 1';
-		$obj = Database::load($query, (array)$key, PAIR_DB_OBJECT);
+		$obj = Database::load($query, (array)$key, Database::OBJECT);
 
 		// if db record exists, will populate the object properties
 		if (is_object($obj)) {
@@ -2465,7 +2473,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$this->loadFromDb($this->getSqlKeyValues());
 
 		// log the reload
-		LogBar::event('Reloaded ' . $class . ' object with ' . $this->getKeysForEventlog());
+		Logger::notice('Reloaded ' . $class . ' object with ' . $this->getKeysForEventlog());
 
 	}
 
@@ -2523,11 +2531,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 			}  else {
 
 				// acquired as current user timezone
-				try {
-					$castedValue = new \DateTime($value, $dtz);
-				} catch (\Exception $e) {
-					throw new ActiveRecordException('Invalid date format: ' . $value, ErrorCodes::INVALID_DATE_FORMAT);
-				}
+				$castedValue = new \DateTime($value, $dtz);
 
 			}
 
@@ -2557,26 +2561,13 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		$objectId = $this->getId();
 
-		try {
-
-			// update if object’s keys are populated
-			$update = ($objectId and $this->areKeysPopulated() and static::exists($objectId));
-
-		} catch (PairException $e) {
-
-			$this->addError($e->getMessage());
-			return FALSE;
-
-		}
+		// update if object’s keys are populated
+		$update = ($objectId and $this->areKeysPopulated() and static::exists($objectId));
 
 		// hook for tasks to be executed before store
 		$this->beforeStore();
 
-		try {
-			$update ? $this->update() : $this->create();
-		} catch (PairException $e) {
-			throw new ActiveRecordException('Error storing ' . get_called_class() . ' object', ErrorCodes::STORE_FAILED);
-		}
+		$update ? $this->update() : $this->create();
 
 		// hook for tasks to be executed after store
 		$this->afterStore();
@@ -2648,22 +2639,13 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	final public function update(mixed $properties=NULL): bool {
 
-		try {
+		if (!$this->areKeysPopulated()) {
 
-			if (!$this->areKeysPopulated()) {
-
-				$errCode = static::hasSimpleKey()
+			$errCode = static::hasSimpleKey()
 				? ErrorCodes::PRIMARY_KEY_NOT_POPULATED
 				: ErrorCodes::COMPOSITE_PRIMARY_KEY_NOT_POPULATED;
 
-				throw new ActiveRecordException(implode(', ', $this->keyProperties) . ' not populated', $errCode);
-
-			}
-
-		} catch (ActiveRecordException $e) {
-
-			$this->addError($e->getMessage());
-			return FALSE;
+			throw new PairException(implode(', ', $this->keyProperties) . ' not populated', $errCode);
 
 		}
 
@@ -2713,13 +2695,14 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// reset updated-properties tracker
 		$this->updatedProperties = [];
 
-		LogBar::event('Updated ' . $class . ' object with ' . $logParam);
+		$className = basename(str_replace('\\', '/', $class));
+		Logger::notice('Updated ' . $className . ' object with ' . $logParam);
 
 		// check and update this object in the common cache
 		$uniqueId = is_array($this->getId()) ? implode('-', $this->getId()) : (string)$this->getId();
 		if (isset($app->activeRecordCache[$class][$uniqueId])) {
 			$app->putActiveRecordCache($class, $this);
-			LogBar::event('Updated ' . $class . ' object with id=' . $uniqueId . ' in common cache');
+			Logger::notice('Updated ' . $className . ' object with id=' . $uniqueId . ' in common cache');
 		}
 
 		// hook for tasks to be executed after creation
@@ -2749,17 +2732,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$ret = $this->update($properties);
 
 		return $ret;
-
-	}
-
-	/**
-	 * @todo Implement this method.
-	 */
-	public static function where(): Builder {
-
-		$builder = new Builder();
-
-		return $builder;
 
 	}
 

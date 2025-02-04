@@ -8,36 +8,30 @@ class Pagination {
 
 	/**
 	 * Active page (1 index).
-	 * @var int
 	 */
-	private $page = 1;
+	private int $page = 1;
 
 	/**
 	 * Number of items per page.
-	 * @var int
 	 */
-	private $perPage = 15;
+	private int $perPage = 15;
 
 	/**
 	 * Number of items to paginate.
-	 * @var NULL|int
 	 */
-	private $count = NULL;
+	private ?int $count = NULL;
 
 	/**
 	 * Flag to hide bar if one page only.
-	 * @var bool
 	 */
-	private $hideEmpty = TRUE;
+	private bool $hideEmpty = TRUE;
 
 	/**
 	 * Return start or limit values for SQL queries.
 	 *
 	 * @param	string	Desired value name.
-	 *
-	 * @return	mixed
 	 */
-	public function __get($name) {
+	public function __get(string $name): mixed {
 
 		switch ($name) {
 
@@ -71,20 +65,14 @@ class Pagination {
 	 * @param	string	Property’s name.
 	 * @param	mixed	Value.
 	 */
-	public function __set($name, $value) {
+	public function __set(string $name, mixed $value): void {
 
-		try {
-			$this->$name = $value;
-		} catch (PairException $e) {
-			print $e->getMessage();
-		}
+		$this->$name = $value;
 
 	}
 
 	/**
 	 * Render and return the navigation bar for pages.
-	 *
-	 * @return	string
 	 */
 	public function render(): string {
 

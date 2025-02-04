@@ -3,6 +3,7 @@
 	"description": "lightweight PHP framework as the air",
 	"type": "library",
 	"require": {
+		"php": "8.3",
 		"bugsnag/bugsnag": "^3",
 		"daniel-zahariev/php-aws-ses":"^0.9",
 		"league/flysystem-aws-s3-v3": "^1|^3",
@@ -32,6 +33,9 @@
 		"router",
 		"rest-api"
 	],
+	"scripts": {
+        "upgrade-to-v2": "php scripts/upgrade-to-v2.php"
+    },
 	"autoload": {
 		"classmap": [
 			"src"
@@ -60,7 +64,7 @@
 	],
 	"config": {
 		"platform": {
-			"php": "8"
+			"php": "8.3"
 		}
 	},
 	"suggest": {

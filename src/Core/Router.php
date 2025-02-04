@@ -2,7 +2,7 @@
 
 namespace Pair\Core;
 
-use Pair\Exceptions\PairException;
+use Pair\Exceptions\ErrorCodes;
 
 class Router {
 
@@ -15,11 +15,6 @@ class Router {
 	 * Request URL.
 	 */
 	private ?string $url = NULL;
-
-	/**
-	 * Base URL for this web application.
-	 */
-	private ?string $baseUrl = NULL;
 
 	/**
 	 * Flag that’s true if request is AJAX.
@@ -76,15 +71,12 @@ class Router {
 	 */
 	private function __construct() {
 
-		// get the BASE_URI from .env file
-		$this->baseUrl = (string)Config::get('BASE_URI');
-
 		// request URL, NULL for CLI
 		$this->url = Application::isCli() ? NULL : $_SERVER['REQUEST_URI'];
 
-		// remove baseUrl from URL
-		if ($this->baseUrl and (is_null($this->url) or strpos($this->url,$this->baseUrl)===0)) {
-			$this->url = substr((string)$this->url,strlen($this->baseUrl));
+		// remove URL_PATH from URL
+		if (URL_PATH and (is_null($this->url) or strpos((string)$this->url,URL_PATH)===0)) {
+			$this->url = substr((string)$this->url,strlen(URL_PATH));
 		}
 
 		// force initial slash
@@ -373,18 +365,19 @@ class Router {
 	}
 
 	/**
-	 * Will returns property’s value if set. Throw an exception and returns NULL if not set.
+	 * Returns property’s value or NULL.
 	 *
 	 * @param	string	Property’s name.
+	 * @throws	\Exception	If property doesn’t exist.
 	 */
 	public function __get(string $name): mixed {
 
-		if (property_exists($this, $name)) {
-			return $this->$name;
+		if (!property_exists($this, $name)) {
+			throw new \Exception('Property “'. $name .'” doesn’t exist for '. get_called_class(), ErrorCodes::PROPERTY_NOT_FOUND);
 		}
-
-		throw new PairException('Property “'. $name .'” doesn’t exist for this object '. get_called_class());
-
+		
+		return isset($this->$name) ? $this->$name : NULL;
+	
 	}
 
 	/**
@@ -595,7 +588,7 @@ class Router {
 
 		try {
 			self::$instance->raw = TRUE;
-		} catch(PairException $e) {
+		} catch (\Exception $e) {
 			die('Router instance has not been created yet');
 		}
 
@@ -627,7 +620,7 @@ class Router {
 
 		try {
 			self::$instance->routes[] = $route;
-		} catch(PairException $e) {
+		} catch (\Exception $e) {
 			die('Router instance has not been created yet');
 		}
 

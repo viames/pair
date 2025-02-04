@@ -73,6 +73,7 @@ class ElkLogger {
         ];
 
         $this->sendToElk($logData);
+    
     }
 
     /**
@@ -102,7 +103,7 @@ class ElkLogger {
         }
 
         curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_RETURNTRANSFER => TRUE,
             CURLOPT_CUSTOMREQUEST  => 'POST',
             CURLOPT_POSTFIELDS     => $payload,
             CURLOPT_HTTPHEADER     => $headers

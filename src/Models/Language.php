@@ -73,17 +73,15 @@ class Language extends ActiveRecord {
 
 	/**
 	 * Get the default Country object for this language based on locales table.
-	 *
-	 * @return	Country|NULL
 	 */
 	public function getDefaultCountry(): ?Country {
 
 		$query =
-			'SELECT c.*' .
-			' FROM `countries` AS c' .
-			' INNER JOIN `locales` AS l ON c.id = l.country_id' .
-			' WHERE l.language_id = ?' .
-			' AND l.default_country = 1';
+			'SELECT c.*
+			FROM `countries` AS c
+			INNER JOIN `locales` AS l ON c.`id` = l.`country_id`
+			WHERE l.`language_id` = ?
+			AND l.`default_country` = 1';
 
 		return Country::getObjectByQuery($query, [$this->id]);
 

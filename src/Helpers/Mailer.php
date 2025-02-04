@@ -1,6 +1,6 @@
 <?php
 
-namespace Pair\Services;
+namespace Pair\Helpers;
 
 use Pair\Core\Application;
 use Pair\Core\Config;
@@ -10,12 +10,10 @@ use Pair\Helpers\Translator;
 use Pair\Models\Session;
 use Pair\Models\User;
 
-use PHPMailer\PHPMailer\PHPMailer;
-
 /**
- * Class specialized in sending emails in HTML format with PHPMailer or Amazon Simple Email Service (SES).
+ * Base class for sending e-mails.
  */
-class Mailer {
+abstract class Mailer {
 
 	/**
 	 * The list of admin email addresses.
@@ -43,41 +41,6 @@ class Mailer {
 	protected ?string $fromName = NULL;
 
 	/**
-	 * The SMTP authentication flag.
-	 */
-	protected bool $smtpAuth = TRUE;
-
-	/**
-	 * The SMTP host.
-	 */
-	protected ?string $smtpHost = NULL;
-
-	/**
-	 * The SMTP port.
-	 */
-	protected ?int $smtpPort = NULL;
-
-	/**
-	 * The SMTP secure protocol (NULL|ssl|tls)
-	 */
-	protected ?string $smtpSecure = NULL;
-
-	/**
-	 * The SMTP username.
-	 */
-	protected ?string $smtpUsername = NULL;
-
-	/**
-	 * The SMTP password.
-	 */
-	protected ?string $smtpPassword = NULL;
-
-	/**
-	 * The SMTP debug level.
-	 */
-	protected ?int $smtpDebug = 0;
-
-	/**
 	 * Default application logo.
 	 */
 	const PAIR_LOGO = 'https://github.com/viames/Pair/wiki/files/pair-logo.png';
@@ -94,9 +57,46 @@ class Mailer {
 	}
 
 	/**
-	 * Check if the required configuration is set.
+	 * Adapt an array of recipients to a standard object.
+	 * 
+	 * @throws PairException
 	 */
-	protected function checkConfig(): void {
+	private function adaptRecipients(array $recipients): array {
+
+		$list = [];
+
+		foreach ($recipients as $recipient) {
+
+			if (is_string($recipient)) {
+				$list[] = (object)['name'=>'', 'email'=>$recipient];
+			}
+	
+			if (is_array($recipient)) {
+				if (!isset($recipient['email'])) {
+					throw new PairException('Missing e-mail address in recipient', ErrorCodes::MISSING_CONFIGURATION);
+				}
+				$list[] = (object)$recipient;
+			}
+	
+			if (is_object($recipient)) {
+				if (!isset($recipient->email)) {
+					throw new PairException('Missing e-mail address in recipient', ErrorCodes::MISSING_CONFIGURATION);
+				}
+				$list[] = $recipient;
+			}
+	
+			throw new PairException('Invalid recipient type ' . gettype($recipient), ErrorCodes::MISSING_CONFIGURATION);
+	
+		}
+
+		return $list;
+
+	}
+
+	/**
+	 * Check if the required configuration is set. Throw an exception if not.
+	 */
+	protected function checkBaseConfig(): void {
 
 		if (!$this->fromAddress) {
 			throw new PairException('Missing e-mail sender address (fromAddress) in configuration', ErrorCodes::MISSING_CONFIGURATION);
@@ -110,51 +110,51 @@ class Mailer {
 			throw new PairException('Missing e-mail sender name (fromName) in configuration', ErrorCodes::MISSING_CONFIGURATION);
 		}
 
-		if (!$this->smtpHost) {
-			throw new PairException('Missing SMTP Host (smtpHost) in configuration', ErrorCodes::MISSING_CONFIGURATION);
-		}
+	}
 
-		if (!$this->smtpPort) {
-			throw new PairException('Missing SMTP Port (smtpPort) in configuration', ErrorCodes::MISSING_CONFIGURATION);
-		}
+	/**
+	 * Check if the required configuration is set and throw an exception if not. Overwritten in child classes.
+	 */
+	public function checkConfig(): void {
 
-		if ($this->smtpAuth) {
-
-			if (!$this->smtpUsername) {
-				throw new PairException('Missing SMTP Username (smtpUsername) in configuration', ErrorCodes::MISSING_CONFIGURATION);
-			}
-
-			if (!$this->smtpPassword) {
-				throw new PairException('Missing SMTP Password (smtpPassword) in configuration', ErrorCodes::MISSING_CONFIGURATION);
-			}
-
-		}
+		$this->checkBaseConfig();
 
 	}
 
 	/**
-	 * Based on run environment, returns the list of carbon copy addresses.
+	 * Returns a list of carbon copy addresses only in production environment.
 	 */
-	protected function getRealCarbonCopy(array $desiredCc): array {
+	protected function convertCarbonCopy(array $desiredCcs): array {
 
-		return 'production' == Application::getEnvironment() ? $desiredCc : [];
+		return 'production' == Application::getEnvironment()
+			? $this->adaptRecipients($desiredCcs)
+			: [];
 
 	}
 
 	/**
-	 * Based on run environment, returns the list of real recipients.
+	 * Based on run environment, returns the list of final recipients.
+	 * 
+	 * @throws PairException
 	 */
-	protected function getRealRecipients(array $desiredRecipient): array {
+	protected function convertRecipients(array $desiredRecipients): array {
 
 		$recipients = [];
+
+		$setAdmins = function () use (&$recipients) {
+			foreach ($this->adminEmails as $adminEmail) {
+				$recipients[] = (object)['name'=>Config::get('PRODUCT_NAME') . ' Admin', 'email'=>$adminEmail];
+			}	
+			if (!count($recipients)) {
+				throw new PairException('In development environment there are no admin e-mail addresses', ErrorCodes::MISSING_CONFIGURATION);
+			}	
+		};	
 
 		switch (Application::getEnvironment()) {
 
 			case 'development':
 
-				foreach ($this->adminEmails as $adminEmail) {
-					$recipients[] = (object)['name'=>'Admin', 'email'=>$adminEmail];
-				}
+				$setAdmins();
 				break;
 
 			case 'staging':
@@ -174,16 +174,14 @@ class Mailer {
 
 				} else {
 
-					foreach ($this->adminEmails as $adminEmail) {
-						$recipients[] = (object)['name'=>'Admin', 'email'=>$adminEmail];
-					}
+					$setAdmins();
 
 				}
 				break;
 
 			case 'production':
 
-				$recipients = $desiredRecipient;
+				$recipients = $this->adaptRecipients($desiredRecipients);
 				break;
 
 			default:
@@ -542,7 +540,7 @@ class Mailer {
 	}
 
 	/**
-	 * Configure a PhpMailer object preconfigured with charset, auth type, etc.
+	 * Send the e-mail to the recipients.
 	 * If the Development option is active, the recipient becomes the list of admin in
 	 * the options.
 	 *
@@ -555,77 +553,18 @@ class Mailer {
 	 *
 	 * @throws	PairException
 	 */
-	public function send(array $recipients, string $subject, string $title, string $text, array $attachments = [], array $ccs = []): void {
-
-		// throw an exception if the required configuration is not set
-		$this->checkConfig();
-
-		$realRecipient = $this->getRealRecipients($recipients);
-		$realCc = $this->getRealCarbonCopy($ccs);
-
-		$phpMailer = new PHPMailer();
-
-		// smtp settings
-		$phpMailer->isSMTP();
-		$phpMailer->CharSet		= $this->charSet;
-		$phpMailer->SMTPAuth	= $this->smtpAuth;
-		$phpMailer->Host		= $this->smtpHost;
-		$phpMailer->Port		= $this->smtpPort;
-		$phpMailer->SMTPSecure	= $this->smtpSecure;
-		$phpMailer->Username	= $this->smtpUsername;
-		$phpMailer->Password	= $this->smtpPassword;
-		$phpMailer->SMTPDebug	= $this->smtpDebug;
-
-		// set sender data
-		$phpMailer->setFrom($this->fromAddress, $this->fromName);
-
-		// recipients and carbon copy are replaced in development and staging environment
-		foreach ($recipients as $r) {
-			$phpMailer->addAddress($r->email, $r->name);
-		}
-
-		foreach ($ccs as $cc) {
-			$phpMailer->addCC($cc->email, $cc->name);
-		}
-
-		// email subject and body by form
-		$phpMailer->Subject = $subject;
-
-		// set the email body content
-		$phpMailer->msgHTML(static::getBody($text, $title, $text));
-
-		// real file attachments
-		foreach ($attachments as $att) {
-			$phpMailer->addAttachment($att->filePath, $att->name);
-		}
-
-		// send the email
-		try {
-
-			$phpMailer->send();
-
-		} catch (\Exception $e) {
-
-			throw new PairException($e->getMessage());
-
-		}
-
-	}
+	abstract public function send(array $recipients, string $subject, string $title, string $text, array $attachments = [], array $ccs = []);
 
 	/**
-	 * Set the configuration of the email sender.
+	 * Set the base required configuration.
 	 */
-	public function setConfig(array $config): void {
+	public function setBaseConfig(array $config): void {
 
 		$stringOptions = [
 			'applicationLogo',
 			'charSet',
 			'fromAddress',
-			'fromName',
-			'smtpHost',
-			'smtpSecure',
-			'smtpUsername',
-			'smtpPassword',
+			'fromName'
 		];
 
 		foreach ($stringOptions as $option) {
@@ -638,12 +577,16 @@ class Mailer {
 			$this->adminEmails = (array)$config['adminEmails'];
 		}
 
-		// int options
-		$this->smtpPort	 = (isset($config['smtpPort'])) ? (int)$config['smtpPort'] : NULL;
-		$this->smtpDebug = (isset($config['smtpDebug'])) ? (int)$config['smtpDebug'] : 0;
+	}
 
-		// bool options with default TRUE
-		$this->smtpAuth	 = (isset($config['smtpAuth']) and FALSE===$config['smtpAuth']) ? FALSE : TRUE;
+	/**
+	 * Set the configuration of the email sender.
+	 * 
+	 * @param	array	Associative array with configuration options (fromAddress, fromName, applicationLogo, charSet, adminEmails).
+	 */
+	public function setConfig(array $config): void {
+
+		$this->setBaseConfig($config);
 
 	}
 

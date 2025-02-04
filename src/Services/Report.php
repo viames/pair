@@ -239,7 +239,7 @@ abstract class Report {
 
 		// if there is no data and a query has been set, runs it to populate the data
 		if (empty($this->data) and !is_null($this->query)) {
-			$this->setDataAndColumnsFromDictionary(Database::load($this->query, [], PAIR_DB_DICTIONARY));
+			$this->setDataAndColumnsFromDictionary(Database::load($this->query, [], Database::DICTIONARY));
 		}
 
 		// create the document and set up the sheet

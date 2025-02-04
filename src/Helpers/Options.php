@@ -3,6 +3,8 @@
 namespace Pair\Helpers;
 
 use Pair\Core\Config;
+use Pair\Core\Logger;
+use Pair\Exceptions\ErrorCodes;
 use Pair\Exceptions\PairException;
 use Pair\Orm\Database;
 
@@ -70,7 +72,7 @@ class Options {
 		$self->populate();
 
 		if (!static::exists($name)) {
-			LogBar::warning('Option “'. $name .'” doesn’t exist.');
+			Logger::warning('Option “'. $name .'” doesn’t exist.');
 			return NULL;
 		}
 
@@ -83,6 +85,7 @@ class Options {
 	 *
 	 * @param	string	The option’s name.
 	 * @param	string	The option’s value.
+	 * @throws	PairException
 	 */
 	public static function set(string $name, mixed $value): bool {
 
@@ -95,39 +98,31 @@ class Options {
 		$self->populate();
 
 		// check if named option exists
-		try {
+		if (!array_key_exists($name, $self->list)) {
+			throw new PairException('Option “'. $name .'” doesn’t exist', ErrorCodes::MISSING_CONFIGURATION);
+		}
 
-			if (!array_key_exists($name, $self->list)) {
-				throw new PairException('Cannot write the value of option “'. $name .'” as it doesn’t exist.');
-			}
+		switch ($self->list[$name]->type) {
 
-			switch ($self->list[$name]->type) {
+			case 'bool';
+				$value = $value ? 1 : 0;
+				break;
 
-				case 'bool';
-					$value = $value ? 1 : 0;
-					break;
-
-				case 'password':
-					if ($self->isCryptAvailable()) {
-						$value = openssl_encrypt($value, 'AES128', Config::get('OPTIONS_CRYPT_KEY'));
-					} else {
-						throw new PairException('OPTIONS_CRYPT_KEY value must be set into .env configuration file.');
-					}
-					break;
-
-			}
-
-			// update the value into db
-			$ret = (bool)Database::run('UPDATE `options` SET `value` = ? WHERE `name` = ?', [$value, $name]);
-
-			// update value into the singleton object
-			$self->list[$name]->value = $value;
-
-		} catch(PairException $e) {
-
-			LogBar::warning($e->getMessage());
+			case 'password':
+				if ($self->isCryptAvailable()) {
+					$value = openssl_encrypt($value, 'AES128', Config::get('OPTIONS_CRYPT_KEY'));
+				} else {
+					throw new PairException('OPTIONS_CRYPT_KEY value must be set into .env configuration file', ErrorCodes::MISSING_CONFIGURATION);
+				}
+				break;
 
 		}
+
+		// update the value into db
+		$ret = (bool)Database::run('UPDATE `options` SET `value` = ? WHERE `name` = ?', [$value, $name]);
+
+		// update value into the singleton object
+		$self->list[$name]->value = $value;
 
 		return $ret;
 
@@ -212,7 +207,7 @@ class Options {
 				if ($this->isCryptAvailable()) {
 					$value = openssl_decrypt($value, 'AES128', Config::get('OPTIONS_CRYPT_KEY'));
 				} else {
-					LogBar::warning('OPTIONS_CRYPT_KEY value must be defined into .env configuration file.');
+					Logger::warning('OPTIONS_CRYPT_KEY value must be defined into .env configuration file.');
 				}
 				break;
 

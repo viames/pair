@@ -2,14 +2,15 @@
 
 namespace Pair\Core;
 
-use Pair\Exceptions\PairException;
-use Pair\Models\ErrorLog;
+use Pair\Exceptions\ErrorCodes;
+use Pair\Html\Pagination;
 use Pair\Orm\Collection;
 use Pair\Orm\Database;
 use Pair\Orm\Query;
 
 abstract class Model {
 
+	use \Pair\Traits\AppTrait;
 	use \Pair\Traits\LogTrait;
 
 	/**
@@ -19,21 +20,18 @@ abstract class Model {
 
 	/**
 	 * Pagination object, started from the View.
-	 * @var Pagination
 	 */
-	private $pagination;
+	private ?Pagination $pagination = NULL;
 
 	/**
 	 * Database handler object.
-	 * @var Database
 	 */
-	private $db;
+	private Database $db;
 
 	/**
 	 * List of all errors tracked.
-	 * @var array
 	 */
-	private $errors = [];
+	private array $errors = [];
 
 	/**
 	 * Constructor, connects to db.
@@ -41,25 +39,35 @@ abstract class Model {
 	final public function __construct() {
 
 		// singleton objects
-		$this->app	= Application::getInstance();
+		$this->app = Application::getInstance();
 
-		$this->db	= Database::getInstance();
+		$this->db = Database::getInstance();
 
 		try {
 			$this->init();
-		} catch (PairException $e) {
-			ErrorLog::snapshot($e->getMessage(), ErrorLog::ERROR);
+		} catch (\Exception $e) {
+
 		}
 
 	}
 
-	public function __get(string $name) {
+	/**
+	 * Returns property’s value or NULL.
+	 *
+	 * @param	string	Property’s name.
+	 * @throws	\Exception	If property doesn’t exist.
+	 */
+	public function __get(string $name): mixed {
 
-		return $this->$name;
-
+		if (!property_exists($this, $name)) {
+			throw new \Exception('Property “'. $name .'” doesn’t exist for '. get_called_class(), ErrorCodes::PROPERTY_NOT_FOUND);
+		}
+		
+		return isset($this->$name) ? $this->$name : NULL;
+	
 	}
 
-	public function __set(string $name, $value) {
+	public function __set(string $name, $value): void {
 
 		$this->$name = $value;
 
@@ -71,7 +79,7 @@ abstract class Model {
 	 * @param	string	$name
 	 * @param	array	$arguments
 	 */
-	public function __call(string $name, array $arguments) {
+	public function __call(string $name, array $arguments): void {
 
 		if ('development' == Application::getEnvironment()) {
 
@@ -119,6 +127,7 @@ abstract class Model {
 	/**
 	 * Returns list of all object specified in param, within pagination limit and sets
 	 * pagination count.
+	 * 
 	 * @param	string	Name of desired class.
 	 * @param	string	Ordering db field.
 	 * @param	bool	Sorting direction ASC or DESC (optional)
@@ -129,16 +138,15 @@ abstract class Model {
 			return [];
 		}
 
-		// set pagination count
 		$this->pagination->count = $class::countAllObjects();
 
 		$orderDir = $descOrder ? 'DESC' : 'ASC';
 
 		$query =
-			'SELECT *' .
-			' FROM `' . $class::TABLE_NAME . '`' .
-			($orderBy ? ' ORDER BY `' . $orderBy . '` ' . $orderDir : NULL) .
-			' LIMIT ' . $this->pagination->start . ', ' . $this->pagination->limit;
+			'SELECT *
+			FROM `' . $class::TABLE_NAME . '`
+			' . ($orderBy ? ' ORDER BY `' . $orderBy . '` ' . $orderDir : NULL) . '
+			LIMIT ' . $this->pagination->start . ', ' . $this->pagination->limit;
 
 		return $class::getObjectsByQuery($query);
 
@@ -181,6 +189,7 @@ abstract class Model {
 
 	/**
 	 * Returns object list with pagination by running the query in getQuery() method.
+	 * 
 	 * @param	string		Active record class name.
 	 * @param	Query|string	Optional query.
 	 */
@@ -199,6 +208,7 @@ abstract class Model {
 
 	/**
 	 * Returns count of available objects.
+	 * 
 	 * @param	string		Active record class name.
 	 * @param	Query|string	Optional query.
 	 */
@@ -210,19 +220,22 @@ abstract class Model {
 			case 'object':
 				$query = $optionalQuery->toSql();
 				break;
+
 			case 'string':
 				$query = $optionalQuery;
 				break;
+
 			default:
 				$query = $this->getQuery($class);
 		}
 
-		return (int)Database::load('SELECT COUNT(1) FROM (' . $query . ') AS `result`', [], PAIR_DB_COUNT);
+		return Database::load('SELECT COUNT(1) FROM (' . $query . ') AS `result`', [], Database::COUNT);
 
 	}
 
 	/**
 	 * Create and return the SQL to retrieve the elements of the default item list.
+	 * 
 	 * @param	string	ActiveRecord’s class name.
 	 */
 	protected function getQuery(string $class): Query|string {

@@ -173,7 +173,7 @@ class Group extends ActiveRecord {
 			WHERE m.`name` = "users"
 			LIMIT 1';
 
-		return (int)Database::load($query, [], PAIR_DB_RESULT);
+		return (int)Database::load($query, [], Database::RESULT);
 
 	}
 
@@ -185,7 +185,7 @@ class Group extends ActiveRecord {
 		// a subclass may have been defined for the user
 		$userClass = PAIR_USER_CLASS;
 
-		return $userClass::loadObjectsByQuery('SELECT * FROM `users` WHERE group_id=?', [$this->id]);
+		return $userClass::getObjectsByQuery('SELECT * FROM `users` WHERE group_id=?', [$this->id]);
 
 	}
 

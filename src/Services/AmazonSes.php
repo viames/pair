@@ -4,6 +4,7 @@ namespace Pair\Services;
 
 use Pair\Exceptions\ErrorCodes;
 use Pair\Exceptions\PairException;
+use Pair\Helpers\Mailer;
 
 use SimpleEmailService;
 use SimpleEmailServiceMessage;
@@ -28,19 +29,12 @@ class AmazonSes extends Mailer {
 	 */
 	protected ?string $sesRegion = NULL;
 
-	protected function checkConfig(): void {
+	/**
+	 * Check if the required configuration is set. Throw an exception if not.
+	 */
+	public function checkConfig(): void {
 
-		if (!$this->fromAddress) {
-			throw new PairException('Missing e-mail sender address (fromAddress) in configuration', ErrorCodes::MISSING_CONFIGURATION);
-		}
-
-		if (!filter_var($this->fromAddress, FILTER_VALIDATE_EMAIL)) {
-			throw new PairException('Invalid e-mail sender address (fromAddress) in configuration', ErrorCodes::MISSING_CONFIGURATION);
-		}
-
-		if (!$this->fromName) {
-			throw new PairException('Missing e-mail sender name (fromName) in configuration', ErrorCodes::MISSING_CONFIGURATION);
-		}
+		$this->checkBaseConfig();
 
 		if (!$this->sesAccessKeyId) {
 			throw new PairException('Missing Amazon S3 Access Key ID (sesAccessKeyId) in configuration', ErrorCodes::MISSING_CONFIGURATION);
@@ -74,20 +68,19 @@ class AmazonSes extends Mailer {
 		// throw an exception if the required configuration is not set
 		$this->checkConfig();
 
-		$realRecipient = $this->getRealRecipients($recipients);
-		$realCc = $this->getRealCarbonCopy($ccs);
-
 		$ses = new SimpleEmailService($this->sesAccessKeyId, $this->sesSecretAccessKey, $this->sesRegion);
-
+		
 		$message = new SimpleEmailServiceMessage();
-
+		
 		// set sender data
 		$message->setFrom($this->fromAddress, $this->fromName);
-
+		
 		// recipients and carbon copy are replaced in development and staging environment
-		$message->addTo($realRecipient);
-
-		if (count($realCc)) {
+		$realRecipients = $this->convertRecipients($recipients);
+		$message->addTo($realRecipients);
+		
+		$realCcs = $this->convertCarbonCopy($ccs);
+		if (count($realCcs)) {
 			$message->addCC($ccs);
 		}
 
@@ -109,13 +102,14 @@ class AmazonSes extends Mailer {
 
 	/**
 	 * Set the configuration of the email sender.
+	 * 
+	 * @param	array	Associative array with configuration options (fromAddress, fromName, sesAccessKeyId, sesSecretAccessKey, sesRegion).
 	 */
 	public function setConfig(array $config): void {
 
+		$this->setBaseConfig($config);
+
 		$stringOptions = [
-			'applicationLogo',
-			'fromAddress',
-			'fromName',
 			'sesAccessKeyId',
 			'sesSecretAccessKey',
 			'sesRegion'
@@ -125,10 +119,6 @@ class AmazonSes extends Mailer {
 			if (isset($config[$option])) {
 				$this->$option = $config[$option];
 			}
-		}
-
-		if (isset($config['adminEmails'])) {
-			$this->adminEmails = (array)$config['adminEmails'];
 		}
 
 	}

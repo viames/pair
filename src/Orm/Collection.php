@@ -3,6 +3,8 @@
 namespace Pair\Orm;
 
 use Closure;
+
+use Pair\Exceptions\ErrorCodes;
 use Pair\Exceptions\PairException;
 use Pair\Orm\ActiveRecord;
 
@@ -407,14 +409,14 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 
 	/**
 	 * May be used to verify that all elements of a collection are of a given type or list
-	 * of types. Otherwise, an UnexpectedValueException will be thrown.
+	 * of types. Otherwise, an PairException will be thrown.
 	 */
 	public function eachInstanceOf(string $type): void {
 
 		foreach ($this->items as $item) {
 
 			if (!$item instanceof $type) {
-				throw new \UnexpectedValueException('The item is not an instance of ' . $type);
+				throw new PairException('The item is not an instance of ' . $type, ErrorCodes::INVALID_COLLECTION_ITEM_TYPE);
 			}
 
 		}
@@ -471,14 +473,14 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 
 	/**
 	 * The firstOrFail method is identical to the first method; however, if no result is found,
-	 * an OutOfBoundsException will be thrown. You may also call the firstOrFail method with no
+	 * an PairException will be thrown. You may also call the firstOrFail method with no
 	 * arguments to get the first element in the collection. If the collection is empty, an
-	 * OutOfBoundsException exception will be thrown.
+	 * PairException exception will be thrown.
 	 */
 	public function firstOrFail(): mixed {
 
 		if ($this->isEmpty()) {
-			throw new \OutOfBoundsException('The collection is empty.');
+			throw new PairException('The collection is empty.', ErrorCodes::INVALID_COLLECTION_VALUE);
 		}
 
 		return $this->first();
@@ -568,10 +570,10 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	public function filter(?callable $callback = NULL): Collection {
 
 		if (is_null($callback)) {
-			return new Collection(array_filter($this->items));
+			return new Collection(array_values(array_filter($this->items)));
 		}
 
-		return new Collection(array_filter($this->items, $callback, ARRAY_FILTER_USE_BOTH));
+		return new Collection(array_values(array_filter($this->items, $callback, ARRAY_FILTER_USE_BOTH)));
 
 	}
 
@@ -834,7 +836,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 
 		try {
 			$items = array_map($callback, $this->items, $keys);
-		} catch (PairException) {
+		} catch (\Exception) {
 			$items = array_map($callback, $this->items);
 		}
 
@@ -1126,7 +1128,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 * random to specify how many items you would like to randomly retrieve. A collection of items
 	 * is always returned when explicitly passing the number of items you wish to receive. If the
 	 * collection instance has fewer items than requested, the random method will throw an
-	 * InvalidArgumentException. The random method also accepts a closure, which will receive the
+	 * PairException. The random method also accepts a closure, which will receive the
 	 * current collection instance.
 	 */
 	public function random(int $number = 1): mixed {
@@ -1136,7 +1138,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 		}
 
 		if ($number > $this->count()) {
-			throw new \InvalidArgumentException('You requested ' . $number . ' items, but there are only ' . $this->count() . ' items in the collection.');
+			throw new PairException('You requested ' . $number . ' items, but there are only ' . $this->count() . ' items in the collection.', ErrorCodes::INVALID_COLLECTION_VALUE);
 		}
 
 		return new Collection(array_rand($this->items, $number));
@@ -1461,11 +1463,11 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	public function sum(string $key): int {
 
 		if (!property_exists($this->first(), $key)) {
-			throw new \InvalidArgumentException('The key is not valid for sum.');
+			throw new PairException('The key is not valid for sum.', ErrorCodes::INVALID_COLLECTION_KEY);
 		}
 
 		if (!is_numeric($this->first()->$key)) {
-			throw new \InvalidArgumentException('Values are not valid for sum.');
+			throw new PairException('Values are not valid for sum.', ErrorCodes::INVALID_COLLECTION_VALUE);
 		}
 
 		return array_sum($this->pluck($key)->all());

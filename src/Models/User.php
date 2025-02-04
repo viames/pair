@@ -5,6 +5,8 @@ namespace Pair\Models;
 use Pair\Core\Application;
 use Pair\Core\Config;
 use Pair\Core\Router;
+use Pair\Helpers\Translator;
+use Pair\Helpers\Utilities;
 use Pair\Orm\ActiveRecord;
 use Pair\Orm\Collection;
 use Pair\Orm\Database;
@@ -13,8 +15,6 @@ use Pair\Models\Locale;
 use Pair\Models\Rule;
 use Pair\Models\Session;
 use Pair\Models\UserRemember;
-use Pair\Helpers\Translator;
-use Pair\Helpers\Utilities;
 
 /**
  * Base class for Pair framework users. Can be extended to have more user’s properties.
@@ -367,7 +367,7 @@ class User extends ActiveRecord {
 		$query = 'SELECT * FROM `users` WHERE `' . (Config::get('PAIR_AUTH_BY_EMAIL') ? 'email' : 'username') . '` = ?';
 
 		// load user row
-		$row = Database::load($query, [$username], PAIR_DB_OBJECT);
+		$row = Database::load($query, [$username], Database::OBJECT);
 
 		// track ip address and user_agent for audit
 		$ipAddress = $_SERVER['REMOTE_ADDR'] ?? NULL;
@@ -605,7 +605,7 @@ class User extends ActiveRecord {
 			WHERE a.`is_default` = 1
 			AND a.`group_id` = ?';
 
-		return Database::load($query, [$this->__get('groupId')], PAIR_DB_OBJECT);
+		return Database::load($query, [$this->__get('groupId')], Database::OBJECT);
 
 	}
 
@@ -623,7 +623,7 @@ class User extends ActiveRecord {
 				INNER JOIN `users` AS u ON u.`locale_id` = lc.`id`
 				WHERE u.`id` = ?';
 
-			$this->setCache('lang', Database::load($query, [$this->id], PAIR_DB_RESULT));
+			$this->setCache('lang', Database::load($query, [$this->id], Database::RESULT));
 
 		}
 
@@ -687,7 +687,7 @@ class User extends ActiveRecord {
 				'SELECT COUNT(1) FROM `users`
 				INNER JOIN `sessions` AS s ON u.`id` = s.`id_user`
 				WHERE s.`id` = ? AND u.`id` = ? AND `admin` = 1';
-			return (bool)Database::load($query, [Session::current(), $this->id], PAIR_DB_COUNT);
+			return (bool)Database::load($query, [Session::current(), $this->id], Database::COUNT);
 		}
 
 	}

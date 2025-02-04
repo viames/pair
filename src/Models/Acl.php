@@ -137,7 +137,7 @@ class Acl extends ActiveRecord {
 			INNER JOIN `modules` as m ON m.`id` = r.`module_id`
 			WHERE r.`id` = ?';
 
-		return Database::load($query, [$this->ruleId], PAIR_DB_RESULT);
+		return Database::load($query, [$this->ruleId], Database::RESULT);
 
 	}
 

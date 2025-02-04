@@ -2,13 +2,12 @@
 
 namespace Pair\Core;
 
-use Pair\Exceptions\ControllerException;
+use Pair\Exceptions\AppException;
+use Pair\Exceptions\CriticalException;
 use Pair\Exceptions\ErrorCodes;
-use Pair\Exceptions\PairException;
-use Pair\Models\ErrorLog;
-use Pair\Orm\ActiveRecord;
 use Pair\Helpers\Translator;
 use Pair\Helpers\Utilities;
+use Pair\Orm\ActiveRecord;
 
 abstract class Controller {
 
@@ -50,6 +49,11 @@ abstract class Controller {
 	 */
 	private string $modulePath;
 
+	/**
+	 * Inizialize name, module path, translator and view.
+	 * 
+	 * @throws	\Exception
+	 */
 	final public function __construct() {
 
 		// useful singleton objects
@@ -73,8 +77,8 @@ abstract class Controller {
 
 		try {
 			$this->init();
-		} catch (ControllerException $e) {
-			$this->logError('Controller initialization error: ' . $e->getMessage());
+		} catch (\Exception $e) {
+			throw new \Exception(Translator::do('INITIALIZING_ERROR', [get_class($e), $class]), ErrorCodes::CONTROLLER_INIT_FAILED, $e);
 		}
 
 		// if a model is not specified, load the default one
@@ -99,26 +103,25 @@ abstract class Controller {
 
 	}
 
+	/**
+	 * Returns property’s value or NULL.
+	 *
+	 * @param	string	Property’s name.
+	 * @throws	\Exception	If property doesn’t exist.
+	 */
 	public function __get(string $name): mixed {
 
-		try {
-			if (!isset($this->$name)) {
-				throw new PairException('Property “'. $name .'” doesn’t exist for this object '. get_called_class());
-			}
-			return $this->$name;
-		} catch(PairException $e) {
-			return NULL;
+		if (!property_exists($this, $name)) {
+			throw new \Exception('Property “'. $name .'” doesn’t exist for '. get_called_class(), ErrorCodes::PROPERTY_NOT_FOUND);
 		}
-
+		
+		return isset($this->$name) ? $this->$name : NULL;
+	
 	}
 
 	public function __set(string $name, mixed $value): void {
 
-		try {
-			$this->$name = $value;
-		} catch(PairException $e) {
-			print $e->getMessage();
-		}
+		$this->$name = $value;
 
 	}
 
@@ -129,11 +132,7 @@ abstract class Controller {
 	 */
 	protected function accessDenied(?string $message=NULL): void {
 
-		$this->toastRedirect(
-			($message ? $message : Translator::do('ACCESS_DENIED')),
-			'',
-			strtolower($this->name)
-		);
+		$this->toastRedirect(Translator::do('ERROR'), ($message ? $message : Translator::do('ACCESS_DENIED')), strtolower($this->name));
 
 	}
 
@@ -143,29 +142,13 @@ abstract class Controller {
 	 */
 	public function display(): void {
 
-		try {
-			$view = $this->getView();
-		} catch (PairException $e) {
-			$this->redirectWithError($e->getMessage());
-		}
+		$view = $this->getView();
 
 		if (!is_subclass_of($view, 'Pair\Core\View')) {
-			if (!$this->router->isRaw()) {
-				$this->app->modal('Error', Translator::do('RESOURCE_NOT_FOUND', $this->router->module . '/' . $this->router->action))->confirm('OK');
-			}
-			$this->redirect();
+			throw new CriticalException('View class not found');
 		}
 
-		try {
-
-			$view->display();
-
-		} catch (\Exception $e) {
-
-			ErrorLog::snapshot($e->getMessage(), ErrorLog::ERROR);
-			throw new PairException($e->getMessage());
-
-		}
+		$view->display();
 
 	}
 
@@ -191,7 +174,7 @@ abstract class Controller {
 	public function loadModel(string $modelName): void {
 
 		if (!file_exists($this->modulePath .'/'. $modelName .'.php')) {
-			throw new PairException('Model file '. $this->modulePath .'/'. $modelName .'.php has not been found');
+			throw new \Exception('Model file '. $this->modulePath .'/'. $modelName .'.php has not been found');
 		}
 
 		include ($this->modulePath .'/'. $modelName .'.php');
@@ -215,6 +198,8 @@ abstract class Controller {
 	 * Returns the object of inherited class when called with id as first parameter.
 	 *
 	 * @param	string	Expected object class type.
+	 * 
+	 * @throws	AppException
 	 */
 	protected function getObjectRequestedById(string $class): ?ActiveRecord {
 
@@ -222,13 +207,13 @@ abstract class Controller {
 		$itemId = Router::get(0);
 
 		if (!$itemId) {
-			throw new ControllerException($this->lang('ID_OF_ITEM_TO_EDIT_IS_NOT_VALID', $class));
+			throw new AppException($this->lang('ID_OF_ITEM_TO_EDIT_IS_NOT_VALID', $class));
 		}
 
 		$object = new $class($itemId);
 
 		if (!$object->isLoaded()) {
-			throw new ControllerException($this->lang('ID_OF_ITEM_TO_EDIT_IS_NOT_VALID', $class));
+			throw new AppException($this->lang('ID_OF_ITEM_TO_EDIT_IS_NOT_VALID', $class));
 		}
 
 		return $object;
@@ -237,12 +222,13 @@ abstract class Controller {
 
 	/**
 	 * Return View object related to this controller.
-	 * @throws ControllerException
+	 * 
+	 * @throws CriticalException
 	 */
 	public function getView(): ?View {
 
 		if (!$this->view) {
-			throw new ControllerException('View page not set for module ' . $this->name);
+			throw new CriticalException('View page not set for module ' . $this->name);
 		}
 
 		$file = $this->modulePath .'/view'. ucfirst($this->view) .'.php';
@@ -252,12 +238,9 @@ abstract class Controller {
 			$file = $this->modulePath .'/view'. ucfirst($this->view) .'.php';
 		}
 
+		// if view file still not found, throw an exception
 		if (!file_exists($file)) {
-			if ($this->app->currentUser and $this->app->currentUser->areKeysPopulated()) {
-				throw new ControllerException('The page ' . $this->name . '/' . $this->view . ' does not exist');
-			} else {
-				die('Access denied');
-			}
+			throw new CriticalException('The page ' . $this->name . '/' . $this->view . ' does not exist');
 		}
 
 		include_once($file);
@@ -265,7 +248,7 @@ abstract class Controller {
 		$viewName = ucfirst($this->name) .'View'. ucfirst($this->view);
 
 		if (!class_exists($viewName)) {
-			throw new ControllerException('Class ' . $viewName . ' was not found in file ' . $file, ErrorCodes::CLASS_NOT_FOUND);
+			throw new CriticalException('Class ' . $viewName . ' was not found in file ' . $file, ErrorCodes::CLASS_NOT_FOUND);
 		}
 
 		return new $viewName($this->model);
@@ -288,6 +271,8 @@ abstract class Controller {
 	 * Get error list from an ActiveRecord object and show it to the user.
 	 *
 	 * @param	ActiveRecord	The inherited object.
+	 * 
+	 * @throws	\Exception
 	 */
 	protected function raiseError(ActiveRecord $object): void {
 
@@ -299,11 +284,11 @@ abstract class Controller {
 			? implode(" \n", $errors)
 			: $this->lang('ERROR_ON_LAST_REQUEST');
 
-		// enqueue a toast notification to the UI
-		throw new ControllerException($message);
-
 		// after the message has been queued, store the error data
-		ErrorLog::snapshot('Failure in ' . \get_class($object) . ' class', ErrorLog::ERROR);
+		Logger::error('Failure in ' . \get_class($object) . ' class', Logger::ERROR);
+
+		// enqueue a toast notification to the UI	
+		throw new \Exception($message);
 
 	}
 
@@ -314,28 +299,6 @@ abstract class Controller {
 
 		$this->toastError($message);
 		$this->redirect($url);
-
-	}
-
-	/**
-	 * Proxy to set a variable within global scope.
-	 *
-	 * @param	string	Variable name.
-	 */
-	final public function setState(string $name, mixed $value): void {
-
-		$this->app->setState($name, $value);
-
-	}
-
-	/**
-	 * Proxy to unset a state variable.
-	 *
-	 * @param	string	Variable name.
-	 */
-	final public function unsetState(string $name): void {
-
-		$this->unsetState($name);
 
 	}
 

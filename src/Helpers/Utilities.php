@@ -4,6 +4,7 @@ namespace Pair\Helpers;
 
 use Pair\Core\Application;
 use Pair\Core\Config;
+use Pair\Core\Logger;
 use Pair\Core\Router;
 use Pair\Exceptions\PairException;
 use Pair\Html\FormControls\File;
@@ -20,12 +21,45 @@ class Utilities {
 	const RANDOM_STRING_CHARS = '123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
 	/**
+	 * Get an array of email addresses, remove those that are not email addresses, returning a clean list of email addresses.
+	 */
+	public static function arrayToEmail(array $array): array {
+
+		$ret = [];
+
+		foreach ($array as $email) {
+
+			$email = trim($email);
+
+			if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+				$ret[] = $email;
+			}
+
+		}
+
+		return $ret;
+
+	}
+
+	/**
 	 * Converts an array of strings to an array of integers.
+	 *
 	 * @return int[]
 	 */
 	public static function arrayToInt(array $array): array {
 
 		return array_map('intval', $array);
+
+	}
+
+	/**
+	 * Converts an array of string|int to an array of positive integers.
+	 */
+	public static function arrayToPositive(array $array): array {
+
+		return array_map(function($value) {
+			return abs(intval($value));
+		}, $array);
 
 	}
 
@@ -341,42 +375,33 @@ class Utilities {
 		// usually insignificant files
 		$excludes = ['..', '.', '.DS_Store', 'thumbs.db', '.htaccess'];
 
-		try {
+		// reads folders file and dirs as plain array
+		$filelist = scandir($path, 0);
 
-			// reads folders file and dirs as plain array
-			$filelist = scandir($path, 0);
+		if (!$filelist) {
+			throw new PairException('Unable to scan directory ' . $path);
+		}
 
-			if (!$filelist) {
-				throw new PairException('Unable to scan directory ' . $path);
-			}
+		$filenames = array_diff($filelist, $excludes);
 
-			$filenames = array_diff($filelist, $excludes);
+		// we look at each file/dir
+		foreach ($filenames as $filename) {
 
-			// we look at each file/dir
-			foreach ($filenames as $filename) {
+			// relative file-path
+			$file = $path . '/' . $filename;
 
-				// relative file-path
-				$file = $path . '/' . $filename;
+			// it’s a directory, scan it
+			if (is_dir($file)) {
 
-				// it’s a directory, scan it
-				if (is_dir($file)) {
+				// recursive callback to scan new directory
+				$fileList = self::getDirectoryFilenames($file, $subfolder . $filename . '/', $fileList);
 
-					// recursive callback to scan new directory
-					$fileList = self::getDirectoryFilenames($file, $subfolder . $filename . '/', $fileList);
+			// it’s file, add it
+			} else {
 
-				// it’s file, add it
-				} else {
-
-					$fileList[] = $subfolder . $filename;
-
-				}
+				$fileList[] = $subfolder . $filename;
 
 			}
-
-		} catch (PairException $e) {
-
-			trigger_error($e->getMessage());
-			return [];
 
 		}
 
@@ -788,7 +813,7 @@ class Utilities {
 		exec('which ' . $executable, $output, $resultCode);
 
 		if (!isset($output[0]) or !is_executable($output[0])) {
-			LogBar::error($executable . ' is not available on this server');
+			Logger::error($executable . ' is not available on this server');
 		}
 
 		return ($output[0] ?? NULL);
@@ -1057,9 +1082,9 @@ class Utilities {
 
 		// contains events registered by LogBar, if active
 		$logBar = LogBar::getInstance();
-		$eventList = $logBar->getEventListForAjax();
+		$eventList = $logBar->renderForAjax();
 		if ($eventList) {
-			$ret->logBar = $logBar->getEventListForAjax();
+			$ret->logBar = $eventList;
 		}
 
 		$json = json_encode($ret);

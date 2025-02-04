@@ -3,7 +3,7 @@
 namespace Pair\Helpers;
 
 use Pair\Core\Application;
-use Pair\Core\Router;;
+use Pair\Core\Router;
 use Pair\Models\Session;
 use Pair\Models\User;
 
@@ -43,6 +43,12 @@ class LogBar {
 	 * Disabled constructor.
 	 */
 	private function __construct() {}
+
+	public function __toString() {
+
+		return $this->render();
+
+	}
 
 	/**
 	 * Singleton instance method.
@@ -118,8 +124,6 @@ class LogBar {
 
 		$this->timeStart = $this->lastChrono = $this->getMicrotime();
 
-		self::event('Starting Pair framework with base timezone ' . BASE_TIMEZONE);
-
 	}
 
 	/**
@@ -135,11 +139,12 @@ class LogBar {
 
 	/**
 	 * Adds an event, storing its chrono time.
+	 *
 	 * @param	string	Event description.
 	 * @param	string	Event type notice, query, api, warning or error (default is notice).
-	 * @param	string	Optional additional text.
+	 * @param	NULL|string	Optional additional text.
 	 */
-	final public static function event(string $description, string $type='notice', $subtext=NULL): void {
+	final public static function event(string $description, string $type='notice', ?string $subtext=NULL): void {
 
 		$self = self::getInstance();
 
@@ -160,36 +165,17 @@ class LogBar {
 	}
 
 	/**
-	 * AddEvent’s proxy for warning event creations.
-	 * @param	string	Event description.
-	 */
-	final public static function warning(string $description): void {
-
-		self::event($description, 'warning');
-
-	}
-
-	/**
-	 * AddEvent’s proxy for error event creations.
-	 * @param	string	Event description.
-	 */
-	final public static function error(string $description): void {
-
-		self::event($description, 'error');
-
-	}
-
-	/**
 	 * Returns a formatted event list of all chrono steps.
-	 * @return	string|NULL	HTML code of log list.
+	 *
+	 * @return	string	HTML code of log list.
 	 */
-	final public function getEventList(): ?string {
-
-		$app = Application::getInstance();
+	final public function render(): string {
 
 		if (!$this->isEnabled() or !$this->canBeShown()) {
-			return NULL;
+			return '';
 		}
+
+		$app = Application::getInstance();
 
 		$sum			= 0;
 		$log			= '';
@@ -232,7 +218,7 @@ class LogBar {
 
 		// alert about risk of “out of memory”
 		if (($ratio) > 60) {
-			self::warning('Memory usage is ' . round($ratio,0) . '% of limit, will reduce logs');
+			self::event('Memory usage is ' . round($ratio,0) . '% of limit, will reduce logs');
 		}
 
 		foreach ($this->events as $e) {
@@ -341,15 +327,15 @@ class LogBar {
 	/**
 	 * Returns a formatted event list with no header, useful for AJAX purpose.
 	 *
-	 * @return	string|NULL	HTML code of log list.
+	 * @return	string	HTML code of log list.
 	 */
-	final public function getEventListForAjax(): ?string {
+	final public function renderForAjax(): string {
 
 		$app	= Application::getInstance();
 		$router	= Router::getInstance();
 
 		if (!$this->isEnabled() or !$this->canBeShown() or !$router->sendLog()) {
-			return NULL;
+			return '';
 		}
 
 		$log = '';

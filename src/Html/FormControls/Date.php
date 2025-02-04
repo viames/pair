@@ -3,8 +3,8 @@
 namespace Pair\Html\FormControls;
 
 use Pair\Core\Config;
-use Pair\Html\FormControl;
 use Pair\Helpers\Post;
+use Pair\Html\FormControl;
 
 class Date extends FormControl {
 

@@ -2,10 +2,9 @@
 
 namespace Pair\Html\FormControls;
 
+use Pair\Core\Logger;
 use Pair\Exceptions\ErrorCodes;
-use Pair\Exceptions\FormException;
 use Pair\Exceptions\PairException;
-use Pair\Helpers\LogBar;
 use Pair\Helpers\Post;
 use Pair\Helpers\Translator;
 use Pair\Html\FormControl;
@@ -41,6 +40,7 @@ class Select extends FormControl {
 	 * Populates select control with an object array. Each object must have properties
 	 * for value and text. If property text includes a couple of round parenthesys, will
 	 * invoke a function without parameters. It’s a chainable method.
+	 * 
 	 * @param	array|Collection	Associative array [value=>label] or object list [{value,label,attributes}].
 	 * @param	string	Name of property’s value.
 	 * @param	string	Name of property’s text or an existent object function.
@@ -74,7 +74,7 @@ class Select extends FormControl {
 		foreach ($list as $opt) {
 
 			if (!$propertyValue or !$propertyText) {
-				throw new FormException($this->name . ' select control requires a property for value and text', ErrorCodes::MALFORMED_SELECT);
+				throw new PairException($this->name . ' select control requires a property for value and text', ErrorCodes::MALFORMED_SELECT);
 			}
 
 			$option = new \stdClass();
@@ -108,6 +108,7 @@ class Select extends FormControl {
 	/**
 	 * Populate this control through an array in which each element is the group title and
 	 * in turn contains a list of objects with the value and text properties. Chainable.
+	 * 
 	 * @param	array:\stdClass[]	Two-dimensional list.
 	 */
 	public function grouped(array $list): self {
@@ -120,6 +121,7 @@ class Select extends FormControl {
 
 	/**
 	 * Adds a null value as first item. Chainable method.
+	 * 
 	 * @param	string|NULL	Option text for first null value.
 	 */
 	public function empty(?string $text=NULL): self {
@@ -145,38 +147,6 @@ class Select extends FormControl {
 	 */
 	public function render(): string {
 
-		/**
-		 * Build the code of an option HTML tag.
-		 * @var		\stdClass
-		 * @return	string
-		 */
-		$buildOption = function ($option) {
-
-			// check on required properties
-			if (!isset($option->value) or !isset($option->text)) {
-				return '';
-			}
-
-			// check if value is an array
-			if (is_array($this->value)) {
-				$selected = in_array($option->value, $this->value) ? ' selected="selected"' : '';
-			} else {
-				$selected = $this->value == $option->value ? ' selected="selected"' : '';
-			}
-
-			$attributes = '';
-
-			if (isset($option->attributes) and count($option->attributes)) {
-				foreach($option->attributes as $a) {
-					$attributes .= ' ' . $a['name'] . '="' . $a['value'] . '"';
-				}
-			}
-
-			// build the option
-			return '<option value="' . htmlspecialchars((string)$option->value) . '"' . $selected . $attributes . '>' .
-					htmlspecialchars((string)$option->text) . "</option>\n";
-		};
-
 		// add an initial line to the options of this select
 		if (isset($this->emptyOption) and !is_null($this->emptyOption)) {
 			$option			= new \stdClass();
@@ -193,36 +163,59 @@ class Select extends FormControl {
 
 		$ret .= $this->processProperties() . ">\n";
 
-		try {
+		// build each option
+		foreach ($this->list as $item) {
 
-			// build each option
-			foreach ($this->list as $item) {
+			// recognize optgroup
+			if (isset($item->list) and is_array($item->list) and count($item->list)) {
 
-				// recognize optgroup
-				if (isset($item->list) and is_array($item->list) and count($item->list)) {
-
-					$ret .= '<optgroup label="' . htmlspecialchars(isset($item->group) ? (string)$item->group : '') . "\">\n";
-					foreach ($item->list as $option) {
-						$ret .= $buildOption($option);
-					}
-					$ret .= "</optgroup>\n";
-
-				} else {
-
-					$ret .= $buildOption($item);
-
+				$ret .= '<optgroup label="' . htmlspecialchars(isset($item->group) ? (string)$item->group : '') . "\">\n";
+				foreach ($item->list as $option) {
+					$ret .= $this->renderOption($option);
 				}
+				$ret .= "</optgroup>\n";
+
+			} else {
+
+				$ret .= $this->renderOption($item);
 
 			}
-
-		} catch (PairException $e) {
-
-			print $e->getMessage();
 
 		}
 
 		$ret .= "</select>\n";
 		return $ret;
+
+	}
+
+	/**
+	 * Renders an option tag as HTML code.
+	 */
+	private function renderOption(\stdClass $option): string {
+
+	   // check on required properties
+	   if (!isset($option->value) or !isset($option->text)) {
+		   return '';
+	   }
+
+	   // check if value is an array
+	   if (is_array($this->value)) {
+		   $selected = in_array($option->value, $this->value) ? ' selected="selected"' : '';
+	   } else {
+		   $selected = $this->value == $option->value ? ' selected="selected"' : '';
+	   }
+
+	   $attributes = '';
+
+	   if (isset($option->attributes) and count($option->attributes)) {
+		   foreach($option->attributes as $a) {
+			   $attributes .= ' ' . $a['name'] . '="' . $a['value'] . '"';
+		   }
+	   }
+
+	   // build the option
+	   return '<option value="' . htmlspecialchars((string)$option->value) . '"' . $selected . $attributes . '>' .
+			   htmlspecialchars((string)$option->text) . "</option>\n";
 
 	}
 
@@ -236,7 +229,7 @@ class Select extends FormControl {
 		// check if the value is required but empty
 		if ($this->required and (''==$value or is_null($value))) {
 
-			LogBar::warning('Control validation on field “' . $this->name . '” has failed (required)');
+			Logger::notice('Control validation on field “' . $this->name . '” has failed (required)');
 			$valid = FALSE;
 
 		// check if the value is in the allowed list
@@ -257,7 +250,7 @@ class Select extends FormControl {
 				}
 
 				if (!$valid) {
-					LogBar::warning('Control validation on field “' . $this->name . '” has failed (value “' . $value . '” is not in list)');
+					Logger::notice('Control validation on field “' . $this->name . '” has failed (value “' . $value . '” is not in list)');
 				}
 
 			}

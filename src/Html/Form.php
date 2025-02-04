@@ -2,7 +2,7 @@
 
 namespace Pair\Html;
 
-use Pair\Helpers\LogBar;
+use Pair\Core\Logger;
 use Pair\Html\FormControl;
 use Pair\Html\FormControls\Address;
 use Pair\Html\FormControls\Button;
@@ -244,7 +244,7 @@ class Form {
 		if ($this->controlExists($controlName)) {
 			return $this->controls[$controlName];
 		} else {
-			LogBar::error('Field control “' . $controlName . '” has not been defined in Form object');
+			Logger::error('Field control “' . $controlName . '” has not been defined in Form object');
 			return NULL;
 		}
 

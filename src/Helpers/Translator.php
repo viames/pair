@@ -3,9 +3,10 @@
 namespace Pair\Helpers;
 
 use Pair\Core\Application;
+use Pair\Core\Logger;
 use Pair\Core\Router;
+use Pair\Exceptions\CriticalException;
 use Pair\Exceptions\PairException;
-use Pair\Helpers\LogBar;
 use Pair\Models\Locale;
 use Pair\Orm\Collection;
 
@@ -52,6 +53,51 @@ class Translator {
 	}
 
 	/**
+	 * Check that both default and current locales are set.
+	 */
+	private function checkLocaleSet(): void {
+
+		if (!$this->defaultLocale) {
+
+			$locale = Locale::getDefault();
+			$this->defaultLocale = $locale;
+
+			// server variable
+			setlocale(LC_ALL, $locale->getRepresentation());
+
+		}
+
+		if (!isset($this->currentLocale) or !$this->currentLocale) {
+
+			// temporary sets default locale as current
+			$this->currentLocale = $this->defaultLocale;
+
+			// gets favorite language from browser settings
+			if (isset($_SERVER['HTTP_ACCEPT_LANGUAGE'])) {
+
+				preg_match_all('/([[:alpha:]]{1,8})(-([[:alpha:]|-]{1,8}))?' .
+						'(\s*;\s*q\s*=\s*(1\.0{0,3}|0\.\d{0,3}))?\s*(,|$)/i',
+						$_SERVER['HTTP_ACCEPT_LANGUAGE'], $matches, PREG_SET_ORDER);
+
+				// if browser’s lang matches and it’s different by current, will set as current
+				if (!isset($matches[0][1]) or $this->currentLocale->getLanguage()->code == $matches[0][1]) {
+					return;
+				}
+
+				$locale = Locale::getDefaultByLanguage($matches[0][1]);
+				if (!$locale) {
+					return;
+				}
+
+				$this->setLocale($locale);
+
+			}
+
+		}
+
+	}
+
+	/**
 	 * Return the singleton object.
 	 */
 	public static function getInstance(): Translator {
@@ -90,8 +136,6 @@ class Translator {
 
 	/**
 	 * Return the default Locale object, cached.
-	 *
-	 * @return	Locale
 	 */
 	public function getDefaultLocale(): Locale {
 
@@ -164,57 +208,13 @@ class Translator {
 	}
 
 	/**
-	 * Check that both default and current locales are set.
-	 */
-	private function checkLocaleSet(): void {
-
-		if (!$this->defaultLocale) {
-
-			$locale = Locale::getDefault();
-			$this->defaultLocale = $locale;
-
-			// server variable
-			setlocale(LC_ALL, $locale->getRepresentation());
-
-		}
-
-		if (!isset($this->currentLocale) or !$this->currentLocale) {
-
-			// temporary sets default locale as current
-			$this->currentLocale = $this->defaultLocale;
-
-			// gets favorite language from browser settings
-			if (isset($_SERVER['HTTP_ACCEPT_LANGUAGE'])) {
-
-				preg_match_all('/([[:alpha:]]{1,8})(-([[:alpha:]|-]{1,8}))?' .
-						'(\s*;\s*q\s*=\s*(1\.0{0,3}|0\.\d{0,3}))?\s*(,|$)/i',
-						$_SERVER['HTTP_ACCEPT_LANGUAGE'], $matches, PREG_SET_ORDER);
-
-				// if browser’s lang matches and it’s different by current, will set as current
-				if (!isset($matches[0][1]) or $this->currentLocale->getLanguage()->code == $matches[0][1]) {
-					return;
-				}
-
-				$locale = Locale::getDefaultByLanguage($matches[0][1]);
-				if (!$locale) {
-					return;
-				}
-
-				$this->setLocale($locale);
-
-			}
-
-		}
-
-	}
-
-	/**
 	 * Return the translated string from expected lang file, if there, else
 	 * from default, else return the key string.
 	 *
 	 * @param	string	The language key.
 	 * @param	string|array|NULL	Parameter or list of parameters to bind on string (optional).
 	 * @param	bool|NULL	Show a warning if string is not found (optional).
+	 * @param	string|Callable	What to return if string is not found (optional).
 	 */
 	public static function do(string $key, string|array|NULL $vars=NULL, bool $warning=TRUE, string|Callable $default=NULL): string {
 
@@ -241,13 +241,13 @@ class Translator {
 			// search into strings of default language
 			if (isset($self->defaultStrings) and is_array($self->defaultStrings) and array_key_exists($key, $self->defaultStrings) and $self->defaultStrings[$key]) {
 
-				LogBar::warning('Language string ' . $key . ' is untranslated for current language [' . $self->currentLocale->code . ']');
+				Logger::warning('Language string ' . $key . ' is untranslated for current language [' . $self->currentLocale->code . ']');
 				$string = $self->defaultStrings[$key];
 
 			// return the string constant, as debug info
 			} else {
 
-				LogBar::warning('Language string ' . $key . ' is untranslated');
+				Logger::warning('Language string ' . $key . ' is untranslated');
 				$string = '[' . $key . ']';
 
 			}
@@ -273,6 +273,26 @@ class Translator {
 		}
 
 		return $string;
+
+	}
+
+	/**
+	 * Load language strings from ini file and merge them with current strings without overwriting existing ones.
+	 */
+	private function parseLanguageFile(string $filePath): void {
+
+		if (file_exists($filePath) and is_readable($filePath)) {
+
+			$strings = parse_ini_file($filePath);
+			
+			if (is_array($strings) and count($strings)) {
+
+				// merge new strings without overwriting existing ones
+				$this->strings += $strings;
+
+			}
+
+		}
 
 	}
 
@@ -304,7 +324,7 @@ class Translator {
 			return;
 		}
 
-		// avoid failures
+		// initialize
 		$this->strings = [];
 
 		// useful for landing page
@@ -321,64 +341,35 @@ class Translator {
 		// checks that languages are set
 		$this->checkLocaleSet();
 
-		// common strings in current language
-		$common = APPLICATION_PATH . '/translations/' . $this->currentLocale->getRepresentation() . '.ini';
-		if (file_exists($common) and is_readable($common)) {
-			try {
-				$commonFileContent = parse_ini_file($common);
-				if (FALSE == $commonFileContent) {
-					throw new PairException('File parsing failed: ' . $common);
-				}
-				$this->strings = $commonFileContent;
-			} catch (PairException $e) {
-				$this->strings = [];
-			}
-		}
+		$pairLanguageFolder = dirname(dirname(__DIR__)) . '/translations/';
+		$commonLanguageFolder = APPLICATION_PATH . '/translations/';
 
-		// if module is not set, won’t find language file
+		$languageFiles = [];
+
+		// if module is set, loads its module strings
 		if (isset($this->module) and $this->module) {
-
-			// module strings in current language
-			$file1 = APPLICATION_PATH . '/modules/' . strtolower($this->module) . '/translations/' . $this->currentLocale->getRepresentation() . '.ini';
-			if (file_exists($file1)) {
-				$moduleStrings = parse_ini_file($file1);
-				if (FALSE == $moduleStrings) {
-					$moduleStrings = [];
-				}
-				$this->strings = array_merge($this->strings, $moduleStrings);
-			}
-
+			$languageFiles[] = APPLICATION_PATH . '/modules/' . strtolower($this->module) . '/translations/' . $this->currentLocale->getRepresentation() . '.ini';
 		}
 
-		// if current language is different by default, will load also
+		// pair strings and common translation strings in current language
+		$languageFiles[] = $pairLanguageFolder . $this->currentLocale->getRepresentation() . '.ini';
+		$languageFiles[] = $commonLanguageFolder . $this->currentLocale->getRepresentation() . '.ini';
+
+		// if current language is different by default language, will load default strings
 		if ($this->currentLocale->getRepresentation() != $this->defaultLocale->getRepresentation()) {
 
-			// common strings in default language
-			$common = APPLICATION_PATH . '/translations/' . $this->defaultLocale->getRepresentation() . '.ini';
-			if (file_exists($common)) {
-				try {
-					$this->defaultStrings = @parse_ini_file($common);
-				} catch (PairException $e) {
-					$this->defaultStrings = [];
-				}
-			}
-
 			// if module is not set, won’t find language file
-			if ($this->module) {
-
-				// module strings in default language
-				$file2 = 'modules/' . strtolower($this->module) . '/translations/' . $this->defaultLocale->getRepresentation() . '.ini';
-				if (file_exists($file2)) {
-					try {
-						$moduleStrings = @parse_ini_file($file2);
-					} catch (PairException $e) {
-						$moduleStrings = [];
-					}
-					$this->defaultStrings = array_merge($this->defaultStrings, $moduleStrings);
-				}
-
+			if (isset($this->module) and $this->module) {
+				$languageFiles[] = APPLICATION_PATH . '/modules/' . strtolower($this->module) . '/translations/' . $this->defaultLocale->getRepresentation() . '.ini';
 			}
 
+			$languageFiles[] = $pairLanguageFolder . $this->defaultLocale->getRepresentation() . '.ini';
+			$languageFiles[] = $commonLanguageFolder . $this->defaultLocale->getRepresentation() . '.ini';
+
+		}
+
+		foreach ($languageFiles as $langFile) {
+			$this->parseLanguageFile($langFile);
 		}
 
 	}
@@ -412,7 +403,7 @@ class Translator {
 	 * @param	array	List of ActiveRecord objects.
 	 * @param	string	Parameter name.
 	 */
-	public function translateActiveRecordList(array|Collection $list, $propertyName): array|Collection {
+	public function translateActiveRecordList(array|Collection $list, string $propertyName): array|Collection {
 
 		if (!isset($list[0]) or !property_exists($list[0], $propertyName)) {
 			return $list;
@@ -430,11 +421,7 @@ class Translator {
 
 	public static function getDefaultFileName(): string {
 
-		try {
-			return self::$instance->getDefaultLocale()->getRepresentation() . '.ini';
-		} catch(PairException $e) {
-			die('Translator instance has not been created yet');
-		}
+		return self::$instance->getDefaultLocale()->getRepresentation() . '.ini';
 
 	}
 

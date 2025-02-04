@@ -2,6 +2,9 @@
 
 namespace Pair\Helpers;
 
+use Pair\Core\Logger;
+use Pair\Exceptions\PairException;
+
 class Schedule {
 
 	/**
@@ -63,13 +66,9 @@ class Schedule {
 		}
 
 		try {
-
 			$result = call_user_func($this->functionToRun, $this->params);
-
-		} catch (PairException $e) {
-
+		} catch (\Throwable $e) {
 			return FALSE;
-
 		}
 
 		return (bool)$result;

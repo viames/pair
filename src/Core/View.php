@@ -2,8 +2,9 @@
 
 namespace Pair\Core;
 
-use Pair\Exceptions\PairException;
-use Pair\Helpers\LogBar;
+use Pair\Core\Logger;
+use Pair\Exceptions\CriticalException;
+use Pair\Exceptions\ErrorCodes;
 use Pair\Helpers\Options;
 use Pair\Helpers\Translator;
 use Pair\Helpers\Utilities;
@@ -104,8 +105,8 @@ abstract class View {
 
 		try {
 			$this->init();
-		} catch (PairException $e) {
-			$this->logError('View initialization error: ' . $e->getMessage());
+		} catch (\Exception $e) {
+
 		}
 
 	}
@@ -126,17 +127,16 @@ abstract class View {
 	 * Returns, if it exists, the variable assigned to the layout,
 	 * otherwise the property of the method, otherwise NULL.
 	 *
-	 * @param	string	Nome della proprietà richiesta.
+	 * @param	string	Name of the variable.
 	 */
-	public function __get($name): mixed {
+	public function __get(string $name): mixed {
 
 		if (array_key_exists($name, $this->vars)) {
 			return $this->vars[$name];
 		} else if (property_exists($this, $name)) {
 			return $this->$name;
 		} else {
-			$this->logError('The ' . get_called_class() . '->' . $name. ' property doesn’t exist; Null will be returned');
-			return NULL;
+			throw new \Exception('The ' . get_called_class() . '->' . $name. ' property doesn’t exist', ErrorCodes::PROPERTY_NOT_FOUND);
 		}
 
 	}
@@ -149,8 +149,7 @@ abstract class View {
 	 */
 	public function __call($name, $arguments): void {
 
-		$backtrace = debug_backtrace();
-		$this->logError('Method '. get_called_class() . $backtrace[0]['type'] . $name .'(), which doesn’t exist, has been called by '. $backtrace[0]['file'] .' on line '. $backtrace[0]['line']);
+		throw new \Exception('Method '. get_called_class() . '->' . $name .'(), which doesn’t exist, has been called', ErrorCodes::METHOD_NOT_FOUND);
 
 	}
 
@@ -158,10 +157,22 @@ abstract class View {
 	 * Formats page layout including variables and returns.
 	 *
 	 * @param	string	Layout file name without extension (.php).
+	 * @throws	\Exception	If layout file doesn’t exist.
 	 */
 	final public function display(?string $name=NULL): void {
 
-		$this->render();
+		try {
+
+			$this->render();
+
+		} catch (\Exception $e) {
+
+			if ('default' != $this->layout) {
+				$this->redirect();
+			} else {
+				$this->app->redirectToUserDefault();
+			}
+		}
 
 		// look for css files
 		if (is_dir($this->modulePath . '/css')) {
@@ -198,7 +209,7 @@ abstract class View {
 		$file = $this->modulePath .'/'. $this->scriptPath . $name .'.php';
 
 		if (!file_exists($file)) {
-			throw new PairException('Layout “' . $name . '” was not found');
+			throw new CriticalException('Layout “' . $name . '” was not found');
 		}
 
 		// includes layout file
@@ -281,6 +292,7 @@ abstract class View {
 	 * Returns the object of inherited class when called with id as first parameter.
 	 *
 	 * @param	string	Expected object class type.
+	 * @throws	\Exception
 	 */
 	protected function getObjectRequestedById(string $class, ?int $pos=NULL): ?ActiveRecord {
 
@@ -288,13 +300,13 @@ abstract class View {
 		$itemId = Router::get($pos ? abs($pos) : 0);
 
 		if (!$itemId) {
-			throw new PairException($this->lang('NO_ID_OF_ITEM_TO_EDIT', $class));
+			throw new \Exception($this->lang('NO_ID_OF_ITEM_TO_EDIT', $class), ErrorCodes::RECORD_NOT_FOUND);
 		}
 
 		$object = new $class($itemId);
 
 		if (!$object->isLoaded()) {
-			throw new PairException($this->lang('ID_OF_ITEM_TO_EDIT_IS_NOT_VALID', $class));
+			throw new \Exception($this->lang('ID_OF_ITEM_TO_EDIT_IS_NOT_VALID', $class), ErrorCodes::RECORD_NOT_FOUND);
 		}
 
 		return $object;
@@ -307,7 +319,7 @@ abstract class View {
 	public function getPaginationBar(): string {
 
 		if (is_null($this->pagination->count)) {
-			LogBar::error('The “count” parameter needed for pagination has not been set');
+			Logger::error('The “count” parameter needed for pagination has not been set');
 		}
 
 		return $this->pagination->render();

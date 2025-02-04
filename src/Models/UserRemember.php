@@ -3,10 +3,10 @@
 namespace Pair\Models;
 
 use Pair\Core\Application;
+use Pair\Helpers\Utilities;
 use Pair\Models\User;
 use Pair\Orm\ActiveRecord;
 use Pair\Orm\Database;
-use Pair\Helpers\Utilities;
 
 class UserRemember extends ActiveRecord {
 
