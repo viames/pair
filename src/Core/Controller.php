@@ -5,7 +5,6 @@ namespace Pair\Core;
 use Pair\Exceptions\ControllerException;
 use Pair\Exceptions\ErrorCodes;
 use Pair\Exceptions\PairException;
-use Pair\Models\ErrorLog;
 use Pair\Orm\ActiveRecord;
 use Pair\Helpers\Translator;
 use Pair\Helpers\Utilities;
@@ -73,8 +72,9 @@ abstract class Controller {
 
 		try {
 			$this->init();
-		} catch (ControllerException $e) {
-			$this->logError('Controller initialization error: ' . $e->getMessage());
+		} catch (PairException $e) {
+			Logger::error($e->getMessage(), Logger::ERROR);
+			$this->modal(Translator::do('ERROR'), $e->getMessage(), 'error')->confirm('OK');
 		}
 
 		// if a model is not specified, load the default one
@@ -129,11 +129,7 @@ abstract class Controller {
 	 */
 	protected function accessDenied(?string $message=NULL): void {
 
-		$this->toastRedirect(
-			($message ? $message : Translator::do('ACCESS_DENIED')),
-			'',
-			strtolower($this->name)
-		);
+		$this->toastRedirect(Translator::do('ERROR'), ($message ? $message : Translator::do('ACCESS_DENIED')), strtolower($this->name));
 
 	}
 
@@ -151,7 +147,7 @@ abstract class Controller {
 
 		if (!is_subclass_of($view, 'Pair\Core\View')) {
 			if (!$this->router->isRaw()) {
-				$this->app->modal('Error', Translator::do('RESOURCE_NOT_FOUND', $this->router->module . '/' . $this->router->action))->confirm('OK');
+				$this->app->modal(Translator::do('ERROR'), Translator::do('RESOURCE_NOT_FOUND', $this->router->module . '/' . $this->router->action))->confirm('OK');
 			}
 			$this->redirect();
 		}
@@ -162,8 +158,8 @@ abstract class Controller {
 
 		} catch (\Exception $e) {
 
-			ErrorLog::snapshot($e->getMessage(), ErrorLog::ERROR);
-			throw new PairException($e->getMessage());
+			Logger::error($e->getMessage(), Logger::ERROR);
+			$this->modal(Translator::do('ERROR'), $e->getMessage(), 'error')->confirm('OK');
 
 		}
 
@@ -303,7 +299,7 @@ abstract class Controller {
 		throw new ControllerException($message);
 
 		// after the message has been queued, store the error data
-		ErrorLog::snapshot('Failure in ' . \get_class($object) . ' class', ErrorLog::ERROR);
+		Logger::error('Failure in ' . \get_class($object) . ' class', Logger::ERROR);
 
 	}
 

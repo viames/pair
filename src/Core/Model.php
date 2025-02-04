@@ -3,13 +3,15 @@
 namespace Pair\Core;
 
 use Pair\Exceptions\PairException;
-use Pair\Models\ErrorLog;
+use Pair\Helpers\Translator;
+use Pair\Html\Pagination;
 use Pair\Orm\Collection;
 use Pair\Orm\Database;
 use Pair\Orm\Query;
 
 abstract class Model {
 
+	use \Pair\Traits\AppTrait;
 	use \Pair\Traits\LogTrait;
 
 	/**
@@ -19,21 +21,18 @@ abstract class Model {
 
 	/**
 	 * Pagination object, started from the View.
-	 * @var Pagination
 	 */
-	private $pagination;
+	private ?Pagination $pagination = NULL;
 
 	/**
 	 * Database handler object.
-	 * @var Database
 	 */
-	private $db;
+	private Database $db;
 
 	/**
 	 * List of all errors tracked.
-	 * @var array
 	 */
-	private $errors = [];
+	private array $errors = [];
 
 	/**
 	 * Constructor, connects to db.
@@ -48,7 +47,8 @@ abstract class Model {
 		try {
 			$this->init();
 		} catch (PairException $e) {
-			ErrorLog::snapshot($e->getMessage(), ErrorLog::ERROR);
+			Logger::error($e->getMessage());
+			$this->modal(Translator::do('ERROR'), $e->getMessage(), 'error')->confirm('OK');
 		}
 
 	}
@@ -119,6 +119,7 @@ abstract class Model {
 	/**
 	 * Returns list of all object specified in param, within pagination limit and sets
 	 * pagination count.
+	 * 
 	 * @param	string	Name of desired class.
 	 * @param	string	Ordering db field.
 	 * @param	bool	Sorting direction ASC or DESC (optional)
@@ -129,16 +130,15 @@ abstract class Model {
 			return [];
 		}
 
-		// set pagination count
 		$this->pagination->count = $class::countAllObjects();
 
 		$orderDir = $descOrder ? 'DESC' : 'ASC';
 
 		$query =
-			'SELECT *' .
-			' FROM `' . $class::TABLE_NAME . '`' .
-			($orderBy ? ' ORDER BY `' . $orderBy . '` ' . $orderDir : NULL) .
-			' LIMIT ' . $this->pagination->start . ', ' . $this->pagination->limit;
+			'SELECT *
+			FROM `' . $class::TABLE_NAME . '`
+			' . ($orderBy ? ' ORDER BY `' . $orderBy . '` ' . $orderDir : NULL) . '
+			LIMIT ' . $this->pagination->start . ', ' . $this->pagination->limit;
 
 		return $class::getObjectsByQuery($query);
 
@@ -181,6 +181,7 @@ abstract class Model {
 
 	/**
 	 * Returns object list with pagination by running the query in getQuery() method.
+	 * 
 	 * @param	string		Active record class name.
 	 * @param	Query|string	Optional query.
 	 */
@@ -199,6 +200,7 @@ abstract class Model {
 
 	/**
 	 * Returns count of available objects.
+	 * 
 	 * @param	string		Active record class name.
 	 * @param	Query|string	Optional query.
 	 */
@@ -210,19 +212,22 @@ abstract class Model {
 			case 'object':
 				$query = $optionalQuery->toSql();
 				break;
+
 			case 'string':
 				$query = $optionalQuery;
 				break;
+
 			default:
 				$query = $this->getQuery($class);
 		}
 
-		return (int)Database::load('SELECT COUNT(1) FROM (' . $query . ') AS `result`', [], PAIR_DB_COUNT);
+		return Database::load('SELECT COUNT(1) FROM (' . $query . ') AS `result`', [], Database::COUNT);
 
 	}
 
 	/**
 	 * Create and return the SQL to retrieve the elements of the default item list.
+	 * 
 	 * @param	string	ActiveRecord’s class name.
 	 */
 	protected function getQuery(string $class): Query|string {

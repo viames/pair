@@ -7,7 +7,7 @@ class ErrorCodes {
 	/**
 	 * Error connecting to the database.
 	 */
-	const CONNECTION_FAILED = 1001;
+	const DB_CONNECTION_FAILED = 1001;
 
 	/**
 	 * Duplicate of a unique or primary key.
@@ -27,7 +27,7 @@ class ErrorCodes {
 	/**
 	 * Query failed.
 	 */
-	const QUERY_FAILED = 1005;
+	const DB_QUERY_FAILED = 1005;
 
 	/**
 	 * Unexpected error during writing.
@@ -97,7 +97,7 @@ class ErrorCodes {
 	/**
 	 * Error code for invalid request.
 	 */
-	const ERROR_INVALID_REQUEST = 1019;
+	const INVALID_REQUEST = 1019;
 
 	/**
 	 * Error loading template file.
@@ -152,7 +152,7 @@ class ErrorCodes {
 	/**
 	 * Error loading .env configuration file.
 	 */
-	const LOADING_ENV = 1030;
+	const LOADING_ENV_FILE = 1030;
 
 	/**
 	 * Error unserializing cookie data.
@@ -198,5 +198,50 @@ class ErrorCodes {
 	 * Invalid logger.
 	 */
 	const INVALID_LOGGER = 1039;
+
+	/**
+	 * Telegram failure.
+	 */
+	const TELEGRAM_FAILURE = 1040;
+
+	/**
+	 * Email failure.
+	 */
+	const EMAIL_FAILURE = 1041;
+
+	/**
+	 * Error code for page not found.
+	 */
+	const PAGE_NOT_FOUND = 1042;
+
+	/**
+	 * Error code for widget not found.
+	 */
+	const WIDGET_NOT_FOUND = 1043;
+
+	/**
+	 * Plugin already installed.
+	 */
+	const PLUGIN_ALREADY_INSTALLED = 1044;
+
+	/**
+	 * Unvalid error level for logger.
+	 */
+	const UNVALID_ERROR_LEVEL = 1045;
+
+	/**
+	 * Invalid collection key.
+	 */
+	const INVALID_COLLECTION_KEY = 1046;
+
+	/**
+	 * Invalid collection value.
+	 */
+	const INVALID_COLLECTION_VALUE = 1047;
+
+	/**
+	 * Invalid collection item type.
+	 */
+	const INVALID_COLLECTION_ITEM_TYPE = 1048;
 
 }

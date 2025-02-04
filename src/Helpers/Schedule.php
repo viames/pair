@@ -2,6 +2,8 @@
 
 namespace Pair\Helpers;
 
+use Pair\Exceptions\PairException;
+
 class Schedule {
 
 	/**

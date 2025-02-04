@@ -3,6 +3,7 @@
 namespace Pair\Html;
 
 use Pair\Core\Router;
+use Pair\Exceptions\PairException;
 
 class Pagination {
 

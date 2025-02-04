@@ -70,7 +70,7 @@ class Options {
 		$self->populate();
 
 		if (!static::exists($name)) {
-			LogBar::warning('Option “'. $name .'” doesn’t exist.');
+			Logger::warning('Option “'. $name .'” doesn’t exist.');
 			return NULL;
 		}
 
@@ -125,7 +125,7 @@ class Options {
 
 		} catch(PairException $e) {
 
-			LogBar::warning($e->getMessage());
+			Logger::warning($e->getMessage());
 
 		}
 
@@ -212,7 +212,7 @@ class Options {
 				if ($this->isCryptAvailable()) {
 					$value = openssl_decrypt($value, 'AES128', Config::get('OPTIONS_CRYPT_KEY'));
 				} else {
-					LogBar::warning('OPTIONS_CRYPT_KEY value must be defined into .env configuration file.');
+					Logger::warning('OPTIONS_CRYPT_KEY value must be defined into .env configuration file.');
 				}
 				break;
 

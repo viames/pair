@@ -3,8 +3,8 @@
 namespace Pair\Helpers;
 
 use Pair\Exceptions\PairException;
-use Pair\Services\AmazonS3;
 use Pair\Helpers\Utilities;
+use Pair\Services\AmazonS3;
 
 /**
  * This class manages http file uploads.
@@ -324,7 +324,7 @@ class Upload {
 	private function setError(string $error): void {
 
 		$this->errors[] = $error;
-		LogBar::error($error);
+		Logger::error($error);
 
 	}
 

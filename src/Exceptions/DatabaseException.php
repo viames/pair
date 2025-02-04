@@ -16,6 +16,10 @@ class DatabaseException extends PairException {
 	 */
 	public function __construct(string $message = 'Database error', int $code = 0, ?\Throwable $previous = NULL) {
 
+		if (ErrorCodes::DB_CONNECTION_FAILED == $code) {
+			CriticalException::throw($message, $code);
+		}
+
 		parent::__construct($message, $code, $previous);
 
 	}

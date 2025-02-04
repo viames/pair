@@ -3,55 +3,50 @@
 namespace Pair\Helpers;
 
 use Pair\Core\Application;
+use Pair\Core\Logger;
+use Pair\Exceptions\ErrorCodes;
+use Pair\Exceptions\PairException;
 use Pair\Helpers\Utilities;
 
 class Plugin {
 
 	/**
-	 * Plugin type (module, template, other)
-	 * @var string
+	 * Plugin type (module, template, {custom}).
 	 */
-	protected $type;
+	protected string $type;
 
 	/**
-	 * The plugin name;
-	 * @var string
+	 * The plugin name.
 	 */
-	protected $name;
+	protected string $name;
 
 	/**
 	 * Absolute path to plugin base folder based on its type, without trailing slash.
-	 * @var string
 	 */
-	protected $baseFolder;
+	protected string $baseFolder;
 
 	/**
 	 * Plugin version number.
-	 * @var string
 	 */
-	protected $version;
+	protected string $version;
 
 	/**
 	 * Date of package release in format Y-m-d.
-	 * @var string
 	 */
-	protected $dateReleased;
+	protected string $dateReleased;
 
 	/**
 	 * Version of application on which installs.
-	 * @var string
 	 */
-	protected $appVersion;
+	protected string $appVersion;
 
 	/**
 	 * A list of plugin option fields.
-	 * @var array
 	 */
-	protected $options = [];
+	protected array $options = [];
 
 	/**
 	 * Life time of file in cache folder (minutes).
-	 * @var int
 	 */
 	const FILE_EXPIRE = 30;
 
@@ -82,10 +77,9 @@ class Plugin {
 	 * Will returns property’s value if set. Throw an exception and returns NULL if not set.
 	 *
 	 * @param	string	Property’s name.
-	 * @throws	Exception
-	 * @return	mixed|NULL
+	 * @throws	PairException
 	 */
-	public function __get($name) {
+	public function __get($name): mixed {
 
 		try {
 
@@ -110,7 +104,7 @@ class Plugin {
 	 * @param	string	Property’s name.
 	 * @param	mixed	Property’s value.
 	 */
-	public function __set($name, $value) {
+	public function __set($name, $value): void {
 
 		$this->$name = $value;
 
@@ -139,9 +133,6 @@ class Plugin {
 
 		// extract all zip contents
 		$zip->extractTo($tempFolder);
-
-		// checks if all contents are in a subfolder
-		$stat = $zip->statIndex(0);
 
 		// locates manifest file
 		$manifestIndex = $zip->locateName('manifest.xml', \ZipArchive::FL_NOCASE|\ZipArchive::FL_NODIR);
@@ -226,7 +217,6 @@ class Plugin {
 	 * Load the manifest from a passed file.
 	 *
 	 * @param	string				Path to the file.
-	 * @return	\SimpleXMLElement
 	 */
 	public static function getManifestByFile(string $file): \SimpleXMLElement {
 
@@ -268,7 +258,8 @@ class Plugin {
 
 		// check if plugin is already installed
 		if ($class::pluginExists($mPlugin->name)) {
-			throw new PairException('PLUGIN_IS_ALREADY_INSTALLED');
+			$msg = Translator::do('PLUGIN_IS_ALREADY_INSTALLED', $mPlugin->name);
+			throw new PairException($msg, ErrorCodes::PLUGIN_ALREADY_INSTALLED);
 		}
 
 		// creates plugin object
@@ -321,7 +312,7 @@ class Plugin {
 		$zip->close();
 
 		// add some log
-		LogBar::event('Created ZIP file archive ' . $zipFile . ' for ' . $this->type . ' plugin');
+		Logger::notice('Created ZIP file archive ' . $zipFile . ' for ' . $this->type . ' plugin');
 
 		// lets user download the ZIP file
 		header("Content-Type: application/zip");
@@ -384,7 +375,7 @@ class Plugin {
 	public static function removeOldFiles() {
 
 		if (!is_dir(TEMP_PATH)) {
-			LogBar::error('Folder ' . TEMP_PATH . ' cannot be accessed');
+			Logger::error('Folder ' . TEMP_PATH . ' cannot be accessed');
 			return;
 		}
 
@@ -405,7 +396,7 @@ class Plugin {
 
 		}
 
-		LogBar::event($counter
+		Logger::notice($counter
 			? $counter . ' files has been deleted from temporary folder'
 			: 'No old files deleted from temporary folder'
 		);
@@ -429,7 +420,7 @@ class Plugin {
 				} else if (is_int($value) or is_string($value)) {
 					$element->addChild($name, (string)$value);
 				} else {
-					LogBar::error('Option item ' . $name . ' is not valid');
+					Logger::error('Option item ' . $name . ' is not valid');
 				}
 
 			}
@@ -438,7 +429,7 @@ class Plugin {
 
 		// prevent missing folders
 		if (!is_dir($this->baseFolder)) {
-			LogBar::error('Folder ' . $this->baseFolder . ' of ' . $this->name . ' ' . $this->type . ' plugin cannot be accessed');
+			Logger::error('Folder ' . $this->baseFolder . ' of ' . $this->name . ' ' . $this->type . ' plugin cannot be accessed');
 			return FALSE;
 		}
 
@@ -477,10 +468,10 @@ class Plugin {
 
 		try {
 			$res = $manifest->asXML($filename);
-			LogBar::event('Created manifest file ' . $filename . ' for ' . $this->type . ' plugin');
+			Logger::notice('Created manifest file ' . $filename . ' for ' . $this->type . ' plugin');
 		} catch (PairException $e) {
 			$res = FALSE;
-			LogBar::error('Manifest file ' . $filename . ' creation failed for ' . $this->type . ' plugin: ' . $e->getMessage());
+			Logger::error('Manifest file ' . $filename . ' creation failed for ' . $this->type . ' plugin: ' . $e->getMessage());
 		}
 
 		return $res;

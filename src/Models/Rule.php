@@ -90,18 +90,16 @@ class Rule extends ActiveRecord {
 	 * @param	int		Module ID.
 	 * @param	string	Action name.
 	 * @param	bool	Optional flag to get admin-only rules.
-	 *
-	 * @return	\stdClass|NULL
 	 */
-	public static function getRuleModuleName($module_id, $action, $adminOnly=FALSE): ?\stdClass {
+	public static function getRuleModuleName(int $module_id, string $action, bool $adminOnly=FALSE): ?\stdClass {
 
 		$query =
-			' SELECT m.name AS moduleName,r.action AS ruleAction, r.admin_only '.
-			' FROM `rules` AS r '.
-			' INNER JOIN `modules` AS m ON m.id = r.module_id '.
-			' WHERE m.id = ? AND r.action = ? AND r.admin_only = ?';
+			'SELECT m.`name` AS `moduleName`, r.`action` AS `ruleAction`, r.`admin_only`
+			FROM `rules` AS r
+			INNER JOIN `modules` AS m ON m.`id` = r.`module_id`
+			WHERE m.`id` = ? AND r.`action` = ? AND r.`admin_only` = ?';
 
-		return Database::load($query, [$module_id, $action, $adminOnly], PAIR_DB_OBJECT);
+		return Database::load($query, [$module_id, $action, $adminOnly], Database::OBJECT);
 
 	}
 

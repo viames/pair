@@ -6,7 +6,7 @@ use CurlHandle;
 
 use Pair\Core\Config;
 use Pair\Exceptions\ErrorCodes;
-use Pair\Exceptions\PairException;
+use Pair\Exceptions\LoggerException;
 use Pair\Helpers\Utilities;
 
 /**
@@ -73,6 +73,7 @@ class ElkLogger {
         ];
 
         $this->sendToElk($logData);
+    
     }
 
     /**
@@ -87,7 +88,7 @@ class ElkLogger {
         $ch = curl_init($url);
 
         if (!$ch instanceof CurlHandle) {
-            throw new PairException('Curl initialization of Elasticsearch failed', ErrorCodes::LOGGER_FAILURE);
+            throw new LoggerException('Curl initialization of Elasticsearch failed', ErrorCodes::LOGGER_FAILURE);
         }
 
 		$payload = json_encode($logData, JSON_THROW_ON_ERROR);
@@ -102,7 +103,7 @@ class ElkLogger {
         }
 
         curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_RETURNTRANSFER => TRUE,
             CURLOPT_CUSTOMREQUEST  => 'POST',
             CURLOPT_POSTFIELDS     => $payload,
             CURLOPT_HTTPHEADER     => $headers
@@ -113,7 +114,7 @@ class ElkLogger {
         curl_close($ch);
 
         if (!in_array($httpCode, [200, 201])) {
-            throw new PairException($response, ErrorCodes::LOGGER_FAILURE);
+            throw new LoggerException($response, ErrorCodes::LOGGER_FAILURE);
         }
 
     }

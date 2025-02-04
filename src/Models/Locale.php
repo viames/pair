@@ -2,8 +2,8 @@
 
 namespace Pair\Models;
 
+use Pair\Core\Logger;
 use Pair\Exceptions\PairException;
-use Pair\Helpers\LogBar;
 use Pair\Helpers\Utilities;
 use Pair\Orm\ActiveRecord;
 use Pair\Orm\Database;
@@ -308,7 +308,7 @@ class Locale extends ActiveRecord {
 
 		} catch (PairException $e) {
 
-			LogBar::error('Translation file ' . $file . ' cannot be written due its permission');
+			Logger::error('Translation file ' . $file . ' cannot be written due its permission');
 			$res = FALSE;
 
 		}

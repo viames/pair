@@ -2,8 +2,8 @@
 
 namespace Pair\Models;
 
-use Pair\Exceptions\PairException;
-use Pair\Helpers\LogBar;
+use Pair\Core\Logger;
+use Pair\Exceptions\CriticalException;
 use Pair\Helpers\Plugin;
 use Pair\Helpers\PluginInterface;
 use Pair\Helpers\Utilities;
@@ -98,8 +98,6 @@ class Template extends ActiveRecord implements PluginInterface {
 
 	/**
 	 * Returns array with matching object property name on related db fields.
-	 *
-	 * @return	array
 	 */
 	protected static function getBinds(): array {
 
@@ -131,14 +129,14 @@ class Template extends ActiveRecord implements PluginInterface {
 
 		if ($res) {
 
-			LogBar::event('Plugin folder ' . $plugin->baseFolder . ' has been deleted');
+			Logger::notice('Plugin folder ' . $plugin->baseFolder . ' has been deleted');
 
 		} else {
 
 			if (is_dir($plugin->baseFolder)) {
-				LogBar::warning('Plugin folder ' . $plugin->baseFolder . ' has not been deleted due unexpected error');
+				Logger::warning('Plugin folder ' . $plugin->baseFolder . ' has not been deleted due unexpected error');
 			} else {
-				LogBar::warning('Plugin folder ' . $plugin->baseFolder . ' has not been found');
+				Logger::warning('Plugin folder ' . $plugin->baseFolder . ' has not been found');
 			}
 		}
 
@@ -146,8 +144,6 @@ class Template extends ActiveRecord implements PluginInterface {
 
 	/**
 	 * Returns absolute path to plugin folder.
-	 *
-	 * @return	string
 	 *
 	 * @see		PluginInterface::getBaseFolder()
 	 */
@@ -209,8 +205,6 @@ class Template extends ActiveRecord implements PluginInterface {
 
 	/**
 	 * Returns the default Template object.
-	 *
-	 * @return	Template|NULL
 	 */
 	public static function getDefault(): ?self {
 
@@ -222,9 +216,8 @@ class Template extends ActiveRecord implements PluginInterface {
 	 * Load and return a Template object by its name.
 	 *
 	 * @param	string	Template name.
-	 * @return	Template|NULL
 	 */
-	public static function getPluginByName(string $name): self {
+	public static function getPluginByName(string $name): ?self {
 
 		return self::getObjectByQuery('SELECT * FROM `templates` WHERE `name`=?', [$name]);
 
@@ -241,7 +234,12 @@ class Template extends ActiveRecord implements PluginInterface {
 
 	}
 
-	public function loadStyle($styleName): void {
+	/**
+	 * Load the style page file.
+	 *
+	 * @param	string	Style name.
+	 */
+	public function loadStyle(string $styleName): void {
 
 		// by default load template style
 		$styleFile = $this->getBaseFolder() . '/' . strtolower($this->name) . '/' . $styleName . '.php';
@@ -252,7 +250,7 @@ class Template extends ActiveRecord implements PluginInterface {
 		}
 
 		if (!file_exists($styleFile)) {
-			throw new PairException('Template style ' . $styleName . ' not found');
+			throw new CriticalException('Template style ' . $styleName . ' not found');
 		}
 
 		// load the style page file
@@ -260,6 +258,9 @@ class Template extends ActiveRecord implements PluginInterface {
 
 	}
 
+	/**
+	 * Returns the path to the template folder.
+	 */
 	public function getPath() {
 
 		$templateName = $this->derived ? $this->base->name : $this->name;

@@ -235,7 +235,7 @@ class SweetAlert {
 
 		$script .= 'title: "' . addslashes($this->title) . '",';
 		$script .= 'text: "' . addcslashes($this->text,"\"\n\r") . '",';
-		$script .= 'icon: "' . addslashes($this->icon) . '"';
+		$script .= $this->icon ? 'icon: "' . addslashes($this->icon) . '"' : '';
 
 		if ($this->confirmButtonText) {
 			$script .= ',confirmButtonText: "' . addslashes($this->confirmButtonText) . '"';

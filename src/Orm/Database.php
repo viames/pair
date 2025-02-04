@@ -3,18 +3,10 @@
 namespace Pair\Orm;
 
 use Pair\Core\Config;
+use Pair\Core\Logger;
 use Pair\Exceptions\DatabaseException;
+use Pair\Exceptions\ErrorCodes;
 use Pair\Exceptions\PairException;
-use Pair\Models\ErrorLog;
-use Pair\Helpers\LogBar;
-
-define ('PAIR_DB_OBJECT_LIST',	1);
-define ('PAIR_DB_OBJECT',		2);
-define ('PAIR_DB_RESULT_LIST',	3);
-define ('PAIR_DB_RESULT',		4);
-define ('PAIR_DB_COUNT',		5);
-define ('PAIR_DB_DICTIONARY',	6);
-define ('PAIR_DB_COLLECTION',	7);
 
 /**
  * Manages a PDO DB connection using the singleton pattern.
@@ -42,6 +34,41 @@ class Database {
 	private array $definitions = [];
 
 	/**
+	 * Constant for array of objects return of the load() method.
+	 */
+	const OBJECT_LIST = 1;
+
+	/**
+	 * Costant for single object return of the load() method.
+	 */
+	const OBJECT = 2;
+
+	/**
+	 * Constant for array of results return of the load() method.
+	 */
+	const RESULT_LIST = 3;
+
+	/**
+	 * Constant for single result return of the load() method.
+	 */
+	const RESULT = 4;
+
+	/**
+	 * Constant for count of results return of the load() method.
+	 */
+	const COUNT = 5;
+
+	/**
+	 * Constant for dictionary return of the load() method.
+	 */
+	const DICTIONARY = 6;
+
+	/**
+	 * Constant for Collection return of the load() method.
+	 */
+	const COLLECTION = 7;
+
+	/**
 	 * Private constructor.
 	 */
 	private function __construct() {}
@@ -52,6 +79,20 @@ class Database {
 	public static function commit(): void {
 
 		static::run('COMMIT');
+
+	}
+
+	private function castParams(&$params): void {
+
+		foreach ($params as $key=>$value) {
+			if (is_bool($value)) {
+				$params[$key] = $value ? 1 : 0;
+			} else if (is_null($value)) {
+				$params[$key] = NULL;
+			} else if (is_a($value, \DateTime::class)) {
+				$params[$key] = $value->format('Y-m-d H:i:s');
+			}
+		}
 
 	}
 
@@ -95,7 +136,7 @@ class Database {
 			}
 		}
 
-		$res = self::load('DESCRIBE `' . $tableName . '` `' . $column . '`', [], PAIR_DB_OBJECT);
+		$res = self::load('DESCRIBE `' . $tableName . '` `' . $column . '`', [], Database::OBJECT);
 
 		return ($res ? $res : NULL);
 
@@ -128,7 +169,7 @@ class Database {
 
 		unset($this->handler);
 
-		LogBar::event('Database is disconnected');
+		Logger::notice('Database connection closed', 'info');
 
 	}
 
@@ -165,9 +206,7 @@ class Database {
 
 		} catch (\PDOException $e) {
 
-			ErrorLog::snapshot($e, ErrorLog::ERROR);
-
-			throw new DatabaseException($e->getMessage());
+			DatabaseException::throw($e->getMessage(), ErrorCodes::DB_QUERY_FAILED, $e);
 
 		}
 
@@ -527,12 +566,12 @@ class Database {
 	}
 
 	/**
-	 * Return data in various formats by third string parameter. Default is PAIR_DB_OBJECT_LIST parameters
+	 * Return data in various formats by third string parameter. Default is self::OBJECT_LIST parameters
 	 * as array. Support PDO parameters bind.
 	 *
 	 * @param	string	SQL query.
 	 * @param	array	List of parameters to bind on the sql query.
-	 * @param	int		Returned type (see constants PAIR_DB_*). PAIR_DB_OBJECT_LIST is default.
+	 * @param	int		Returned type (see class constants). self::OBJECT_LIST is default.
 	 */
 	public static function load(string $query, array $params=[], ?int $option=NULL): array|Collection|\stdClass|string|int|NULL {
 
@@ -541,6 +580,8 @@ class Database {
 		$self->openConnection();
 
 		$res = NULL;
+
+		$self->castParams($params);
 
 		try {
 
@@ -554,43 +595,43 @@ class Database {
 
 				// list of \stdClass objects
 				default:
-				case PAIR_DB_OBJECT_LIST:
+				case self::OBJECT_LIST:
 					$res = $stat->fetchAll(\PDO::FETCH_OBJ);
 					$count = count($res);
 					break;
 
 				// first row as \stdClass object
-				case PAIR_DB_OBJECT:
+				case self::OBJECT:
 					$res = $stat->fetch(\PDO::FETCH_OBJ);
 					if (!$res) $res = NULL;
 					$count = (bool)$res;
 					break;
 
 				// array of first column results
-				case PAIR_DB_RESULT_LIST:
+				case self::RESULT_LIST:
 					$res = $stat->fetchAll(\PDO::FETCH_COLUMN);
 					$count = count($res);
 					break;
 
 				// first column of first row
-				case PAIR_DB_RESULT:
+				case self::RESULT:
 					$res = $stat->fetch(\PDO::FETCH_COLUMN);
 					$count = $self->handler->query('SELECT FOUND_ROWS()')->fetchColumn();
 					break;
 
 				// result count as integer
-				case PAIR_DB_COUNT:
+				case self::COUNT:
 					$res = (int)$stat->fetch(\PDO::FETCH_COLUMN);
 					$count = $res;
 					break;
 
 				// associative array
-				case PAIR_DB_DICTIONARY:
+				case self::DICTIONARY:
 					$res = $stat->fetchAll(\PDO::FETCH_ASSOC);
 					$count = count($res);
 					break;
 
-				case PAIR_DB_COLLECTION:
+				case self::COLLECTION:
 					$res = new Collection($stat->fetchAll(\PDO::FETCH_OBJ));
 					$count = $res->count();
 					break;
@@ -763,7 +804,7 @@ class Database {
 
 		$subtext = (int)$result . ' ' . (1==$result ? 'row' : 'rows');
 
-		LogBar::event($query, 'query', $subtext);
+		Logger::notice($query, 'query', $subtext);
 
 	}
 
@@ -781,7 +822,7 @@ class Database {
 
 		$dsn = 'mysql:host=' . Config::get('DB_HOST') . ';dbname=' . Config::get('DB_NAME');
 		$options = [
-			\PDO::ATTR_PERSISTENT			=> (bool)$persistent,
+			\PDO::ATTR_PERSISTENT			=> $persistent,
 			\PDO::MYSQL_ATTR_INIT_COMMAND	=> "SET NAMES utf8",
 			\PDO::MYSQL_ATTR_FOUND_ROWS		=> TRUE
 		];
@@ -790,17 +831,17 @@ class Database {
 
 			$this->handler = new \PDO($dsn, Config::get('DB_USER'), Config::get('DB_PASS'), $options);
 
-			if (!is_a($this->handler, 'PDO')) {
-				throw new DatabaseException('Db handler is not valid, connection failed');
-			}
+		} catch (\PDOException $e) {
 
-			$this->handler->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-
-		} catch (\Exception $e) {
-
-			exit($e->getMessage());
+			DatabaseException::throw($e->getMessage(), ErrorCodes::DB_CONNECTION_FAILED, $e);
 
 		}
+
+		if (!is_a($this->handler, 'PDO')) {
+			DatabaseException::throw('PDO connection failed', ErrorCodes::DB_CONNECTION_FAILED);
+		}
+
+		$this->handler->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
 
 	}
 

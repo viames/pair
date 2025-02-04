@@ -2,6 +2,7 @@
 
 namespace Pair\Core;
 
+use Pair\Exceptions\CriticalException;
 use Pair\Exceptions\ErrorCodes;
 use Pair\Exceptions\PairException;
 use Pair\Helpers\LogBar;
@@ -10,8 +11,8 @@ use Pair\Helpers\Translator;
 use Pair\Helpers\Utilities;
 use Pair\Html\IziToast;
 use Pair\Html\SweetAlert;
+use Pair\Html\Widget;
 use Pair\Models\Audit;
-use Pair\Models\ErrorLog;
 use Pair\Models\Oauth2Token;
 use Pair\Models\Session;
 use Pair\Models\Template;
@@ -122,11 +123,6 @@ class Application {
 	protected string $pageScripts = '';
 
 	/**
-	 * User choice about the error-log platform to use. Default is Pair.
-	 */
-	protected string $logger = 'Pair';
-
-	/**
 	 * Private constructor called by getInstance(). No LogBar calls here.
 	 */
 	private function __construct() {
@@ -153,20 +149,12 @@ class Application {
 
 		$this->defineConstants();
 
-		if (Config::get('SENTRY_DSN')) {
-			\Sentry\init([
-				'dsn' => Config::get('SENTRY_DSN'),
-				'environment' => self::getEnvironment()
-			]);
-			LogBar::event('Sentry activated');
-		}
-
-		if (Config::get('BUGSNAG_API_KEY')) {
-			LogBar::event('BugSnag activated');
+		if (!Config::envFileExists()) {
+			throw new CriticalException('Configuration file not found', ErrorCodes::LOADING_ENV_FILE);
 		}
 
 		// custom error handlers
-		ErrorLog::setCustomErrorHandlers();
+		Logger::setCustomErrorHandlers();
 
 		// routing initialization
 		$router = Router::getInstance();
@@ -234,7 +222,7 @@ class Application {
 				// then return NULL
 				} else {
 
-					LogBar::error('Property “'. $name .'” doesn’t exist for this object '. get_called_class());
+					Logger::error('Property “'. $name .'” doesn’t exist for this object '. get_called_class());
 					$value = NULL;
 
 				}
@@ -734,7 +722,7 @@ class Application {
 					' (' . sprintf('%+06.2f', (float)$this->currentUser->tzOffset) . ')';
 
 				// add log about user session
-				LogBar::event($eventMessage);
+				Logger::notice($eventMessage);
 
 				// set defaults in case of no module
 				if (!$router->module) {
@@ -748,7 +736,7 @@ class Application {
 				// access denied
 				if (!$this->currentUser->canAccess((string)$router->module, $router->action)) {
 					$landing = $user->getLanding();
-					$this->toastError('Access denied to ' . $resource);
+					$this->toastError(Translator::do('ERROR'), 'Access denied to ' . $resource);
 					$this->redirect($landing->module . '/' . $landing->action);
 				}
 
@@ -875,6 +863,16 @@ class Application {
 	}
 
 	/**
+	 * Print a widget by its name.
+	 */
+	public function printWidget(string $name): void {
+
+		$widget = new Widget($name);
+		print $widget->render();
+
+	}
+
+	/**
 	 * Store an ActiveRecord object into the common cache of Application singleton.
 	 *
 	 * @param	string			Name of the ActiveObject class.
@@ -885,7 +883,7 @@ class Application {
 		// can’t manage composite key
 		if (1 == count((array)$object->keyProperties) ) {
 			$this->activeRecordCache[$class][(string)$object->getId()] = $object;
-			LogBar::event('Stored ' . get_class($object) . ' object with id=' . (string)$object->getId() . ' in common cache');
+			Logger::notice('Stored ' . get_class($object) . ' object with id=' . (string)$object->getId() . ' in common cache');
 		}
 
 	}
@@ -1175,7 +1173,7 @@ class Application {
 		// check controller file existence
 		if (!file_exists($controllerFile) or '404' == $router->url) {
 
-			$this->toastError(Translator::do('RESOURCE_NOT_FOUND', $router->url));
+			$this->toastError(Translator::do('ERROR'), Translator::do('RESOURCE_NOT_FOUND', $router->url));
 			$this->style = '404';
 			$this->pageTitle = 'HTTP 404 error';
 			http_response_code(404);
@@ -1197,37 +1195,34 @@ class Application {
 				foreach ($router->vars as $key=>$value) {
 					$params[] = $key . '=' . Utilities::varToText($value);
 				}
-				LogBar::event(date('Y-m-d H:i:s') . ' AJAX call on ' . $this->module . '/' . $this->action . ' with params ' . implode(', ', $params));
+				Logger::notice(date('Y-m-d H:i:s') . ' AJAX call on ' . $router->module . '/' . $router->action . ' with params ' . implode(', ', $params));
 
 			// log controller method call
 			} else {
 
-				LogBar::event('Called controller method ' . $controllerName . '->' . $action . '()');
+				Logger::notice('Called controller method ' . $controllerName . '->' . $action . '()');
 
+			}
+
+			$controller = new $controllerName();
+
+			if (!is_a($controller, 'Pair\Core\Controller')) {
+				throw new PairException('Controller ' . $controllerName . ' must inherit from Pair\Controller', ErrorCodes::CONTROLLER_NOT_FOUND);
 			}
 
 			try {
 
-				$controller = new $controllerName();
-
 				if (method_exists($controller, $action)) {
 					$controller->$action();
 				} else {
-					LogBar::event('Method ' . $controllerName . '->' . $action . '() not found');
+					Logger::notice('Method ' . $controllerName . '->' . $action . '() not found');
 				}
 
 			} catch (PairException $e) {
 
 				if (!$router->isRaw()) {
-
-					$this->modal('Error', $e->getMessage(), 'error')->confirm('OK');
-
-					//$destUrl = $router->action ? $router->module . '/' . $router->action : $router->module;
-					//$this->redirect($destUrl);
-
+					$this->modal(Translator::do('ERROR'), $e->getMessage(), 'error')->confirm('OK');
 				}
-
-				ErrorLog::snapshot($e->getMessage(), ErrorLog::ERROR);
 
 			}
 
@@ -1244,26 +1239,29 @@ class Application {
 			$this->logBar = $logBar->getEventList();
 
 		}
-
+		
 		// populate the placeholder for the content
-		$this->pageContent = ob_get_clean();
+		if (in_array($this->style, ['404','500'])) {
+			ob_clean();
+		} else {
+			$this->pageContent = ob_get_clean();
+		}
 
 		try {
 			$template->loadStyle($this->style);
 		} catch (PairException $e) {
-			ErrorLog::snapshot($e->getMessage(), ErrorLog::ERROR);
+			Logger::error($e->getMessage(), Logger::ERROR);
 			print $e->getMessage();
 		}
-
-		// get output buffer and cleans it
-		$page = ob_get_clean();
-
-		print $page;
 
 	}
 
 	/**
 	 * Appends a toast notification message to queue.
+	 * 
+	 * @param	string	Toast’s title, bold.
+	 * @param	string	Error message.
+	 * @param	string	Type of the toast (info|success|warning|error|question|progress), default info.
 	 */
 	public function toast(string $title, string $message='', ?string $type=NULL): IziToast {
 
@@ -1276,8 +1274,8 @@ class Application {
 	/**
 	 * Proxy function to append an error toast notification to queue.
 	 *
-	 * @param	string	Toast’s error message.
-	 * @param	string	Title, optional.
+	 * @param	string	Toast’s title, bold.
+	 * @param	string	Error message.
 	 */
 	public function toastError(string $title, string $message=''): IziToast {
 
@@ -1287,27 +1285,31 @@ class Application {
 
 	/**
 	 * Proxy function to append an error toast notification to queue and redirect.
+	 * 
+	 * @param	string	Toast’s title, bold.
+	 * @param	string	Error message.
+	 * @param	string	Redirect URL, optional.
 	 */
-	public function toastErrorRedirect(string $title, string $message='', ?string $url=NULL): IziToast {
+	public function toastErrorRedirect(string $title, string $message='', ?string $url=NULL): void {
 
-		$toast = $this->toast($title, $message, 'error');
+		$this->toast($title, $message, 'error');
 		$this->makeToastNotificationsPersistent();
 		$this->redirect($url);
-
-		return $toast;
 
 	}
 
 	/**
 	 * Proxy function to append a toast notification to queue and redirect.
+	 * 
+	 * @param	string	Toast’s title, bold.
+	 * @param	string	Message.
+	 * @param	string	Redirect URL, optional.
 	 */
-	public function toastRedirect(string $title, string $message='', ?string $url=NULL): IziToast {
+	public function toastRedirect(string $title, string $message='', ?string $url=NULL): void {
 
-		$toast = $this->toast($title, $message, 'success');
+		$this->toast($title, $message, 'success');
 		$this->makeToastNotificationsPersistent();
 		$this->redirect($url);
-
-		return $toast;
 
 	}
 
@@ -1350,18 +1352,6 @@ class Application {
 	public function unsetState(string $name): void {
 
 		unset($this->state[$name]);
-
-	}
-
-	public function setLogger(string $logger): void {
-
-		$validLogger = ['Pair','BugSnag','Sentry','ELK'];
-
-		if (!in_array($logger, $validLogger)) {
-			throw new PairException('Invalid logger name', ErrorCodes::INVALID_LOGGER);
-		}
-
-		$this->logger = $logger;
 
 	}
 

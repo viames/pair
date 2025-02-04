@@ -20,12 +20,45 @@ class Utilities {
 	const RANDOM_STRING_CHARS = '123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
 	/**
+	 * Get an array of email addresses, remove those that are not email addresses, returning a clean list of email addresses.
+	 */
+	public static function arrayToEmail(array $array): array {
+
+		$ret = [];
+
+		foreach ($array as $email) {
+
+			$email = trim($email);
+
+			if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+				$ret[] = $email;
+			}
+
+		}
+
+		return $ret;
+
+	}
+
+	/**
 	 * Converts an array of strings to an array of integers.
+	 *
 	 * @return int[]
 	 */
 	public static function arrayToInt(array $array): array {
 
 		return array_map('intval', $array);
+
+	}
+
+	/**
+	 * Converts an array of string|int to an array of positive integers.
+	 */
+	public static function arrayToPositive(array $array): array {
+
+		return array_map(function($value) {
+			return abs(intval($value));
+		}, $array);
 
 	}
 
@@ -788,7 +821,7 @@ class Utilities {
 		exec('which ' . $executable, $output, $resultCode);
 
 		if (!isset($output[0]) or !is_executable($output[0])) {
-			LogBar::error($executable . ' is not available on this server');
+			Logger::error($executable . ' is not available on this server');
 		}
 
 		return ($output[0] ?? NULL);

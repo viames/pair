@@ -69,7 +69,12 @@ trait AppTrait {
 	}
 
     /**
-     * Add a toast message to the session.
+     * Appends a toast notification message to queue.
+	 * 
+	 * @param	string	Toast’s title, bold.
+	 * @param	string	Error message.
+	 * @param	string	Type of the toast (info|success|warning|error|question|progress), default info.
+
      */
     public function toast(string $title, string $message='', ?string $type=NULL): IziToast {
 
@@ -83,24 +88,35 @@ trait AppTrait {
 	 * @param	string	Message’s text.
 	 * @param	string	Optional title.
 	 */
-	public function toastError(string $title, ?string $message=''): IziToast {
+	public function toastError(string $title, string $message=''): IziToast {
 
 		return Application::getInstance()->toastError($title, $message);
 
 	}
 
-	public function toastErrorRedirect(string $title, string $message='', ?string $url=NULL): IziToast {
+	/**
+	 * Proxy function to append an error toast notification to queue and redirect.
+	 * 
+	 * @param	string	Toast’s title, bold.
+	 * @param	string	Error message.
+	 * @param	string	Redirect URL, optional.
+	 */
+	public function toastErrorRedirect(string $title, string $message='', ?string $url=NULL): void {
 
-		return Application::getInstance()->toastErrorRedirect($title, $message, $url);
+		Application::getInstance()->toastErrorRedirect($title, $message, $url);
 
 	}
 
-    /**
-     * Add a toast message to the session and redirect.
-     */
-    public function toastRedirect(string $title, string $message='', ?string $url=NULL): IziToast {
+	/**
+	 * Proxy function to append a toast notification to queue and redirect.
+	 * 
+	 * @param	string	Toast’s title, bold.
+	 * @param	string	Message.
+	 * @param	string	Redirect URL, optional.
+	 */
+    public function toastRedirect(string $title, string $message='', ?string $url=NULL): void {
 
-		return Application::getInstance()->toastRedirect($title, $message, $url);
+		Application::getInstance()->toastRedirect($title, $message, $url);
 
     }
 

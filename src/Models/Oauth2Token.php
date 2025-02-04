@@ -2,6 +2,7 @@
 
 namespace Pair\Models;
 
+use Pair\Core\Config;
 use Pair\Orm\ActiveRecord;
 use Pair\Orm\Database;
 
@@ -39,19 +40,16 @@ class Oauth2Token extends ActiveRecord {
 
 	/**
 	 * Name of related db table.
-	 * @var string
 	 */
 	const TABLE_NAME = 'oauth2_tokens';
 
 	/**
 	 * Default token lifetime in seconds.
-	 * @var int
 	 */
 	const LIFETIME = 3600;
 
 	/**
 	 * Name of primary key db field.
-	 * @var string|array
 	 */
 	const TABLE_KEY = 'id';
 
@@ -133,6 +131,7 @@ class Oauth2Token extends ActiveRecord {
 
 	/**
 	 * Verify that the past token exists and has a compatible date and creates a past date for the number of seconds in duration
+	 * 
 	 * @param string $bearerToken
 	 */
 	public static function validate(string $bearerToken): bool {
@@ -141,9 +140,9 @@ class Oauth2Token extends ActiveRecord {
 			'SELECT COUNT(1)' .
 			' FROM ' . self::TABLE_NAME .
 			' WHERE token = ?' .
-			' AND updated_at > DATE_SUB(NOW(), INTERVAL ' . (int)OAUTH2_TOKEN_LIFETIME . ' SECOND)';
+			' AND updated_at > DATE_SUB(NOW(), INTERVAL ' . (int)Config::get('OAUTH2_TOKEN_LIFETIME') . ' SECOND)';
 
-		return (bool)Database::load($query, [$bearerToken], PAIR_DB_COUNT);
+		return (bool)Database::load($query, [$bearerToken], Database::COUNT);
 
 	}
 
@@ -155,7 +154,8 @@ class Oauth2Token extends ActiveRecord {
 
 	/**
 	 * The request could not be understood by the server due to malformed syntax. The client
-	 * SHOULD NOT repeat the request without modifications.
+	 * Should not repeat the request without modifications.
+	 * 
 	 * @param string $detail
 	 */
 	public static function badRequest(string $detail): void {
@@ -170,6 +170,7 @@ class Oauth2Token extends ActiveRecord {
 	 * resource. The client MAY repeat the request with a suitable Authorization header field
 	 * (section 14.8). If the request already included Authorization credentials, then the 401
 	 * response indicates that authorization has been refused for those credentials.
+	 * 
 	 * @param string $detail
 	 */
 	public static function unauthorized(string $detail): void {

@@ -1,5 +1,37 @@
 # Upgrade from Pair v1 to Pair v2
 
+This document describes the changes you need to make to your application code to upgrade from Pair 1.x to Pair 2.0.
+
+### Installation
+
+To install Pair 2.0, you can use Composer. Run the following commands to install the latest version of Pair from the branch 2.0.0-alpha:
+
+```bash
+composer config minimum-stability dev
+composer require viames/pair:dev-2.0.0-alpha
+```
+
+### Configuration
+
+The expected configuration file has been changed from `config.php` to `.env`, as usual in the root of the project. The configuration file is in the `.env` format, which is a simple key-value pair format that will be typized by Pair for integers, floats, and booleans.
+
+ Quotes are not required for values, but they are allowed. The configuration file is loaded automatically by the Pair framework, so you don't need to load it manually.
+
+The configuration file is used to store sensitive information, such as database credentials, and other configuration options that should not be stored in the code. The configuration file is not included in the repository, so you need to create it manually.
+
+## Run the upgrade script
+
+To help you upgrade your code to Pair 2.0, we have created a script that will automatically update your code to the new version. To run the script, open the command line terminal, go to your application root folder and execute the following command:
+
+```bash
+cd vendor/viames/pair
+composer run upgrade-to-v2
+```
+
+The script will automatically update your code to the new version. The script will make the necessary changes to your code to make it compatible with Pair 2.0.
+
+## List of changes
+
 Some classes and methods have been moved or renamed in Pair 2.0. Apply renaming as shown below to update your code.
 
 #### Namespace changes
@@ -16,6 +48,16 @@ use Pair\Core\Controller;       	// renamed from Pair\Controller
 use Pair\Core\Model;            	// renamed from Pair\Model
 use Pair\Core\Router;           	// renamed from Pair\Router
 use Pair\Core\View;             	// renamed from Pair\View
+
+// Helpers classes
+use Pair\Helpers\Plugin;        	// renamed from Pair\Plugin
+use Pair\Helpers\PluginInterface;	// renamed from Pair\PluginInterface
+use Pair\Helpers\Post; 	        	// renamed from Pair\Input
+use Pair\Helpers\Options;       	// renamed from Pair\Options
+use Pair\Helpers\Schedule;      	// renamed from Pair\Schedule
+use Pair\Helpers\Translator;    	// renamed from Pair\Translator
+use Pair\Helpers\Upload;        	// renamed from Pair\Upload
+use Pair\Helpers\Utilities;     	// renamed from Pair\Utilities
 
 // Html classes
 use Pair\Html\BootstrapMenu;    	// renamed from Pair\BootstrapMenu
@@ -50,17 +92,21 @@ use Pair\Orm\Database;          	// renamed from Pair\Database
 // Services classes
 use Pair\Services\AmazonS3;      	// renamed from Pair\AmazonS3
 use Pair\Services\Report;        	// renamed from Pair\Report
+```
 
-// Helpers classes
-use Pair\Helpers\LogBar;        	// renamed from Pair\Logger
-use Pair\Helpers\Plugin;        	// renamed from Pair\Plugin
-use Pair\Helpers\PluginInterface;	// renamed from Pair\PluginInterface
-use Pair\Helpers\Post; 	        	// renamed from Pair\Input
-use Pair\Helpers\Options;       	// renamed from Pair\Options
-use Pair\Helpers\Schedule;      	// renamed from Pair\Schedule
-use Pair\Helpers\Translator;    	// renamed from Pair\Translator
-use Pair\Helpers\Upload;        	// renamed from Pair\Upload
-use Pair\Helpers\Utilities;     	// renamed from Pair\Utilities
+#### Database
+
+Costants that defined the return type of the `load()` method have been moved as constants inside the `Database` class. Update your code accordingly.
+```php
+<?php
+
+Database::OBJECT_LIST;	// renamed from PAIR_DB_OBJECT_LIST
+Database::OBJECT;        // renamed from PAIR_DB_OBJECT
+Database::RESULT_LIST;   // renamed from PAIR_DB_RESULT_LIST
+Database::RESULT;        // renamed from PAIR_DB_RESULT
+Database::COUNT;         // renamed from PAIR_DB_COUNT
+Database::DICTIONARY;    // renamed from PAIR_DB_DICTIONARY
+Database::COLLECTION;    // renamed from PAIR_DB_COLLECTION
 ```
 
 #### Menu widget changes
@@ -229,3 +275,25 @@ Example of the old code and the new code in template file:
 ?><div class="col-md-3"><?php $this->form->printLabel('serialNumber') ?></div><?php
 
 ```
+
+#### Logger
+
+The new Logger class respects the `PSR-3` (Logger Interface of PHP Standard Recommendation) log levels. The default level for snapshots taken without indications is `DEBUG`. The levels, from most critical to least serious, are:
+
+1. EMERGENCY
+2. ALERT
+3. CRITICAL
+4. ERROR
+5. WARNING
+6. NOTICE
+7. INFO
+8. DEBUG
+
+The Logger class now takes care of logging status information when errors occur or when explicitly requested by application code. Note the changes in its behavior:
+
+```php
+<?php
+
+Logger::snapshot($msg, Logger::ERROR);  // changed from ErrorLog::keepSnapshot($msg)
+```
+Via `.env` configuration file, or via code calls, you can set up automatic notifications to one or more `Telegram` recipients, for instant notifications, or e-mail (supported `SMTP`, `sendmail`, `AmazonSES`) for asynchronous notifications.

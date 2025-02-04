@@ -20,4 +20,13 @@ class PairException extends \Exception {
 
 	}
 
+	/**
+	 * Throws a PairException.
+	 */
+	public static function throw(string $message, int $code = 0, ?\Throwable $previous = NULL): void {
+
+        throw new static($message, $code, $previous);
+
+    }
+
 }

@@ -160,26 +160,6 @@ class LogBar {
 	}
 
 	/**
-	 * AddEvent’s proxy for warning event creations.
-	 * @param	string	Event description.
-	 */
-	final public static function warning(string $description): void {
-
-		self::event($description, 'warning');
-
-	}
-
-	/**
-	 * AddEvent’s proxy for error event creations.
-	 * @param	string	Event description.
-	 */
-	final public static function error(string $description): void {
-
-		self::event($description, 'error');
-
-	}
-
-	/**
 	 * Returns a formatted event list of all chrono steps.
 	 * @return	string|NULL	HTML code of log list.
 	 */
@@ -232,7 +212,7 @@ class LogBar {
 
 		// alert about risk of “out of memory”
 		if (($ratio) > 60) {
-			self::warning('Memory usage is ' . round($ratio,0) . '% of limit, will reduce logs');
+			self::event('Memory usage is ' . round($ratio,0) . '% of limit, will reduce logs');
 		}
 
 		foreach ($this->events as $e) {

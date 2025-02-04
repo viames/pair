@@ -2,8 +2,8 @@
 
 namespace Pair\Core;
 
+use Pair\Core\Logger;
 use Pair\Exceptions\PairException;
-use Pair\Helpers\LogBar;
 use Pair\Helpers\Options;
 use Pair\Helpers\Translator;
 use Pair\Helpers\Utilities;
@@ -105,7 +105,8 @@ abstract class View {
 		try {
 			$this->init();
 		} catch (PairException $e) {
-			$this->logError('View initialization error: ' . $e->getMessage());
+			Logger::error($e->getMessage());
+			$this->modal(Translator::do('ERROR'), $e->getMessage(), 'error')->confirm('OK');
 		}
 
 	}
@@ -161,7 +162,17 @@ abstract class View {
 	 */
 	final public function display(?string $name=NULL): void {
 
-		$this->render();
+		try {
+			$this->render();
+		} catch (PairException $e) {
+			Logger::error($e->getMessage(), Logger::ERROR);
+			$this->modal(Translator::do('ERROR'), $e->getMessage(), 'error')->confirm('OK');
+			if ('default' != $this->layout) {
+				$this->redirect();
+			} else {
+				$this->redirectToDefault();
+			}
+		}
 
 		// look for css files
 		if (is_dir($this->modulePath . '/css')) {
@@ -307,7 +318,7 @@ abstract class View {
 	public function getPaginationBar(): string {
 
 		if (is_null($this->pagination->count)) {
-			LogBar::error('The “count” parameter needed for pagination has not been set');
+			Logger::error('The “count” parameter needed for pagination has not been set');
 		}
 
 		return $this->pagination->render();

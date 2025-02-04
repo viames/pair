@@ -4,8 +4,8 @@ namespace Pair\Html;
 
 use Pair\Core\Application;
 use Pair\Core\Config;
+use Pair\Core\Logger;
 use Pair\Exceptions\PairException;
-use Pair\Helpers\LogBar;
 use Pair\Helpers\Post;
 use Pair\Helpers\Translator;
 
@@ -513,19 +513,19 @@ abstract class FormControl {
 		$valid	= TRUE;
 
 		if ($this->required and ''==$value) {
-			LogBar::event('Control validation on field “' . $this->name . '” has failed (required)');
+			Logger::notice('Control validation on field “' . $this->name . '” has failed (required)');
 			$valid = FALSE;
 		}
 
 		// check validity of minlength attribute
 		if ($this->minLength and ''!=$value and strlen($value) < $this->minLength) {
-			LogBar::event('Control validation on field “' . $this->name . '” has failed (minLength=' . $this->minLength . ')');
+			Logger::notice('Control validation on field “' . $this->name . '” has failed (minLength=' . $this->minLength . ')');
 			$valid = FALSE;
 		}
 
 		// check validity of minlength attribute
 		if ($this->maxLength and strlen($value) > $this->maxLength) {
-			LogBar::event('Control validation on field “' . $this->name . '” has failed (maxLength=' . $this->maxLength . ')');
+			Logger::notice('Control validation on field “' . $this->name . '” has failed (maxLength=' . $this->maxLength . ')');
 			$valid = FALSE;
 		}
 
