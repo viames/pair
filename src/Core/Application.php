@@ -812,10 +812,10 @@ class Application {
 
 		}
 
-		// add BugSnag script for error tracking and performance monitoring
-		if (Config::get('BUGSNAG_API_KEY') and Config::get('BUGSNAG_PERFORMANCE')) {
+		// add Insight Hub script for error tracking and performance monitoring
+		if (Config::get('INSIGHT_HUB_API_KEY') and Config::get('INSIGHT_HUB_PERFORMANCE')) {
 			$pageScripts .= '<script src="https://cdn.jsdelivr.net/npm/bugsnag-js" crossorigin="anonymous"></script>' . "\n";
-			$pageScripts .= '<script type="module">import BugsnagPerformance from "//d2wy8f7a9ursnm.cloudfront.net/v1/bugsnag-performance.min.js";BugsnagPerformance.start({apiKey:"' . Config::get('BUGSNAG_API_KEY') .'"})</script>' . "\n";
+			$pageScripts .= '<script type="module">import BugsnagPerformance from "//d2wy8f7a9ursnm.cloudfront.net/v1/bugsnag-performance.min.js";BugsnagPerformance.start({apiKey:"' . Config::get('INSIGHT_HUB_API_KEY') .'"})</script>' . "\n";
 		}
 
 		// collect plain text scripts
@@ -1225,14 +1225,24 @@ class Application {
 
 			}
 
-			$controller = new $controllerName();
+			if (!class_exists($controllerName)) {
+				throw new CriticalException('Controller ' . $controllerName . ' not found', ErrorCodes::CONTROLLER_NOT_FOUND);
+			}
 
 			try {
-				if (is_a($controller, 'Pair\Core\Controller') and method_exists($controller, $action)) {
-					$controller->$action();
-				}
+				$controller = new $controllerName();
 			} catch (\Exception $e) {
-		
+				throw new CriticalException('Error instantiating controller ' . $controllerName, ErrorCodes::CONTROLLER_NOT_FOUND, $e);
+			}
+
+			if (method_exists($controller, $action)) {
+				try {
+					$controller->$action();
+				} catch (\Exception $e) {
+
+				}
+			} else {
+				Logger::notice('Method ' . $controllerName . '->' . $action . '() not found');
 			}
 
 			// raw calls will jump controller->display, ob and log
