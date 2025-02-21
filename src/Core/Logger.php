@@ -259,7 +259,7 @@ class Logger {
 	}
 
 	/**
-	 * Register an error in the database and send notifications.
+	 * Register an error in the database and send telegram and e-mail notifications.
 	 *
 	 * @param string	Description of the error.
 	 * @param int		PSR-3 log level number equivalent.
@@ -271,7 +271,7 @@ class Logger {
 		}
 
 		// register error in database
-		self::snapshot($description, $level);
+		$this->storeError($description, $level);
 
 		$levels = [
 			self::EMERGENCY	=> 'Emergency',
@@ -466,11 +466,9 @@ class Logger {
 	 * @param	string	Description of the snapshot moment.
 	 * @param	int		Optional PSR-3 log level number equivalent, default is 8 (DEBUG).
 	 */
-	public static function snapshot(string $description, ?int $level=NULL): void {
+	private function storeError(string $description, ?int $level=NULL): void {
 
-		$self = self::getInstance();
-
-		if (!$self->enabled) {
+		if (!$this->enabled) {
 			return;
 		}
 

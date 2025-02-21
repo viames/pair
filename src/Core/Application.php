@@ -1225,14 +1225,24 @@ class Application {
 
 			}
 
-			$controller = new $controllerName();
+			if (!class_exists($controllerName)) {
+				throw new CriticalException('Controller ' . $controllerName . ' not found', ErrorCodes::CONTROLLER_NOT_FOUND);
+			}
 
 			try {
-				if (is_a($controller, 'Pair\Core\Controller') and method_exists($controller, $action)) {
-					$controller->$action();
-				}
+				$controller = new $controllerName();
 			} catch (\Exception $e) {
-		
+				throw new CriticalException('Error instantiating controller ' . $controllerName, ErrorCodes::CONTROLLER_NOT_FOUND, $e);
+			}
+
+			if (method_exists($controller, $action)) {
+				try {
+					$controller->$action();
+				} catch (\Exception $e) {
+
+				}
+			} else {
+				Logger::notice('Method ' . $controllerName . '->' . $action . '() not found');
 			}
 
 			// raw calls will jump controller->display, ob and log

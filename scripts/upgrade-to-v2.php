@@ -203,8 +203,9 @@ foreach ($files as $file) {
 	$content = str_replace('->printSortableColumn(', '->sortable(', $content);
 	$content = str_replace('public function render() {', 'public function render(): void {', $content);
 
-	// LogBar
+	// Logger
 	$content = str_replace('Logger::event(', 'Logger::notice(', $content);
+	$content = str_replace('ErrorLog::keepSnapshot(', 'Logger::error(', $content);
 
 	// Form controls
 	$content = preg_replace('/->addInput\([\'"]([^\'"]+)[\'"]\)->setType\([\'"]bool[\'"]\)/', '->checkbox(\'$1\')', $content);
