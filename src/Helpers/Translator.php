@@ -320,7 +320,7 @@ class Translator {
 	private function loadStrings(): void {
 
 		// load strings just once
-		if (is_array($this->strings)) {
+		if (isset($this->strings) and is_array($this->strings)) {
 			return;
 		}
 

@@ -58,7 +58,7 @@ abstract class Mailer {
 
 	/**
 	 * Adapt an array of recipients to a standard object.
-	 * 
+	 *
 	 * @throws PairException
 	 */
 	private function adaptRecipients(array $recipients): array {
@@ -68,25 +68,31 @@ abstract class Mailer {
 		foreach ($recipients as $recipient) {
 
 			if (is_string($recipient)) {
-				$list[] = (object)['name'=>'', 'email'=>$recipient];
-			}
-	
-			if (is_array($recipient)) {
+
+				$list[] = (object)['name'=>$recipient, 'email'=>$recipient];
+
+			} else if (is_array($recipient)) {
+
 				if (!isset($recipient['email'])) {
 					throw new PairException('Missing e-mail address in recipient', ErrorCodes::MISSING_CONFIGURATION);
 				}
+
 				$list[] = (object)$recipient;
-			}
-	
-			if (is_object($recipient)) {
+
+			} else if (is_object($recipient)) {
+
 				if (!isset($recipient->email)) {
 					throw new PairException('Missing e-mail address in recipient', ErrorCodes::MISSING_CONFIGURATION);
 				}
+
 				$list[] = $recipient;
+
+			} else {
+
+				throw new PairException('Invalid recipient type: ' . gettype($recipient), ErrorCodes::MISSING_CONFIGURATION);
+
 			}
-	
-			throw new PairException('Invalid recipient type ' . gettype($recipient), ErrorCodes::MISSING_CONFIGURATION);
-	
+
 		}
 
 		return $list;
@@ -134,7 +140,7 @@ abstract class Mailer {
 
 	/**
 	 * Based on run environment, returns the list of final recipients.
-	 * 
+	 *
 	 * @throws PairException
 	 */
 	protected function convertRecipients(array $desiredRecipients): array {
@@ -144,11 +150,11 @@ abstract class Mailer {
 		$setAdmins = function () use (&$recipients) {
 			foreach ($this->adminEmails as $adminEmail) {
 				$recipients[] = (object)['name'=>Config::get('PRODUCT_NAME') . ' Admin', 'email'=>$adminEmail];
-			}	
+			}
 			if (!count($recipients)) {
 				throw new PairException('In development environment there are no admin e-mail addresses', ErrorCodes::MISSING_CONFIGURATION);
-			}	
-		};	
+			}
+		};
 
 		switch (Application::getEnvironment()) {
 
@@ -581,7 +587,7 @@ abstract class Mailer {
 
 	/**
 	 * Set the configuration of the email sender.
-	 * 
+	 *
 	 * @param	array	Associative array with configuration options (fromAddress, fromName, applicationLogo, charSet, adminEmails).
 	 */
 	public function setConfig(array $config): void {

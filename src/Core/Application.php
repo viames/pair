@@ -2,9 +2,10 @@
 
 namespace Pair\Core;
 
+use Pair\Exceptions\AppException;
 use Pair\Exceptions\CriticalException;
 use Pair\Exceptions\ErrorCodes;
-use Pair\Exceptions\AppException;
+use Pair\Exceptions\PairException;
 use Pair\Helpers\LogBar;
 use Pair\Helpers\Options;
 use Pair\Helpers\Translator;
@@ -172,7 +173,7 @@ class Application {
 		}
 
 		// default page title, maybe overwritten
-		$this->pageTitle = Config::get('PRODUCT_NAME');
+		$this->setPageTitle(Config::get('PRODUCT_NAME'));
 
 		// raw calls will jump templates inclusion, so turn-out output buffer
 		if (!$router->isRaw()) {
@@ -262,7 +263,7 @@ class Application {
 	}
 
 	/**
-	 * Add script content that will be loaded by jQuery into the #pair-script-container DOM element.
+	 * Add script content that will be loaded at the end of the page.
 	 *
 	 * @param	string	Javascript content.
 	 */
@@ -304,7 +305,7 @@ class Application {
 		}
 
 		define('URL_PATH', $urlPath);
-		
+
 		define('BASE_HREF', $baseHref);
 
 	}
@@ -601,7 +602,7 @@ class Application {
 	 * @param	bool	Async attribute (default FALSE).
 	 * @param	array	Optional attribute list (type, integrity, crossorigin, charset).
 	 */
-	public function loadScript(string $src, bool $defer = FALSE, bool $async = FALSE, array $attribs=[]) {
+	public function loadScript(string $src, bool $defer = FALSE, bool $async = FALSE, array $attribs=[]): void {
 
 		// the script object
 		$script = new \stdClass();
@@ -812,27 +813,30 @@ class Application {
 
 		}
 
-		// add BugSnag script for error tracking and performance monitoring
-		if (Config::get('BUGSNAG_API_KEY') and Config::get('BUGSNAG_PERFORMANCE')) {
+		// add Insight Hub script for error tracking and performance monitoring
+		if (Config::get('INSIGHT_HUB_API_KEY') and Config::get('INSIGHT_HUB_PERFORMANCE')) {
 			$pageScripts .= '<script src="https://cdn.jsdelivr.net/npm/bugsnag-js" crossorigin="anonymous"></script>' . "\n";
-			$pageScripts .= '<script type="module">import BugsnagPerformance from "//d2wy8f7a9ursnm.cloudfront.net/v1/bugsnag-performance.min.js";BugsnagPerformance.start({apiKey:"' . Config::get('BUGSNAG_API_KEY') .'"})</script>' . "\n";
+			$pageScripts .= '<script type="module">import BugsnagPerformance from "//d2wy8f7a9ursnm.cloudfront.net/v1/bugsnag-performance.min.js";BugsnagPerformance.start({apiKey:"' . Config::get('INSIGHT_HUB_API_KEY') .'"})</script>' . "\n";
 		}
 
 		// collect plain text scripts
 		if (count($this->scriptContent) or $this->modal or count($this->toasts)) {
 
-			$pageScripts .= "<div id=\"pair-script-container\"><script defer>\n";
+			$pageScripts .= "<script defer>\n";
 
 			foreach ($this->scriptContent as $s) {
 				$pageScripts .= $s ."\n";
 			}
 
 			// add modal and toasts
-			$pageScripts .= "document.addEventListener('DOMContentLoaded', function() {\n";
-			$pageScripts .= $this->getModalScript();
-			$pageScripts .= $this->getToastsScript();
-			$pageScripts .= "});\n";
-			$pageScripts .= "</script></div>";
+			if ($this->modal or count($this->toasts)) {
+				$pageScripts .= "document.addEventListener('DOMContentLoaded', function() {\n";
+				$pageScripts .= $this->getModalScript();
+				$pageScripts .= $this->getToastsScript();
+				$pageScripts .= "});\n";
+			}
+
+			$pageScripts .= "</script>";
 
 		}
 
@@ -898,11 +902,11 @@ class Application {
 		if (1 == count((array)$object->keyProperties) ) {
 
 			$this->activeRecordCache[$class][(string)$object->getId()] = $object;
-			
+
 			$class = get_class($object);
 			$className = basename(str_replace('\\', '/', $class));
 			Logger::notice('Cached ' . $className . ' object with id=' . (string)$object->getId());
-		
+
 		}
 
 	}
@@ -965,7 +969,7 @@ class Application {
 	}
 
 	public function redirectToUserDefault(): void {
-		
+
 		if ($this->currentUser) {
 			$this->currentUser->redirectToDefault();
 		} else {
@@ -1152,6 +1156,15 @@ class Application {
 	}
 
 	/**
+	 * Set the web page HTML title tag.
+	 */
+	public function setPageTitle(string $title): void {
+
+		$this->pageTitle = $title;
+
+	}
+
+	/**
 	 * Store variables of any type in a cookie for next retrievement. Existent variables with
 	 * same name will be overwritten.
 	 */
@@ -1196,7 +1209,7 @@ class Application {
 
 			$this->toastError(Translator::do('ERROR'), Translator::do('RESOURCE_NOT_FOUND', $router->url));
 			$this->style = '404';
-			$this->pageTitle = 'HTTP 404 error';
+			$this->setPageTitle('HTTP 404 error');
 			http_response_code(404);
 
 		} else {
@@ -1225,14 +1238,24 @@ class Application {
 
 			}
 
-			$controller = new $controllerName();
+			if (!class_exists($controllerName)) {
+				throw new CriticalException('Controller ' . $controllerName . ' not found', ErrorCodes::CONTROLLER_NOT_FOUND);
+			}
 
 			try {
-				if (is_a($controller, 'Pair\Core\Controller') and method_exists($controller, $action)) {
-					$controller->$action();
-				}
+				$controller = new $controllerName();
 			} catch (\Exception $e) {
-		
+				throw new CriticalException('Error instantiating controller ' . $controllerName, ErrorCodes::CONTROLLER_NOT_FOUND, $e);
+			}
+
+			if (method_exists($controller, $action)) {
+				try {
+					$controller->$action();
+				} catch (\Exception $e) {
+
+				}
+			} else {
+				Logger::notice('Method ' . $controllerName . '->' . $action . '() not found');
 			}
 
 			// raw calls will jump controller->display, ob and log
@@ -1240,17 +1263,17 @@ class Application {
 				return;
 			}
 
-			// invoke the view
+			// invoke the view and render the page
 			try {
-				$controller->display();
+				$controller->renderView();
 			} catch (\Exception $e) {
-
+				PairException::frontEnd($e->getMessage());
 			}
 
 			$this->logBar = LogBar::getInstance();
 
 		}
-		
+
 		// populate the placeholder for the content
 		if (in_array($this->style, ['404','500'])) {
 			ob_clean();
@@ -1259,7 +1282,7 @@ class Application {
 		}
 
 		$styleFile = $template->getStyleFile($this->style);
-		
+
 		// parse the template
 		Template::parse($styleFile);
 
@@ -1267,7 +1290,7 @@ class Application {
 
 	/**
 	 * Appends a toast notification message to queue.
-	 * 
+	 *
 	 * @param	string	Toast’s title, bold.
 	 * @param	string	Error message.
 	 * @param	string	Type of the toast (info|success|warning|error|question|progress), default info.
@@ -1294,7 +1317,7 @@ class Application {
 
 	/**
 	 * Proxy function to append an error toast notification to queue and redirect.
-	 * 
+	 *
 	 * @param	string	Toast’s title, bold.
 	 * @param	string	Error message.
 	 * @param	string	Redirect URL, optional.
@@ -1309,7 +1332,7 @@ class Application {
 
 	/**
 	 * Proxy function to append a toast notification to queue and redirect.
-	 * 
+	 *
 	 * @param	string	Toast’s title, bold.
 	 * @param	string	Message.
 	 * @param	string	Redirect URL, optional.
