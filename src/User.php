@@ -530,7 +530,7 @@ class User extends ActiveRecord {
 	/**
 	 * It will returns DateTimeZone object for this User.
 	 *
-	 * @return DateTimeZone
+	 * @return \DateTimeZone
 	 */
 	public function getDateTimeZone(): \DateTimeZone {
 

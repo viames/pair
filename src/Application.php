@@ -79,7 +79,7 @@ class Application {
 	 * Currently connected user.
 	 * @var User|NULL
 	 */
-	private $currentUser;
+	private ?User $currentUser = NULL;
 
 	/**
 	 * Contents variables for layouts.

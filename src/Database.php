@@ -268,7 +268,7 @@ class Database {
 	 * @param	int			Returned type (see constants PAIR_DB_*). PAIR_DB_OBJECT_LIST is default.
 	 * @return	array|\stdClass|int|NULL
 	 */
-	public static function load(string $query, $params=[], int $option=NULL) {
+	public static function load(string $query, ?array $params=[], ?int $option=NULL) {
 
 		$self = static::getInstance();
 
