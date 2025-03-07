@@ -291,7 +291,7 @@ class User extends ActiveRecord {
 		$expires = time() + 2592000;
 
 		// set cookie and return the result
-		return setcookie(UserRemember::getCookieName(), $content, Application::getCookieParams($expires));
+		return setcookie(self::getRememberMeCookieName(), $content, Application::getCookieParams($expires));
 
 	}
 
@@ -550,6 +550,39 @@ class User extends ActiveRecord {
 	}
 
 	/**
+	 * Utility to unserialize and return the remember-me cookie content {timezone, rememberMe}.
+	 */
+	private static function getRememberMeCookie(): ?\stdClass {
+
+		// try to unserialize the cookie content
+		$app = Application::getInstance();
+		$content = $app->getPersistentState('RememberMe');
+
+		$regex = '#^[' . Utilities::RANDOM_STRING_CHARS . ']{32}$#';
+
+		// check if content exists and RememberMe length
+		if (is_array($content) and isset($content[0]) and isset($content[1]) and preg_match($regex, (string)$content[1])) {
+			$obj = new \stdClass();
+			$obj->timezone = ($content[0] and in_array($content[0], \DateTimeZone::listIdentifiers()))
+				? $content[0] : 'UTC';
+			$obj->rememberMe = (string)$content[1];
+			return $obj;
+		}
+
+		return NULL;
+
+	}
+
+	/**
+	 * Build and return the cookie name.
+	 */
+	private static function getRememberMeCookieName(): string {
+
+		return Application::getCookiePrefix() . 'RememberMe';
+
+	}
+
+	/**
 	 * It will returns DateTimeZone object for this User.
 	 */
 	public function getDateTimeZone(): \DateTimeZone {
@@ -791,7 +824,7 @@ class User extends ActiveRecord {
 	public static function loginByRememberMe(): bool {
 
 		// get the cookie content
-		$cookieContent = UserRemember::getCookieContent();
+		$cookieContent = self::getRememberMeCookie();
 
 		// check if cookie exists
 		if (is_null($cookieContent)) {
@@ -843,14 +876,14 @@ class User extends ActiveRecord {
 	public function renewRememberMe(): bool {
 
 		// build the cookie name
-		$cookieName = UserRemember::getCookieName();
+		$cookieName = self::getRememberMeCookieName();
 
 		// check if cookie exists
 		if (!isset($_COOKIE[$cookieName])) {
 			return FALSE;
 		}
 
-		$cookieContent = UserRemember::getCookieContent();
+		$cookieContent = self::getRememberMeCookie();
 
 		// update created_at date and delete older remember-me records
 		Database::run('UPDATE `users_remembers` SET `created_at` = NOW() WHERE `user_id` = ? AND `remember_me` = ?', [$this->id, $cookieContent->rememberMe]);
@@ -895,7 +928,7 @@ class User extends ActiveRecord {
 	public function unsetRememberMe(): bool {
 
 		// build the cookie name
-		$cookieContent = UserRemember::getCookieContent();
+		$cookieContent = self::getRememberMeCookie();
 
 		// check if cookie exists
 		if (is_null($cookieContent)) {
@@ -906,7 +939,7 @@ class User extends ActiveRecord {
 		Database::run('DELETE FROM `users_remembers` WHERE `user_id` = ? AND `remember_me` = ?', [$this->id, $cookieContent->rememberMe]);
 
 		// delete the current remember-me Cookie
-		return setcookie(UserRemember::getCookieName(), '', Application::getCookieParams(-1));
+		return setcookie(self::getRememberMeCookieName(), '', Application::getCookieParams(-1));
 
 	}
 

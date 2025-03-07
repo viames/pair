@@ -129,6 +129,14 @@ class Application {
 	protected ?LogBar $lobgBar = NULL;
 
 	/**
+	 * List of reserved cookie names and related allowed classes.
+	 */
+	const RESERVED_COOKIE_NAMES = [
+		'Modal' => 'Pair\Html\SweetAlert',
+		'ToastNotifications' => 'Pair\Html\IziToast'
+	];
+
+	/**
 	 * Private constructor called by getInstance(). No LogBar calls here.
 	 */
 	private function __construct() {
@@ -452,28 +460,34 @@ class Application {
 	/**
 	 * Retrieves variables of any type form a cookie named like in param.
 	 */
-	public function getPersistentState(string $name): mixed {
+	public function getPersistentState(string $stateName): mixed {
 
-		$stateName = $this->getPersistentStateName($name);
+		// get the full prefixed key
+		$cookieName = $this->getCookieName($stateName);
 
 		if (array_key_exists($stateName, $this->persistentState)) {
 
 			return $this->persistentState[$stateName];
 
-		} else if (array_key_exists($stateName, $_COOKIE)) {
+		} else if (array_key_exists($cookieName, $_COOKIE)) {
+
+			// for security reasons, unserialize only allowed classes
+			$allowedClasses = array_key_exists($stateName, static::RESERVED_COOKIE_NAMES)
+				? [self::RESERVED_COOKIE_NAMES[$stateName]]
+				: [];
 
 			// as of PHP 8.4.0 throws an Exception
 			if (PHP_VERSION >= '8.4.0') {
 				try {
-					return unserialize($_COOKIE[$stateName]);
+					return unserialize($_COOKIE[$cookieName], ['allowed_classes' => $allowedClasses]);
 				} catch (\Exception $e) {
-					throw new AppException('Error unserializing cookie ' . $stateName, ErrorCodes::UNSERIALIZE_ERROR, $e);
+					throw new AppException('Error unserializing cookie ' . $cookieName, ErrorCodes::UNSERIALIZE_ERROR, $e);
 				}
-			} else if (Utilities::isSerialized($_COOKIE[$stateName])) {
-				return unserialize($_COOKIE[$stateName]);
+			} else if (Utilities::isSerialized($_COOKIE[$cookieName], $allowedClasses)) {
+				return unserialize($_COOKIE[$cookieName], ['allowed_classes' => $allowedClasses]);
 			} else {
-				$this->unsetPersistentState($name);
-				throw new AppException('Error unserializing cookie ' . $stateName, ErrorCodes::UNSERIALIZE_ERROR);
+				$this->unsetPersistentState($stateName);
+				throw new AppException('Error unserializing cookie ' . $cookieName, ErrorCodes::UNSERIALIZE_ERROR);
 			}
 
 		}
@@ -482,9 +496,9 @@ class Application {
 
 	}
 
-	private function getPersistentStateName(string $name): string {
+	private function getCookieName(string $stateName): string {
 
-		return static::getCookiePrefix() . ucfirst($name);
+		return static::getCookiePrefix() . ucfirst($stateName);
 
 	}
 
@@ -553,11 +567,11 @@ class Application {
 	/**
 	 * Retrieves variables of any type form a cookie named like in param.
 	 */
-	public function issetPersistentState(string $name): bool {
+	public function issetPersistentState(string $stateName): bool {
 
-		$stateName = $this->getPersistentStateName($name);
+		$cookieName = $this->getCookieName($stateName);
 
-		return (array_key_exists($stateName, $this->persistentState) or isset($_COOKIE[$stateName]));
+		return (array_key_exists($stateName, $this->persistentState) or isset($_COOKIE[$cookieName]));
 
 	}
 
@@ -767,6 +781,7 @@ class Application {
 
 			// check RememberMe cookie
 			if (User::loginByRememberMe()) {
+				Audit::rememberMeLogin();
 				$this->currentUser->redirectToDefault();
 			}
 
@@ -1168,15 +1183,15 @@ class Application {
 	 * Store variables of any type in a cookie for next retrievement. Existent variables with
 	 * same name will be overwritten.
 	 */
-	public function setPersistentState(string $name, mixed $value): void {
-
-		$stateName = $this->getPersistentStateName($name);
+	public function setPersistentState(string $stateName, mixed $value): void {
 
 		$this->persistentState[$stateName] = $value;
-
+		
 		// cookie lifetime is 30 days
 		$params = self::getCookieParams(time() + 2592000);
-		setcookie($stateName, serialize($value), $params);
+		$cookieName = $this->getCookieName($stateName);
+
+		setcookie($cookieName, serialize($value), $params);
 
 	}
 
@@ -1363,15 +1378,15 @@ class Application {
 	/**
 	 * Removes a state variable from cookie.
 	 */
-	public function unsetPersistentState(string $name): void {
+	public function unsetPersistentState(string $stateName): void {
 
-		$stateName = $this->getPersistentStateName($name);
+		$cookieName = $this->getCookieName($stateName);
 
 		unset($this->persistentState[$stateName]);
 
-		if (isset($_COOKIE[$stateName])) {
-			setcookie($stateName, '', self::getCookieParams(-1));
-			unset($_COOKIE[$stateName]);
+		if (isset($_COOKIE[$cookieName])) {
+			setcookie($cookieName, '', self::getCookieParams(-1));
+			unset($_COOKIE[$cookieName]);
 		}
 
 	}
