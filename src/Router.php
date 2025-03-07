@@ -501,8 +501,6 @@ class Router {
 
 	/**
 	 * Return the current list page number.
-	 *
-	 * @return	int
 	 */
 	public function getPage(): int {
 
@@ -529,7 +527,7 @@ class Router {
 	 *
 	 * @param	int		Page number.
 	 */
-	public function setPage(int $number) {
+	public function setPage(int $number): void {
 
 		$number = (int)$number;
 

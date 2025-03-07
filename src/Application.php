@@ -917,13 +917,14 @@ class Application {
 		// user is not logged in
 		} else {
 
-			// in case of AJAX call, sends a JSON error 
+			// in case of AJAX call, sends a JSON error
 			if ($router->isRaw()) {
 				Utilities::jsonResponseSessionExpired();
 			}
 
 			// check RememberMe cookie
 			if (User::loginByRememberMe()) {
+				Audit::rememberMeLogin();
 				$this->currentUser->redirectToDefault();
 			}
 

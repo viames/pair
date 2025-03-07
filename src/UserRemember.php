@@ -49,7 +49,6 @@ class UserRemember extends ActiveRecord {
 	 * Return an user that matches remember_me string if created less than 1 month ago. NULL if not found.
 	 *
 	 * @param	string		RememberMe value.
-	 * @return	User|NULL
 	 */
 	public static function getUserByRememberMe(string $rememberMe): ?User {
 
@@ -70,10 +69,8 @@ class UserRemember extends ActiveRecord {
 
 	/**
 	 * Utility to unserialize and return the remember-me cookie content {timezone, rememberMe}.
-	 *
-	 * @return	\stdClass|NULL
 	 */
-	public static function getCookieContent(): ?\stdClass {
+	public static function getCookieContent(): ?string {
 
 		// build the cookie name
 		$cookieName = static::getCookieName();
@@ -84,7 +81,7 @@ class UserRemember extends ActiveRecord {
 		}
 
 		// try to unserialize the cookie content
-		$content = unserialize($_COOKIE[$cookieName]);
+		$content = unserialize($_COOKIE[$cookieName], ['allowed_classes' => FALSE]);
 
 		// cookie content is not unserializable
 		if (FALSE === $content) {
@@ -92,24 +89,15 @@ class UserRemember extends ActiveRecord {
 		}
 
 		$regex = '#^[' . Utilities::RANDOM_STRING_CHARS . ']{32}$#';
+		$contentCheck = preg_match($regex, (string)$content);
 
-		// check if content exists and RememberMe length
-		if (is_array($content) and isset($content[0]) and isset($content[1]) and preg_match($regex, (string)$content[1])) {
-			$obj = new \stdClass();
-			$obj->timezone = ($content[0] and in_array($content[0], \DateTimeZone::listIdentifiers()))
-				? $content[0] : 'UTC';
-			$obj->rememberMe = (string)$content[1];
-			return $obj;
-		}
-
-		return NULL;
+		// check content format and return it
+		return $contentCheck ? (string)$content : NULL;
 
 	}
 
 	/**
 	 * Build and return the cookie name.
-	 *
-	 * @return string
 	 */
 	public static function getCookieName(): string {
 
