@@ -628,7 +628,7 @@ class Utilities {
 	/**
 	 * Check if the passed string is a serialized data for PHP until version 8.3.
 	 */
-	public static function isSerialized(string $data): bool {
+	public static function isSerialized(string $data, array $allowedClasses=[]): bool {
 
 		$data = trim($data);
 
@@ -640,7 +640,7 @@ class Utilities {
 
 		// uses @ to suppress any unserialize warnings
 		try {
-			$result = unserialize($data);
+			$result = unserialize($data, ['allowed_classes' => $allowedClasses]);
 		} catch (\Throwable $e) {
 			return FALSE;
 		}

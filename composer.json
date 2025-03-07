@@ -2,6 +2,8 @@
 	"name": "viames/pair",
 	"description": "lightweight PHP framework as the air",
 	"type": "library",
+	"version": "2.0.0-beta",
+	"security": true,
 	"require": {
 		"php": "8.3",
 		"bugsnag/bugsnag": "^3",
