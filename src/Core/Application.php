@@ -1267,7 +1267,7 @@ class Application {
 				try {
 					$controller->$action();
 				} catch (\Exception $e) {
-
+					// nothing to do
 				}
 			} else {
 				Logger::notice('Method ' . $controllerName . '->' . $action . '() not found');
@@ -1281,8 +1281,14 @@ class Application {
 			// invoke the view and render the page
 			try {
 				$controller->renderView();
-			} catch (\Exception $e) {
+			} catch (AppException $e) {
+				// front end modal is already set
+			} catch (PairException $e) {
+				// add modal with error message
 				PairException::frontEnd($e->getMessage());
+			} catch (\Exception $e) {
+				// store errorLog and add modal with error message
+				throw new AppException($e->getMessage(), $e->getCode(), $e);
 			}
 
 			$this->logBar = LogBar::getInstance();
