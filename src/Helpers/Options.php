@@ -221,7 +221,7 @@ class Options {
 	}
 
 	/**
-	 * Check wheter options crypt key has been defined into config.php file.
+	 * Check wheter options crypt key has been defined into .env file.
 	 */
 	public function isCryptAvailable(): bool {
 

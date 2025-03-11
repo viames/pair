@@ -3,6 +3,7 @@
 namespace Pair\Core;
 
 use Pair\Core\Logger;
+use Pair\Exceptions\AppException;
 use Pair\Exceptions\CriticalException;
 use Pair\Exceptions\ErrorCodes;
 use Pair\Exceptions\PairException;
@@ -167,8 +168,6 @@ abstract class View {
 			$this->render();
 
 		} catch (\Exception $e) {
-
-			PairException::frontEnd(Translator::do('AN_ERROR_OCCURRED'));
 
 			if ('default' != $this->layout) {
 				$this->redirect();

@@ -201,10 +201,10 @@ class Database {
 
 		try {
 			$stat->execute($params);
-		} catch (\PDOException $e) {	
+		} catch (\PDOException $e) {
 			throw new PairException($e->getMessage(), ErrorCodes::DB_QUERY_FAILED, $e);
 		}
-		
+
 		$affected = $stat->rowCount();
 		$stat->closeCursor();
 		$this->logParamQuery($this->query, $affected, $params);
@@ -451,9 +451,34 @@ class Database {
 		$stat = $self->handler->prepare($query);
 
 		try {
+
 			$stat->execute($params);
+
 		} catch (\PDOException $e) {
-			throw new PairException($e->getMessage(), ErrorCodes::DB_QUERY_FAILED, $e);
+
+			// choose the right exception based on MySQL error code
+			switch ($e->getCode()) {
+
+				case '21000':
+					throw new PairException($e->getMessage(), ErrorCodes::DB_CARDINALITY_VIOLATION, $e);
+
+				case '42S02':
+					if (strpos($e->getMessage(), 'Unknown database')!==FALSE) {
+						throw new CriticalException($e->getMessage(), ErrorCodes::MISSING_DB, $e);
+					} else if (strpos($e->getMessage(), 'Table')!==FALSE) {
+						throw new CriticalException($e->getMessage(), ErrorCodes::MISSING_DB_TABLE, $e);
+					} else {
+						throw new PairException($e->getMessage(), ErrorCodes::INVALID_QUERY_SYNTAX, $e);
+					}
+
+				case 'HY000':
+					throw new CriticalException($e->getMessage(), ErrorCodes::MYSQL_GENERAL_ERROR, $e);
+
+				default:
+					throw new PairException($e->getMessage(), ErrorCodes::DB_QUERY_FAILED, $e);
+
+			}
+
 		}
 
 		switch ($option) {
@@ -527,9 +552,9 @@ class Database {
 		try {
 			$stat->execute($params);
 		} catch (\PDOException $e) {
-			throw new PairException($e->getMessage(), ErrorCodes::DB_QUERY_FAILED, $e);			
+			throw new PairException($e->getMessage(), ErrorCodes::DB_QUERY_FAILED, $e);
 		}
-		
+
 		$this->logParamQuery($this->query, $res, $params);
 		$res = (int)$stat->fetch(\PDO::FETCH_COLUMN);
 
@@ -542,24 +567,24 @@ class Database {
 	/**
 	 * Returns a recordset executing the query previously set with setQuery() method and
 	 * optional parameters as array.
-	 * 
+	 *
 	 * @param	array		List of parameters to bind on sql query.
 	 * @throws	PairException
 	 */
 	public function loadObjectList(array $params=[]): array {
 
 		$ret = NULL;
-		
+
 		$this->openConnection();
 
 		$stat = $this->handler->prepare($this->query);
 
 		try {
-			$stat->execute($params);		
+			$stat->execute($params);
 		} catch (\PDOException $e) {
 			throw new PairException($e->getMessage(), ErrorCodes::DB_QUERY_FAILED, $e);
 		}
-		
+
 		$ret = $stat->fetchAll(\PDO::FETCH_OBJ);
 
 		// logBar
@@ -732,7 +757,7 @@ class Database {
 		} catch (\PDOException $e) {
 			throw new PairException($e->getMessage(), ErrorCodes::DB_QUERY_FAILED, $e);
 		}
-		
+
 		// count affected rows
 		$affected = $stat->rowCount();
 

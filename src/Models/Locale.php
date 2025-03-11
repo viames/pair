@@ -155,13 +155,22 @@ class Locale extends ActiveRecord {
 
 	}
 
-	public function getRepresentation(): string {
+	/**
+	 * Returns the Locale representation as a string.
+	 *
+	 * @param	string	Separator character, default is '-'.
+	 */
+	public function getRepresentation(string $separator='-'): string {
+
+		if (!in_array($separator, ['-', '_'])) {
+			Logger::error('Invalid separator for Locale representation');
+		}
 
 		$country = $this->getCountry() ?? new Country($this->countryId);
 
 		$language = $this->getLanguage() ?? new Language($this->languageId);
 
-		return $language->code . '-' . $country->code;
+		return $language->code . $separator . $country->code;
 
 	}
 

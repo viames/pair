@@ -26,7 +26,10 @@ class PairException extends \Exception {
 		$criticalCodes = [
 			ErrorCodes::DB_CONNECTION_FAILED,
 			ErrorCodes::NO_VALID_TEMPLATE,
-			ErrorCodes::LOADING_ENV_FILE
+			ErrorCodes::LOADING_ENV_FILE,
+			ErrorCodes::MYSQL_GENERAL_ERROR,
+			ErrorCodes::MISSING_DB,
+			ErrorCodes::MISSING_DB_TABLE
 		];
 
 		// run drastic steps to close the application
@@ -43,9 +46,9 @@ class PairException extends \Exception {
 	/**
 	 * Queue error in the LogBar, take a system snapshot and send e-mail/telegram notifications.
 	 */
-	public static function track(string $message): void {
+	public static function track(string $message, int $level = 4, ?int $code = NULL): void {
 		
-		Logger::error($message);
+		Logger::error($message, $level, $code);
 
 	}
 

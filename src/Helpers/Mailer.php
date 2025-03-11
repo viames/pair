@@ -43,7 +43,7 @@ abstract class Mailer {
 	/**
 	 * Default application logo.
 	 */
-	const PAIR_LOGO = 'https://github.com/viames/Pair/wiki/files/pair-logo.png';
+	const PAIR_LOGO = 'https://github.com/viames/pair/wiki/files/pair-logo.png';
 
 	/**
 	 * Set the configuration of the email sender.
@@ -560,6 +560,40 @@ abstract class Mailer {
 	 * @throws	PairException
 	 */
 	abstract public function send(array $recipients, string $subject, string $title, string $text, array $attachments = [], array $ccs = []);
+
+
+	/**
+	 * Create an HTML email with link to reset-password.
+	 *
+	 * @param	User	Recipient user.
+	 * @param	string	Random string to reset password.
+	 */
+	public function sendPasswordReset(User $user, string $randomString): void {
+
+		$recipient = new \stdClass;
+		$recipient->email = $user->email;
+		$recipient->name  = $user->fullName;
+
+		// email subject
+		$subject = Translator::do('PASSWORD_RESET_REQUEST_SUBJECT', Config::get('PRODUCT_NAME'));
+
+		// body title
+		$title = Translator::do('PASSWORD_RESET_REQUEST_TITLE');
+
+		$replacements = [
+			'{{baseurl}}'		=> BASE_HREF,
+			'{{buttonlink}}'	=> BASE_HREF . 'user/newPassword/' . $randomString,
+			'{{userfullname}}'	=> $user->fullName,
+			'{{productname}}'	=> Config::get('PRODUCT_NAME')
+		];
+
+		// body content
+		$body = str_replace(array_keys($replacements),array_values($replacements),Translator::do('PASSWORD_RESET_REQUEST_BODY'));
+
+		// send the email
+		$this->send([$recipient], $subject, $title, $body);
+
+	}
 
 	/**
 	 * Set the base required configuration.

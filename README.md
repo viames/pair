@@ -54,7 +54,7 @@ composer require viames/pair
 After having installed Pair framework you can get singleton object `$app` and the just start MVC. You can check any session before MVC, like in the following example.
 
 ```php
-use Pair\Application;
+use Pair\Core\Application;
 
 // initialize the framework
 require 'vendor/autoload.php';
@@ -72,7 +72,7 @@ $app->startMvc();
 If you want to test code that is in the master branch, which hasn’t been pushed as a release, you can use master.
 
 ```
-composer require viames/pair dev-master
+composer require viames/pair dev-main
 ```
 If you don’t have Composer, you can [download it](https://getcomposer.org/download/).
 
@@ -87,7 +87,7 @@ Please consult the [Wiki](https://github.com/viames/pair/wiki) of this project. 
 * [Router](https://github.com/viames/pair/wiki/Router)
 * [index.php](https://github.com/viames/pair/wiki/index)
 * [.htaccess](https://github.com/viames/pair/wiki/htaccess)
-* [config.php](https://github.com/viames/pair/wiki/Configuration-file)
+* [.env](https://github.com/viames/pair/wiki/Configuration-file)
 * [classes](https://github.com/viames/pair/wiki/Classes-folder)
 
 ## Requirements

@@ -82,7 +82,7 @@ class ErrorCodes {
 	/**
 	 * Error code for view not found.
 	 */
-	const VIEW_NOT_FOUND = 1016;
+	const VIEW_LOAD_ERROR = 1016;
 
 	/**
 	 * Error code for model not found.
@@ -105,19 +105,19 @@ class ErrorCodes {
 	const NO_VALID_TEMPLATE = 1020;
 
 	/**
-	 * Generic database connection error.
+	 * Invalid logger configuration.
 	 */
-	const CONNECTION_ERROR = 1021;
+	const INVALID_LOGGER_CONFIGURATION = 1021;
 
 	/**
-	 * Generic query error.
+	 * Represents the general MySQL error (HY000), which indicates an unspecified database issue or an internal error.
 	 */
-	const QUERY_ERROR = 1022;
+	const MYSQL_GENERAL_ERROR = 1022;
 
 	/**
-	 * Query timeout error.
+	 * MySQL error for cardinality violation (21000): a statement would have returned a row with a cardinality outside the range of 0 to 1.
 	 */
-	const TIMEOUT_ERROR = 1023;
+	const DB_CARDINALITY_VIOLATION = 1023;
 
 	/**
 	 * Invalid SQL query syntax.
@@ -132,12 +132,12 @@ class ErrorCodes {
 	/**
 	 * Missing database error.
 	 */
-	const MISSING_DATABASE = 1026;
+	const MISSING_DB = 1026;
 
 	/**
 	 * Missing table error.
 	 */
-	const MISSING_TABLE = 1027;
+	const MISSING_DB_TABLE = 1027;
 
 	/**
 	 * Permission denied error.
@@ -252,12 +252,12 @@ class ErrorCodes {
 	/**
 	 * Controller error.
 	 */
-	const CONTROLLER_ERROR = 1050;
+	const CONTROLLER_CONFIG_ERROR = 1050;
 
 	/**
-	 * View error.
+	 * View error occurred at runtime.
 	 */
-	const VIEW_ERROR = 1051;
+	const VIEW_RUNTIME_ERROR = 1051;
 
 	/**
 	 * Amazon S3 error.

@@ -132,7 +132,7 @@ class Utilities {
 		// check if the file is a CSV
 		$fileMime = mime_content_type($csvPath);
 		if ('csv' != File::mimeCategory($fileMime)) {
-			throw new PairException('The file is not a CSV');
+			throw new PairException('The file mime “' . $fileMime . '” is not CSV type');
 		}
 
 		// create Excel file name as the CSV file with the extension changed

@@ -222,19 +222,20 @@ abstract class Controller {
 	public function getView(): ?View {
 
 		if (!$this->view) {
-			throw new CriticalException('View page not set for module ' . $this->name);
+			throw new CriticalException('View page not set for module ' . $this->name, ErrorCodes::CONTROLLER_CONFIG_ERROR);
 		}
 
 		$file = $this->modulePath .'/view'. ucfirst($this->view) .'.php';
 
 		if (!file_exists($file)) {
+			throw new AppException('The page ' . $this->name . '/' . $this->view . ' does not exist', ErrorCodes::VIEW_LOAD_ERROR);
 			$this->view = 'default';
 			$file = $this->modulePath .'/view'. ucfirst($this->view) .'.php';
 		}
 
 		// if view file still not found, throw an exception
 		if (!file_exists($file)) {
-			throw new CriticalException('The page ' . $this->name . '/' . $this->view . ' does not exist');
+			throw new AppException('The page ' . $this->name . '/' . $this->view . ' does not exist', ErrorCodes::VIEW_LOAD_ERROR);
 		}
 
 		include_once($file);
@@ -242,7 +243,7 @@ abstract class Controller {
 		$viewName = ucfirst($this->name) .'View'. ucfirst($this->view);
 
 		if (!class_exists($viewName)) {
-			throw new CriticalException('Class ' . $viewName . ' was not found in file ' . $file, ErrorCodes::CLASS_NOT_FOUND);
+			throw new AppException('Class ' . $viewName . ' was not found in file ' . $file, ErrorCodes::VIEW_LOAD_ERROR);
 		}
 
 		return new $viewName($this->model);

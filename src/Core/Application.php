@@ -659,8 +659,8 @@ class Application {
 	}
 
 	/**
-	 * Start the session and set the User class (Pair/User or a custom one that inherites
-	 * from Pair/User). Must use only for command-line and web application access.
+	 * Start the session and set the User class (Pair/Models/User or a custom one that inherites
+	 * from Pair/Models/User). Must use only for command-line and web application access.
 	 */
 	public function manageSession(): void {
 

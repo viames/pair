@@ -3,10 +3,12 @@
 namespace Pair\Core;
 
 use Pair\Core\Config;
+use Pair\Exceptions\ErrorCodes;
 use Pair\Helpers\LogBar;
 use Pair\Helpers\Mailer;
 use Pair\Helpers\Utilities;
 use Pair\Models\ErrorLog;
+use Pair\Orm\Database;
 use Pair\Services\AmazonSes;
 use Pair\Services\InsightHub;
 use Pair\Services\SendMail;
@@ -131,7 +133,7 @@ class Logger {
 		if (Config::get('PAIR_LOGGER_EMAIL_THRESHOLD')) {
 			$this->emailThreshold = (int)Config::get('PAIR_LOGGER_EMAIL_THRESHOLD');
 			if ($this->emailThreshold < 1 or $this->emailThreshold > 8) {
-				self::error('Invalid PAIR_LOGGER_EMAIL_THRESHOLD value in configuration file.');
+				self::error('Invalid PAIR_LOGGER_EMAIL_THRESHOLD value in configuration file.', self::ERROR, ErrorCodes::INVALID_LOGGER_CONFIGURATION);
 			}
 		}
 
@@ -146,7 +148,7 @@ class Logger {
 		if (Config::get('PAIR_LOGGER_TELEGRAM_THRESHOLD')) {
 			$this->telegramThreshold = (int)Config::get('PAIR_LOGGER_TELEGRAM_THRESHOLD');
 			if ($this->telegramThreshold < 1 or $this->telegramThreshold > 8) {
-				self::error('Invalid PAIR_LOGGER_TELEGRAM_THRESHOLD value in configuration file.');
+				self::error('Invalid PAIR_LOGGER_TELEGRAM_THRESHOLD value in configuration file.', self::ERROR, ErrorCodes::INVALID_LOGGER_CONFIGURATION);
 			}
 		}
 
@@ -167,7 +169,7 @@ class Logger {
 	private function checkMailer(): void {
 
 		if (!$this->mailer) {
-			self::error('Mailer not configured.');
+			self::error('Mailer not configured.', self::ERROR, ErrorCodes::INVALID_LOGGER_CONFIGURATION);
 		}
 
 		$this->mailer->checkConfig();
@@ -196,7 +198,7 @@ class Logger {
 
 		// log the error internally
 		$fullMsg = 'Error ' . $errno . ': ' . $errstr . ' in ' . $errfile . ' line ' . $errline;
-		self::error($fullMsg, self::ERROR);
+		self::error($fullMsg, self::ERROR, $errno);
 
 		// send the error to Sentry if enabled
 		if (Config::get('SENTRY_DSN')) {
@@ -212,7 +214,7 @@ class Logger {
 	/**
 	 * Log a critical error in LogBar, database and send notifications.
 	 */
-	public static function error(string $description, int $level=4): void {
+	public static function error(string $description, int $level=4, ?int $errorCode=NULL): void {
 
 		LogBar::event($description, 'error');
 
@@ -222,7 +224,7 @@ class Logger {
 		}
 
 		$self = self::getInstance();
-		$self->handle($description, $level);
+		$self->handle($description, $level, $errorCode);
 
 	}
 
@@ -243,7 +245,7 @@ class Logger {
 		// log the error internally
 		$trace = $e->getTrace()[0];
 		$fullMsg = get_class($e) . ': ' . $e->getMessage() . ' in ' . $trace['file'] . ' line ' . $trace['line'];
-		self::error($fullMsg, self::ERROR);
+		self::error($fullMsg, self::ERROR, $e->getCode());
 
 	}
 
@@ -266,14 +268,22 @@ class Logger {
 	 * @param string	Description of the error.
 	 * @param int		PSR-3 log level number equivalent.
 	 */
-	private function handle(string $description, int $level): void {
+	private function handle(string $description, int $level, ?int $errorCode=NULL): void {
 
 		if (!$this->enabled) {
 			return;
 		}
 
 		// register error in database
-		$this->storeError($description, $level);
+		$dbErrorCodes = [
+			ErrorCodes::DB_CONNECTION_FAILED,
+			ErrorCodes::MYSQL_GENERAL_ERROR,
+			ErrorCodes::MISSING_DB,
+		];
+
+		if ((!$errorCode or ($errorCode and !in_array($errorCode, $dbErrorCodes))) and Database::getInstance()->isConnected()) {
+			$this->storeError($description, $level);
+		}
 
 		$levels = [
 			self::EMERGENCY	=> 'Emergency',
@@ -379,7 +389,7 @@ class Logger {
 	public function setEmailThreshold(int $threshold): void {
 
 		if ($threshold < 1 or $threshold > 8) {
-			self::error('Invalid E-mail error threshold value');
+			self::error('Invalid E-mail error threshold value', self::ERROR, ErrorCodes::INVALID_LOGGER_CONFIGURATION);
 		}
 
 		$this->emailThreshold = $threshold;
@@ -428,7 +438,7 @@ class Logger {
 	public function setTelegramThreshold(int $threshold): void {
 
 		if ($threshold < 1 or $threshold > 8) {
-			self::error('Invalid Telegram error threshold value');
+			self::error('Invalid Telegram error threshold value', self::ERROR, ErrorCodes::INVALID_LOGGER_CONFIGURATION);
 		}
 
 		$this->telegramThreshold = $threshold;

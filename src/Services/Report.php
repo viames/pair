@@ -249,10 +249,10 @@ abstract class Report {
 		// set the locale
 		$app = Application::getInstance();
 		$cUser = $app->currentUser;
-		$locale = $cUser
-			? $cUser->getLocale()->getRepresentation()
-			: Locale::getDefault()->getRepresentation();
-		Settings::setLocale(str_replace('-','_',$locale));
+		Settings::setLocale($cUser
+			? $cUser->getLocale()->getRepresentation('_')
+			: Locale::getDefault()->getRepresentation('_')
+		);
 
 		// set column names (header)
 		foreach ($this->columns as $col => $def) {
