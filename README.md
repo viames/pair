@@ -6,9 +6,9 @@
 [![License](https://poser.pugx.org/viames/pair/license)](https://packagist.org/packages/viames/pair)
 [![PHP Version Require](https://poser.pugx.org/viames/pair/require/php)](https://packagist.org/packages/viames/pair)
 
-## What’s New
+## What’s new
 
-**Welcome to Pair [version 2](https://github.com/viames/pair/tree/2.0.0-alpha)**. Many new features have been introduced and existing ones improved. Among these improvements are `Migrations`, `Collections`, and many third-party products and services incorporated into Pair to make it easy to create lightning-fast server-side web applications.
+Welcome to Pair version 2. Many new features have been introduced and existing ones improved. Among these improvements are [Collection](https://github.com/viames/pair/wiki/Collection), `Migrations`, third-party products and services support incorporated into Pair to make it easy to create lightning-fast server-side web applications, including: `Amazon S3`, `Amazon SES`, `Chart.js`, `ELK logger`, `InsightHub`, `Sentry`, `Telegram`.
 
 ## Features
 
@@ -82,6 +82,7 @@ Please consult the [Wiki](https://github.com/viames/pair/wiki) of this project. 
 
 * [ActiveRecord](https://github.com/viames/pair/wiki/ActiveRecord)
 * [Application](https://github.com/viames/pair/wiki/Application)
+* [Collection](https://github.com/viames/pair/wiki/Collection)
 * [Controller](https://github.com/viames/pair/wiki/Controller)
 * [Form](https://github.com/viames/pair/wiki/Form)
 * [Router](https://github.com/viames/pair/wiki/Router)
