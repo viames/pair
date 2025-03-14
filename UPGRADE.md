@@ -4,11 +4,11 @@ This document describes the changes you need to make to your application code to
 
 ### Installation
 
-To install Pair 2.0, you can use Composer. Run the following commands to install the latest version of Pair from the branch 2.0.0-alpha:
+To install Pair 2.0, you can use Composer. Run the following commands to install the latest version of Pair from the branch 2.0.0-beta:
 
 ```bash
 composer config minimum-stability dev
-composer require viames/pair:dev-2.0.0-alpha
+composer require viames/pair:dev-2.0.0-beta
 ```
 
 ### Configuration
