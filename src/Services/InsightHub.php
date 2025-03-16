@@ -23,7 +23,6 @@ class InsightHub {
         E_NOTICE => 'E_NOTICE',
         E_PARSE => 'E_PARSE',
         E_RECOVERABLE_ERROR => 'E_RECOVERABLE_ERROR',
-        E_STRICT => 'E_STRICT',
         E_USER_DEPRECATED => 'E_USER_DEPRECATED',
         E_USER_ERROR => 'E_USER_ERROR',
         E_USER_NOTICE => 'E_USER_NOTICE',
@@ -73,17 +72,17 @@ class InsightHub {
 			return NULL;
 		}
 
-		$bugsnag = Client::make(Config::get('INSIGHT_HUB_API_KEY'));
+		$client = Client::make(Config::get('INSIGHT_HUB_API_KEY'));
 
-		$bugsnag->setReleaseStage(Application::getEnvironment());
-		$bugsnag->setAppType('web');
-		$bugsnag->setNotifier([
+		$client->setReleaseStage(Application::getEnvironment());
+		$client->setAppType('web');
+		$client->setNotifier([
 			'name' => Config::get('PRODUCT_NAME'),
 			'version' => Config::get('PRODUCT_VERSION'),
 			'url' => BASE_HREF
 		]);
 
-		return $bugsnag;
+		return $client;
 
 	}
 
@@ -105,7 +104,7 @@ class InsightHub {
 			case E_NOTICE:
 			case E_USER_DEPRECATED:
 			case E_USER_NOTICE:
-		
+
 				return 'info';
 
 			case E_COMPILE_ERROR:

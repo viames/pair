@@ -194,11 +194,11 @@ class Logger {
 	 * @param	int		Error line.
 	 * @param	array	(Optional) it will be passed an array that points to the active symbol table at the point the error occurred.
 	 */
-	public static function errorHandler(int $errno, string $errstr, string $errfile, int $errline, ?array $errcontext=NULL): void {
+	public static function errorHandler(int $errno, string $errstr, ?string $errfile=NULL, ?int $errline=NULL): bool {
 
 		// log the error internally
-		$fullMsg = 'Error ' . $errno . ': ' . $errstr . ' in ' . $errfile . ' line ' . $errline;
-		self::error($fullMsg, self::ERROR, $errno);
+		$fullMsg = 'Error ' . $errno . ': ' . $errstr . ($errfile ? ' in ' . $errfile . ' line ' . $errline : '');
+		self::error($fullMsg, self::ERROR);
 
 		// send the error to Sentry if enabled
 		if (Config::get('SENTRY_DSN')) {
@@ -208,6 +208,9 @@ class Logger {
 
 		// send the error to Insight Hub if enabled
 		InsightHub::handle($errstr, $errno);
+
+		// don’t execute PHP internal error handler
+		return TRUE;
 
 	}
 

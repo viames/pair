@@ -3,6 +3,7 @@
 namespace Pair\Exceptions;
 
 use Pair\Core\Application;
+use Pair\Core\Logger;
 use Pair\Helpers\Translator;
 use Pair\Helpers\Utilities;
 
@@ -21,7 +22,7 @@ class ApiException extends PairException {
 	public function __construct(string $message, int $code = 0, ?\Throwable $previous = NULL) {
 
 		$trackedMessage = ($previous and $previous->getMessage()) ? $previous->getMessage() : $message;
-		self::track($trackedMessage);
+		Logger::error($trackedMessage, Logger::ERROR, $code);
 		
 	}
 

@@ -37,18 +37,9 @@ class PairException extends \Exception {
 			throw new CriticalException($message, $code, $previous);
 		}
 
-		// intercept any previous message
+		// intercept any previous message and track it
 		$trackedMessage = ($previous and $previous->getMessage()) ? $previous->getMessage() : $message;
-		self::track($trackedMessage);
-
-	}
-
-	/**
-	 * Queue error in the LogBar, take a system snapshot and send e-mail/telegram notifications.
-	 */
-	public static function track(string $message, int $level = 4, ?int $code = NULL): void {
-		
-		Logger::error($message, $level, $code);
+		Logger::error($trackedMessage);
 
 	}
 

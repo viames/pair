@@ -24,7 +24,7 @@ class CriticalException extends PairException {
 		// intercept any previous message
 		$trackedMessage = ($previous and $previous->getMessage()) ? $previous->getMessage() : $message;
 
-		self::track($trackedMessage, Logger::EMERGENCY, $code);
+		Logger::error($trackedMessage, Logger::EMERGENCY, $code);
 
 		self::terminate($message, $code);
 
