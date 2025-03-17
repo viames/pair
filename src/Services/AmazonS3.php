@@ -152,6 +152,7 @@ class AmazonS3 {
 			}
 		} catch (\Exception $e) {
 			throw new PairException($e->getMessage(), ErrorCodes::AMAZON_S3_ERROR, $e);
+			return FALSE;
 		}
 
 		return TRUE;

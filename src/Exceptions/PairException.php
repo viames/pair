@@ -60,7 +60,7 @@ class PairException extends \Exception {
 			Utilities::pairJsonError($message);
 		} else {
 			$app = Application::getInstance();
-			$app->modal(Translator::do('ERROR'), $message, 'error')->confirm('OK');
+			$app->modal(Translator::do('ERROR'), $message, 'error')->confirm(Translator::do('OK'));
 		}
 
 	}

@@ -2,7 +2,10 @@
 
 namespace Pair\Helpers;
 
-class Chrf {
+use Pair\Exceptions\AppException;
+use Pair\Exceptions\ErrorCodes;
+
+class Csrf {
 
 	/**
 	 * Generate a CSRF token field for form security.
@@ -24,6 +27,17 @@ class Chrf {
 
 		// return the hidden input field HTML
 		return sprintf('<input type="hidden" name="csrf_token" value="%s">', htmlspecialchars($token, ENT_QUOTES, 'UTF-8'));
+
+	}
+
+	/**
+	 * Validate a submitted CSRF token or throw an AppException.
+	 */
+	public static function validateOrFail(string $token): void {
+
+		if (!self::validateToken($token)) {
+			throw new AppException('Invalid CSRF token', ErrorCodes::CSRF_TOKEN_INVALID);
+		}
 
 	}
 
