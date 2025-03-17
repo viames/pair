@@ -2,7 +2,8 @@
 	"name": "viames/pair",
 	"description": "lightweight PHP framework as the air",
 	"type": "library",
-	"version": "2.0.0-beta",
+    "minimum-stability": "stable",
+    "prefer-stable": true,
 	"security": true,
 	"require": {
 		"php": "8.3",
@@ -71,6 +72,5 @@
 	},
 	"suggest": {
 		"ext-xdebug": "*"
-	},
-	"minimum-stability": "stable"
+	}
 }
