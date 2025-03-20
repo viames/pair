@@ -60,12 +60,27 @@ abstract class ActiveRecord implements \JsonSerializable {
 	/**
 	 * Return the table name of the object.
 	 */
-	const TABLE_KEY = 'FAKE_KEY';
+	const TABLE_KEY = '';
 
 	/**
 	 * Return the table name of the object.
 	 */
-	const TABLE_NAME = 'FAKE_TABLE';
+	const TABLE_NAME = '';
+
+	/**
+	 * Table structure [Field => Type, Null, Key, Default, Extra].
+	 */
+	const TABLE_DESCRIPTION = [];
+
+	/**
+	 * List of columns that stores encrypted data.
+	 */
+	const ENCRYPTABLES = [];
+
+	/**
+	 * List of table foreign keys.
+	 */
+	const FOREIGN_KEYS = [];
 
 	/**
 	 * List of properties that relates to other ActiveRecord’s classes.
@@ -97,8 +112,13 @@ abstract class ActiveRecord implements \JsonSerializable {
 			$this->keyProperties[] = array_search($field, $binds);
 		}
 
+		// load any table description
+		if (count(static::TABLE_DESCRIPTION)) {
+			$this->db->setTableDescription(static::TABLE_NAME, static::TABLE_DESCRIPTION);
+		}
+
 		try {
-			$this->init();
+			$this->_init();
 		} catch (\Exception $e) {
 
 		}
@@ -137,12 +157,12 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * @param	string	Called method name.
 	 * @param	array	Arguments.
 	 */
-	public function __call(string $name, array $arguments) {
+	public function __call(string $name, array $arguments): mixed {
 
 		$getRelatedObject = function(string $class): ?ActiveRecord {
 
 			// search for a static foreign-key list in object class in order to speed-up
-			if (defined('static::FOREIGN_KEYS') and is_array(static::FOREIGN_KEYS)) {
+			if (count(static::FOREIGN_KEYS)) {
 
 				foreach (static::FOREIGN_KEYS as $fk) {
 					if ($class::TABLE_NAME == $fk['REFERENCED_TABLE_NAME']) {
@@ -326,6 +346,11 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 
 	}
+
+	/**
+	 * Method called by constructor just before populate this object.
+	 */
+	protected function _init(): void {}
 
 	/**
 	 * Add an error to object’s error list.
@@ -1139,7 +1164,9 @@ abstract class ActiveRecord implements \JsonSerializable {
 			$property = lcfirst(str_replace(' ', '', ucwords(str_replace(['_','\\'], ' ', $col->Field))));
 			
 			// if property doesn’t exist in the class, it will be handled as dynamic property
-			if (property_exists(static::class, $property)) {
+			if (!property_exists(static::class, $property)) {
+				throw new PairException('Property “' . $property . '” not found for class ' . static::class, ErrorCodes::PROPERTY_NOT_FOUND);
+			} else {
 				$maps[$property] = $col->Field;
 			}
 
@@ -1764,7 +1791,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 
 		// search for a static foreign-key list in object class in order to speed-up
-		if (defined('static::FOREIGN_KEYS') and is_array(static::FOREIGN_KEYS)) {
+		if (count(static::FOREIGN_KEYS)) {
 
 			// initialize
 			$foreignKeys = [];
@@ -2000,11 +2027,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 
 	/**
-	 * Method called by constructor just before populate this object.
-	 */
-	protected function init(): void {}
-
-	/**
 	 * Check if a property of this inherited object is stored in common cache.
 	 *
 	 * @param	string	Name of property of this object to check.
@@ -2215,7 +2237,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @param	\stdClass	Record object as extracted from db table.
 	 */
-	private function populate(\stdClass $dbRow) {
+	private function populate(\stdClass $dbRow): void {
 
 		$this->beforePopulate($dbRow);
 

@@ -2,8 +2,6 @@
 
 namespace Pair\Models;
 
-use Pair\Core\Application;
-use Pair\Helpers\Utilities;
 use Pair\Models\User;
 use Pair\Orm\ActiveRecord;
 use Pair\Orm\Database;
@@ -45,7 +43,7 @@ class UserRemember extends ActiveRecord {
 	/**
 	 * Method called by constructor just after having populated the object.
 	 */
-	protected function init(): void {
+	protected function _init(): void {
 
 		$this->bindAsDatetime('createdAt');
 

@@ -33,7 +33,7 @@ class Locale extends ActiveRecord {
 	/**
 	 * This property maps “default_country” column.
 	 */
-	protected ?bool $defaultCountry;
+	protected ?bool $defaultCountry = NULL;
 
 	/**
 	 * This property maps “app_default” column.
@@ -42,45 +42,56 @@ class Locale extends ActiveRecord {
 
 	/**
 	 * Name of related db table.
-	 * @var string
 	 */
 	const TABLE_NAME = 'locales';
 
 	/**
 	 * Name of primary key db field.
-	 * @var string|array
 	 */
 	const TABLE_KEY = 'id';
 
 	/**
 	 * Properties that are stored in the shared cache.
-	 * @var	array
 	 */
 	const SHARED_CACHE_PROPERTIES = ['languageId', 'countryId'];
 
 	/**
+	 * Table structure [Field => Type, Null, Key, Default, Extra].
+	 */
+	const TABLE_DESCRIPTION = [
+		'id' => ['smallint unsigned', 'NO', 'PRI', NULL, 'auto_increment'],
+		'language_id' => ['smallint unsigned', 'NO', 'MUL', NULL, ''],
+		'country_id' => ['smallint unsigned', 'NO', 'MUL', NULL, ''],
+		'official_language' => ['tinyint unsigned', 'NO', 'MUL', '0', ''],
+		'default_country' => ['tinyint unsigned', 'YES', 'MUL', NULL, ''],
+		'app_default' => ['tinyint unsigned', 'NO', 'MUL', '0', '']
+	];
+
+	/**
 	 * Speed up the foreign-key load because for this class they are always used.
-	 * @var array
 	 */
 	const FOREIGN_KEYS = [
-		['CONSTRAINT_NAME'			=> 'fk_locales_countries',
-		'COLUMN_NAME'				=> 'country_id',
-		'REFERENCED_TABLE_NAME'		=> 'countries',
-		'REFERENCED_COLUMN_NAME'	=> 'id',
-		'UPDATE_RULE'				=> 'CASCADE',
-		'DELETE_RULE'				=> 'RESTRICT'],
-		['CONSTRAINT_NAME'			=> 'fk_locales_languages',
-		'COLUMN_NAME'				=> 'language_id',
-		'REFERENCED_TABLE_NAME'		=> 'languages',
-		'REFERENCED_COLUMN_NAME'	=> 'id',
-		'UPDATE_RULE'				=> 'CASCADE',
-		'DELETE_RULE'				=> 'RESTRICT']
+		[
+			'CONSTRAINT_NAME'			=> 'fk_locales_countries',
+			'COLUMN_NAME'				=> 'country_id',
+			'REFERENCED_TABLE_NAME'		=> 'countries',
+			'REFERENCED_COLUMN_NAME'	=> 'id',
+			'UPDATE_RULE'				=> 'CASCADE',
+			'DELETE_RULE'				=> 'RESTRICT'
+		],[
+			'CONSTRAINT_NAME'			=> 'fk_locales_languages',
+			'COLUMN_NAME'				=> 'language_id',
+			'REFERENCED_TABLE_NAME'		=> 'languages',
+			'REFERENCED_COLUMN_NAME'	=> 'id',
+			'UPDATE_RULE'				=> 'CASCADE',
+			'DELETE_RULE'				=> 'RESTRICT'
+		]
 	];
 
 	/**
 	 * Method called by constructor just after having populated the object.
 	 */
-	protected function init(): void {
+	protected function _init(): void {
 
 		$this->bindAsBoolean('officialLanguage', 'defaultCountry', 'appDefault');
 		$this->bindAsInteger('id', 'languageId', 'countryId');

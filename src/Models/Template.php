@@ -40,7 +40,7 @@ class Template extends ActiveRecord implements PluginInterface {
 	/**
 	 * Flag for default template only.
 	 */
-	protected bool $default;
+	protected bool $isDefault;
 
 	/**
 	 * User ID of installer.
@@ -81,6 +81,37 @@ class Template extends ActiveRecord implements PluginInterface {
 	 * Properties that are stored in the shared cache.
 	 */
 	const SHARED_CACHE_PROPERTIES = ['installedBy'];
+
+	/**
+	 * Table structure [Field => Type, Null, Key, Default, Extra].
+	 */
+	const TABLE_DESCRIPTION = [
+		'id'			=> ['int unsigned', 'NO', 'PRI', NULL, 'auto_increment'],
+		'name'			=> ['varchar(50)', 'NO', 'UNI', NULL, ''],
+		'version'		=> ['varchar(10)', 'NO', '', NULL, ''],
+		'date_released'	=> ['datetime', 'NO', '', NULL, ''],
+		'app_version'	=> ['varchar(10)', 'NO', '', '1.0', ''],
+		'is_default'	=> ['tinyint(1)', 'NO', '', '0', ''],
+		'installed_by'	=> ['int unsigned', 'NO', 'MUL', NULL, ''],
+		'date_installed'=> ['datetime', 'NO', '', NULL, ''],
+		'derived'		=> ['tinyint unsigned', 'NO', '', '0', ''],
+		'palette'		=> ['varchar(255)', 'NO', '', NULL, '']
+	];
+
+	/**
+	 * Method called by constructor just after having populated the object.
+	 */
+	protected function _init(): void {
+
+		$this->bindAsBoolean('default', 'derived');
+
+		$this->bindAsCsv('palette');
+
+		$this->bindAsDatetime('dateReleased', 'dateInstalled');
+
+		$this->bindAsInteger('id', 'installedBy');
+
+	}
 
 	/**
 	 * Removes files of this Module object before its deletion.
@@ -128,7 +159,7 @@ class Template extends ActiveRecord implements PluginInterface {
 			'version'		=> 'version',
 			'dateReleased'	=> 'date_released',
 			'appVersion'	=> 'app_version',
-			'default'		=> 'is_default',
+			'isDefault'		=> 'is_default',
 			'installedBy'	=> 'installed_by',
 			'dateInstalled'	=> 'date_installed',
 			'derived'		=> 'derived',
@@ -210,21 +241,6 @@ class Template extends ActiveRecord implements PluginInterface {
 
 	}
 
-	/**
-	 * Method called by constructor just after having populated the object.
-	 */
-	protected function init(): void {
-
-		$this->bindAsBoolean('default', 'derived');
-
-		$this->bindAsCsv('palette');
-
-		$this->bindAsDatetime('dateReleased', 'dateInstalled');
-
-		$this->bindAsInteger('id', 'installedBy');
-
-	}
-
 	public static function parse(string $styleFile): void {
 
 		// load the style page file
@@ -248,7 +264,7 @@ class Template extends ActiveRecord implements PluginInterface {
 			// placeholder could be not found or $app property could be NULL
 			if (!preg_match($pattern, $templateHtml) or !$app->$property) {
 				continue;
-			}	
+			}
 
 			// replace in template
 			$templateHtml = preg_replace($pattern, $app->$property, $templateHtml);

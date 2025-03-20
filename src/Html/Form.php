@@ -25,6 +25,7 @@ use Pair\Html\FormControls\Text;
 use Pair\Html\FormControls\Textarea;
 use Pair\Html\FormControls\Time;
 use Pair\Html\FormControls\Url;
+use Pair\Helpers\Post;
 use Pair\Orm\ActiveRecord;
 use Pair\Orm\Collection;
 
@@ -326,6 +327,23 @@ class Form {
 	}
 
 	/**
+	 * Generate and print a CSRF token field for form security.
+	 *
+	 * @return string HTML of the hidden input field with the CSRF token.
+	 */
+	public function printToken(): void {
+
+		// generate a unique CSRF token
+		$token = bin2hex(\random_bytes(32));
+
+		// store the token in the session
+		$_SESSION['csrf_token'] = $token;
+
+		print $this->hidden('csrf_token')->value($token);
+
+	}
+
+	/**
 	 * Adds a Hidden input object to this Form object. Default type is Text.
 	 * Chainable method.
 	 *
@@ -599,6 +617,29 @@ class Form {
 		}
 
 		return $unvalids;
+
+	}
+
+	/**
+	 * Validate a submitted CSRF token or throw an AppException.
+	 *
+	 * @throws	AppException
+	 */
+	public static function validateToken(): void {
+
+		$token = Post::trim('csrf_token');
+
+		// check if the CSRF token is set in the session
+		if (!isset($_SESSION['csrf_token'])) {
+			throw new AppException('CSRF token not found in session', ErrorCodes::CSRF_TOKEN_NOT_FOUND);
+		}
+
+		// regenerate the token after validation
+		if (!hash_equals($_SESSION['csrf_token'], $token)) {
+			throw new AppException('Invalid CSRF token', ErrorCodes::CSRF_TOKEN_INVALID);
+		}
+
+		$_SESSION['csrf_token'] = bin2hex(\random_bytes(32));
 
 	}
 

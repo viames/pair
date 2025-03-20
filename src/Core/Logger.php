@@ -373,7 +373,7 @@ class Logger {
 
 		set_error_handler([self::class, 'errorHandler']);
 		set_exception_handler([self::class, 'exceptionHandler']);
-		register_shutdown_function([self::class, 'shutdownHandler']);
+		//register_shutdown_function([self::class, 'shutdownHandler']);
 
 	}
 

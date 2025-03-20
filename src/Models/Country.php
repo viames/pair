@@ -8,44 +8,48 @@ class Country extends ActiveRecord {
 
 	/**
 	 * This property maps “id” column.
-	 * @var int
 	 */
-	protected $id;
+	protected int $id;
 
 	/**
 	 * This property maps “code” column.
-	 * @var string
 	 */
-	protected $code;
+	protected string $code;
 
 	/**
 	 * This property maps “native_name” column.
-	 * @var string
 	 */
-	protected $nativeName;
+	protected ?string $nativeName = NULL;
 
 	/**
 	 * This property maps “english_name” column.
-	 * @var string
 	 */
-	protected $englishName;
+	protected string $englishName;
 
 	/**
 	 * Name of related db table.
-	 * @var string
 	 */
 	const TABLE_NAME = 'countries';
 
 	/**
 	 * Name of primary key db field.
-	 * @var string|array
 	 */
 	const TABLE_KEY = 'id';
 
 	/**
+	 * Table structure [Field => Type, Null, Key, Default, Extra].
+	 */
+	const TABLE_DESCRIPTION = [
+		'id'			=> ['smallint unsigned', 'NO', 'PRI', 'NULL', 'auto_increment'],
+		'code'			=> ['varchar(3)', 'NO', 'UNI', '', ''],
+		'native_name'	=> ['varchar(100)', 'YES', '', '', ''],
+		'english_name'	=> ['varchar(100)', 'NO', '', '', '']
+	];
+
+	/**
 	 * Method called by constructor just after having populated the object.
 	 */
-	protected function init(): void {
+	protected function _init(): void {
 
 		$this->bindAsInteger('id');
 

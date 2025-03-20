@@ -10,44 +10,38 @@ class Acl extends ActiveRecord {
 
 	/**
 	 * Property that binds db primary key id.
-	 * @var int
 	 */
-	protected $id;
+	protected int $id;
 
 	/**
 	 * Property that binds db field rule_id.
-	 * @var int
 	 */
-	protected $ruleId;
+	protected int $ruleId;
 
 	/**
 	 * Property that binds db field group_id.
-	 * @var int
 	 */
-	protected $groupId;
+	protected ?int $groupId = NULL;
 
 	/**
 	 * Property that binds db field is_default.
-	 * @var bool
 	 */
-	protected $default;
+	protected bool $default;
 
 	/**
 	 * Name of related db table.
-	 * @var string
 	 */
 	const TABLE_NAME = 'acl';
 
 	/**
 	 * Name of primary key db field.
-	 * @var string
 	 */
 	const TABLE_KEY = 'id';
 
 	/**
 	 * Method called by constructor just after having populated the object.
 	 */
-	protected function init(): void {
+	protected function _init(): void {
 
 		$this->bindAsInteger('id', 'ruleId', 'groupId');
 

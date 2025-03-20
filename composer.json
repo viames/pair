@@ -2,15 +2,16 @@
 	"name": "viames/pair",
 	"description": "lightweight PHP framework as the air",
 	"type": "library",
-	"version": "2.0.0-beta",
-	"security": true,
+	"version": "3.0.0-alpha",
+	"minimum-stability": "dev",
+	"prefer-stable": true,
 	"require": {
 		"php": "8.3",
 		"bugsnag/bugsnag": "^3",
 		"daniel-zahariev/php-aws-ses":"^0.9",
 		"league/flysystem-aws-s3-v3": "^1|^3",
 		"phpmailer/phpmailer": "^6",
-		"phpoffice/phpspreadsheet": "^1|^2|^3",
+		"phpoffice/phpspreadsheet": "^1|^2|^3|^4",
 		"sentry/sdk": "^4",
 		"sistemi-etime/flysystem-plugin-aws-s3-v3": "^1"
 	},
@@ -31,17 +32,13 @@
 		"framework",
 		"active-record",
 		"plugin-system",
-		"pagination",
-		"router",
 		"rest-api"
 	],
 	"scripts": {
-        "upgrade-to-v2": "php scripts/upgrade-to-v2.php"
+        "upgrade-to-v2": "php scripts/upgrade-to-v2.php",
+		"upgrade-to-v3": "php scripts/upgrade-to-v3.php"
     },
 	"autoload": {
-		"classmap": [
-			"src"
-		],
 		"psr-4": {
 			"Pair\\": "src/",
 			"Pair\\Core\\": "src/Core",
@@ -71,6 +68,5 @@
 	},
 	"suggest": {
 		"ext-xdebug": "*"
-	},
-	"minimum-stability": "stable"
+	}
 }
