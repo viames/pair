@@ -44,7 +44,7 @@ class ScheduleLog extends ActiveRecord {
 	/**
 	 * Method called by constructor just after having populated the object.
 	 */
-	protected function init(): void {
+	protected function _init(): void {
 
 		$this->bindAsBoolean('result');
 

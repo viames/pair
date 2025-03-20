@@ -10,33 +10,28 @@ class Oauth2Token extends ActiveRecord {
 
 	/**
 	 * This property maps “id” column.
-	 * @var int
 	 */
-	protected $id;
+	protected int $id;
 
 	/**
 	 * This property maps “client_id” column.
-	 * @var string
 	 */
-	protected $clientId;
+	protected string $clientId;
 
 	/**
 	 * This property maps “token” column.
-	 * @var string
 	 */
-	protected $token;
+	protected string $token;
 
 	/**
 	 * This property maps “created_at” column.
-	 * @var DateTime
 	 */
-	protected $createdAt;
+	protected \DateTime $createdAt;
 
 	/**
 	 * This property maps “updated_at” column.
-	 * @var DateTime
 	 */
-	protected $updatedAt;
+	protected \DateTime $updatedAt;
 
 	/**
 	 * Name of related db table.
@@ -56,7 +51,7 @@ class Oauth2Token extends ActiveRecord {
 	/**
 	 * Method called by constructor just after having populated the object.
 	 */
-	protected function init(): void {
+	protected function _init(): void {
 
 		$this->bindAsInteger('id');
 
@@ -131,16 +126,16 @@ class Oauth2Token extends ActiveRecord {
 
 	/**
 	 * Verify that the past token exists and has a compatible date and creates a past date for the number of seconds in duration
-	 * 
+	 *
 	 * @param string $bearerToken
 	 */
 	public static function validate(string $bearerToken): bool {
 
 		$query =
-			'SELECT COUNT(1)' .
-			' FROM ' . self::TABLE_NAME .
-			' WHERE token = ?' .
-			' AND updated_at > DATE_SUB(NOW(), INTERVAL ' . (int)Config::get('OAUTH2_TOKEN_LIFETIME') . ' SECOND)';
+			'SELECT COUNT(1)
+			FROM ' . self::TABLE_NAME . '
+			WHERE token = ?
+			AND updated_at > DATE_SUB(NOW(), INTERVAL ' . (int)Config::get('OAUTH2_TOKEN_LIFETIME') . ' SECOND)';
 
 		return (bool)Database::load($query, [$bearerToken], Database::COUNT);
 
@@ -155,7 +150,7 @@ class Oauth2Token extends ActiveRecord {
 	/**
 	 * The request could not be understood by the server due to malformed syntax. The client
 	 * Should not repeat the request without modifications.
-	 * 
+	 *
 	 * @param string $detail
 	 */
 	public static function badRequest(string $detail): void {
@@ -170,7 +165,7 @@ class Oauth2Token extends ActiveRecord {
 	 * resource. The client MAY repeat the request with a suitable Authorization header field
 	 * (section 14.8). If the request already included Authorization credentials, then the 401
 	 * response indicates that authorization has been refused for those credentials.
-	 * 
+	 *
 	 * @param string $detail
 	 */
 	public static function unauthorized(string $detail): void {
@@ -200,7 +195,7 @@ class Oauth2Token extends ActiveRecord {
 	 * @param string $type
 	 * @param string $title
 	 * @param string $status
-	 * @param null|string $detail
+	 * @param NULL|string $detail
 	 */
 	private static function sendRfc2616Response(string $type, string $title, string $status, ?string $detail=NULL): void {
 

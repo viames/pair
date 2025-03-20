@@ -83,6 +83,34 @@ class ErrorLog extends ActiveRecord {
 	const SHARED_CACHE_PROPERTIES = ['userId'];
 
 	/**
+	 * Table structure [Field => Type, Null, Key, Default, Extra].
+	 */
+	const TABLE_DESCRIPTION = [
+		'id'			=> ['int unsigned', 'NO', 'PRI', NULL, 'auto_increment'],
+		'level'			=> ['int unsigned', 'YES', '', '8', ''],
+		'user_id'		=> ['int unsigned', 'YES', 'MUL', NULL, ''],
+		'path'			=> ['varchar(100)', 'NO', '', NULL, ''],
+		'get_data'		=> ['mediumtext', 'NO', '', NULL, ''],
+		'post_data'		=> ['mediumtext', 'NO', '', NULL, ''],
+		'files_data'	=> ['mediumtext', 'YES', '', NULL, ''],
+		'cookie_data'	=> ['mediumtext', 'NO', '', NULL, ''],
+		'description'	=> ['text', 'NO', '', NULL, ''],
+		'user_messages'	=> ['mediumtext', 'NO', '', NULL, ''],
+		'referer'		=> ['varchar(255)', 'NO', '', NULL, ''],
+		'created_at'	=> ['timestamp', 'NO', 'MUL', NULL, '']
+	];
+
+	/**
+	 * Method called by constructor just after having populated the object.
+	 */
+	protected function _init(): void {
+
+		$this->bindAsDatetime('createdAt');
+		$this->bindAsInteger('id','level','userId');
+
+	}
+
+	/**
 	 * Unserialize some properties after populate() method execution.
 	 */
 	protected function afterPopulate() {
@@ -149,16 +177,6 @@ class ErrorLog extends ActiveRecord {
 		];
 
 		return $levels[$this->level];
-
-	}
-
-	/**
-	 * Method called by constructor just after having populated the object.
-	 */
-	protected function init(): void {
-
-		$this->bindAsDatetime('createdAt');
-		$this->bindAsInteger('id','level','userId');
 
 	}
 

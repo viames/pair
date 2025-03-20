@@ -3,10 +3,8 @@
 namespace Pair\Core;
 
 use Pair\Core\Logger;
-use Pair\Exceptions\AppException;
 use Pair\Exceptions\CriticalException;
 use Pair\Exceptions\ErrorCodes;
-use Pair\Exceptions\PairException;
 use Pair\Helpers\Options;
 use Pair\Helpers\Translator;
 use Pair\Helpers\Utilities;
@@ -106,7 +104,7 @@ abstract class View {
 		$this->app->activeMenuItem = $router->module;
 
 		try {
-			$this->init();
+			$this->_init();
 		} catch (\Exception $e) {
 
 		}
@@ -156,6 +154,11 @@ abstract class View {
 	}
 
 	/**
+	 * Start function, being executed before each method. Optionally implemented by inherited classes.
+	 */
+	protected function _init(): void {}
+
+	/**
 	 * Formats page layout including variables and returns.
 	 *
 	 * @param	string	Layout file name without extension (.php).
@@ -191,11 +194,6 @@ abstract class View {
 		include $file;
 
 	}
-
-	/**
-	 * Start function, being executed before each method. Optional.
-	 */
-	protected function init(): void {}
 
 	/**
 	 * Sets the requested session state variable.
@@ -327,9 +325,27 @@ abstract class View {
 	}
 
 	/**
+	 * Shortcut to print a “No data” message box.
+	 */
+	public function printNoDataMessageBox(): void {
+
+		Utilities::printNoDataMessageBox();
+
+	}
+
+	/**
+	 * Shortcut to print the pagination bar.
+	 */
+	public function printPaginationBar(): void {
+
+		print $this->getPaginationBar();
+
+	}
+
+	/**
 	 * Computes data and assigns values to layout.
 	 */
-	abstract function render(): void;
+	abstract protected function render(): void;
 
 	/**
 	 * Prints a column header with sorting link.

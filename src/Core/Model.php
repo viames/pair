@@ -44,7 +44,7 @@ abstract class Model {
 		$this->db = Database::getInstance();
 
 		try {
-			$this->init();
+			$this->_init();
 		} catch (\Exception $e) {
 
 		}
@@ -87,9 +87,9 @@ abstract class Model {
 	}
 
 	/**
-	 * Start function, being executed before each method. Optional.
+	 * Start function, being executed before each method. Optionally implemented by inherited classes.
 	 */
-	protected function init(): void {}
+	protected function _init(): void {}
 
 	/**
 	 * Adds an error to error list.
@@ -131,7 +131,7 @@ abstract class Model {
 	public function getActiveRecordObjects(string $class, ?string $orderBy=NULL, bool $descOrder=FALSE): Collection {
 
 		if (!class_exists($class) or !is_subclass_of($class, 'Pair\Orm\ActiveRecord')) {
-			return [];
+			throw new \Exception('Class ' . $class . ' not found or not a subclass of Pair\Orm\ActiveRecord');
 		}
 
 		$this->pagination->count = $class::countAllObjects();

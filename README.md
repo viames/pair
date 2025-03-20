@@ -8,7 +8,7 @@
 
 ## What’s new
 
-Welcome to Pair version 2. Many new features have been introduced and existing ones improved. Among these improvements are [Collection](https://github.com/viames/pair/wiki/Collection), `Migrations`, third-party products and services support incorporated into Pair to make it easy to create lightning-fast server-side web applications, including: `Amazon S3`, `Amazon SES`, `Chart.js`, `ELK logger`, `InsightHub`, `Sentry`, `Telegram`.
+Welcome to Pair version 3 alpha. This is a major release that breaks compatibility with previous versions.
 
 ## Features
 
@@ -23,6 +23,8 @@ If starting a new web project is a hassle because of the complexity and slowness
 Pair learns the referential constraints of database tables and automatically uses magic functions to reuse the data already read via cache. While Pair sends the complete web page to the browser, some of the most popular frameworks still have to load all the server-side libraries.
 
 Additionally using Pair's advanced features for efficiently managing information already extracted from the DB, you can create a web page of an application that reads millions of records and numerous related tables in the incredible time of just 10 ms.
+
+Pair supports third-party products and services to make it easy to create lightning-fast server-side web applications, including: `Amazon S3`, `Amazon SES`, `Chart.js`, `ELK logger`, `InsightHub`, `Sentry`, `Telegram`.
 
 #### ActiveRecord
 

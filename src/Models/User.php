@@ -63,20 +63,18 @@ class User extends ActiveRecord {
 
 	/**
 	 * If TRUE, this user is admin.
-	 * @var bool
 	 */
-	protected $admin;
+	protected bool $admin;
 
 	/**
 	 * Flag for user enabled.
-	 * @var bool
 	 */
-	protected $enabled;
+	protected bool $enabled;
 
 	/**
 	 * Last login’s date, properly converted when inserted into db.
 	 */
-	protected ?\DateTime $lastLogin;
+	protected ?\DateTime $lastLogin = NULL;
 
 	/**
 	 * Amount of wrong login.
@@ -86,19 +84,17 @@ class User extends ActiveRecord {
 	/**
 	 * Token to start password reset.
 	 */
-	protected ?string $pwReset;
+	protected ?string $pwReset = NULL;
 
 	/**
 	 * Time zone offset in hours. Cached.
-	 * @var float
 	 */
-	protected $tzOffset;
+	protected ?float $tzOffset = NULL;
 
 	/**
 	 * Time zone name. Cached.
-	 * @var string
 	 */
-	protected $tzName;
+	protected ?string $tzName = NULL;
 
 	/**
 	 * Name of related db table.
@@ -146,6 +142,19 @@ class User extends ActiveRecord {
 		}
 
 		return parent::__get($name);
+
+	}
+
+	/**
+	 * Set for converts from string to Datetime, integer or boolean object in two ways.
+	 */
+	protected function _init(): void {
+
+		$this->bindAsBoolean('admin', 'enabled');
+
+		$this->bindAsDatetime('lastLogin');
+
+		$this->bindAsInteger('id', 'groupId', 'languageId', 'faults');
 
 	}
 
@@ -700,19 +709,6 @@ class User extends ActiveRecord {
 	}
 
 	/**
-	 * Set for converts from string to Datetime, integer or boolean object in two ways.
-	 */
-	protected function init(): void {
-
-		$this->bindAsBoolean('admin', 'enabled');
-
-		$this->bindAsDatetime('lastLogin');
-
-		$this->bindAsInteger('id', 'groupId', 'languageId', 'faults');
-
-	}
-
-	/**
 	 * Return TRUE if this user or the the former User object if impersonating, is admin.
 	 */
 	public function isAdmin(): bool {
@@ -758,7 +754,7 @@ class User extends ActiveRecord {
 	 * If time zone name or offset is null, will loads from session table their values and
 	 * populates this object cache properties.
 	 */
-	private function loadTimezone() {
+	private function loadTimezone(): void {
 
 		if (!is_null($this->id) and is_null($this->tzName) and is_null($this->tzOffset)) {
 			$session = Session::current();

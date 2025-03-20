@@ -72,7 +72,7 @@ class Module extends ActiveRecord implements PluginInterface {
 	/**
 	 * Method called by constructor just after having populated the object.
 	 */
-	protected function init(): void {
+	protected function _init(): void {
 
 		$this->bindAsDatetime('dateReleased', 'dateInstalled');
 

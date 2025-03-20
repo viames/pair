@@ -73,7 +73,7 @@ abstract class Controller {
 		// sets same view as the controller action
 		$this->view = $this->router->action ? $this->router->action : 'default';
 
-		$this->init();
+		$this->_init();
 
 		// if a model is not specified, load the default one
 		if (!isset($this->model) or is_null($this->model)) {
@@ -120,6 +120,11 @@ abstract class Controller {
 	}
 
 	/**
+	 * Start function, being executed before each method. Optionally implemented by inherited classes.
+	 */
+	protected function _init(): void {}
+
+	/**
 	 * Print a toast notification and redirect to default action.
 	 *
 	 * @param	string	Optional message to enqueue.
@@ -156,11 +161,6 @@ abstract class Controller {
 		return $this->app->getState($name);
 
 	}
-
-	/**
-	 * Start function, being executed before each method. Optional.
-	 */
-	protected function init(): void {}
 
 	/**
 	 * Load a custom model.

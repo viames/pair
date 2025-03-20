@@ -320,28 +320,6 @@ class Database {
 	}
 
 	/**
-	 * Return an array of table-key names by using cached methods.
-	 *
-	 * @param	string	Name of table to which get the keys.
-	 * @return	string[]
-	 */
-	public function getTableKeys(string $tableName): array {
-
-		$keys = [];
-
-		$columns = $this->describeTable($tableName);
-
-		foreach ($columns as $column) {
-			if ('PRI' == $column->Key) {
-				$keys[] = $column->Field;
-			}
-		}
-
-		return $keys;
-
-	}
-
-	/**
 	 * Inserts a new row in param table with all properties value as columns value.
 	 *
 	 * @param	string	Table name.
@@ -462,6 +440,9 @@ class Database {
 				case '21000':
 					throw new PairException($e->getMessage(), ErrorCodes::DB_CARDINALITY_VIOLATION, $e);
 
+				case '42000':
+					throw new PairException($e->getMessage(), ErrorCodes::INVALID_QUERY_SYNTAX, $e);
+
 				case '42S02':
 					if (strpos($e->getMessage(), 'Unknown database')!==FALSE) {
 						throw new CriticalException($e->getMessage(), ErrorCodes::MISSING_DB, $e);
@@ -473,6 +454,10 @@ class Database {
 
 				case 'HY000':
 					throw new CriticalException($e->getMessage(), ErrorCodes::MYSQL_GENERAL_ERROR, $e);
+
+				// invalid parameter number: mixed named and positional parameters
+				case 'HY093':
+					throw new PairException($e->getMessage(), ErrorCodes::INVALID_QUERY_SYNTAX, $e);
 
 				default:
 					throw new PairException($e->getMessage(), ErrorCodes::DB_QUERY_FAILED, $e);
@@ -812,6 +797,30 @@ class Database {
 		} catch (\PDOException $e) {
 
 			throw new PairException('Error setting utf8mb4 charset and collation', ErrorCodes::DB_QUERY_FAILED, $e);
+
+		}
+
+	}
+
+	/**
+	 * Set the table description in the object cache.
+	 *
+	 * @param	string	Name of table to describe.
+	 * @param	array	Table description.
+	 */
+	public function setTableDescription(string $tableName, $tableDesc): void {
+
+		foreach ($tableDesc as $name => $properties) {
+
+			$column = new \stdClass();
+			$column->Field = $name;
+			$column->Type = $properties[0];
+			$column->Null = $properties[1];
+			$column->Key = $properties[2];
+			$column->Default = $properties[3];
+			$column->Extra = $properties[4];
+
+			$this->definitions[$tableName]['describe'][] = $column;
 
 		}
 

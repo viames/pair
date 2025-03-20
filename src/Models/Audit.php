@@ -53,7 +53,7 @@ class Audit extends ActiveRecord {
 	/**
 	 * Method called by constructor just after having populated the object.
 	 */
-	protected function init(): void {
+	protected function _init(): void {
 
 		$this->bindAsDatetime('createdAt');
 
@@ -326,7 +326,7 @@ class Audit extends ActiveRecord {
 		
 		// if exists, merge the details with old ones, save and exit
 		if ($lastAudit) {
-			$lastAudit->details = array_merge($lastAudit->details, $audit->details);
+			$lastAudit->details = (object)array_merge((array)$lastAudit->details, (array)$audit->details);
 			return $lastAudit->store();
 		}
 

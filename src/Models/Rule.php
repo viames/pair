@@ -9,44 +9,48 @@ class Rule extends ActiveRecord {
 
 	/**
 	 * Table primary key.
-	 * @var int
 	 */
-	protected $id;
+	protected int $id;
 
 	/**
 	 * Optional value to set permission on just one action. If null, it means all actions.
-	 * @var string|NULL
 	 */
-	protected $action;
+	protected ?string $action = NULL;
 
 	/**
 	 * Flag to set access granted on administrators only
-	 * @var bool
 	 */
-	protected $adminOnly;
+	protected bool $adminOnly;
 
 	/**
-	 * Name of module, lower case.
-	 * @var string
+	 * Module ID.
 	 */
-	protected $moduleId;
+	protected int $moduleId;
 
 	/**
 	 * Name of related db table.
-	 * @var string
 	 */
 	const TABLE_NAME = 'rules';
 
 	/**
 	 * Name of primary key db field.
-	 * @var string
 	 */
 	const TABLE_KEY = 'id';
+
+	/**
+	 * Table structure [Field => Type, Null, Key, Default, Extra].
+	 */
+	const TABLE_DESCRIPTION = [
+		'id'			=> ['int unsigned', 'NO', 'PRI', NULL, 'auto_increment'],
+		'action'		=> ['varchar(30)', 'YES', '', NULL, ''],
+		'admin_only'	=> ['tinyint(1)', 'NO', '', '0', ''],
+		'module_id'		=> ['int unsigned', 'NO', 'MUL', NULL, '']
+	];
 	
 	/**
 	 * Set for converts from string to Datetime, integer or boolean object in two ways.
 	 */
-	protected function init(): void {
+	protected function _init(): void {
 	
 		$this->bindAsInteger('id');
 	

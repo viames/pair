@@ -59,7 +59,7 @@ class Migration extends ActiveRecord {
 	/**
 	 * Initializes the ActiveRecord-specific types of this object’s properties.
 	 */
-	protected function init(): void {
+	protected function _init(): void {
 
 		$this->bindAsBoolean('result');
 

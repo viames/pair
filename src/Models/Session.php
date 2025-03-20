@@ -48,6 +48,31 @@ class Session extends ActiveRecord {
 	const TABLE_KEY = 'id';
 
 	/**
+	 * Table structure [Field => Type, Null, Key, Default, Extra].
+	 */
+	const TABLE_DESCRIPTION = [
+		'id'				=> ['varchar(100)', 'NO', 'PRI', '', ''],
+		'id_user'			=> ['int unsigned', 'YES', 'MUL', 'NULL', ''],
+		'start_time'		=> ['datetime', 'NO', '', 'NULL', ''],
+		'timezone_offset'	=> ['decimal(2,1)', 'YES', '', 'NULL', ''],
+		'timezone_name'		=> ['varchar(100)', 'YES', '', 'NULL', ''],
+		'former_user_id'	=> ['int unsigned', 'YES', '', 'NULL', '']
+	];
+
+	/**
+	 * Method called by constructor just after having populated the object.
+	 */
+	protected function _init(): void {
+
+		$this->bindAsDatetime('startTime');
+
+		$this->bindAsFloat('timezoneOffset');
+
+		$this->bindAsInteger('idUser', 'formerUserId');
+
+	}
+
+	/**
 	 * Deletes expired sessions from database, based on sessionTime param and user’s time zone.
 	 *
 	 * @param	int		Session time in minutes.
@@ -165,19 +190,6 @@ class Session extends ActiveRecord {
 	public function hasFormerUser(): bool {
 
 		return !in_array($this->__get('formerUserId'),  [NULL, '']);
-
-	}
-
-	/**
-	 * Method called by constructor just after having populated the object.
-	 */
-	protected function init(): void {
-
-		$this->bindAsDatetime('startTime');
-
-		$this->bindAsFloat('timezoneOffset');
-
-		$this->bindAsInteger('idUser', 'formerUserId');
 
 	}
 

@@ -25,15 +25,24 @@ class Group extends ActiveRecord {
 
 	/**
 	 * Name of related db table.
-	 * @var string
 	 */
 	const TABLE_NAME = 'groups';
 
 	/**
 	 * Name of primary key db field.
-	 * @var array
 	 */
 	const TABLE_KEY = ['id'];
+
+	/**
+	 * Set for converts from string to Datetime, integer or boolean object in two ways.
+	 */
+	protected function _init(): void {
+
+		$this->bindAsInteger('id');
+
+		$this->bindAsBoolean('default');
+
+	}
 
 	/**
 	 * Adds all rules that don’t exist in ACL table for this group but admins rules.
@@ -186,17 +195,6 @@ class Group extends ActiveRecord {
 		$userClass = PAIR_USER_CLASS;
 
 		return $userClass::getObjectsByQuery('SELECT * FROM `users` WHERE group_id=?', [$this->id]);
-
-	}
-
-	/**
-	 * Set for converts from string to Datetime, integer or boolean object in two ways.
-	 */
-	protected function init(): void {
-
-		$this->bindAsInteger('id');
-
-		$this->bindAsBoolean('default');
 
 	}
 

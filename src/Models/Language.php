@@ -8,44 +8,48 @@ class Language extends ActiveRecord {
 
 	/**
 	 * Unique identifier.
-	 * @var int
 	 */
-	protected $id;
+	protected int $id;
 
 	/**
 	 * ISO 639-1 language code (ex. “en”).
-	 * @var string
 	 */
-	protected $code;
+	protected string $code;
 
 	/**
 	 * Language native name.
-	 * @var string
 	 */
-	protected $nativeName;
+	protected ?string $nativeName = NULL;
 
 	/**
 	 * Language name in english.
-	 * @var string
 	 */
-	protected $englishName;
+	protected string $englishName;
 
 	/**
 	 * Name of related db table.
-	 * @var string
 	 */
 	const TABLE_NAME = 'languages';
 
 	/**
 	 * Name of primary key db field.
-	 * @var string
 	 */
 	const TABLE_KEY = 'id';
 
 	/**
+	 * Table structure [Field => Type, Null, Key, Default, Extra].
+	 */
+	const TABLE_DESCRIPTION = [
+		'id'			=> ['smallint unsigned', 'NO', 'PRI', 'NULL', 'auto_increment'],
+		'code'			=> ['varchar(7)', 'NO', 'UNI', '', ''],
+		'native_name'	=> ['varchar(30)', 'YES', '', 'NULL', ''],
+		'english_name'	=> ['varchar(30)', 'NO', '', '', '']
+	];
+
+	/**
 	 * Set for converts from string to Datetime, integer or boolean object in two ways.
 	 */
-	protected function init(): void {
+	protected function _init(): void {
 
 		$this->bindAsInteger('id');
 
