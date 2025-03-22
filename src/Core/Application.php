@@ -664,9 +664,6 @@ class Application {
 	 */
 	public function manageSession(): void {
 
-		// can be customized before Application is initialized
-		$userClass = PAIR_USER_CLASS;
-
 		// get required singleton instances
 		$router = Router::getInstance();
 
@@ -686,6 +683,9 @@ class Application {
 
 		// clean all old sessions
 		Session::cleanOlderThan($sessionTime);
+
+		// can be customized before Application is initialized
+		$userClass = PAIR_USER_CLASS;
 
 		// sets an empty user object
 		$this->setCurrentUser(new $userClass());
