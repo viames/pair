@@ -33,9 +33,19 @@ class Application {
 	static protected ?self $instance;
 
 	/**
-	 * List of temporary variables.
+	 * Multi-array cache as list of class-names with list of ActiveRecord’s objects.
 	 */
-	private array $state = [];
+	private array $activeRecordCache = [];
+
+	/**
+	 * List of API modules.
+	 */
+	private array $apiModules = ['api'];
+
+	/**
+	 * List of modules that can run with no authentication required.
+	 */
+	private array $guestModules = ['oauth2'];
 
 	/**
 	 * List of temporary variables, stored also in the browser cookie.
@@ -43,9 +53,9 @@ class Application {
 	private array $persistentState = [];
 
 	/**
-	 * Multi-array cache as list of class-names with list of ActiveRecord’s objects.
+	 * List of temporary variables.
 	 */
-	private array $activeRecordCache = [];
+	private array $state = [];
 
 	/**
 	 * Web page title, in plain text.
@@ -114,11 +124,6 @@ class Application {
 	private string $style = 'default';
 
 	/**
-	 * List of modules that can run with no authentication required.
-	 */
-	private array $guestModules = [];
-
-	/**
 	 * Contains the page scripts to be loaded at the end of the page.
 	 */
 	protected string $pageScripts = '';
@@ -127,6 +132,11 @@ class Application {
 	 * Contains the LobBar render or NULL if disabled.
 	 */
 	protected ?LogBar $lobgBar = NULL;
+
+	/**
+	 * Class for application user object.
+	 */
+	private string $userClass = 'Pair\Models\User';
 
 	/**
 	 * List of reserved cookie names and related allowed classes.
@@ -221,7 +231,7 @@ class Application {
 
 			default:
 
-				$allowedProperties = ['activeRecordCache', 'activeMenuItem', 'currentUser', 'pageTitle', 'pageContent', 'template', 'messages'];
+				$allowedProperties = ['activeRecordCache', 'activeMenuItem', 'currentUser', 'userClass', 'pageTitle', 'pageContent', 'template', 'messages'];
 
 				// search into variable assigned to the template as first
 				if (array_key_exists($name, $this->vars)) {
@@ -285,11 +295,6 @@ class Application {
 
 		// Pair folder
 		define('PAIR_FOLDER', substr(dirname(dirname(__FILE__)), strlen(APPLICATION_PATH)+1));
-
-		// set the default user class if not customized
-		if (!defined('PAIR_USER_CLASS')) {
-			define ('PAIR_USER_CLASS', 'Pair\Models\User');
-		}
 
 		// path to temporary folder
 		define('TEMP_PATH', APPLICATION_PATH . '/temp/');
@@ -556,6 +561,128 @@ class Application {
 	}
 
 	/**
+	 * Handle API login, logout and custom requests.
+	 *
+	 * @param	string	Name of module that executes API requests. Default is “api”.
+	 */
+	public function handleApiRequest(string $name = 'api'): void {
+
+		$router = Router::getInstance();
+
+		// check if API has been called
+		if (!trim($name) or $name != $router->module or !file_exists(APPLICATION_PATH . '/' . MODULE_PATH . 'controller.php')) {
+			return;
+		}
+
+		// set as raw request
+		Router::setRaw();
+
+		$logBar = LogBar::getInstance();
+		$logBar->disable();
+
+		// require controller file
+		require (APPLICATION_PATH . '/' . MODULE_PATH . 'controller.php');
+
+		// get SID or token via GET
+		$sid		= Router::get('sid');
+		$tokenValue	= Router::get('token');
+
+		// read the Bearer token via HTTP header
+		$bearerToken = Oauth2Token::readBearerToken();
+
+		// assemble the API controller name
+		$ctlName = $name . 'Controller';
+
+		if (!class_exists($ctlName)) {
+			print ('The API Controller class is incorrect');
+			exit();
+		}
+
+		// new API Controller instance
+		$apiCtl = new $ctlName();
+
+		// set the action function
+		$action = $router->action ? $router->action . 'Action' : 'defaultAction';
+
+		// check token as first
+		if ($tokenValue) {
+
+			$token = Token::getByValue((string)$tokenValue);
+
+			// set token and start controller
+			if (!$token) {
+				$apiCtl->sendError(19);
+			}
+
+			$token->updateLastUse();
+			$apiCtl->setToken($token);
+
+		// or check for Oauth2 Bearer token via http header
+		} else if ($bearerToken) {
+
+			if (!Oauth2Token::validate($bearerToken)) {
+				sleep(3);
+				Oauth2Token::unauthorized('Authentication failed');
+			}
+
+			// verify that the bearer token is valid
+			$apiCtl->setBearerToken($bearerToken);
+
+		} else if ('login' == $router->action) {
+
+			unset($_COOKIE[session_name()]);
+			session_destroy();
+			session_start();
+
+		} else if ('logout' == $router->action) {
+
+			session_start();
+
+		// signup
+		} else if ('signup' == $router->action) {
+
+			// continue with apiCtl action
+
+		// all the other requests with sid
+		} else if ($sid) {
+
+			// get passed session
+			$session = new Session($sid);
+
+			// check if sid is valid
+			if (!$session->isLoaded()) {
+				$apiCtl->sendError(27);
+			}
+
+			// if session exists, extend session timeout
+			$session->extendTimeout();
+
+			// create User object for API
+			$userClass = $this->userClass;
+			$user = new $userClass($session->idUser);
+			$this->setCurrentUser($user);
+
+			// set session and start controller
+			$apiCtl->setSession($session);
+
+		// unauthorized request
+		} else {
+
+			Oauth2Token::unauthorized(Config::get('PRODUCT_NAME') . '-API: Authentication failed');
+
+		}
+
+		try {
+			$apiCtl->$action();
+		} catch (\Throwable $e) {
+			$apiCtl->sendError(4, [$e->getMessage()]);
+		}
+
+		exit();
+
+	}
+
+	/**
 	 * Return TRUE if Pair was invoked by CLI.
 	 */
 	final public static function isCli(): bool {
@@ -662,12 +789,12 @@ class Application {
 	 * Start the session and set the User class (Pair/Models/User or a custom one that inherites
 	 * from Pair/Models/User). Must use only for command-line and web application access.
 	 */
-	public function manageSession(): void {
+	public function initializeSession(): void {
 
 		// get required singleton instances
 		$router = Router::getInstance();
 
-		// start session or resume session started by runApi
+		// start session or resume session started by handleApiRequest
 		session_start();
 
 		// session time length in minutes
@@ -685,7 +812,7 @@ class Application {
 		Session::cleanOlderThan($sessionTime);
 
 		// can be customized before Application is initialized
-		$userClass = PAIR_USER_CLASS;
+		$userClass = $this->userClass;
 
 		// sets an empty user object
 		$this->setCurrentUser(new $userClass());
@@ -753,6 +880,9 @@ class Application {
 					$landing = $user->getLanding();
 					$router->module = $landing->module;
 					$router->action = $landing->action;
+				} else if ('user'==$router->module and 'login'==$router->action) {
+					$landing = $user->getLanding();
+					$this->redirect($landing->module . '/' . $landing->action);
 				}
 
 				$resource = $router->module . '/' . $router->action;
@@ -930,7 +1060,7 @@ class Application {
 	 * Redirect HTTP on the URL param. Relative path as default. Queued toast notifications
 	 * get a persistent storage in a cookie in order to being retrieved later.
 	 *
-	 * @param	string	Location URL.
+	 * @param	string	Location URL. If NULL, redirect to the current module with default action.
 	 * @param	bool	If TRUE, will avoids to add base url (default FALSE).
 	 */
 	public function redirect(?string $url=NULL, bool $externalUrl=FALSE): void {
@@ -1017,200 +1147,27 @@ class Application {
 
 	}
 
-	/**
-	 * Manage API login, logout and custom requests.
-	 *
-	 * @param	string	Name of module that executes API requests. Default is “api”.
-	 */
-	public function runApi(string $name = 'api'): void {
+	final public function run(): void {
 
 		$router = Router::getInstance();
 
-		// check if API has been called
-		if (!trim($name) or $name != $router->module or !file_exists(APPLICATION_PATH . '/' . MODULE_PATH . 'controller.php')) {
-			return;
-		}
+		if (in_array($router->module, $this->apiModules)) {
 
-		// set as raw request
-		Router::setRaw();
+			$this->handleApiRequest();
 
-		$logBar = LogBar::getInstance();
-		$logBar->disable();
-
-		// require controller file
-		require (APPLICATION_PATH . '/' . MODULE_PATH . 'controller.php');
-
-		// get SID or token via GET
-		$sid		= Router::get('sid');
-		$tokenValue	= Router::get('token');
-
-		// read the Bearer token via HTTP header
-		$bearerToken = Oauth2Token::readBearerToken();
-
-		// assemble the API controller name
-		$ctlName = $name . 'Controller';
-
-		if (!class_exists($ctlName)) {
-			print ('The API Controller class is incorrect');
-			exit();
-		}
-
-		// new API Controller instance
-		$apiCtl = new $ctlName();
-
-		// set the action function
-		$action = $router->action ? $router->action . 'Action' : 'defaultAction';
-
-		// check token as first
-		if ($tokenValue) {
-
-			$token = Token::getByValue((string)$tokenValue);
-
-			// set token and start controller
-			if (!$token) {
-				$apiCtl->sendError(19);
-			}
-
-			$token->updateLastUse();
-			$apiCtl->setToken($token);
-
-		// or check for Oauth2 Bearer token via http header
-		} else if ($bearerToken) {
-
-			if (!Oauth2Token::validate($bearerToken)) {
-				sleep(3);
-				Oauth2Token::unauthorized('Authentication failed');
-			}
-
-			// verify that the bearer token is valid
-			$apiCtl->setBearerToken($bearerToken);
-
-		} else if ('login' == $router->action) {
-
-			unset($_COOKIE[session_name()]);
-			session_destroy();
-			session_start();
-
-		} else if ('logout' == $router->action) {
-
-			session_start();
-
-		// signup
-		} else if ('signup' == $router->action) {
-
-			// continue with apiCtl action
-
-		// all the other requests with sid
-		} else if ($sid) {
-
-			// get passed session
-			$session = new Session($sid);
-
-			// check if sid is valid
-			if (!$session->isLoaded()) {
-				$apiCtl->sendError(27);
-			}
-
-			// if session exists, extend session timeout
-			$session->extendTimeout();
-
-			// create User object for API
-			$userClass = PAIR_USER_CLASS;
-			$user = new $userClass($session->idUser);
-			$this->setCurrentUser($user);
-
-			// set session and start controller
-			$apiCtl->setSession($session);
-
-		// unauthorized request
 		} else {
 
-			Oauth2Token::unauthorized(Config::get('PRODUCT_NAME') . '-API: Authentication failed');
+			$this->initializeSession();
+			$this->runMvc();
 
 		}
-
-		try {
-			$apiCtl->$action();
-		} catch (\Throwable $e) {
-			$apiCtl->sendError(4, [$e->getMessage()]);
-		}
-
-		exit();
-
-	}
-
-	/**
-	 * Sets current user, default template and translation locale.
-	 * @param	User	User object or inherited class object.
-	 */
-	public function setCurrentUser(User $user): void {
-
-		if (is_a($user,'Pair\Models\User')) {
-
-			$this->currentUser = $user;
-
-			// sets user language
-			$tran = Translator::getInstance();
-			$tran->setLocale($user->getLocale());
-
-		}
-
-	}
-
-	/**
-	 * Add the name of a module to the list of guest modules, for which authorization is not required.
-	 *
-	 * @param	string	Module name.
-	 */
-	public function setGuestModule(string $moduleName): void {
-
-		if (!in_array($moduleName, $this->guestModules)) {
-			$this->guestModules[] = $moduleName;
-		}
-
-	}
-
-	/**
-	 * Set the web page HTML title tag.
-	 */
-	public function setPageTitle(string $title): void {
-
-		$this->pageTitle = $title;
-
-	}
-
-	/**
-	 * Store variables of any type in a cookie for next retrievement. Existent variables with
-	 * same name will be overwritten.
-	 */
-	public function setPersistentState(string $stateName, mixed $value): void {
-
-		$this->persistentState[$stateName] = $value;
-		
-		// cookie lifetime is 30 days
-		$params = self::getCookieParams(time() + 2592000);
-		$cookieName = $this->getCookieName($stateName);
-
-		setcookie($cookieName, serialize($value), $params);
-
-	}
-
-	/**
-	 * Sets a session state variable.
-	 *
-	 * @param	string	Name of the state variable.
-	 * @param	mixed	Value of any type as is, like strings, custom objects etc.
-	 */
-	public function setState(string $name, mixed $value): void {
-
-		$this->state[$name] = $value;
 
 	}
 
 	/**
 	 * Parse template file, replace variables and return it.
 	 */
-	final public function startMvc(): void {
+	final public function runMvc(): void {
 
 		$router	= Router::getInstance();
 
@@ -1306,6 +1263,84 @@ class Application {
 
 		// parse the template
 		Template::parse($styleFile);
+
+	}
+
+	public function setApiModules(array|string $modules): void {
+
+		$this->apiModules = (array)$modules;
+
+	}
+
+	/**
+	 * Sets current user, default template and translation locale.
+	 *
+	 * @param	User	User object or inherited class object.
+	 */
+	public function setCurrentUser(User $user): void {
+
+		$this->currentUser = $user;
+
+		// sets user language
+		$tran = Translator::getInstance();
+		$tran->setLocale($user->getLocale());
+
+	}
+
+	/**
+	 * Add the name of a module to the list of guest modules, for which authorization is not required.
+	 *
+	 * @param	array|string	Module or modules name.
+	 */
+	public function setGuestModules(array|string $modules): void {
+
+		$this->guestModules = (array)$modules;
+
+	}
+
+	/**
+	 * Set the web page HTML title tag.
+	 */
+	public function setPageTitle(string $title): void {
+
+		$this->pageTitle = $title;
+
+	}
+
+	/**
+	 * Store variables of any type in a cookie for next retrievement. Existent variables with
+	 * same name will be overwritten.
+	 */
+	public function setPersistentState(string $stateName, mixed $value): void {
+
+		$this->persistentState[$stateName] = $value;
+
+		// cookie lifetime is 30 days
+		$params = self::getCookieParams(time() + 2592000);
+		$cookieName = $this->getCookieName($stateName);
+
+		setcookie($cookieName, serialize($value), $params);
+
+	}
+
+	/**
+	 * Sets a session state variable.
+	 *
+	 * @param	string	Name of the state variable.
+	 * @param	mixed	Value of any type as is, like strings, custom objects etc.
+	 */
+	public function setState(string $name, mixed $value): void {
+
+		$this->state[$name] = $value;
+
+	}
+
+	/**
+	 * Allow to set a custom User class that inherits from Pair\Models\User.
+	 */
+	public function setUserClass(string $class): void {
+
+		$this->userClass = $class;
 
 	}
 

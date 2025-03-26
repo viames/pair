@@ -2,6 +2,7 @@
 
 namespace Pair\Models;
 
+use Pair\Core\Application;
 use Pair\Orm\ActiveRecord;
 use Pair\Orm\Collection;
 use Pair\Orm\Database;
@@ -105,7 +106,7 @@ class Group extends ActiveRecord {
 			$acl->delete();
 		}
 
-		$userClass = PAIR_USER_CLASS;
+		$userClass = Application::getInstance()->userClass;
 		$users = $userClass::getAllObjects(['groupId' => $this->id]);
 		foreach ($users as $user) {
 			$user->delete();
@@ -192,7 +193,7 @@ class Group extends ActiveRecord {
 	public function getUsers(): Collection {
 
 		// a subclass may have been defined for the user
-		$userClass = PAIR_USER_CLASS;
+		$userClass = Application::getInstance()->userClass;
 
 		return $userClass::getObjectsByQuery('SELECT * FROM `users` WHERE group_id=?', [$this->id]);
 

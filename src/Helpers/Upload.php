@@ -301,7 +301,7 @@ class Upload {
 	 * Manages saving the uploaded file directly to an Amazon S3 folder with the specified file name.
 	 * @param	string	Relative destination path on Amazon S3.
 	 */
-	public function saveS3(string $filePath): bool {
+	public function saveS3(string $filePath, AmazonS3 $amazonS3): bool {
 
 		// check upload errors
 		if (UPLOAD_ERR_OK != $this->fileError) {
@@ -312,7 +312,6 @@ class Upload {
 		// sanitize file-name
 		$this->filename = Utilities::cleanFilename($this->filename);
 
-		$amazonS3 = new AmazonS3();
 		return $amazonS3->put($this->fileTmpname, $filePath);
 
 	}
