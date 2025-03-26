@@ -3,7 +3,7 @@
 namespace Pair\Helpers;
 
 use Pair\Core\Application;
-use Pair\Core\Config;
+use Pair\Core\Env;
 use Pair\Exceptions\ErrorCodes;
 use Pair\Exceptions\PairException;
 use Pair\Helpers\Translator;
@@ -149,7 +149,7 @@ abstract class Mailer {
 
 		$setAdmins = function () use (&$recipients) {
 			foreach ($this->adminEmails as $adminEmail) {
-				$recipients[] = (object)['name'=>Config::get('PRODUCT_NAME') . ' Admin', 'email'=>$adminEmail];
+				$recipients[] = (object)['name'=>Env::get('APP_NAME') . ' Admin', 'email'=>$adminEmail];
 			}
 			if (!count($recipients)) {
 				throw new PairException('In development environment there are no admin e-mail addresses', ErrorCodes::MISSING_CONFIGURATION);
@@ -396,7 +396,7 @@ abstract class Mailer {
 																	</tr>
 																	<tr>
 																		<td class="center_align" style="text-align: center; vertical-align: top;">
-																			<img alt="Logo ' . Config::get('PRODUCT_NAME') . '" src="' . $this->applicationLogo . '" style="-ms-interpolation-mode: bicubic; outline-style: none; border-style: none;" width="160" border="0" />
+																			<img alt="Logo ' . Env::get('APP_NAME') . '" src="' . $this->applicationLogo . '" style="-ms-interpolation-mode: bicubic; outline-style: none; border-style: none;" width="160" border="0" />
 																		</td>
 																	</tr>
 																	<tr>
@@ -507,7 +507,7 @@ abstract class Mailer {
 																								<tbody>
 																									<tr>
 																										<td align="center" width="100%" style="font-size: 10px; font-family: Helvetica, Arial, sans-serif; color: #999999; line-height: 16px;">
-																											' . Translator::do('EMAIL_COMMON_FOOTER', Config::get('PRODUCT_NAME')) . '
+																											' . Translator::do('EMAIL_COMMON_FOOTER', Env::get('APP_NAME')) . '
 																										</td>
 																									</tr>
 																								</tbody>
@@ -575,7 +575,7 @@ abstract class Mailer {
 		$recipient->name  = $user->fullName;
 
 		// email subject
-		$subject = Translator::do('PASSWORD_RESET_REQUEST_SUBJECT', Config::get('PRODUCT_NAME'));
+		$subject = Translator::do('PASSWORD_RESET_REQUEST_SUBJECT', Env::get('APP_NAME'));
 
 		// body title
 		$title = Translator::do('PASSWORD_RESET_REQUEST_TITLE');
@@ -584,7 +584,7 @@ abstract class Mailer {
 			'{{baseurl}}'		=> BASE_HREF,
 			'{{buttonlink}}'	=> BASE_HREF . 'user/newPassword/' . $randomString,
 			'{{userfullname}}'	=> $user->fullName,
-			'{{productname}}'	=> Config::get('PRODUCT_NAME')
+			'{{productname}}'	=> Env::get('APP_NAME')
 		];
 
 		// body content

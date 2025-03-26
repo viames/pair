@@ -71,7 +71,7 @@ abstract class Controller {
 		$this->translator->setModuleName($this->name);
 
 		// sets same view as the controller action
-		$this->view = $this->router->action ? $this->router->action : 'default';
+		$this->view = $this->router->action ?: 'default';
 
 		$this->_init();
 
@@ -108,9 +108,9 @@ abstract class Controller {
 		if (!property_exists($this, $name)) {
 			throw new \Exception('Property “'. $name .'” doesn’t exist for '. get_called_class(), ErrorCodes::PROPERTY_NOT_FOUND);
 		}
-		
+
 		return isset($this->$name) ? $this->$name : NULL;
-	
+
 	}
 
 	public function __set(string $name, mixed $value): void {
@@ -131,23 +131,33 @@ abstract class Controller {
 	 */
 	protected function accessDenied(?string $message=NULL): void {
 
-		$this->toastRedirect(Translator::do('ERROR'), ($message ? $message : Translator::do('ACCESS_DENIED')), strtolower($this->name));
+		$this->toastRedirect(Translator::do('ERROR'), ($message ?: Translator::do('ACCESS_DENIED')), strtolower($this->name));
 
 	}
 
 	/**
-	 * Include the file for View formatting. Display an error with a notification and
-	 * redirect to default view as fallback in case of view not found for non-ajax requests.
+	 * Returns the object of inherited class when called with id as first parameter.
+	 *
+	 * @param	string	Expected object class type.
+	 *
+	 * @throws	AppException
 	 */
-	public function renderView(): void {
+	protected function getObjectRequestedById(string $class): ?ActiveRecord {
 
-		$view = $this->getView();
+		// reads from url requested item id
+		$itemId = Router::get(0);
 
-		if (!is_subclass_of($view, 'Pair\Core\View')) {
-			throw new CriticalException('View class not found');
+		if (!$itemId) {
+			throw new AppException(Translator::do('ID_OF_ITEM_TO_EDIT_IS_NOT_VALID', $class));
 		}
 
-		$view->display();
+		$object = new $class($itemId);
+
+		if (!$object->isLoaded()) {
+			throw new AppException(Translator::do('ID_OF_ITEM_TO_EDIT_IS_NOT_VALID', $class));
+		}
+
+		return $object;
 
 	}
 
@@ -159,6 +169,54 @@ abstract class Controller {
 	final public function getState(string $name): mixed {
 
 		return $this->app->getState($name);
+
+	}
+
+	/**
+	 * Return View object related to this controller.
+	 *
+	 * @throws CriticalException
+	 */
+	public function getView(): ?View {
+
+		if (!$this->view) {
+			throw new CriticalException('View page not set for module ' . $this->name, ErrorCodes::CONTROLLER_CONFIG_ERROR);
+		}
+
+		$file = $this->modulePath .'/view'. ucfirst($this->view) .'.php';
+
+		if (!file_exists($file)) {
+			throw new AppException('The page ' . strtolower($this->name) . '/' . $this->view . ' does not exist', ErrorCodes::VIEW_LOAD_ERROR);
+			$this->view = 'default';
+			$file = $this->modulePath .'/view'. ucfirst($this->view) .'.php';
+		}
+
+		// if view file still not found, throw an exception
+		if (!file_exists($file)) {
+			throw new AppException('The page ' . strtolower($this->name) . '/' . $this->view . ' does not exist', ErrorCodes::VIEW_LOAD_ERROR);
+		}
+
+		include_once($file);
+
+		$viewName = ucfirst($this->name) .'View'. ucfirst($this->view);
+
+		if (!class_exists($viewName)) {
+			throw new AppException('Class ' . $viewName . ' was not found in file ' . $file, ErrorCodes::VIEW_LOAD_ERROR);
+		}
+
+		return new $viewName($this->model);
+
+	}
+
+	/**
+	 * Proxy function to translate a string, used for AJAX return messages.
+	 *
+	 * @param	string	The language key.
+	 * @param	string|array|NULL	Parameter or list of parameters to bind on translation string (optional).
+	 */
+	public function lang(string $key, string|array|NULL $vars=NULL): string {
+
+		return Translator::do($key, $vars);
 
 	}
 
@@ -189,84 +247,10 @@ abstract class Controller {
 	}
 
 	/**
-	 * Returns the object of inherited class when called with id as first parameter.
-	 *
-	 * @param	string	Expected object class type.
-	 * 
-	 * @throws	AppException
-	 */
-	protected function getObjectRequestedById(string $class): ?ActiveRecord {
-
-		// reads from url requested item id
-		$itemId = Router::get(0);
-
-		if (!$itemId) {
-			throw new AppException($this->lang('ID_OF_ITEM_TO_EDIT_IS_NOT_VALID', $class));
-		}
-
-		$object = new $class($itemId);
-
-		if (!$object->isLoaded()) {
-			throw new AppException($this->lang('ID_OF_ITEM_TO_EDIT_IS_NOT_VALID', $class));
-		}
-
-		return $object;
-
-	}
-
-	/**
-	 * Return View object related to this controller.
-	 * 
-	 * @throws CriticalException
-	 */
-	public function getView(): ?View {
-
-		if (!$this->view) {
-			throw new CriticalException('View page not set for module ' . $this->name, ErrorCodes::CONTROLLER_CONFIG_ERROR);
-		}
-
-		$file = $this->modulePath .'/view'. ucfirst($this->view) .'.php';
-
-		if (!file_exists($file)) {
-			throw new AppException('The page ' . $this->name . '/' . $this->view . ' does not exist', ErrorCodes::VIEW_LOAD_ERROR);
-			$this->view = 'default';
-			$file = $this->modulePath .'/view'. ucfirst($this->view) .'.php';
-		}
-
-		// if view file still not found, throw an exception
-		if (!file_exists($file)) {
-			throw new AppException('The page ' . $this->name . '/' . $this->view . ' does not exist', ErrorCodes::VIEW_LOAD_ERROR);
-		}
-
-		include_once($file);
-
-		$viewName = ucfirst($this->name) .'View'. ucfirst($this->view);
-
-		if (!class_exists($viewName)) {
-			throw new AppException('Class ' . $viewName . ' was not found in file ' . $file, ErrorCodes::VIEW_LOAD_ERROR);
-		}
-
-		return new $viewName($this->model);
-
-	}
-
-	/**
-	 * Proxy function to translate a string, used for AJAX return messages.
-	 *
-	 * @param	string	The language key.
-	 * @param	string|array|NULL	Parameter or list of parameters to bind on translation string (optional).
-	 */
-	public function lang(string $key, string|array|NULL $vars=NULL): string {
-
-		return Translator::do($key, (array)$vars);
-
-	}
-
-	/**
 	 * Get error list from an ActiveRecord object and show it to the user.
 	 *
 	 * @param	ActiveRecord	The inherited object.
-	 * 
+	 *
 	 * @throws	\Exception
 	 */
 	protected function raiseError(ActiveRecord $object): void {
@@ -277,12 +261,12 @@ abstract class Controller {
 		// choose the error messages
 		$message = $errors
 			? implode(" \n", $errors)
-			: $this->lang('ERROR_ON_LAST_REQUEST');
+			: Translator::do('ERROR_ON_LAST_REQUEST');
 
 		// after the message has been queued, store the error data
 		Logger::error('Failure in ' . \get_class($object) . ' class', Logger::ERROR);
 
-		// enqueue a toast notification to the UI	
+		// enqueue a toast notification to the UI
 		throw new \Exception($message);
 
 	}
@@ -294,6 +278,33 @@ abstract class Controller {
 
 		$this->toastError($message);
 		$this->redirect($url);
+
+	}
+
+	/**
+	 * Include the file for View formatting. Display an error with a notification and
+	 * redirect to default view as fallback in case of view not found for non-ajax requests.
+	 */
+	public function renderView(): void {
+
+		$view = $this->getView();
+
+		if (!is_subclass_of($view, 'Pair\Core\View')) {
+			throw new CriticalException('View class not found');
+		}
+
+		$view->display();
+
+	}
+
+	/**
+	 * Set the view name.
+	 *
+	 * @param	string	The view name.
+	 */
+	public function setView(string $view): void {
+
+		$this->view = $view;
 
 	}
 

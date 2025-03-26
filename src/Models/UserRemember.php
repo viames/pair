@@ -2,6 +2,7 @@
 
 namespace Pair\Models;
 
+use Pair\Core\Application;
 use Pair\Models\User;
 use Pair\Orm\ActiveRecord;
 use Pair\Orm\Database;
@@ -67,7 +68,7 @@ class UserRemember extends ActiveRecord {
 			INNER JOIN `users_remembers` AS ur ON u.`id` = ur.`user_id`
 			WHERE ur.`remember_me` = ?';
 
-		$userClass = PAIR_USER_CLASS;
+		$userClass = Application::getInstance()->userClass;
 
 		return $userClass::getObjectByQuery($query, [$rememberMe]);
 

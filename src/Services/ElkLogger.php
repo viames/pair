@@ -4,7 +4,7 @@ namespace Pair\Services;
 
 use CurlHandle;
 
-use Pair\Core\Config;
+use Pair\Core\Env;
 use Pair\Exceptions\ErrorCodes;
 use Pair\Exceptions\PairException;
 use Pair\Helpers\Utilities;
@@ -44,11 +44,11 @@ class ElkLogger {
      */
     public function __construct(string $elkUrl, ?string $elkUser = NULL, ?string $elkPassword = NULL) {
 
-		$env = Config::get('ENVIRONMENT');
+		$env = Env::get('ENVIRONMENT');
 		$shortEnv = 'production' == $env ? 'prod' : ('staging' == $env ? 'stag' : 'dev');
 
         $this->elkUrl		= rtrim($elkUrl, '/');
-        $this->elkIndex		= Utilities::cleanUp(Config::get('PRODUCT_NAME'),'') . '-' . $shortEnv;
+        $this->elkIndex		= Utilities::cleanUp(Env::get('APP_NAME'),'') . '-' . $shortEnv;
         $this->elkUser		= $elkUser;
         $this->elkPassword	= $elkPassword;
 
@@ -66,7 +66,7 @@ class ElkLogger {
             '@timestamp'  => date('c'), // ISO 8601 timestamp
             'level'       => $level,
             'message'     => $message,
-            'application' => Config::get('PRODUCT_NAME') . ' ' . Config::get('PRODUCT_VERSION'),
+            'application' => Env::get('APP_NAME') . ' ' . Env::get('APP_VERSION'),
             'server'      => $_SERVER['SERVER_NAME'] ?? 'localhost',
             'ip'          => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
             'user_agent'  => $_SERVER['HTTP_USER_AGENT'] ?? 'CLI'

@@ -3,7 +3,7 @@
 namespace Pair\Orm;
 
 use Pair\Core\Application;
-use Pair\Core\Config;
+use Pair\Core\Env;
 use Pair\Core\Logger;
 use Pair\Exceptions\ErrorCodes;
 use Pair\Exceptions\PairException;
@@ -257,7 +257,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$this->resetErrors();
 
 		// log the reload
-		Logger::notice('Cloned ' . $class . ' object');
+		Logger::notice('Cloned ' . $class . ' object', Logger::DEBUG);
 
 	}
 
@@ -414,7 +414,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 
 		$className = basename(str_replace('\\', '/', $class));
-		Logger::notice('Loaded ' . count($records) . ' ' . $className . ' objects');
+		Logger::notice('Loaded ' . count($records) . ' ' . $className . ' objects', Logger::DEBUG);
 
 		return $collection;
 
@@ -716,7 +716,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$query = 'SELECT COUNT(1) FROM `' . $class::TABLE_NAME . '`' . $where;
 		$count = Database::load($query, [], Database::COUNT);
 
-		Logger::notice('Counted ' . $count . ' ' . $class . ' objects' . $whereLog);
+		Logger::notice('Counted ' . $count . ' ' . $class . ' objects' . $whereLog, Logger::DEBUG);
 
 		return $count;
 
@@ -793,8 +793,10 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// reset updated-properties tracker
 		$this->updatedProperties = [];
 
-		// log as application event
-		Logger::notice('Created a new ' . $class . ' object with ' . $this->getKeysForEventlog());
+		// suppress notices for error logs to avoid loops
+		if ('error_logs' != static::TABLE_NAME) {
+			Logger::notice('Created a new ' . $class . ' object with ' . $this->getKeysForEventlog(), Logger::DEBUG);
+		}
 
 		// hook for tasks to be executed after creation
 		$this->afterCreate();
@@ -1122,7 +1124,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 
 		$className = basename(str_replace('\\', '/', $class));
-		Logger::notice('Loaded ' . count($objects) . ' ' . $className . ' objects' . $whereLog);
+		Logger::notice('Loaded ' . count($objects) . ' ' . $className . ' objects' . $whereLog, Logger::DEBUG);
 
 		return new Collection($objects);
 
@@ -1266,7 +1268,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 			foreach ($encryptables as $e) {
 				$items[] = 'AES_DECRYPT(' . ($tableAlias ? $tableAlias . '.' : '') .'`' . $e . '`,' .
-					$db->quote(Config::get('AES_CRYPT_KEY')) . ') AS `' . $e . '`';
+					$db->quote(Env::get('AES_CRYPT_KEY')) . ') AS `' . $e . '`';
 			}
 
 			return implode(',',$items);
@@ -1660,7 +1662,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$object->loadedFromDb = TRUE;
 
 		$className = basename(str_replace('\\', '/', $class));
-		Logger::notice('Loaded a ' . $className . ' object' . (count($dynamicBinds) ? ' with custom columns ' . implode(',', $dynamicBinds) : ''));
+		Logger::notice('Loaded a ' . $className . ' object' . (count($dynamicBinds) ? ' with custom columns ' . implode(',', $dynamicBinds) : ''), Logger::DEBUG);
 
 		return $object;
 
@@ -1719,7 +1721,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 
 		$className = basename(str_replace('\\', '/', $class));
-		Logger::notice('Loaded ' . count($objects) . ' ' . $className . ' objects with custom columns ' . implode(',', $dynamicBinds));
+		Logger::notice('Loaded ' . count($objects) . ' ' . $className . ' objects with custom columns ' . implode(',', $dynamicBinds), Logger::DEBUG);
 
 		return new Collection($objects);
 
@@ -2075,7 +2077,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	public function isCryptAvailable(): bool {
 
-		return (defined('AES_CRYPT_KEY') and strlen(Config::get('AES_CRYPT_KEY')) > 0);
+		return (defined('AES_CRYPT_KEY') and strlen(Env::get('AES_CRYPT_KEY')) > 0);
 
 	}
 
@@ -2495,7 +2497,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$this->loadFromDb($this->getSqlKeyValues());
 
 		// log the reload
-		Logger::notice('Reloaded ' . $class . ' object with ' . $this->getKeysForEventlog());
+		Logger::notice('Reloaded ' . $class . ' object with ' . $this->getKeysForEventlog(), Logger::DEBUG);
 
 	}
 
@@ -2538,7 +2540,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$dtz = Application::getTimeZone();
 
 		// timestamp is acquired in UTC only, any DTZ doesn't affect its value
-		if (Config::get('UTC_DATE') and (is_int($value) or (is_string($value) and ctype_digit($value)))) {
+		if (Env::get('UTC_DATE') and (is_int($value) or (is_string($value) and ctype_digit($value)))) {
 
 			$castedValue = new \DateTime('@' . (int)$value);
 			$castedValue->setTimezone($dtz);
@@ -2718,13 +2720,19 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$this->updatedProperties = [];
 
 		$className = basename(str_replace('\\', '/', $class));
-		Logger::notice('Updated ' . $className . ' object with ' . $logParam);
+		
+		// suppress notices for error logs to avoid loops
+		if ('error_logs' != static::TABLE_NAME) {
+			Logger::notice('Updated ' . $className . ' object with ' . $logParam, Logger::DEBUG);
+		}
 
 		// check and update this object in the common cache
 		$uniqueId = is_array($this->getId()) ? implode('-', $this->getId()) : (string)$this->getId();
 		if (isset($app->activeRecordCache[$class][$uniqueId])) {
 			$app->putActiveRecordCache($class, $this);
-			Logger::notice('Updated ' . $className . ' object with id=' . $uniqueId . ' in common cache');
+			if ('error_logs' != static::TABLE_NAME) {
+				Logger::notice('Updated ' . $className . ' object with id=' . $uniqueId . ' in common cache', Logger::DEBUG);
+			}
 		}
 
 		// hook for tasks to be executed after creation

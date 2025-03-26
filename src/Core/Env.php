@@ -4,22 +4,24 @@ namespace Pair\Core;
 
 use Pair\Models\Oauth2Token;
 
-class Config {
+class Env {
 
 	/**
-	 * Configuration file path.
+	 * Env file path.
 	 */
 	const FILE = APPLICATION_PATH . '/.env';
 
 	/**
-	 * Default configuration values.
+	 * Default values for environment variables.
 	 */
 	const DEFAULTS = [
+		'APP_NAME' => 'Pair Application',
+		'APP_VERSION' => '1.0',
+		'APP_ENV' => 'production',
+		'APP_DEBUG' => FALSE,
 		'DB_UTF8' => TRUE,
 		'OAUTH2_TOKEN_LIFETIME' => Oauth2Token::LIFETIME,
 		'PAIR_SINGLE_SESSION' => TRUE,
-		'PAIR_ENVIRONMENT' => 'production',
-		'PAIR_DEBUG' => FALSE,
 		'PAIR_AUDIT_PASSWORD_CHANGED' => FALSE,
 		'PAIR_AUDIT_LOGIN_FAILED' => FALSE,
 		'PAIR_AUDIT_LOGIN_SUCCESSFUL' => FALSE,
@@ -31,8 +33,6 @@ class Config {
 		'PAIR_AUDIT_USER_CHANGED' => FALSE,
 		'PAIR_AUDIT_PERMISSIONS_CHANGED' => FALSE,
 		'PAIR_AUTH_BY_EMAIL' => TRUE,
-		'PRODUCT_NAME' => 'Pair Application',
-		'PRODUCT_VERSION' => '1.0',
 		'UTC_DATE' => TRUE
 	];
 
@@ -48,9 +48,9 @@ class Config {
 	}
 
 	/**
-	 * Returns TRUE if the configuration file exists.
+	 * Returns TRUE if the .env file exists.
 	 */
-	public static function envFileExists(): bool {
+	public static function fileExists(): bool {
 
 		return file_exists(self::FILE);
 
@@ -68,15 +68,15 @@ class Config {
 	}
 
 	/**
-	 * Load the configuration file into the environment variables. String values are trimmed.
+	 * Load values from file to the environment variables. String values are trimmed.
 	 * Boolean values are converted to PHP TRUE or FALSE. Integer values are converted to PHP
 	 * integer. Float values are converted to PHP float.
 	 */
 	public static function load(): void {
 
-		if (!self::envFileExists()) {
+		if (!self::fileExists()) {
 
-			//throw new CriticalException('Error loading .env configuration file', ErrorCodes::LOADING_ENV_FILE);
+			//throw new CriticalException('Error loading .env file', ErrorCodes::LOADING_ENV_FILE);
 
 			// load all defaults as fallback
 			foreach (self::DEFAULTS as $key => $value) {

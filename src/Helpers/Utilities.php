@@ -3,7 +3,7 @@
 namespace Pair\Helpers;
 
 use Pair\Core\Application;
-use Pair\Core\Config;
+use Pair\Core\Env;
 use Pair\Core\Logger;
 use Pair\Core\Router;
 use Pair\Exceptions\PairException;
@@ -219,7 +219,7 @@ class Utilities {
 		$delimiter = ";";
 
 		// document name
-		$filename = $name ? $name : self::cleanUp(Config::get('PRODUCT_NAME')) . '_export_' . date('YmdHis') . '.csv';
+		$filename = $name ? $name : self::cleanUp(Env::get('APP_NAME')) . '_export_' . date('YmdHis') . '.csv';
 
 		// file pointer
 		$file = fopen('php://memory', 'w');
@@ -806,8 +806,8 @@ class Utilities {
 	 */
 	public static function getExecutablePath(string $executable, ?string $envKey=NULL): ?string {
 
-		if (Config::get($envKey) and is_executable(Config::get($envKey))) {
-			return Config::get($envKey);
+		if (Env::get($envKey) and is_executable(Env::get($envKey))) {
+			return Env::get($envKey);
 		}
 
 		exec('which ' . $executable, $output, $resultCode);

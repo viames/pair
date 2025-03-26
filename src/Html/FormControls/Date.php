@@ -2,9 +2,9 @@
 
 namespace Pair\Html\FormControls;
 
-use Pair\Core\Config;
 use Pair\Helpers\Post;
 use Pair\Html\FormControl;
+use Pair\Helpers\Translator;
 
 class Date extends FormControl {
 
@@ -33,8 +33,8 @@ class Date extends FormControl {
 
 		parent::__construct($name, $attributes);
 
-		if (Post::usingCustomDatepicker() and Config::get('PAIR_FORM_DATE_FORMAT')) {
-			$this->dateFormat(Config::get('PAIR_FORM_DATE_FORMAT'));
+		if (Post::usingCustomDatepicker() and Translator::do('FORM_DATE_FORMAT')) {
+			$this->dateFormat(Translator::do('FORM_DATE_FORMAT'));
 		}
 
 	}

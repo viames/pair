@@ -229,7 +229,7 @@ class Select extends FormControl {
 		// check if the value is required but empty
 		if ($this->required and (''==$value or is_null($value))) {
 
-			Logger::notice('Control validation on field “' . $this->name . '” has failed (required)');
+			Logger::notice('Control validation on field “' . $this->name . '” has failed (required)', Logger::NOTICE);
 			$valid = FALSE;
 
 		// check if the value is in the allowed list
@@ -250,7 +250,7 @@ class Select extends FormControl {
 				}
 
 				if (!$valid) {
-					Logger::notice('Control validation on field “' . $this->name . '” has failed (value “' . $value . '” is not in list)');
+					Logger::notice('Control validation on field “' . $this->name . '” has failed (value “' . $value . '” is not in list)', Logger::NOTICE);
 				}
 
 			}

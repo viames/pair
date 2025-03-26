@@ -2,7 +2,7 @@
 
 namespace Pair\Services;
 
-use Pair\Core\Config;
+use Pair\Core\Env;
 use Pair\Exceptions\PairException;
 use Pair\Exceptions\ErrorCodes;
 
@@ -23,11 +23,11 @@ class TelegramNotifier {
 	 */
 	public function __construct(?string $botToken = NULL) {
 
-		if (!$botToken and !Config::get('TELEGRAM_BOT_TOKEN')) {
+		if (!$botToken and !Env::get('TELEGRAM_BOT_TOKEN')) {
 			throw new PairException('Telegram bot token not set in class constructor nor in configuration (TELEGRAM_BOT_TOKEN)');
 		}
 
-		$this->botToken = $botToken ?? Config::get('TELEGRAM_BOT_TOKEN');
+		$this->botToken = $botToken ?? Env::get('TELEGRAM_BOT_TOKEN');
 
 	}
 

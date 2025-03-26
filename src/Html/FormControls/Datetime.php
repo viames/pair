@@ -2,9 +2,9 @@
 
 namespace Pair\Html\FormControls;
 
-use Pair\Core\Config;
 use Pair\Helpers\Post;
 use Pair\Html\FormControl;
+use Pair\Helpers\Translator;
 
 class Datetime extends FormControl {
 
@@ -33,8 +33,8 @@ class Datetime extends FormControl {
 
 		parent::__construct($name, $attributes);
 
-		if (Post::usingCustomDatetimepicker() and Config::get('PAIR_FORM_DATETIME_FORMAT')) {
-			$this->datetimeFormat(Config::get('PAIR_FORM_DATETIME_FORMAT'));
+		if (Post::usingCustomDatetimepicker() and Translator::do('FORM_DATETIME_FORMAT')) {
+			$this->datetimeFormat(Translator::do('FORM_DATETIME_FORMAT'));
 		}
 
 	}

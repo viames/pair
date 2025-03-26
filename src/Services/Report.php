@@ -3,16 +3,16 @@
 namespace Pair\Services;
 
 use Pair\Core\Application;
-use Pair\Core\Config;
-use Pair\Models\Locale;
-use Pair\Orm\Database;
+use Pair\Core\Env;
 use Pair\Helpers\Translator;
 use Pair\Helpers\Utilities;
+use Pair\Models\Locale;
+use Pair\Orm\Database;
 
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Cell\Cell;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Settings;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 /**
@@ -147,7 +147,7 @@ abstract class Report {
 	/**
 	 * Set the format and value of a cell in the Excel sheet.
 	 */
-	private function formatCell(Cell &$cell, mixed $value, string|Callable $format=NULL): void {
+	private function formatCell(Cell &$cell, mixed $value, NULL|string|Callable $format=NULL): void {
 
 		// default is auto format
 		if (is_null($format)) {
@@ -281,7 +281,7 @@ abstract class Report {
 
 		}
 
-		$creator = Config::get('PRODUCT_NAME') . ' ' . Config::get('PRODUCT_VERSION');
+		$creator = Env::get('APP_NAME') . ' ' . Env::get('APP_VERSION');
 
 		// set document properties
 		$spreadsheet->getProperties()
@@ -334,7 +334,7 @@ abstract class Report {
 	/**
 	 * Defines a particular column by its index zero-based.
 	 */
-	protected function setColumn(int $index, string $head, string|Callable $format = NULL): self {
+	protected function setColumn(int $index, string $head, NULL|string|Callable $format = NULL): self {
 
 		$column = new \stdClass;
 		$column->head = $head;

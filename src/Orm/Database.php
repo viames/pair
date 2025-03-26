@@ -2,7 +2,7 @@
 
 namespace Pair\Orm;
 
-use Pair\Core\Config;
+use Pair\Core\Env;
 use Pair\Core\Logger;
 use Pair\Exceptions\CriticalException;
 use Pair\Exceptions\ErrorCodes;
@@ -169,7 +169,7 @@ class Database {
 
 		unset($this->handler);
 
-		Logger::notice('Database connection closed', 'info');
+		Logger::notice('Database connection closed', Logger::DEBUG);
 
 	}
 
@@ -237,7 +237,7 @@ class Database {
 				AND k.`CONSTRAINT_NAME` = r.`CONSTRAINT_NAME`';
 
 			$params = [
-				'dbName' => Config::get('DB_NAME'),
+				'dbName' => Env::get('DB_NAME'),
 				'tableName' => $tableName
 			];
 
@@ -286,7 +286,7 @@ class Database {
 				AND k.CONSTRAINT_NAME = r.CONSTRAINT_NAME';
 
 			$params = [
-				'dbName' => Config::get('DB_NAME'),
+				'dbName' => Env::get('DB_NAME'),
 				'tableName' => $tableName
 			];
 
@@ -342,9 +342,9 @@ class Database {
 			if (is_null($v)) {
 				$columns[] = '`' . $column . '`';
 				$values[] = 'NULL';
-			} else if (Config::get('AES_CRYPT_KEY') and in_array($column, $encryptables)) {
+			} else if (Env::get('AES_CRYPT_KEY') and in_array($column, $encryptables)) {
 				$columns[] = '`' . $column . '`';
-				$values[] = 'AES_ENCRYPT(' . $this->quote($v) . ',' . $this->quote(Config::get('AES_CRYPT_KEY')) . ')';
+				$values[] = 'AES_ENCRYPT(' . $this->quote($v) . ',' . $this->quote(Env::get('AES_CRYPT_KEY')) . ')';
 			} else if (is_string($v) or is_numeric($v)) {
 				$columns[] = '`' . $column . '`';
 				$values[] = $this->quote($v);
@@ -680,7 +680,7 @@ class Database {
 			return;
 		}
 
-		$dsn = 'mysql:host=' . Config::get('DB_HOST') . ';dbname=' . Config::get('DB_NAME');
+		$dsn = 'mysql:host=' . Env::get('DB_HOST') . ';dbname=' . Env::get('DB_NAME');
 		$options = [
 			\PDO::ATTR_PERSISTENT			=> $persistent,
 			\PDO::MYSQL_ATTR_INIT_COMMAND	=> "SET NAMES utf8",
@@ -688,7 +688,7 @@ class Database {
 		];
 
 		try {
-			$this->handler = new \PDO($dsn, Config::get('DB_USER'), Config::get('DB_PASS'), $options);
+			$this->handler = new \PDO($dsn, Env::get('DB_USER'), Env::get('DB_PASS'), $options);
 		} catch (\PDOException $e) {
 			throw new CriticalException($e->getMessage(), ErrorCodes::DB_CONNECTION_FAILED, $e);
 		}
@@ -779,7 +779,7 @@ class Database {
 
 			// prepare query to discover db user privileges
 			$stat = $this->handler->prepare('SELECT `PRIVILEGE_TYPE` FROM information_schema.user_privileges' .
-				' WHERE `GRANTEE` = \'' . Config::get('DB_USER') . '\'@\'' . Config::get('DB_HOST') . '\'');
+				' WHERE `GRANTEE` = \'' . Env::get('DB_USER') . '\'@\'' . Env::get('DB_HOST') . '\'');
 
 			// get user privileges
 			$privilegeType = $stat->fetch(\PDO::FETCH_COLUMN);
@@ -880,8 +880,8 @@ class Database {
 
 			if (is_null($value)) {
 				$sets[] = '`' . $column . '`=NULL';
-			} else if (Config::get('AES_CRYPT_KEY') and in_array($column, $encryptables)) {
-				$sets[] = '`' . $column . '`=AES_ENCRYPT(' . $this->quote($value) . ',' . $this->quote(Config::get('AES_CRYPT_KEY')) . ')';
+			} else if (Env::get('AES_CRYPT_KEY') and in_array($column, $encryptables)) {
+				$sets[] = '`' . $column . '`=AES_ENCRYPT(' . $this->quote($value) . ',' . $this->quote(Env::get('AES_CRYPT_KEY')) . ')';
 			} else {
 				$sets[] = '`' . $column . '`=?';
 				$columnVal[] = $value;

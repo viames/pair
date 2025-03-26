@@ -292,7 +292,7 @@ class Plugin {
 		$zip->close();
 
 		// add some log
-		Logger::notice('Created ZIP file archive ' . $zipFile . ' for ' . $this->type . ' plugin');
+		Logger::notice('Created ZIP file archive ' . $zipFile . ' for ' . $this->type . ' plugin', Logger::DEBUG);
 
 		// lets user download the ZIP file
 		header("Content-Type: application/zip");
@@ -379,7 +379,7 @@ class Plugin {
 		Logger::notice($counter
 			? $counter . ' files has been deleted from temporary folder'
 			: 'No old files deleted from temporary folder'
-		);
+		, Logger::DEBUG);
 
 	}
 

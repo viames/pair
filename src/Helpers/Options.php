@@ -2,7 +2,7 @@
 
 namespace Pair\Helpers;
 
-use Pair\Core\Config;
+use Pair\Core\Env;
 use Pair\Core\Logger;
 use Pair\Exceptions\ErrorCodes;
 use Pair\Exceptions\PairException;
@@ -110,7 +110,7 @@ class Options {
 
 			case 'password':
 				if ($self->isCryptAvailable()) {
-					$value = openssl_encrypt($value, 'AES128', Config::get('OPTIONS_CRYPT_KEY'));
+					$value = openssl_encrypt($value, 'AES128', Env::get('OPTIONS_CRYPT_KEY'));
 				} else {
 					throw new PairException('OPTIONS_CRYPT_KEY value must be set into .env configuration file', ErrorCodes::MISSING_CONFIGURATION);
 				}
@@ -205,7 +205,7 @@ class Options {
 
 			case 'password':
 				if ($this->isCryptAvailable()) {
-					$value = openssl_decrypt($value, 'AES128', Config::get('OPTIONS_CRYPT_KEY'));
+					$value = openssl_decrypt($value, 'AES128', Env::get('OPTIONS_CRYPT_KEY'));
 				} else {
 					Logger::warning('OPTIONS_CRYPT_KEY value must be defined into .env configuration file.');
 				}
@@ -225,7 +225,7 @@ class Options {
 	 */
 	public function isCryptAvailable(): bool {
 
-		return (strlen((string)Config::get('OPTIONS_CRYPT_KEY')) > 0);
+		return (strlen((string)Env::get('OPTIONS_CRYPT_KEY')) > 0);
 
 	}
 

@@ -2,7 +2,7 @@
 
 namespace Pair\Models;
 
-use Pair\Core\Config;
+use Pair\Core\Env;
 use Pair\Orm\ActiveRecord;
 use Pair\Orm\Database;
 
@@ -135,7 +135,7 @@ class Oauth2Token extends ActiveRecord {
 			'SELECT COUNT(1)
 			FROM ' . self::TABLE_NAME . '
 			WHERE token = ?
-			AND updated_at > DATE_SUB(NOW(), INTERVAL ' . (int)Config::get('OAUTH2_TOKEN_LIFETIME') . ' SECOND)';
+			AND updated_at > DATE_SUB(NOW(), INTERVAL ' . (int)Env::get('OAUTH2_TOKEN_LIFETIME') . ' SECOND)';
 
 		return (bool)Database::load($query, [$bearerToken], Database::COUNT);
 

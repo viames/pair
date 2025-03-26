@@ -2,7 +2,7 @@
 
 namespace Pair\Core;
 
-use Pair\Core\Config;
+use Pair\Core\Env;
 use Pair\Exceptions\ErrorCodes;
 use Pair\Helpers\LogBar;
 use Pair\Helpers\Mailer;
@@ -48,7 +48,7 @@ class Logger {
 	/**
 	 * If a log has a level equal or lower than this number, a Telegram notification is sent.
 	 */
-	protected $telegramThreshold = 3;
+	protected $telegramThreshold = 4;
 
 	/**
 	 * Telegram bot token.
@@ -122,31 +122,31 @@ class Logger {
 	private function __construct() {
 
 		// can be disabled both by config and by disable() method
-		if (TRUE === Config::get('PAIR_LOGGER_DISABLED')) {
+		if (TRUE === Env::get('PAIR_LOGGER_DISABLED')) {
 			$this->enabled = FALSE;
 		}
 
-		if (Config::get('PAIR_LOGGER_EMAIL_RECIPIENTS')) {
-			$this->emailRecipients = array_unique(Utilities::arrayToEmail(explode(',', Config::get('PAIR_LOGGER_EMAIL_RECIPIENTS'))));
+		if (Env::get('PAIR_LOGGER_EMAIL_RECIPIENTS')) {
+			$this->emailRecipients = array_unique(Utilities::arrayToEmail(explode(',', Env::get('PAIR_LOGGER_EMAIL_RECIPIENTS'))));
 		}
 
-		if (Config::get('PAIR_LOGGER_EMAIL_THRESHOLD')) {
-			$this->emailThreshold = (int)Config::get('PAIR_LOGGER_EMAIL_THRESHOLD');
+		if (Env::get('PAIR_LOGGER_EMAIL_THRESHOLD')) {
+			$this->emailThreshold = (int)Env::get('PAIR_LOGGER_EMAIL_THRESHOLD');
 			if ($this->emailThreshold < 1 or $this->emailThreshold > 8) {
 				self::error('Invalid PAIR_LOGGER_EMAIL_THRESHOLD value in configuration file.', self::ERROR, ErrorCodes::INVALID_LOGGER_CONFIGURATION);
 			}
 		}
 
-		if (Config::get('TELEGRAM_BOT_TOKEN')) {
-			$this->telegramBotToken = Config::get('TELEGRAM_BOT_TOKEN');
+		if (Env::get('TELEGRAM_BOT_TOKEN')) {
+			$this->telegramBotToken = Env::get('TELEGRAM_BOT_TOKEN');
 		}
 
-		if (Config::get('PAIR_LOGGER_TELEGRAM_CHAT_IDS')) {
-			$this->telegramChatIds = array_unique(Utilities::arrayToInt(explode(',', (string)Config::get('PAIR_LOGGER_TELEGRAM_CHAT_IDS'))));
+		if (Env::get('PAIR_LOGGER_TELEGRAM_CHAT_IDS')) {
+			$this->telegramChatIds = array_unique(Utilities::arrayToInt(explode(',', (string)Env::get('PAIR_LOGGER_TELEGRAM_CHAT_IDS'))));
 		}
 
-		if (Config::get('PAIR_LOGGER_TELEGRAM_THRESHOLD')) {
-			$this->telegramThreshold = (int)Config::get('PAIR_LOGGER_TELEGRAM_THRESHOLD');
+		if (Env::get('PAIR_LOGGER_TELEGRAM_THRESHOLD')) {
+			$this->telegramThreshold = (int)Env::get('PAIR_LOGGER_TELEGRAM_THRESHOLD');
 			if ($this->telegramThreshold < 1 or $this->telegramThreshold > 8) {
 				self::error('Invalid PAIR_LOGGER_TELEGRAM_THRESHOLD value in configuration file.', self::ERROR, ErrorCodes::INVALID_LOGGER_CONFIGURATION);
 			}
@@ -201,15 +201,20 @@ class Logger {
 		self::error($fullMsg, self::ERROR);
 
 		// send the error to Sentry if enabled
-		if (Config::get('SENTRY_DSN')) {
-			\Sentry\init(['dsn' => Config::get('SENTRY_DSN'),'environment'=>Application::getEnvironment()]);
+		if (Env::get('SENTRY_DSN')) {
+			\Sentry\init(['dsn' => Env::get('SENTRY_DSN'),'environment'=>Application::getEnvironment()]);
 			\Sentry\captureLastError();
 		}
 
 		// send the error to Insight Hub if enabled
 		InsightHub::handle($errstr, $errno);
 
-		// don’t execute PHP internal error handler
+		 // in debug mode, allows the PHP internal error handler to run and display the error
+		if (Env::get('APP_DEBUG')) {
+			return FALSE;
+		}
+
+		// suppress the error and prevent it from being displayed
 		return TRUE;
 
 	}
@@ -237,8 +242,8 @@ class Logger {
 	public static function exceptionHandler(\Throwable $e): void {
 
 		// send the error to Sentry if enabled
-		if (Config::get('SENTRY_DSN')) {
-			\Sentry\init(['dsn' => Config::get('SENTRY_DSN'),'environment'=>Application::getEnvironment()]);
+		if (Env::get('SENTRY_DSN')) {
+			\Sentry\init(['dsn' => Env::get('SENTRY_DSN'),'environment'=>Application::getEnvironment()]);
 			\Sentry\captureException($e);
 		}
 
@@ -308,7 +313,7 @@ class Logger {
 
 			$app = Application::getInstance();
 
-			$subject = $levelDescription . ' level in ' . Config::get('PRODUCT_NAME') . ' ' . Config::get('PRODUCT_VERSION') . ' ' . $app->getEnvironment();
+			$subject = $levelDescription . ' level in ' . Env::get('APP_NAME') . ' ' . Env::get('APP_VERSION') . ' ' . $app->getEnvironment();
 			$title = 'Error occurred';
 			$text = $subject . ' ' . $app->getEnvironment() . ' at ' . date('Y-m-d H:i:s') . "\n\n" . $description;
 			$text .= "\n\nUser ID: " . ($app->currentUser->id ?? 'Guest');
@@ -322,11 +327,11 @@ class Logger {
 		}
 
 		// send Telegram notification, if level is below threshold and recipients are set
-		if ($this->telegramBotToken and count($this->telegramChatIds) and $level <= $this->telegramThreshold) {
+		if ($this->telegramThreshold >= $level and $this->telegramBotToken and count($this->telegramChatIds)) {
 
 			$tgNotifier = new TelegramNotifier($this->telegramBotToken);
 
-			$message = $levelDescription . ' level in ' . Config::get('PRODUCT_NAME') . ' ' . Config::get('PRODUCT_VERSION') . ' ' . Application::getEnvironment() . ' at ' . date('Y-m-d H:i:s');
+			$message = $levelDescription . ' level in ' . Env::get('APP_NAME') . ' ' . Env::get('APP_VERSION') . ' ' . Application::getEnvironment() . ' at ' . date('Y-m-d H:i:s');
 			$message .= "\n\n" . $description;
 
 			foreach ($this->telegramChatIds as $chatId) {
@@ -342,9 +347,15 @@ class Logger {
 	/**
 	 * Log a notice in LogBar.
 	 */
-	public static function notice(string $description): void {
+	public static function notice(string $description, int $level=6): void {
 
 		LogBar::event($description);
+
+		// log the notice if debug mode is enabled
+		if (Env::get('APP_DEBUG')) {
+			$self = self::getInstance();
+			$self->handle($description, $level);
+		}
 
 	}
 
@@ -465,8 +476,8 @@ class Logger {
 		self::error($fullMsg, self::ERROR);
 
 		// send the error to Sentry if enabled
-		if (Config::get('SENTRY_DSN')) {
-			\Sentry\init(['dsn' => Config::get('SENTRY_DSN'),'environment'=>Application::getEnvironment()]);
+		if (Env::get('SENTRY_DSN')) {
+			\Sentry\init(['dsn' => Env::get('SENTRY_DSN'),'environment'=>Application::getEnvironment()]);
 			\Sentry\captureLastError();
 		}
 
@@ -521,16 +532,20 @@ class Logger {
 
 		$errorLog->create();
 
-		Logger::notice($description);
-
 	}
 
 	/**
 	 * Log a warning in LogBar.
 	 */
-	public static function warning(string $description): void {
+	public static function warning(string $description, int $level=5): void {
 
 		LogBar::event($description, 'warning');
+
+		// log the warning if debug mode is enabled
+		if (Env::get('APP_DEBUG')) {
+			$self = self::getInstance();
+			$self->handle($description, $level);
+		}
 
 	}
 

@@ -3,10 +3,10 @@
 namespace Pair\Html;
 
 use Pair\Core\Application;
-use Pair\Core\Config;
+use Pair\Core\Env;
 use Pair\Core\Logger;
+use Pair\Exceptions\AppException;
 use Pair\Exceptions\ErrorCodes;
-use Pair\Exceptions\PairException;
 use Pair\Helpers\Post;
 use Pair\Helpers\Translator;
 
@@ -87,7 +87,12 @@ abstract class FormControl {
 	/**
 	 * CSS class for label.
 	 */
-	protected ?string $labelClass;
+	protected ?string $labelClass = NULL;
+
+	/**
+	 * Pattern for string input.
+	 */
+	protected ?string $pattern = NULL;
 
 	/**
 	 * Build control with HTML name tag and optional attributes.
@@ -100,11 +105,11 @@ abstract class FormControl {
 		// remove [] from array and set TRUE to arrayName property
 		if (substr($name, -2) == '[]') {
 			$name = substr($name, 0, -2);
-			$this->setArrayName();
+			$this->arrayName();
 		}
 
-		$this->name			= $name;
-		$this->attributes	= (array)$attributes;
+		$this->name = $name;
+		$this->attributes = (array)$attributes;
 
 	}
 
@@ -112,16 +117,16 @@ abstract class FormControl {
 	 * Returns property’s value or NULL.
 	 *
 	 * @param	string	Property’s name.
-	 * @throws	PairException	If property doesn’t exist.
+	 * @throws	AppException	If property doesn’t exist.
 	 */
 	public function __get(string $name): mixed {
 
 		if (!property_exists($this, $name)) {
-			throw new PairException('Property “'. $name .'” doesn’t exist for '. get_called_class(), ErrorCodes::PROPERTY_NOT_FOUND);
+			throw new AppException('Property “'. $name .'” doesn’t exist for '. get_called_class(), ErrorCodes::PROPERTY_NOT_FOUND);
 		}
-		
+
 		return isset($this->$name) ? $this->$name : NULL;
-	
+
 	}
 
 	/**
@@ -146,151 +151,11 @@ abstract class FormControl {
 	}
 
 	/**
-	 * Adds a single data attribute, prepending the string "data-" to the given name. Chainable method.
-	 * 
-	 * @param	string	Data attribute name.
-	 * @param	string	Value.
-	 */
-	public function data(string $name, string $value): static {
-
-		$this->attributes['data-' . $name] = $value;
-
-		return $this;
-
-	}
-
-	/**
-	 * Set value for this control subclass. Chainable method.
-	 */
-	public function value(string|int|float|\DateTime|NULL $value): static {
-
-		// special behavior for DateTime
-		if (is_a($value, '\DateTime')) {
-
-			// if UTC date, set user timezone
-			if (Config::get('UTC_DATE')) {
-				$app = Application::getInstance();
-				$value->setTimezone($app->currentUser->getDateTimeZone());
-			}
-
-			// can be datetime or just date
-			if (is_a($this, 'Pair\Html\FormControls\Date')) {
-				
-				$this->value = $value->format($this->dateFormat);
-
-			} else if (is_a($this, 'Pair\Html\FormControls\Datetime')) {
-
-				$this->value = $value->format($this->datetimeFormat);
-				
-			} else if (is_a($this, 'Pair\Html\FormControls\Month')) {
-
-				$this->value = $value->format('Y-m');
-
-			} else if (is_a($this, 'Pair\Html\FormControls\Time')) {
-
-				$this->value = $value->format('H:i');
-
-			} else {
-
-				$this->value = (string)$value;
-
-			}
-			
-		} else {
-
-			$this->value = (string)$value;
-
-		}
-
-		return $this;
-
-	}
-
-	/**
-	 * Set the control ID. Chainable method.
-	 *
-	 * @param	string	Control unique identifier.
-	 */
-	public function id(string $id): static {
-
-		$this->id = $id;
-		return $this;
-
-	}
-
-	/**
-	 * Sets this field as required (enables JS client-side and PHP server-side validation).
-	 * Chainable method.
-	 */
-	public function required(): static {
-
-		$this->required = TRUE;
-		return $this;
-
-	}
-
-	/**
-	 * Sets this field as disabled only. Chainable method.
-	 */
-	public function disabled(): static {
-
-		$this->disabled = TRUE;
-		return $this;
-
-	}
-
-	/**
-	 * Sets this field as read only. Chainable method.
-	 */
-	public function readonly(): static {
-
-		$this->readonly = TRUE;
-		return $this;
-
-	}
-
-	/**
 	 * Sets this field as array. Will add [] to control name. Chainable method.
 	 */
-	public function setArrayName(): static {
+	public function arrayName(): static {
 
 		$this->arrayName = TRUE;
-		return $this;
-
-	}
-
-	/**
-	 * Sets placeholder text. Chainable method.
-	 *
-	 * @param	string	Placeholder’s text.
-	 */
-	public function placeholder(string $text): static {
-
-		$this->placeholder = $text;
-		return $this;
-
-	}
-
-	/**
-	 * Sets minimum length for value of this control. It’s a chainable method.
-	 *
-	 * @param	int	Minimum length for value.
-	 */
-	public function minLength(int $length): static {
-
-		$this->minLength = $length;
-		return $this;
-
-	}
-
-	/**
-	 * Sets maximum length for value of this control. It’s a chainable method.
-	 *
-	 * @param	int	Maximum length for value.
-	 */
-	public function maxLength(int $length): static {
-
-		$this->maxLength = $length;
 		return $this;
 
 	}
@@ -325,14 +190,48 @@ abstract class FormControl {
 	}
 
 	/**
-	 * Set a label for this control as text or translation key. Chainable method.
+	 * Adds a single data attribute, prepending the string "data-" to the given name. Chainable method.
 	 *
-	 * @param	string	The text label or the uppercase translation key.
+	 * @param	string	Data attribute name.
+	 * @param	string	Value.
 	 */
-	public function label(string $label): static {
+	public function data(string $name, string $value): static {
 
-		$this->label = $label;
+		$this->attributes['data-' . $name] = $value;
+		return $this;
 
+	}
+
+	/**
+	 * Set the control ID. Chainable method.
+	 *
+	 * @param	string	Control unique identifier.
+	 */
+	public function id(string $id): static {
+
+		$this->id = $id;
+		return $this;
+
+	}
+
+	/**
+	 * Sets this field as disabled only. Chainable method.
+	 */
+	public function disabled(): static {
+
+		$this->disabled = TRUE;
+		return $this;
+
+	}
+
+	/**
+	 * Set a description for this control as text. Chainable method.
+	 *
+	 * @param	string	The text description.
+	 */
+	public function description(string $description): static {
+
+		$this->description = $description;
 		return $this;
 
 	}
@@ -364,14 +263,13 @@ abstract class FormControl {
 	}
 
 	/**
-	 * Set a description for this control as text. Chainable method.
+	 * Set a label for this control as text or translation key. Chainable method.
 	 *
-	 * @param	string	The text description.
+	 * @param	string	The text label or the uppercase translation key.
 	 */
-	public function description(string $description): static {
+	public function label(string $label): static {
 
-		$this->description = $description;
-
+		$this->label = $label;
 		return $this;
 
 	}
@@ -382,6 +280,84 @@ abstract class FormControl {
 	public function labelClass(string $class): static {
 
 		$this->labelClass = $class;
+		return $this;
+
+	}
+
+	/**
+	 * Sets minimum length for value of this control. It’s a chainable method.
+	 *
+	 * @param	int	Minimum length for value.
+	 */
+	public function minLength(int $length): static {
+
+		$this->minLength = $length;
+		return $this;
+
+	}
+
+	/**
+	 * Sets maximum length for value of this control. It’s a chainable method.
+	 *
+	 * @param	int	Maximum length for value.
+	 */
+	public function maxLength(int $length): static {
+
+		$this->maxLength = $length;
+		return $this;
+
+	}
+
+	/**
+	 * Create a control name escaping special chars and adding array puncts in case of.
+	 */
+	protected function nameProperty(): string {
+
+		return 'name="' . htmlspecialchars($this->name . ($this->arrayName ? '[]' : '')) . '"';
+
+	}
+
+	/**
+	 * Set a pattern for this control. Chainable method.
+	 *
+	 * @param	string	The pattern string.
+	 * @throws	AppException	If the pattern is not allowed for this control.
+	 */
+	public function pattern(string $pattern): static {
+
+		// last part of the class name
+		$thisClass = get_class($this);
+		$className = substr($thisClass, strrpos($thisClass, '\\') + 1);
+
+		// check if static class is in the list of allowed classes
+		if (in_array($className, ['Text','Search','Tel','Email','Password','Url'])) {
+			$this->pattern = $pattern;
+		} else {
+			throw new AppException('Pattern is not allowed for the ' . get_class($this) . ' control “' . $this->name . '”');
+		}
+
+		return $this;
+
+	}
+
+	/**
+	 * Sets placeholder text. Chainable method.
+	 *
+	 * @param	string	Placeholder’s text.
+	 * @throws	AppException	If placeholder is not allowed for this control.
+	 */
+	public function placeholder(string $placeholder): static {
+
+		// last part of the class name
+		$thisClass = get_class($this);
+		$className = substr($thisClass, strrpos($thisClass, '\\') + 1);
+
+		// exclude some classes that don’t support placeholder
+		if (in_array($className, ['Checkbox', 'Radio', 'File', 'Color', 'Range', 'Hidden'])) {
+			throw new AppException('Placeholder is not allowed for the ' . get_class($this) . ' control “' . $this->name . '”');
+		} else {
+			$this->placeholder = $placeholder;
+		}
 
 		return $this;
 
@@ -451,6 +427,10 @@ abstract class FormControl {
 			$ret .= ' placeholder="' . $this->placeholder . '"';
 		}
 
+		if ($this->pattern) {
+			$ret .= ' pattern="' . $this->pattern . '"';
+		}
+
 		// CSS classes
 		if (count($this->class)) {
 			$ret .= ' class="' . implode(' ', $this->class) . '"';
@@ -466,11 +446,12 @@ abstract class FormControl {
 	}
 
 	/**
-	 * Create a control name escaping special chars and adding array puncts in case of.
+	 * Sets this field as read only. Chainable method.
 	 */
-	protected function nameProperty(): string {
+	public function readonly(): static {
 
-		return 'name="' . htmlspecialchars($this->name . ($this->arrayName ? '[]' : '')) . '"';
+		$this->readonly = TRUE;
+		return $this;
 
 	}
 
@@ -505,6 +486,17 @@ abstract class FormControl {
 	}
 
 	/**
+	 * Sets this field as required (enables JS client-side and PHP server-side validation).
+	 * Chainable method.
+	 */
+	public function required(): static {
+
+		$this->required = TRUE;
+		return $this;
+
+	}
+
+	/**
 	 * This is the FormControl’s default validation method. Validates this control against empty values,
 	 * minimum length, maximum length, and returns TRUE if these checks pass.
 	 */
@@ -514,23 +506,70 @@ abstract class FormControl {
 		$valid	= TRUE;
 
 		if ($this->required and ''==$value) {
-			Logger::notice('Control validation on field “' . $this->name . '” has failed (required)');
+			Logger::notice('Control validation on field “' . $this->name . '” has failed (required)', Logger::NOTICE);
 			$valid = FALSE;
 		}
 
 		// check validity of minlength attribute
 		if ($this->minLength and ''!=$value and strlen($value) < $this->minLength) {
-			Logger::notice('Control validation on field “' . $this->name . '” has failed (minLength=' . $this->minLength . ')');
+			Logger::notice('Control validation on field “' . $this->name . '” has failed (minLength=' . $this->minLength . ')', Logger::NOTICE);
 			$valid = FALSE;
 		}
 
 		// check validity of minlength attribute
 		if ($this->maxLength and strlen($value) > $this->maxLength) {
-			Logger::notice('Control validation on field “' . $this->name . '” has failed (maxLength=' . $this->maxLength . ')');
+			Logger::notice('Control validation on field “' . $this->name . '” has failed (maxLength=' . $this->maxLength . ')', Logger::NOTICE);
 			$valid = FALSE;
 		}
 
 		return $valid;
+
+	}
+
+	/**
+	 * Set value for this control subclass. Chainable method.
+	 */
+	public function value(string|int|float|\DateTime|NULL $value): static {
+
+		// special behavior for DateTime
+		if (is_a($value, '\DateTime')) {
+
+			// if UTC date, set user timezone
+			if (Env::get('UTC_DATE')) {
+				$app = Application::getInstance();
+				$value->setTimezone($app->currentUser->getDateTimeZone());
+			}
+
+			// can be datetime or just date
+			if (is_a($this, 'Pair\Html\FormControls\Date')) {
+
+				$this->value = $value->format($this->dateFormat);
+
+			} else if (is_a($this, 'Pair\Html\FormControls\Datetime')) {
+
+				$this->value = $value->format($this->datetimeFormat);
+
+			} else if (is_a($this, 'Pair\Html\FormControls\Month')) {
+
+				$this->value = $value->format('Y-m');
+
+			} else if (is_a($this, 'Pair\Html\FormControls\Time')) {
+
+				$this->value = $value->format('H:i');
+
+			} else {
+
+				$this->value = (string)$value;
+
+			}
+
+		} else {
+
+			$this->value = (string)$value;
+
+		}
+
+		return $this;
 
 	}
 

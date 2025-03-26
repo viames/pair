@@ -2,6 +2,7 @@
 
 namespace Pair\Models;
 
+use Pair\Core\Application;
 use Pair\Orm\ActiveRecord;
 use Pair\Orm\Database;
 
@@ -147,7 +148,7 @@ class Session extends ActiveRecord {
 		}
 
 		if (!$this->issetCache('formerUser')) {
-			$userClass = PAIR_USER_CLASS;
+			$userClass = Application::getInstance()->userClass;
 			$formerUser = new $userClass($this->formerUserId);
 			$this->setCache('formerUser', $formerUser->isLoaded() ? $formerUser : NULL);
 		}
@@ -166,7 +167,7 @@ class Session extends ActiveRecord {
 		}
 
 		if (!$this->issetCache('user')) {
-			$userClass = PAIR_USER_CLASS;
+			$userClass = Application::getInstance()->userClass;
 			$user = new $userClass($this->idUser);
 			$this->setCache('user', $user->isLoaded() ? $user : NULL);
 		}

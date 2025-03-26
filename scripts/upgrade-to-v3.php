@@ -50,6 +50,15 @@ foreach ($files as $file) {
 	// replace the old functions with the new ones
 	$content = str_replace('protected function init(): void {', 'protected function _init(): void {', $content);
 
+	// Env
+	$content = str_replace('Pair\Core\Env', 'Pair\Core\Env', $content);
+	$content = str_replace('Config::get(', 'Env::get(', $content);
+
+	// APP_NAME, APP_VERSION and APP_ENV
+	$content = str_replace('PRODUCT_NAME', 'APP_NAME', $content);
+	$content = str_replace('PRODUCT_VERSION', 'APP_VERSION', $content);
+	$content = str_replace('PAIR_ENVIRONMENT', 'APP_ENV', $content);
+
 	// update the file only if the content has changed
 	if ($content !== file_get_contents($file)) {
 		file_put_contents($file->getPathname(), $content);

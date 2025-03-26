@@ -2,7 +2,7 @@
 
 namespace Pair\Models;
 
-use Pair\Core\Config;
+use Pair\Core\Env;
 use Pair\Orm\ActiveRecord;
 
 class Oauth2Client extends ActiveRecord {
@@ -74,7 +74,7 @@ class Oauth2Client extends ActiveRecord {
 
 		// creates a date in the past by the number of seconds in duration
 		$now = new \DateTime();
-		$expiredTime = $now->sub(new \DateInterval('PT' . (int)Config::get('OAUTH2_TOKEN_LIFETIME') . 'S'));
+		$expiredTime = $now->sub(new \DateInterval('PT' . (int)Env::get('OAUTH2_TOKEN_LIFETIME') . 'S'));
 
 		// crea un nuovo token
 		if ($ot and $ot->updatedAt < $expiredTime) {
@@ -99,7 +99,7 @@ class Oauth2Client extends ActiveRecord {
 		// crea il token
 		$body = [
 			'access_token'	=> $this->getToken(),
-			'expires_in'	=> Config::get('OAUTH2_TOKEN_LIFETIME'),
+			'expires_in'	=> Env::get('OAUTH2_TOKEN_LIFETIME'),
 			'scope'			=> NULL,
 			'token_type'	=> 'Bearer'
 		];

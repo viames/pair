@@ -124,7 +124,7 @@ class Template extends ActiveRecord implements PluginInterface {
 
 		if ($res) {
 
-			Logger::notice('Plugin folder ' . $plugin->baseFolder . ' has been deleted');
+			Logger::notice('Plugin folder ' . $plugin->baseFolder . ' has been deleted', Logger::DEBUG);
 
 		} else {
 

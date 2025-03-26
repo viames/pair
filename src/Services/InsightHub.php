@@ -3,7 +3,7 @@
 namespace Pair\Services;
 
 use Pair\Core\Application;
-use Pair\Core\Config;
+use Pair\Core\Env;
 
 use \Bugsnag\Client;
 
@@ -68,17 +68,17 @@ class InsightHub {
 	 */
 	private static function getClient(): ?Client {
 
-		if (!Config::get('INSIGHT_HUB_API_KEY')) {
+		if (!Env::get('INSIGHT_HUB_API_KEY')) {
 			return NULL;
 		}
 
-		$client = Client::make(Config::get('INSIGHT_HUB_API_KEY'));
+		$client = Client::make(Env::get('INSIGHT_HUB_API_KEY'));
 
 		$client->setReleaseStage(Application::getEnvironment());
 		$client->setAppType('web');
 		$client->setNotifier([
-			'name' => Config::get('PRODUCT_NAME'),
-			'version' => Config::get('PRODUCT_VERSION'),
+			'name' => Env::get('APP_NAME'),
+			'version' => Env::get('APP_VERSION'),
 			'url' => BASE_HREF
 		]);
 

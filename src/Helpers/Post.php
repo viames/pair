@@ -3,7 +3,7 @@
 namespace Pair\Helpers;
 
 use Pair\Core\Application;
-use Pair\Core\Config;
+use Pair\Core\Env;
 
 /**
  * Manage HTTP requests.
@@ -105,8 +105,8 @@ class Post {
 			// creates a DateTime object from datepicker
 			case 'date':
 				if ($val) {
-					if ((config::get('PAIR_FORM_DATE_FORMAT') and self::usingCustomDatepicker())) {
-						$format = Config::get('PAIR_FORM_DATE_FORMAT');
+					if ((Translator::do('FORM_DATE_FORMAT') and self::usingCustomDatepicker())) {
+						$format = Translator::do('FORM_DATE_FORMAT');
 					} else {
 						$format = 'Y-m-d';
 					}
@@ -121,8 +121,8 @@ class Post {
 			// creates a DateTime object from datetimepicker
 			case 'datetime':
 				if ($val) {
-					if ((Config::get('PAIR_FORM_DATETIME_FORMAT') and self::usingCustomDatetimepicker())) {
-						$format = Config::get('PAIR_FORM_DATETIME_FORMAT');
+					if ((Translator::do('FORM_DATETIME_FORMAT') and self::usingCustomDatetimepicker())) {
+						$format = Translator::do('FORM_DATETIME_FORMAT');
 					} else {
 						$format = 'Y-m-d H:i:s';
 					}

@@ -23,7 +23,7 @@ class Url extends FormControl {
 		$value	= Post::get($this->name);
 
 		if ($this->required and !filter_var($value, FILTER_VALIDATE_URL)) {
-			Logger::notice('Control validation on field “' . $this->name . '” has failed (url required)');
+			Logger::notice('Control validation on field “' . $this->name . '” has failed (url required)', Logger::NOTICE);
 			return FALSE;
 		}
 

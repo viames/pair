@@ -3,7 +3,7 @@
 namespace Pair\Models;
 
 use Pair\Core\Application;
-use Pair\Core\Config;
+use Pair\Core\Env;
 use Pair\Core\Router;
 use Pair\Helpers\Translator;
 use Pair\Helpers\Utilities;
@@ -335,7 +335,7 @@ class User extends ActiveRecord {
 		$res1 = $session->create();
 
 		// deletes all other sessions for this user
-		if (Config::get('PAIR_SINGLE_SESSION')) {
+		if (Env::get('PAIR_SINGLE_SESSION')) {
 			Database::run('DELETE FROM `sessions` WHERE `id_user` = ? AND `id` != ?', [$this->id, session_id()]);
 		}
 
@@ -377,7 +377,7 @@ class User extends ActiveRecord {
 		$ret->userId	= NULL;
 		$ret->sessionId	= NULL;
 
-		$query = 'SELECT * FROM `users` WHERE `' . (Config::get('PAIR_AUTH_BY_EMAIL') ? 'email' : 'username') . '` = ?';
+		$query = 'SELECT * FROM `users` WHERE `' . (Env::get('PAIR_AUTH_BY_EMAIL') ? 'email' : 'username') . '` = ?';
 
 		// load user row
 		$row = Database::load($query, [$username], Database::OBJECT);
