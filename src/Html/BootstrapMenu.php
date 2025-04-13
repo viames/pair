@@ -40,7 +40,7 @@ class BootstrapMenu extends Menu {
 					$active = ($item->url == $this->activeItem ? ' class="active"' : '');
 
 					$ret .= '<li' . $active . '><a href="' . $item->url . '"' . ($item->target ? ' target="' . $item->target . '"' : '') .
-						'><i class="fa fa-lg fa-fw ' . $item->class . '"></i> <span class="nav-label">' . $item->title .'</span> ' .
+						'><i class="' . $this->faStyle . ' ' . $this->faSize . ' fa-fw ' . $item->class . '"></i> <span class="nav-label">' . $item->title .'</span> ' .
 						((isset($item->badge) and $item->badge) ? '<span class="float-end badge badge-' . $item->badgeType . '">' . $item->badge . '</span>' : '') .
 						'</a></li>';
 
@@ -69,7 +69,7 @@ class BootstrapMenu extends Menu {
 
 						$links .=
 							'<li class="' . $active . '"><a href="' . $i->url . '">' .
-							'<i class="fa fa-fw ' . $i->class . '"></i> ' . $i->title .
+							'<i class="' . $this->faStyle . ' fa-fw ' . $i->class . '"></i> ' . $i->title .
 							((isset($item->badge) and $item->badge) ? '<span class="float-end badge badge-' . $item->badgeType . '">' . $i->badge . '</span>' : '') .
 							'</a></li>';
 
@@ -85,7 +85,7 @@ class BootstrapMenu extends Menu {
 						'<li class="has-sub ' . $menuClass . '">' .
 						'<a href="javascript:;">
 								<b class="caret float-right"></b>
-								<i class="fa fa-fw ' . ($item->class ? $item->class : 'fa-th-large') . '"></i>
+								<i class="' . $this->faStyle . ' fa-fw ' . ($item->class ? $item->class : 'fa-th-large') . '"></i>
 								<span class="nav-label">' . $item->title . '</span>
 						</a>' .
 						'<ul class="sub-menu">' . $links . '</ul></li>';
@@ -100,7 +100,7 @@ class BootstrapMenu extends Menu {
 
 		}
 		
-		$ret .= '<li><a href="javascript:;" class="sidebar-minify-btn" data-click="sidebar-minify"><i class="fa fa-angle-double-left"></i></a></li>';
+		$ret .= '<li><a href="javascript:;" class="sidebar-minify-btn" data-click="sidebar-minify"><i class="' . $this->faStyle . ' fa-angle-double-left"></i></a></li>';
 
 		return $ret;
 

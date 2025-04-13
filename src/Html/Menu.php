@@ -3,6 +3,7 @@
 namespace Pair\Html;
 
 use Pair\Core\Application;
+use Pair\Exceptions\AppException;
 use Pair\Helpers\Translator;
 
 class Menu {
@@ -11,6 +12,16 @@ class Menu {
 	 * Item object list.
 	 */
 	protected array $items = [];
+
+	/**
+	 * FontAwesome style. Default is 'fa-solid'.
+	 */
+	protected string $faStyle = 'fa-solid';
+
+	/**
+	 * FontAwesome size. Default is 'fa-lg'.
+	 */
+	protected string $faSize = 'fa-lg';
 
 	/**
 	 * URL of the active menu item.
@@ -25,6 +36,7 @@ class Menu {
 
 	/**
 	 * Create an item object for single-item menu entry. The optional badge can be a subtitle.
+	 *
 	 * @param	string	Url of item.
 	 * @param	string	Title shown.
 	 * @param	string	Optional, can be an icon, a subtitle or icon placeholder.
@@ -153,7 +165,7 @@ class Menu {
 		$active = ($item->url == $this->activeItem ? ' class="active"' : '');
 
 		return '<li><a href="' . $item->url . '"' . ($item->target ? ' target="' . $item->target . '"' : '') .
-			$active . '><i class="fal fa-lg fa-fw ' . $item->class . '"></i> <span class="nav-label">' . $item->title .'</span> ' .
+			$active . '><i class="' . $this->faStyle . ' ' . $this->faSize . ' fa-fw ' . $item->class . '"></i> <span class="nav-label">' . $item->title .'</span> ' .
 			($item->badge ? '<span class="float-end badge badge-' . $item->badgeType . '">' . $item->badge . '</span>' : '') . '</a></li>';
 
 	}
@@ -187,7 +199,7 @@ class Menu {
 
 			$links .=
 				'<li class="' . $active . '"><a href="' . $i->url . '" class="' . $active . '">' .
-				'<i class="fal fa-fw ' . $i->class . '"></i>' . $i->title .
+				'<i class="' . $this->faStyle . ' fa-fw ' . $i->class . '"></i>' . $i->title .
 				($i->badge ? '<span class="float-end badge badge-' . $item->badgeType . '">' . $i->badge . '</span>' : '') .
 				'</a></li>';
 
@@ -201,9 +213,9 @@ class Menu {
 		// assembles the multi-menu
 		return '<li class="has-sub' . $menuLi . '">' .
 			'<a href="javascript: void(0);" class="waves-effect ' . $menuA . '">
-					<i class="fal fa-fw ' . ($item->class ? $item->class : 'fa-th-large') . '"></i>
+					<i class="' . $this->faStyle . ' fa-fw ' . ($item->class ? $item->class : 'fa-th-large') . '"></i>
 					<span class="nav-label">' . $item->title . '</span>
-					<span class="fal fa-angle-down float-right"></span>
+					<span class="' . $this->faStyle . ' fa-angle-down float-right"></span>
 			</a>' .
 			'<ul class="nav nav-second-level collapse">' . $links . '</ul></li>';
 
@@ -230,6 +242,84 @@ class Menu {
 		$item->type		= 'separator';
 		$item->title	= $title;
 		$this->items[]	= $item;
+
+	}
+
+	/**
+	 * Set the FontAwesome icon size. Like Font Awesome’s icons, the relative sizing scale
+	 * is created with modern browsers’ default 16px font-size in mind and creates steps
+	 * up/down from there. Default size is 'fa-lg'.
+	 * 
+	 * @param	string	FontAwesome size (ex. fa-xs, fa-sm, fa-lg, fa-xl, fa-2x, etc.).
+	 * @throws	AppException
+	 * @see		https://docs.fontawesome.com/web/style/size
+	 */
+	public function setFontAwesomeSize(string $size): void {
+
+		$valid = [
+			'fa-2xs', // 0.625x
+			'fa-xs',  // 0.75x
+			'fa-sm',  // 0.875x
+			'fa-lg',  // 1.33x
+			'fa-xl',  // 1.5x
+			'fa-2xl', // 2x
+			'fa-1x',
+			'fa-2x',
+			'fa-3x',
+			'fa-4x',
+			'fa-5x',
+			'fa-6x',
+			'fa-7x',
+			'fa-8x',
+			'fa-9x',
+			'fa-10x'
+		];
+
+		if (!in_array($size, $valid)) {
+			throw new AppException('Invalid FontAwesome size: ' . $size);
+		}
+
+		$this->faSize = $size;
+
+	}
+
+	/**
+	 * Set the FontAwesome icon style. Default style is 'fa-solid'.
+	 * 
+	 * @param	string	FontAwesome style (ex. fa-solid, fa-regular, fa-brands, fa-light, fa-thin).
+	 * @throws	AppException
+	 * @see		https://docs.fontawesome.com/web/setup/upgrade/whats-changed
+	 */
+	public function setFontAwesomeStyle(string $style): void {
+
+		// new style class => old style class (still works)
+		$valid = [
+			'fa'							=> 'fa',  // free, legacy
+			'fa-solid'						=> 'fas', // free
+			'fa-brands'						=> 'fab', // free
+			'fa-regular'					=> 'far',
+			'fa-light'						=> 'fal',
+			'fa-thin'						=> 'fat',
+			'fa-duotone'					=> 'fad',
+			'fa-duotone fa-solid'			=> 'fad',
+			'fa-duotone fa-regular'			=> 'fadr',
+			'fa-duotone fa-light'			=> 'fadl',
+			'fa-duotone fa-thin'			=> 'fadt',
+			'fa-sharp fa-solid'				=> 'fass',
+			'fa-sharp fa-regular'			=> 'fasr',
+			'fa-sharp fa-light'				=> 'fasl',
+			'fa-sharp fa-thin'				=> 'fast',
+			'fa-sharp-duotone fa-solid'		=> 'fasds',
+			'fa-sharp-duotone fa-regular'	=> 'fasdr',
+			'fa-sharp-duotone fa-light'		=> 'fasdl',
+			'fa-sharp-duotone fa-thin'		=> 'fasdt'
+		];
+
+		if (!array_key_exists($style, $valid) and !in_array($style, $valid)) {
+			throw new AppException('Invalid FontAwesome style: ' . $style);
+		}
+
+		$this->faStyle = $style;
 
 	}
 
