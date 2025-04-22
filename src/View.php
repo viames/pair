@@ -185,7 +185,7 @@ abstract class View {
 	 * @param	string	Nome della proprietà richiesta.
 	 * @return	mixed
 	 */
-	public function __get($name) {
+	public function __get($name): mixed {
 
 		if (array_key_exists($name, $this->vars)) {
 			return $this->vars[$name];

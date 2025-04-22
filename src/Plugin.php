@@ -88,7 +88,7 @@ class Plugin {
 	 * @throws	Exception
 	 * @return	mixed|NULL
 	 */
-	public function __get($name) {
+	public function __get($name): mixed {
 	
 		try {
 	

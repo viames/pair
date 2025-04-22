@@ -101,7 +101,7 @@ abstract class Controller {
 	 */
 	public function defaultAction() {}
 
-	public function __get($name) {
+	public function __get($name): mixed {
 
 		if ('route' == $name) {
 			Logger::warning('$this->route is deprecated');
@@ -293,7 +293,7 @@ abstract class Controller {
 				$file = $this->modulePath .'/view'. ucfirst($this->view) .'.php';
 
 				if (!file_exists($file)) {
-					if ($this->app->currentUser->areKeysPopulated()) {
+					if ($this->app->currentUser and $this->app->currentUser->areKeysPopulated()) {
 						throw new \Exception('View file '. $file .' has not been found');
 					} else {
 						die('Access denied');
