@@ -4,63 +4,53 @@ namespace Pair\Models;
 
 use Pair\Core\Logger;
 use Pair\Helpers\Plugin;
-use Pair\Helpers\PluginInterface;
+use Pair\Helpers\PluginBase;
 use Pair\Helpers\Utilities;
-use Pair\Orm\ActiveRecord;
 
-class Module extends ActiveRecord implements PluginInterface {
+class Module extends PluginBase {
 
 	/**
 	 * ID as primary key.
-	 * @var int
 	 */
-	protected $id;
+	protected int $id;
 
 	/**
 	 * Unique name with no space.
-	 * @var string
 	 */
-	protected $name;
+	protected string $name;
 
 	/**
 	 * Release version.
-	 * @var string
 	 */
-	protected $version;
+	protected string $version;
 
 	/**
 	 * Publication date, properly converted when inserted into db.
-	 * @var DateTime
 	 */
-	protected $dateReleased;
+	protected \DateTime $dateReleased;
 
 	/**
 	 * Version of application on which installs.
-	 * @var string
 	 */
-	protected $appVersion;
+	protected string $appVersion;
 
 	/**
 	 * User ID of installer.
-	 * @var int
 	 */
-	protected $installedBy;
+	protected int $installedBy;
 
 	/**
 	 * Installation date, properly converted when inserted into db.
-	 * @var DateTime
 	 */
-	protected $dateInstalled;
+	protected \DateTime $dateInstalled;
 
 	/**
 	 * Name of related db table.
-	 * @var string
 	 */
 	const TABLE_NAME = 'modules';
 
 	/**
 	 * Name of primary key db field.
-	 * @var string
 	 */
 	const TABLE_KEY = 'id';
 
@@ -70,6 +60,19 @@ class Module extends ActiveRecord implements PluginInterface {
 	const SHARED_CACHE_PROPERTIES = ['installedBy'];
 
 	/**
+	 * Table structure [Field => Type, Null, Key, Default, Extra].
+	 */
+	const TABLE_DESCRIPTION = [
+		'id'			=> ['int unsigned', 'NO', 'PRI', NULL, 'auto_increment'],
+		'name'			=> ['varchar(50)', 'NO', 'UNI', NULL, ''],
+		'version'		=> ['varchar(10)', 'NO', '', NULL, ''],
+		'date_released'	=> ['datetime', 'NO', '', NULL, ''],
+		'app_version'	=> ['varchar(10)', 'NO', '', '1.0', ''],
+		'installed_by'	=> ['int unsigned', 'NO', 'MUL', NULL, ''],
+		'date_installed'=> ['datetime', 'NO', '', NULL, '']
+	];
+
+	/**
 	 * Method called by constructor just after having populated the object.
 	 */
 	protected function _init(): void {
@@ -77,26 +80,6 @@ class Module extends ActiveRecord implements PluginInterface {
 		$this->bindAsDatetime('dateReleased', 'dateInstalled');
 
 		$this->bindAsInteger('id', 'installedBy');
-
-	}
-
-	/**
-	 * Returns array with matching object property name on related db fields.
-	 *
-	 * @return	array
-	 */
-	protected static function getBinds(): array {
-
-		$varFields = array (
-			'id'			=> 'id',
-			'name'			=> 'name',
-			'version' 		=> 'version',
-			'dateReleased'	=> 'date_released',
-			'appVersion'	=> 'app_version',
-			'installedBy'	=> 'installed_by',
-			'dateInstalled'	=> 'date_installed');
-
-		return $varFields;
 
 	}
 
@@ -115,17 +98,11 @@ class Module extends ActiveRecord implements PluginInterface {
 
 		} else {
 
-			if (is_dir($plugin->baseFolder)) {
-				Logger::warning('Plugin folder ' . $plugin->baseFolder . ' has not been deleted due unexpected error');
-			} else {
-				Logger::warning('Plugin folder ' . $plugin->baseFolder . ' has not been found');
-			}
-		}
+			$msg = is_dir($plugin->baseFolder)
+				? 'Plugin folder ' . $plugin->baseFolder . ' has not been deleted due unexpected error'
+				: 'Plugin folder ' . $plugin->baseFolder . ' has not been found';
 
-		// deletes object dependances
-		$rules = Rule::getAllObjects(['moduleId' => $this->id]);
-		foreach ($rules as $rule) {
-			$rule->delete();
+			Logger::warning($msg);
 		}
 
 	}
@@ -140,11 +117,28 @@ class Module extends ActiveRecord implements PluginInterface {
 	}
 
 	/**
-	 * Checks if Module is already installed in this application.
+	 * Returns array with matching object property name on related db fields.
 	 */
-	public static function pluginExists(string $name): bool {
+	protected static function getBinds(): array {
 
-		return (bool)self::countAllObjects(['name'=>$name]);
+		return [
+			'id'			=> 'id',
+			'name'			=> 'name',
+			'version'		=> 'version',
+			'dateReleased'	=> 'date_released',
+			'appVersion'	=> 'app_version',
+			'installedBy'	=> 'installed_by',
+			'dateInstalled'	=> 'date_installed'
+		];
+
+	}
+
+	/**
+	 * Return an installed Module of this application.
+	 */
+	public static function getByName(string $name): ?self {
+
+		return self::getObjectByQuery('SELECT * FROM `modules` WHERE name = ?', [$name]);
 
 	}
 
@@ -163,20 +157,20 @@ class Module extends ActiveRecord implements PluginInterface {
 	}
 
 	/**
+	 * Checks if Module is already installed in this application.
+	 */
+	public static function pluginExists(string $name): bool {
+
+		return (bool)self::countAllObjects(['name'=>$name]);
+
+	}
+
+	/**
 	 * Get option parameters and store this object loaded by a Plugin.
 	 */
 	public function storeByPlugin(\SimpleXMLElement $options): bool {
 
 		return $this->store();
-
-	}
-
-	/**
-	 * Return an installed Module of this application.
-	 */
-	public static function getByName(string $name): ?self {
-
-		return self::getObjectByQuery('SELECT * FROM `modules` WHERE name = ?', [$name]);
 
 	}
 

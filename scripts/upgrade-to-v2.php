@@ -25,7 +25,7 @@ $envPath = APP_ROOT . '/.env';
 // check if the .env file already exists
 if (file_exists($envPath)) {
 	
-	echo "The .env file already exists.\n";
+	print "The .env file already exists.\n";
 	
 // check if the config.php file exists
 } else if (file_exists($configPath)) {
@@ -42,11 +42,11 @@ if (file_exists($envPath)) {
 	// remove the config.php file
 	unlink($configPath);
 
-	echo "The config.php file has been converted to .env format.\n";
+	print "The config.php file has been converted to .env format.\n";
 
 } else {
 
-	echo "The config.php file does not exist.\n";
+	print "The config.php file does not exist.\n";
 
 }
 

@@ -724,7 +724,7 @@ class Database {
 	}
 
 	/**
-	 * Run a query with parameters and return TRUE if success. Support PDO parameters bind.
+	 * Run a query with parameters and return the number of affected rows. Support PDO parameters bind.
 	 *
 	 * @param	string	SQL query to run.
 	 * @param	array	List of parameters to bind on the sql query.

@@ -6,11 +6,10 @@ use Pair\Core\Application;
 use Pair\Core\Logger;
 use Pair\Exceptions\CriticalException;
 use Pair\Helpers\Plugin;
-use Pair\Helpers\PluginInterface;
+use Pair\Helpers\PluginBase;
 use Pair\Helpers\Utilities;
-use Pair\Orm\ActiveRecord;
 
-class Template extends ActiveRecord implements PluginInterface {
+class Template extends PluginBase {
 
 	/**
 	 * ID as primary key.
@@ -139,8 +138,6 @@ class Template extends ActiveRecord implements PluginInterface {
 
 	/**
 	 * Returns absolute path to plugin folder.
-	 *
-	 * @see		PluginInterface::getBaseFolder()
 	 */
 	public function getBaseFolder(): string {
 
@@ -212,9 +209,7 @@ class Template extends ActiveRecord implements PluginInterface {
 			'palette' => implode(',', $this->palette)
 		];
 
-		$plugin = new Plugin('Template', $this->name, $this->version, $dateReleased, $this->appVersion, $folder, $options);
-
-		return $plugin;
+		return new Plugin('Template', $this->name, $this->version, $dateReleased, $this->appVersion, $folder, $options);
 
 	}
 

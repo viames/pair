@@ -1480,7 +1480,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 				$foreignKeyFound = TRUE;
 
-				$selfProperty = (string)$refClass::getMappedProperty($ifk->REFERENCED_COLUMN_NAME);
+				$selfProperty = (string)static::getMappedProperty($ifk->REFERENCED_COLUMN_NAME);
 				$refProperty = (string)$refClass::getMappedProperty($ifk->COLUMN_NAME);
 
 				$relateds->merge($refClass::getAllObjects([$refProperty=>$this->$selfProperty]));
@@ -1504,7 +1504,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 					$foreignKeyFound = TRUE;
 
-					$selfProperty = (string)$refClass::getMappedProperty($fk->REFERENCED_COLUMN_NAME);
+					$selfProperty = (string)static::getMappedProperty($fk->REFERENCED_COLUMN_NAME);
 					$refProperty = (string)$refClass::getMappedProperty($fk->COLUMN_NAME);
 
 					// load the new wanted Pair objects

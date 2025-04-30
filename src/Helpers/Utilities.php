@@ -67,9 +67,9 @@ class Utilities {
 	 * Check if passed file is one of passed MIME Content Type.
 	 *
 	 * @param	string	Path to file.
-	 * @param	string	Expected MIME Content Type.
+	 * @param	string|array	Expected MIME Content Type or array of MIME Content Types.
 	 */
-	private static function checkFileMime($file, $validMime): bool {
+	private static function checkFileMime(string $file, string|array $validMime): bool {
 
 		if (!function_exists('mime_content_type')) {
 			throw new PairException('The PHP extention mime_content_type is not installed');
@@ -87,6 +87,25 @@ class Utilities {
 		}
 
 		return FALSE;
+
+	}
+
+	/**
+	 * Cleans out a string from any unwanted char. Useful for file-names.
+	 *
+	 * @param	string		Original string.
+	 * @param	string|NULL	Optional custom separator.
+	 */
+	public static function cleanFilename(string $string, ?string $sep=NULL): string {
+
+		$sep = $sep ?: '-';
+
+		// separe file name from extension
+		$dot	= strrpos($string,'.');
+		$ext	= substr($string,$dot);
+		$name	= trim(substr($string,0,$dot), $sep);
+
+		return self::cleanUp($name, $sep) . $ext;
 
 	}
 
@@ -919,7 +938,7 @@ class Utilities {
 	 *
 	 * @param	string	Path to file.
 	 */
-	public static function isImage($file): bool {
+	public static function isImage(string $file): bool {
 
 		$validMime = [
 			'image/png',
@@ -940,13 +959,9 @@ class Utilities {
 	/**
 	 * Check if a string is in JSON format.
 	 *
-	 * @param mixed $string
+	 * @param	string	The string to check.
 	 */
-	public static function isJson($string): bool {
-
-		if (!is_string($string)) {
-			return FALSE;
-		}
+	public static function isJson(string $string): bool {
 
 		json_decode($string);
 		return json_last_error() === JSON_ERROR_NONE;
@@ -958,7 +973,7 @@ class Utilities {
 	 *
 	 * @param	string	Path to file.
 	 */
-	public static function isPdf($file): bool {
+	public static function isPdf(string $file): bool {
 
 		return self::checkFileMime($file, ['application/pdf']);
 
@@ -968,7 +983,6 @@ class Utilities {
 	 * Return a date in the local language using the IntlDateFormatter::format() method.
 	 * @param	string		Formatting pattern, for example “dd MMMM Y hh:mm”.
 	 * @param	\DateTime	The date object to be formatted, it will be the current date if NULL.
-	 * @return	string
 	 */
 	public static function intlFormat(?string $format=NULL, \DateTime|NULL $dateTime=NULL): string {
 
@@ -976,37 +990,47 @@ class Utilities {
 		if ($format) {
 			$formatter->setPattern($format);
 		}
-        return $formatter->format($dateTime ?? new \DateTime());
+		return $formatter->format($dateTime ?? new \DateTime());
 
 	}
 
 	/**
-	 * Sends a 401 error to the browser with a "Unauthorized" JSON message, useful for raw/ajax requests.
+	 * Print a JSON response with the data passed as a parameter. The default HTTP code is 200, but it will be replaced
+	 * with 204 if the data is empty.
+	 *
+	 * @param	object|array	Data to be printed in JSON format.
+	 * @param	int			Optional HTTP code (default 200).
 	 */
-	public static function jsonResponseSessionExpired(): void {
+	public static function jsonResponse(object|array|NULL $data, int $httpCode=200): void {
 
-		http_response_code(401); // Unauthorized
-		print json_encode(['error' => Translator::do('USER_SESSION_EXPIRED')]);
+		header('Content-Type: application/json', TRUE);
+
+		// no content response if data is empty
+		if (empty($data)) {
+			$httpCode = 204;
+		}
+
+		http_response_code($httpCode);
+		print json_encode($data);
+
 		exit();
 
 	}
 
 	/**
-	 * Cleans out a string from any unwanted char. Useful for file-names.
+	 * Proxy method to print a JSON error message with the error code and message passed as parameters.
 	 *
-	 * @param	string		Original string.
-	 * @param	string|NULL	Optional custom separator.
+	 * @param	string	Error code to print on user.
+	 * @param	string	Error message to print on user.
+	 * @param	int		Optional HTTP code (default 400).
+	 * @param	array	Optional extra data to add to the JSON response.
 	 */
-	public static function cleanFilename(string $string, ?string $sep=NULL): string {
+	public static function jsonError(string $errorCode, string $errorMessage, int $httpCode=400, array $extra=[]): void {
 
-		$sep = $sep ?: '-';
-
-		// separe file name from extension
-		$dot	= strrpos($string,'.');
-		$ext	= substr($string,$dot);
-		$name	= trim(substr($string,0,$dot), $sep);
-
-		return self::cleanUp($name, $sep) . $ext;
+		self::jsonResponse(array_merge([
+			'code' => $errorCode,
+			'error' => $errorMessage
+		], $extra), $httpCode);
 
 	}
 
@@ -1016,6 +1040,7 @@ class Utilities {
 	 * @param	string	Error message to print on user.
 	 * @param	int|NULL	Error code (optional).
 	 * @param	int|NULL	HTTP code (optional, 400 by default).
+	 * @deprecated	Use jsonError() instead.
 	 */
 	public static function pairJsonError(string $message, ?int $code=NULL, ?int $httpCode=NULL): void {
 
@@ -1032,6 +1057,7 @@ class Utilities {
 	 * (bool)error, (string)log.
 	 *
 	 * @param	string	Error message to print on user.
+	 * @deprecated	Use jsonResponse() instead.
 	 */
 	public static function pairJsonMessage(string $message): void {
 
@@ -1044,6 +1070,7 @@ class Utilities {
 	 * (bool)error, (string)log.
 	 *
 	 * @param	string	Error message to print on user.
+	 * @deprecated	Use jsonResponse() instead.
 	 */
 	public static function pairJsonSuccess(): void {
 
@@ -1060,6 +1087,7 @@ class Utilities {
 	 * @param	bool	Error flag, set TRUE to notice about error (optional).
 	 * @param	bool	Error code (optional).
 	 * @param	int		HTTP code (optional).
+	 * @deprecated	Use jsonResponse() instead.
 	 */
 	public static function pairJsonData(mixed $data, ?string $message=NULL, bool $error=FALSE, ?int $code=NULL, ?int $httpCode=NULL): void {
 

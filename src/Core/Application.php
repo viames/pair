@@ -611,7 +611,7 @@ class Application {
 
 			// set token and start controller
 			if (!$token) {
-				$apiCtl->sendError(19);
+				Utilities::jsonError('BAD_REQUEST','Token not found');
 			}
 
 			$token->updateLastUse();
@@ -628,15 +628,30 @@ class Application {
 			// verify that the bearer token is valid
 			$apiCtl->setBearerToken($bearerToken);
 
-		} else if ('login' == $router->action) {
+		} else if ('auth' == $router->action) {
 
-			unset($_COOKIE[session_name()]);
-			session_destroy();
-			session_start();
+			$param = $router->getParam(0);
 
-		} else if ('logout' == $router->action) {
+			if ('login' == $param) {
 
-			session_start();
+				// destroy the current session
+				Session::destroy();
+
+				// start a new session
+				session_start();
+
+			} else if ('logout' == $param) {
+
+				// destroy the current session
+				Session::destroy();
+
+			} else {
+
+				Utilities::jsonError('BAD_REQUEST','Path not found',400,[
+					'path' => $router->getUrl()
+				]);
+
+			}
 
 		// signup
 		} else if ('signup' == $router->action) {
@@ -651,7 +666,7 @@ class Application {
 
 			// check if sid is valid
 			if (!$session->isLoaded()) {
-				$apiCtl->sendError(27);
+				Utilities::jsonError('SESSION_NOT_FOUND','Session not found');
 			}
 
 			// if session exists, extend session timeout
@@ -675,7 +690,7 @@ class Application {
 		try {
 			$apiCtl->$action();
 		} catch (\Throwable $e) {
-			$apiCtl->sendError(4, [$e->getMessage()]);
+			Utilities::jsonError('INTERNAL_SERVER_ERROR',$e->getMessage(),500);
 		}
 
 		exit();
@@ -836,8 +851,7 @@ class Application {
 				// sends js message about session expired
 				if ($router->isRaw()) {
 
-					Utilities::pairJsonError($comment);
-					exit();
+					Utilities::jsonError('AUTH_SESSION_EXPIRED','User session expired',401);
 
 				// redirects to login page
 				} else {
@@ -906,7 +920,7 @@ class Application {
 
 			// in case of AJAX call, sends a JSON error
 			if ($router->isRaw()) {
-				Utilities::jsonResponseSessionExpired();
+				Utilities::jsonError('AUTH_SESSION_EXPIRED','User session expired',401);
 			}
 
 			// check RememberMe cookie

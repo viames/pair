@@ -488,7 +488,7 @@ class User extends ActiveRecord {
 		$app->unsetAllPersistentStates();
 
 		// unset RememberMe
-		$app->currentUser->unsetRememberMe();
+		$user->unsetRememberMe();
 
 		// reset the user in Application object
 		$app->currentUser = NULL;

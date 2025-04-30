@@ -2,11 +2,10 @@
 	"name": "viames/pair",
 	"description": "lightweight PHP framework as the air",
 	"type": "library",
-	"version": "3.0.0-alpha",
 	"minimum-stability": "dev",
 	"prefer-stable": true,
 	"require": {
-		"php": "8.3",
+		"php": "^8.3||^8.4",
 		"bugsnag/bugsnag": "^3",
 		"daniel-zahariev/php-aws-ses":"^0.9",
 		"league/flysystem-aws-s3-v3": "^1|^3",

@@ -8,12 +8,12 @@ use Pair\Helpers\Translator;
 use Pair\Helpers\Utilities;
 
 /**
- * Custom exception for handling API errors, useful for logging the error message of API requests.
+ * Custom exception for handling AJAX errors, useful for logging the error message of AJAX requests.
  */
-class ApiException extends PairException {
+class AjaxException extends PairException {
 
 	/**
-	 * Constructor for the ApiException.
+	 * Constructor for the AjaxException.
 	 *
 	 * @param string $message The error message.
 	 * @param int $code The error code.

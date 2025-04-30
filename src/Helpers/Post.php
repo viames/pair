@@ -3,7 +3,6 @@
 namespace Pair\Helpers;
 
 use Pair\Core\Application;
-use Pair\Core\Env;
 
 /**
  * Manage HTTP requests.
@@ -109,6 +108,7 @@ class Post {
 						$format = Translator::do('FORM_DATE_FORMAT');
 					} else {
 						$format = 'Y-m-d';
+						$val = substr($val, 0, 10);
 					}
 					$val = \DateTime::createFromFormat('!' . $format, $val, $app->currentUser->getDateTimeZone());
 					// DateTime is not set
@@ -180,16 +180,12 @@ class Post {
 	 */
 	public static function get(string $name, string $type='string', mixed $default=NULL): mixed {
 
-		switch ($_SERVER['REQUEST_METHOD']) {
-
-			case 'POST':
-				$request = &$_POST;
-				break;
-
-			default:
-				$request = &$_REQUEST;
-				break;
-
+		// if the request method is POST, use $_POST
+		if (isset($_SERVER['REQUEST_METHOD']) and 'POST' == $_SERVER['REQUEST_METHOD']) {
+			$request = &$_POST;
+		// otherwise use $_REQUEST
+		} else {
+			$request = &$_REQUEST;
 		}
 
 		// remove [] from array
@@ -274,7 +270,7 @@ class Post {
 
 	/**
 	 * Check if the browser is using the native datepicker.
-	 * 
+	 *
 	 * @return	bool	TRUE if using the native datepicker.
 	 */
 	public static function usingCustomDatepicker(): bool {
@@ -285,7 +281,7 @@ class Post {
 
 	/**
 	 * Check if the browser is using the native datetimepicker.
-	 * 
+	 *
 	 * @return	bool	TRUE if using the native datetimepicker.
 	 */
 	public static function usingCustomDatetimepicker(): bool {

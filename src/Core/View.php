@@ -3,6 +3,7 @@
 namespace Pair\Core;
 
 use Pair\Core\Logger;
+use Pair\Exceptions\AppException;
 use Pair\Exceptions\CriticalException;
 use Pair\Exceptions\ErrorCodes;
 use Pair\Helpers\Options;
@@ -128,6 +129,7 @@ abstract class View {
 	 * otherwise the property of the method, otherwise NULL.
 	 *
 	 * @param	string	Name of the variable.
+	 * @throws	AppException	If the property doesn’t exist.
 	 */
 	public function __get(string $name): mixed {
 
@@ -136,7 +138,7 @@ abstract class View {
 		} else if (property_exists($this, $name)) {
 			return $this->$name;
 		} else {
-			throw new \Exception('The ' . get_called_class() . '->' . $name. ' property doesn’t exist', ErrorCodes::PROPERTY_NOT_FOUND);
+			throw new AppException('The ' . get_called_class() . '->' . $name. ' property doesn’t exist', ErrorCodes::PROPERTY_NOT_FOUND);
 		}
 
 	}
@@ -149,12 +151,14 @@ abstract class View {
 	 */
 	public function __call($name, $arguments): void {
 
-		throw new \Exception('Method '. get_called_class() . '->' . $name .'(), which doesn’t exist, has been called', ErrorCodes::METHOD_NOT_FOUND);
+		throw new AppException('Method '. get_called_class() . '->' . $name .'(), which doesn’t exist, has been called', ErrorCodes::METHOD_NOT_FOUND);
 
 	}
 
 	/**
 	 * Start function, being executed before each method. Optionally implemented by inherited classes.
+	 * 
+	 * @throws	CriticalException if the layout file doesn’t exist.
 	 */
 	protected function _init(): void {}
 
@@ -265,7 +269,7 @@ abstract class View {
 	 * Returns the object of inherited class when called with id as first parameter.
 	 *
 	 * @param	string	Expected object class type.
-	 * @throws	\Exception
+	 * @throws	AppException if the object is not loaded.
 	 */
 	protected function getObjectRequestedById(string $class, ?int $pos=NULL): ?ActiveRecord {
 
@@ -273,13 +277,13 @@ abstract class View {
 		$itemId = Router::get($pos ? abs($pos) : 0);
 
 		if (!$itemId) {
-			throw new \Exception($this->lang('NO_ID_OF_ITEM_TO_EDIT', $class), ErrorCodes::RECORD_NOT_FOUND);
+			throw new AppException($this->lang('NO_ID_OF_ITEM_TO_EDIT', $class), ErrorCodes::RECORD_NOT_FOUND);
 		}
 
 		$object = new $class($itemId);
 
 		if (!$object->isLoaded()) {
-			throw new \Exception($this->lang('ID_OF_ITEM_TO_EDIT_IS_NOT_VALID', $class), ErrorCodes::RECORD_NOT_FOUND);
+			throw new AppException($this->lang('ID_OF_ITEM_TO_EDIT_IS_NOT_VALID', $class), ErrorCodes::RECORD_NOT_FOUND);
 		}
 
 		return $object;

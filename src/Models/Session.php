@@ -98,6 +98,23 @@ class Session extends ActiveRecord {
 	}
 
 	/**
+	 * Destroy the current session and delete the session cookie.
+	 */
+	public static function destroy(): void {
+
+		// delete the session cookie
+		if (isset($_COOKIE[session_name()])) {
+			setcookie(session_name(), '', time()-3600, '/');
+		}
+
+		// destroy the session
+		if (session_id()) {
+			session_destroy();
+		}
+
+	}
+
+	/**
 	 * Extends timeout updating startTime of this session, based on user’s time zone.
 	 */
 	public function extendTimeout() {
