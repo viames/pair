@@ -36,7 +36,7 @@ class Menu {
 	 * @param	string	Optional, the anchor target.
 	 * @param	string	Optional, the badge type as Bootstrap class (ex. primary, info, danger etc.).
 	 */
-	public function addItem(string $url, string $title, string $badge=NULL, string $class=NULL, string $target=NULL, string $badgeType=NULL) {
+	public function addItem(string $url, string $title, ?string $badge=NULL, ?string $class=NULL, ?string $target=NULL, ?string $badgeType=NULL) {
 
 		$this->items[]	= self::getItemObject($url, $title, $badge, $class, $target, $badgeType ?? 'primary');
 
@@ -49,7 +49,7 @@ class Menu {
 	 * @param	array	List of single-item objects
 	 * @param	string	Optional, can be an icon, a subtitle or icon placeholder.
 	 */
-	public function addMulti(string $title, array $list, string $class=NULL) {
+	public function addMulti(string $title, array $list, ?string $class=NULL) {
 	
 		$multi 			= new \stdClass();
 		$multi->type	= 'multi';
@@ -69,7 +69,7 @@ class Menu {
 	 * 
 	 * @param	string	Separator title. Optional.
 	 */
-	public function addSeparator(string $title=NULL) {
+	public function addSeparator(?string $title=NULL) {
 	
 		$item 			= new \stdClass();
 		$item->type		= 'separator';
@@ -90,7 +90,7 @@ class Menu {
 	 * 
 	 * @return	\stdClass
 	 */
-	public static function getItemObject(string $url, string $title, string $badge=NULL, string $class=NULL, string $target=NULL, string $badgeType=NULL): \stdClass {
+	public static function getItemObject(string $url, string $title, ?string $badge=NULL, ?string $class=NULL, ?string $target=NULL, ?string $badgeType=NULL): \stdClass {
 
 		$item 			= new \stdClass();
 		$item->type		= 'single';

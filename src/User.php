@@ -553,7 +553,7 @@ class User extends ActiveRecord {
 	 * @param	string	Optional action name.
 	 * @return	bool	True if access is granted.
 	 */
-	public function canAccess(string $module, string $action=NULL): bool {
+	public function canAccess(string $module, ?string $action=NULL): bool {
 
 		// patch for public folder content
 		if ('public' == $module) {

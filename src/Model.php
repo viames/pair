@@ -117,7 +117,7 @@ abstract class Model {
 	 * @param	string	Optional additional text.
 	 * @deprecated		Use static method Logger::event() instead.
 	 */
-	public function logEvent(string $description, string $type='notice', string $subtext=NULL) {
+	public function logEvent(string $description, string $type='notice', ?string $subtext=NULL) {
 
 		Logger::event($description, $type, $subtext);
 
@@ -156,7 +156,7 @@ abstract class Model {
 	 * @param	bool	Sorting direction ASC or DESC (optional)
 	 * @return	mixed[]
 	 */
-	public function getActiveRecordObjects(string $class, string $orderBy=NULL, bool $descOrder=FALSE): array {
+	public function getActiveRecordObjects(string $class, ?string $orderBy=NULL, bool $descOrder=FALSE): array {
 
 		if (!class_exists($class) or !is_subclass_of($class, 'Pair\ActiveRecord')) {
 			return [];
@@ -219,7 +219,7 @@ abstract class Model {
 	 * @param	string|NULL	Optional query.
 	 * @return	array
 	 */
-	public function getItems(string $class, string $optionalQuery=NULL): array {
+	public function getItems(string $class, ?string $optionalQuery=NULL): array {
 
 		// class must inherit Pair\ActiveRecord
 		if (!class_exists($class) or !is_subclass_of($class, 'Pair\ActiveRecord')) {
@@ -239,7 +239,7 @@ abstract class Model {
 	 * @param	string|NULL	Optional query.
 	 * @return	int
 	 */
-	public function countItems(string $class, string $optionalQuery=NULL): int {
+	public function countItems(string $class, ?string $optionalQuery=NULL): int {
 
 		$query = $optionalQuery ? $optionalQuery : $this->getQuery($class);
 		return (int)Database::load('SELECT COUNT(1) FROM (' . $query . ') AS `result`', [], PAIR_DB_COUNT);

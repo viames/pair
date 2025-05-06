@@ -59,7 +59,7 @@ class Breadcrumb {
 	 * @param	string	Title of the sub-path.
 	 * @param	string	Destination URL (default NULL).
 	 */
-	public static function path(string $title, string $url=NULL): void {
+	public static function path(string $title, ?string $url=NULL): void {
 
 		$self = self::getInstance();
 		

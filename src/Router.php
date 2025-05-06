@@ -773,7 +773,7 @@ class Router {
 	 * @param	int		Optional order value to build the URL with.
 	 * @return	string
 	 */
-	public function getOrderUrl(int $val=NULL): string {
+	public function getOrderUrl(?int $val=NULL): string {
 
 		// save current order val
 		$tmp = $this->order;
@@ -794,7 +794,7 @@ class Router {
 	 * @param	int		Optional page number to build the URL with.
 	 * @return	string
 	 */
-	public function getPageUrl(int $page=NULL): string {
+	public function getPageUrl(?int $page=NULL): string {
 
 		// save current order val
 		$tmp = $this->page;

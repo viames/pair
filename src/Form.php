@@ -349,7 +349,7 @@ class Form {
 	 *
 	 * @return	string
 	 */
-	public static function buildSelectFromArray(string $name, array $list, string $value=NULL, $attributes=NULL, $prependEmpty=NULL) {
+	public static function buildSelectFromArray(string $name, array $list, ?string $value=NULL, $attributes=NULL, $prependEmpty=NULL) {
 
 		$control = new FormControlSelect($name, $attributes);
 		$control->setOptions($list)->setValue($value);
@@ -372,7 +372,7 @@ class Form {
 	 *
 	 * @return	string
 	 */
-	public static function buildInput(string $name, string $value=NULL, string $type='text', $attributes=[]) {
+	public static function buildInput(string $name, ?string $value=NULL, string $type='text', $attributes=[]) {
 
 		$control = new FormControlInput($name, $attributes);
 		$control->setType($type)->setValue($value);
@@ -412,7 +412,7 @@ class Form {
 	 *
 	 * @return	string
 	 */
-	public static function buildButton(string $value, string $type='submit', string $name=NULL, $attributes=[], $faIcon=NULL) {
+	public static function buildButton(string $value, string $type='submit', ?string $name=NULL, $attributes=[], $faIcon=NULL) {
 
 		$control = new FormControlButton($name, $attributes);
 		$control->setType($type)->setFaIcon($faIcon)->setValue($value);
@@ -1450,7 +1450,7 @@ class FormControlSelect extends FormControl {
 	 *
 	 * @return	FormControlSelect
 	 */
-	public function prependEmpty(string $text=NULL): FormControlSelect {
+	public function prependEmpty(?string $text=NULL): FormControlSelect {
 
 		$this->emptyOption = is_null($text) ? Translator::do('SELECT_NULL_VALUE') : $text;
 

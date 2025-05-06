@@ -144,7 +144,7 @@ class Upload {
 	 *
 	 * @return	bool	TRUE if no errors.
 	 */
-	public function save(string $path, string $name=NULL, bool $random=FALSE): bool {
+	public function save(string $path, ?string $name=NULL, bool $random=FALSE): bool {
 
 		// check upload errors
 		if (UPLOAD_ERR_OK != $this->fileError) {

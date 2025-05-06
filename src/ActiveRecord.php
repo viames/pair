@@ -2137,7 +2137,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * @param	string	Optional pattern in the format provided by the DateTime object.
 	 * @return	string|NULL
 	 */
-	final public function formatDateTime(string $prop, string $format=NULL): ?string {
+	final public function formatDateTime(string $prop, ?string $format=NULL): ?string {
 
 		if (!is_a($this->$prop, '\DateTime')) {
 			return NULL;
@@ -2161,7 +2161,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * @param	string	Optional pattern in the format provided by the DateTime object.
 	 * @return	string|NULL
 	 */
-	final public function formatDate(string $prop, string $format=NULL): ?string {
+	final public function formatDate(string $prop, ?string $format=NULL): ?string {
 
 		if (!is_a($this->$prop, '\DateTime')) {
 			return NULL;
@@ -2650,7 +2650,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * @param	string|NULL	Table alias.
 	 * @return	string
 	 */
-	public static function getEncryptedColumnsQuery(string $tableAlias=NULL): string {
+	public static function getEncryptedColumnsQuery(?string $tableAlias=NULL): string {
 
 		$encryptables = static::getEncryptableFields();
 

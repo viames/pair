@@ -270,7 +270,7 @@ class Utilities {
 	 * @param	int|NULL	Error code (optional).
 	 * @param	int|NULL	HTTP code (optional, 400 by default).
 	 */
-	public static function printJsonError(string $message, int $code=NULL, int $httpCode=NULL): void {
+	public static function printJsonError(string $message, ?int $code=NULL, ?int $httpCode=NULL): void {
 
 		if (is_null($httpCode)) {
 			$httpCode = 400;
@@ -301,7 +301,7 @@ class Utilities {
 	 * @param	bool	Error flag, set TRUE to notice about error (optional).
 	 * @param	bool	Error code (optional).
 	 */
-	public static function printJsonData(mixed $data, string $message='', bool $error=FALSE, int $code=NULL, int $httpCode=NULL): void {
+	public static function printJsonData(mixed $data, string $message='', bool $error=FALSE, ?int $code=NULL, ?int $httpCode=NULL): void {
 
 		$ret = new \stdClass();
 
@@ -549,7 +549,7 @@ class Utilities {
 	 * @param	string	Internal, subfolder recursive name-cache.
 	 * @param	array	Internal, empty array at first scan.
 	 */
-	public static function getDirectoryFilenames(string $path, string $subfolder=NULL, array $fileList=[]): array {
+	public static function getDirectoryFilenames(string $path, ?string $subfolder=NULL, array $fileList=[]): array {
 
 		// usually insignificant files
 		$excludes = ['..', '.', '.DS_Store', 'thumbs.db', '.htaccess'];
