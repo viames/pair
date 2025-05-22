@@ -58,17 +58,14 @@ After having installed Pair framework you can get singleton object `$app` and th
 ```php
 use Pair\Core\Application;
 
-// initialize the framework
+// initialize composer
 require 'vendor/autoload.php';
 
 // intialize the Application
 $app = Application::getInstance();
 
-// any session
-$app->manageSession();
-
 // start controller and then display
-$app->startMvc();
+$app->run();
 ```
 
 If you want to test code that is in the master branch, which hasn’t been pushed as a release, you can use master.
@@ -98,8 +95,8 @@ Please consult the [Wiki](https://github.com/viames/pair/wiki) of this project. 
 | Software | Recommended | Minimum | Configuration          |
 | ---      |    :---:    |  :---:  | ---                    |
 | Apache   | 2.4+        | 2.2     | `modules:` mod_rewrite |
-| MySQL    | 9.2         | 8.0     | `character_set:` utf8mb4 <br> `collation:` utf8mb4\_unicode_ci <br> `storage_engine:` InnoDB |
-| PHP      | 8.3        | 8.3     | `extensions:` fileinfo, json, pcre, PDO, pdo_mysql, Reflection |
+| MySQL    | 9.3         | 8.0     | `character_set:` utf8mb4 <br> `collation:` utf8mb4\_unicode_ci <br> `storage_engine:` InnoDB |
+| PHP      | 8.4        | 8.3     | `extensions:` fileinfo, json, pcre, PDO, pdo_mysql, Reflection |
 
 ## Examples
 
@@ -111,9 +108,9 @@ Feedback, code integration, and documentation adjustments are welcome.
 
 If you would like to contribute to this project, please feel free to submit a pull request.
 
-## Update from Pair v1 to v2
+## Update from Pair v2 to v3
 
-Instructions and a script for upgrading applications from Pair 1 to Pair 2 are available in the file [UPGRADE.md](UPGRADE.md).
+Instructions and a script for upgrading applications from Pair 2 to Pair 3 are available in the file [UPGRADE.md](UPGRADE.md).
 
 # License
 

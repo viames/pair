@@ -407,7 +407,7 @@ abstract class FormControl {
 
 		$ret = '';
 
-		if ($this->id) {
+		if (!is_null($this->id) and '' != $this->id) {
 			$ret .= ' id="' . $this->id . '"';
 		}
 
@@ -423,11 +423,11 @@ abstract class FormControl {
 			$ret .= ' readonly';
 		}
 
-		if ($this->placeholder) {
+		if (!is_null($this->placeholder) and '' != $this->placeholder) {
 			$ret .= ' placeholder="' . $this->placeholder . '"';
 		}
 
-		if ($this->pattern) {
+		if (!is_null($this->pattern) and '' != $this->pattern) {
 			$ret .= ' pattern="' . $this->pattern . '"';
 		}
 

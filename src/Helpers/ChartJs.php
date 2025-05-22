@@ -1,6 +1,6 @@
 <?php
 
-namespace Pair\Services;
+namespace Pair\Helpers;
 
 use Pair\Core\Application;
 use Pair\Exceptions\AppException;

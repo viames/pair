@@ -190,8 +190,8 @@ class LogBar {
 		$firstWarning	= FALSE;
 
 		// cookie infos
-		$showQueries	= isset($_COOKIE['LogShowQueries']) ? (bool)$_COOKIE['LogShowQueries'] : FALSE;
-		$showEvents		= isset($_COOKIE['LogShowEvents'])  ? (bool)$_COOKIE['LogShowEvents']  : FALSE;
+		$showQueries	= isset($_COOKIE['LogBarShowQueries']) ? (bool)$_COOKIE['LogBarShowQueries'] : FALSE;
+		$showEvents		= isset($_COOKIE['LogBarShowEvents'])  ? (bool)$_COOKIE['LogBarShowEvents']  : FALSE;
 
 		// create a date in timezone of connected user
 		$timeStart = new \DateTime('@' . (int)$this->timeStart, new \DateTimeZone(BASE_TIMEZONE));
@@ -266,11 +266,8 @@ class LogBar {
 
 			}
 
-			// if it's query, verifies cookie val
-			$class = $e->type . (('query'==$e->type and !$showQueries) ? ' hidden' : '');
-
 			$log .=
-				'<div ' . $eventDomId . 'class="' . $class . '">' .
+				'<div ' . $eventDomId . 'class="' . $e->type . '">' .
 				'<span class="time' . ($e->chrono>1 ? ' slow' : '') . '">' . $this->formatChrono($e->chrono) . '</span> ' .
 				htmlspecialchars((string)$e->description) .
 				($e->subtext ? ' <span>| ' . htmlspecialchars((string)$e->subtext) . '</span>' : '') . '</div>';
@@ -280,20 +277,30 @@ class LogBar {
 		}
 
 		// log header
-		$ret = '<div id="log">';
-		$ret.= '<div class="head">';
+		$ret = '<div class="card mt-3" id="logbar">
+			<div class="card-header">
+				<div class="float-end">';
 
-		// log date
-		$ret.= '<div class="item"><span class="icon fa fa-clock"></span><span class="emph">' . $timeStart->format('Y-m-d H:i:s') . '</span></div>';
+		if ($showEvents) {
+			$ret.= '<div id="toggle-events" class="item expanded">Hide</div>';
+		} else {
+			$ret.= '<div id="toggle-events" class="item">Show</div>';
+		}
+		//<a class="p-4 btn btn-sm btn-outline-primary mt-1 float-right" href="compositerewards/new"><i class="fal fa-plus-large fa-fw"></i></a>
+		$ret.= '</div>
+				<h4>LogBar</h4>
+			</div>
+			<div class="card-body">
+			<div class="head">';
+
+		// total time
+		$ret.= '<div class="item"><span class="icon fa fa-tachometer-alt"></span><span class="emph">' . $this->formatChrono($sum) .'</span> total</div>';
 
 		// external api
 		$ret.= $apiChrono ? '<div class="item"><span class="icon fa fa-exchange"></span><span class="emph">API ' . $this->formatChrono($apiChrono) . '</span></div>' : '';
 
 		// database
-		$ret.= '<div class="item database multi' . ($showQueries ? ' active' : '') . '"><div class="icon fa fa-database"></div><div class="desc"><span class="emph">' . $queryCount .'</span> queries <div class="sub">(' . $this->formatChrono($queryChrono) .')</div></div></div>';
-
-		// total time
-		$ret.= '<div class="item"><span class="icon fa fa-tachometer-alt"></span><span class="emph">' . $this->formatChrono($sum) .'</span> total</div>';
+		$ret.= '<div class="item database multi"><div class="icon fa fa-database"></div><div class="desc"><span class="emph">' . $queryCount .'</span> queries <div class="sub">(' . $this->formatChrono($queryChrono) .')</div></div></div>';
 
 		// memory peak
 		$ret.= '<div class="item"><span class="icon fa fa-heartbeat"></span><span class="emph">' . floor(memory_get_peak_usage()/1024/1024) . ' MB</span> memory</div>';
@@ -308,17 +315,13 @@ class LogBar {
 			$ret.= '<a href="javascript:;" onclick="document.location.hash=\'logFirstError\';" class="item error"><span class="icon fa fa-times-circle"></span><span class="emph">' . $errorCount . '</span> ' . ($errorCount>1 ? 'errors' : 'error') . '</a>';
 		}
 
-		// show/hide log button
-		if ($showEvents) {
-			$ret.= '<div id="logShowEvents" class="item active">Hide <span class="fa fa-caret-up"></span></div>';
-		} else {
-			$ret.= '<div id="logShowEvents" class="item">Show <span class="fa fa-caret-down"></span></div>';
-		}
-
 		$ret.= '</div>';
 
 		// log content
-		$ret.= '<div class="events' . ($showEvents ? '' : ' hidden') . '">' . $log . '</div></div>';
+		$ret.= '<div class="events' . ($showQueries ? ' show-queries' : '') . ($showEvents ? '' : ' hidden') . '">' . $log . '</div>';
+
+		// card-body and card close
+		$ret.= '</div></div>';
 
 		return $ret;
 
