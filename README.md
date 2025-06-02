@@ -14,8 +14,6 @@ Welcome to Pair version 3 alpha. This is a major release that breaks compatibili
 
 Pair is a simple and fast PHP framework with little or no frills. It was written with simplicity in mind, trying to satisfy the most frequent needs of web applications. It implements the [Model-View-Controller](https://en.wikipedia.org/wiki/Model-View-Controller) pattern and intuitive, search engine friendly [routing](https://github.com/viames/pair/wiki/Router) by default.
 
-Pair is a simple and fast PHP framework with little or no frills. It was written with simplicity in mind, trying to satisfy the most frequent needs of web applications. It implements the Model-View-Controller pattern and intuitive routing logic by default.
-
 Everyone knows that you don’t need a truck to go grocery shopping. You don't even need a car to go to the local newsstand to buy the newspaper. You need the right vehicle for every occasion.
 
 If starting a new web project is a hassle because of the complexity and slowness of the famous pachyderm frameworks used around, you should take a look at Pair. For a small or medium web project, it might surprise you.
