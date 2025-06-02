@@ -57,6 +57,11 @@ class Router {
 	private ?int $order = NULL;
 
 	/**
+	 * Flag that’s true if the order has been changed.
+	 */
+	private bool $orderChanged = FALSE;
+
+	/**
 	 * List of custom routing paths.
 	 */
 	private array $routes = [];
@@ -81,6 +86,47 @@ class Router {
 
 		// force initial slash
 		if ($this->url and '/' != $this->url[0]) $this->url = '/' . $this->url;
+
+	}
+
+	/**
+	 * Returns property’s value or NULL.
+	 *
+	 * @param	string	Property’s name.
+	 * @throws	\Exception	If property doesn’t exist.
+	 */
+	public function __get(string $name): mixed {
+
+		if (!property_exists($this, $name)) {
+			throw new \Exception('Property “'. $name .'” doesn’t exist for '. get_called_class(), ErrorCodes::PROPERTY_NOT_FOUND);
+		}
+		
+		return isset($this->$name) ? $this->$name : NULL;
+	
+	}
+
+	/**
+	 * Set a property of this object.
+	 *
+	 * @param	string	Property’s name.
+	 * @param	mixed
+	 */
+	public function __set(string $name, mixed $value): void {
+
+		$this->$name = $value;
+
+	}
+
+	/**
+	 * Print the calculated URL based on parameters.
+	 */
+	public function __toString(): string {
+
+		$path = $this->module .'/'. $this->action;
+		if (count($this->vars)) {
+			$path .= '/'. implode('/', $this->vars);
+		}
+		return $path;
 
 	}
 
@@ -264,7 +310,7 @@ class Router {
 					} else if ('order-' == substr($value, 0, 6)) {
 
 						$nr = intval(substr($value, 6));
-						if ($nr) $this->order = $nr;
+						if ($nr) $this->setOrder($nr);
 
 					// pagination
 					} else if ('page-' == substr($value, 0, 5)) {
@@ -329,19 +375,27 @@ class Router {
 
 					// flag to not send back log (useful for AJAX)
 					if ('noLog' == $param) {
+
 						$this->sendLog = FALSE;
-						// ordering
+					
+					// ordering
 					} else if ('order-' == substr($param, 0, 6)) {
+					
 						$nr = intval(substr($param, 6));
-						if ($nr) $this->order = $nr;
-						// pagination
+						if ($nr) $this->setOrder($nr);
+					
+					// pagination
 					} else if ('page-' == substr($param, 0, 5)) {
+					
 						$nr = intval(substr($param, 5));
 						$this->setPage($nr);
+					
 					} else {
+					
 						if (''!=$param and !is_null($param)) {
 							$this->vars[] = $param;
 						}
+					
 					}
 					break;
 
@@ -361,34 +415,6 @@ class Router {
 		}
 
 		return self::$instance;
-
-	}
-
-	/**
-	 * Returns property’s value or NULL.
-	 *
-	 * @param	string	Property’s name.
-	 * @throws	\Exception	If property doesn’t exist.
-	 */
-	public function __get(string $name): mixed {
-
-		if (!property_exists($this, $name)) {
-			throw new \Exception('Property “'. $name .'” doesn’t exist for '. get_called_class(), ErrorCodes::PROPERTY_NOT_FOUND);
-		}
-		
-		return isset($this->$name) ? $this->$name : NULL;
-	
-	}
-
-	/**
-	 * Set a property of this object.
-	 *
-	 * @param	string	Property’s name.
-	 * @param	mixed
-	 */
-	public function __set(string $name, mixed $value): void {
-
-		$this->$name = $value;
 
 	}
 
@@ -483,6 +509,25 @@ class Router {
 
 		}
 
+	}
+
+	/**
+	 * Set the current ordering value and reset pagination if different from referer.
+	 */
+	public function setOrder(int $order): void {
+	
+		$this->order = $order;
+
+		// Check if referer contains an order number and reset pagination if different
+		if (isset($_SERVER['HTTP_REFERER'])) {
+			if (preg_match('/\/order-(\d+)/', $_SERVER['HTTP_REFERER'], $matches)) {
+				$oldOrder = (int)$matches[1];
+				if ($oldOrder !== $order) {
+					$this->orderChanged = TRUE;
+				}
+			}
+		}
+	
 	}
 
 	/**
@@ -747,19 +792,6 @@ class Router {
 		$this->page = $tmp;
 
 		return $url;
-
-	}
-
-	/**
-	 * Stampa l’URL calcolato in base ai parametri.
-	 */
-	public function __toString(): string {
-
-		$path = $this->module .'/'. $this->action;
-		if (count($this->vars)) {
-			$path .= '/'. implode('/', $this->vars);
-		}
-		return $path;
 
 	}
 

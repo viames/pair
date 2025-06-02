@@ -138,9 +138,9 @@ class Utilities {
 	}
 
 	/**
-	 * Convert a CSV file to an Excel file using the github.com/tealeg/csv2xlsx command line utility.
+	 * Convert a CSV file to an Excel file using the https://github.com/mentax/csv2xlsx command line utility.
 	 */
-	public static function convertCsvToExcel(string $csvPath, ?string $excelPath=NULL, ?string $delimiter=NULL): string {
+	public static function convertCsvToExcel(string $csvPath, ?string $excelPath=NULL, string $separator=','): string {
 
 		$execPath = self::getExecutablePath('csv2xlsx', 'CSV2XLSX_PATH');
 
@@ -160,7 +160,7 @@ class Utilities {
 			$excelPath = $fileName ? $fileName . '.xlsx' : $csvPath . '.xlsx';
 		}
 
-		$command = $execPath . ' -d="' . ($delimiter ? $delimiter : ',') . '" -o=' . $excelPath . ' ' . $csvPath;
+		$command = $execPath . ' -d "' . $separator . '" -o ' . $excelPath . ' ' . $csvPath;
 
 		shell_exec($command);
 
@@ -825,7 +825,7 @@ class Utilities {
 	 */
 	public static function getExecutablePath(string $executable, ?string $envKey=NULL): ?string {
 
-		if (Env::get($envKey) and is_executable(Env::get($envKey))) {
+		if ($envKey and Env::get($envKey) and is_executable(Env::get($envKey))) {
 			return Env::get($envKey);
 		}
 
@@ -995,6 +995,23 @@ class Utilities {
 	}
 
 	/**
+	 * Proxy method to print a JSON error message with the error code and message passed as parameters.
+	 *
+	 * @param	string	Error code to print on user.
+	 * @param	string	Error message to print on user.
+	 * @param	int		Optional HTTP code (default 400).
+	 * @param	array	Optional extra data to add to the JSON response.
+	 */
+	public static function jsonError(string $errorCode, string $errorMessage, int $httpCode=400, array $extra=[]): void {
+
+		self::jsonResponse(array_merge([
+			'code' => $errorCode,
+			'error' => $errorMessage
+		], $extra), $httpCode);
+
+	}
+
+	/**
 	 * Print a JSON response with the data passed as a parameter. The default HTTP code is 200, but it will be replaced
 	 * with 204 if the data is empty.
 	 *
@@ -1018,19 +1035,13 @@ class Utilities {
 	}
 
 	/**
-	 * Proxy method to print a JSON error message with the error code and message passed as parameters.
+	 * Prints a JSON object with message property.
 	 *
-	 * @param	string	Error code to print on user.
-	 * @param	string	Error message to print on user.
-	 * @param	int		Optional HTTP code (default 400).
-	 * @param	array	Optional extra data to add to the JSON response.
+	 * @param	string	Message to print on user.
 	 */
-	public static function jsonError(string $errorCode, string $errorMessage, int $httpCode=400, array $extra=[]): void {
+	public static function jsonSuccess(string $message): void {
 
-		self::jsonResponse(array_merge([
-			'code' => $errorCode,
-			'error' => $errorMessage
-		], $extra), $httpCode);
+		self::jsonResponse(['message' => $message]);
 
 	}
 

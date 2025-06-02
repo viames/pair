@@ -785,6 +785,7 @@ class User extends ActiveRecord {
 		$ipAddress = $_SERVER['REMOTE_ADDR'] ?? NULL;
 		$userAgent = $_SERVER['HTTP_USER_AGENT'] ?? NULL;
 
+		// user account is disabled
 		if ('0' == $user->enabled) {
 
 			$ret->error = TRUE;
@@ -793,7 +794,6 @@ class User extends ActiveRecord {
 
 			Audit::loginFailed($user->email, $ipAddress, $userAgent);
 
-		// user password doesn’t match
 		} else {
 
 			// hook for tasks to be executed before login
@@ -808,6 +808,7 @@ class User extends ActiveRecord {
 			$user->afterLogin();
 
 			Audit::loginSuccessful($user, $ipAddress, $userAgent);
+
 		}
 
 		return $ret;

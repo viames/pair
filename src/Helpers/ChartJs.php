@@ -130,6 +130,35 @@ class ChartJs {
 	}
 
 	/**
+	 * Set the aspect ratio of the chart. The aspect ratio is used to calculate the size of the chart.
+	 *
+	 * @param	float	The aspect ratio of the chart, e.g. 3/2 for a 3:2 aspect ratio.
+	 * @throws	AppException	If the aspect ratio is not valid (less than or equal to 0).
+	 */
+	public function aspectRatio(float $ratio): self {
+
+		if ($ratio <= 0) {
+			throw new AppException('Invalid aspect ratio: ' . $ratio);
+		}
+
+		$this->options['aspectRatio'] = $ratio;
+
+		return $this;
+
+	}
+
+	/**
+	 * Proxy method to setup the ChartDataLabels plugin
+	 *
+	 * @param	array	The options of the ChartDataLabels plugin.
+	 */
+	public function datalabels(array $pluginOptions): self {
+
+		return $this->plugin('datalabels', $pluginOptions);
+
+	}
+
+	/**
 	 * Add a new ChartJsDataset to the chart.
 	 */
 	public function dataset(ChartJsDataset $dataset): self {
@@ -150,7 +179,7 @@ class ChartJs {
      *  4. Data must not need parsing, i.e. parsing must be false
      *  5. The dataset object must be mutable. The plugin stores the original data as dataset._data and then defines a new data property on the dataset.
      *  6. There must be more points on the chart than the threshold value. Take a look at the Configuration Options for more information.
-	 * 
+	 *
 	 * @param	string	The decimation algorithm to use. Possible values are: min-max, lttb.
 	 *					Min/max preserve peaks in your data but could require up to 4 points for each pixel. Work well for a very noisy signal where you need to see data peaks.
 	 *					LTTB reduces the number of data points significantly. This is most useful for showing trends in data using only a few data points.
@@ -251,7 +280,7 @@ class ChartJs {
 	 */
 	public function hideLegend(): self {
 
-		$this->options['legend']['display'] = FALSE;
+		$this->options['plugins']['legend']['display'] = FALSE;
 		return $this;
 
 	}
@@ -362,6 +391,31 @@ class ChartJs {
 	}
 
 	/**
+	 * Load the Chart.js library from a CDN.
+	 * This method should be called in the view to load the library before rendering the chart.
+	 */
+	public static function load(): void {
+
+		$app = Application::getInstance();
+		$app->loadScript('https://cdn.jsdelivr.net/npm/chart.js');
+
+	}
+
+	/**
+	 * Load the Chart.js Datalabels plugin from a CDN and register it with Chart.js.
+	 * This method should be called in the view to load the plugin before rendering the chart.
+	 * The Datalabels plugin is used to display labels on the chart data points.
+	 * It can be used with any chart type that supports data labels.
+	 */
+	public static function loadDatalabels(): void {
+
+		$app = Application::getInstance();
+		$app->loadScript('https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels');
+		$app->addScript('Chart.register(ChartDataLabels);');
+
+	}
+
+	/**
 	 * Set the aspect ratio of the chart.
 	 *
 	 * @param	bool	If true, the aspect ratio is maintained.
@@ -468,12 +522,12 @@ class ChartJs {
 	}
 
 	/**
-	 * Set the plugins options.
+	 * Add an array structured to configure a Chart.js plugin, such as ChartDataLabels.
 	 *
-	 * @param	string	The name of the plugin.
+	 * @param	string	The name of the plugin options.
 	 * @param	array	The options of the plugin.
 	 */
-	public function plugins(string $pluginName, array $pluginOptions): self {
+	public function plugin(string $pluginName, array $pluginOptions): self {
 
 		$this->options['plugins'][$pluginName] = $pluginOptions;
 
@@ -483,7 +537,9 @@ class ChartJs {
 
 	/**
 	 * Build a label range for the chart, based on the start date, end date of the period
-	 * and interval.
+	 * and interval. The interval can be one of the following values: day, week, month, year.
+	 *
+	 * @throws AppException If the interval is not valid or if the user or session is not available.
 	 */
 	public function rangeLabels(\DateTime $start, \DateTime $end, string $interval): self {
 
@@ -567,7 +623,6 @@ class ChartJs {
 
 		$script = 'var chartJsObject = document.getElementById("' . $this->elementId . '");' . PHP_EOL;
 		$script.= 'new Chart(chartJsObject, {type: "' . $this->type . '", data: ' . $data;
-
 
 		if (count($this->options)) {
 			$script .= ', options: ' . json_encode($this->options);

@@ -461,7 +461,7 @@ abstract class Report {
 		$fp = fopen($csvFile, 'w');
 
 		// write the header
-		fputcsv($fp, array_map(function($o) { return $o->head; }, $this->columns));
+		fputcsv($fp, array_map(function($o) { return $o->head; }, $this->columns), ',', '"', '\\', PHP_EOL);
 
 		$dateFormats = ['stringDate', 'stringDateTime', 'Date', 'DateTime'];
 
@@ -482,13 +482,14 @@ abstract class Report {
 
 			}
 
-			fputcsv($fp, $row);
+			fputcsv($fp, $row, ',', '"', '\\', PHP_EOL);
+
 		}
 
 		fclose($fp);
 
 		// convert to Excel
-		Utilities::convertCsvToExcel($csvFile, $filePath);
+		Utilities::convertCsvToExcel($csvFile, $filePath, ',');
 
 	}
 
