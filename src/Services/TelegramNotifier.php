@@ -84,31 +84,26 @@ class TelegramNotifier {
 
 		// username not found
 		return NULL;
+
 	}
 
 	/**
-	 * Send a message to Telegram user by numeric chat ID.
+	 * Common method to send data to Telegram API.
 	 *
 	 * @throws PairException
 	 */
-	public function sendMessage(int $chatId, string $message): void {
+	private function send(int $chatId, string $method, array $postData): void {
 
 		if ($chatId < 1) {
 			throw new PairException('Telegram Chat ID value not valid (' . $chatId . ')', ErrorCodes::TELEGRAM_FAILURE);
 		}
 
-		$url = $this->getBaseUrl() . '/sendMessage';
-
-		$postData = [
-			'chat_id' => $chatId,
-			'text'    => $message
-		];
+		$url = $this->getBaseUrl() . '/' . $method;
 
 		$ch = curl_init();
-
 		curl_setopt($ch, CURLOPT_URL, $url);
 		curl_setopt($ch, CURLOPT_POST, TRUE);
-		curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
+		curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
 
 		$response = curl_exec($ch);
@@ -125,8 +120,15 @@ class TelegramNotifier {
 
 		if (!$json->ok) {
 			$msg = 400 == $json->error_code
-				? 'Error ' . $json->error_code . ' Telegram Chat ID value not valid ' . ' (' . $chatId . ')'
-				: $json->description . ' (' . $json->error_code . ')';
+				? 'Telegram API error: ' . $json->description
+				: 'Telegram API error: ' . $json->error_code . ' - ' . $json->description;
+
+			// if the chat ID is not valid, it will return an error
+			if (isset($json->parameters->retry_after)) {
+				$msg .= ' (retry after ' . $json->parameters->retry_after . ' seconds)';
+			}
+
+			// throw an exception with the error message
 			throw new PairException($msg, ErrorCodes::TELEGRAM_FAILURE);
 		}
 
@@ -137,6 +139,65 @@ class TelegramNotifier {
 		}
 
 		curl_close($ch);
+
+	}
+
+	/**
+	 * Send an image to Telegram user by numeric chat ID by choosing the method based on the image path.
+	 * If the image path starts with “http” it will be sent as a URL, otherwise as a local file.
+	 *
+	 * @throws PairException
+	 */
+	public function sendImage(int $chatId, string $imagePath, ?string $caption=NULL): void {
+
+		if ($chatId < 1) {
+			throw new PairException('Telegram Chat ID value not valid (' . $chatId . ')', ErrorCodes::TELEGRAM_FAILURE);
+		}
+
+		$postData = ['chat_id' => $chatId];
+
+		// image caption is optional
+		$caption = trim($caption ?? '');
+		if ($caption) {
+			$postData['caption'] = $caption;
+		}
+
+		// if the image is not a URL, it must be a local file path
+		if (!str_starts_with($imagePath, 'http')) {
+
+			if (!file_exists($imagePath) or !is_readable($imagePath)) {
+				throw new PairException('Image file not found or not readable: ' . $imagePath, ErrorCodes::TELEGRAM_FAILURE);
+			}
+
+			$postData['photo'] = new \CURLFile(
+				realpath($imagePath),
+				mime_content_type($imagePath),
+				basename($imagePath)
+			);
+
+		} else {
+
+			// if it’s a URL, we can send it directly
+			$postData['photo'] = $imagePath;
+
+		}
+
+		// send the image to Telegram
+		$this->send($chatId, 'sendPhoto', $postData);
+
+	}
+
+	/**
+	 * Send a message to Telegram user by numeric chat ID.
+	 *
+	 * @throws PairException
+	 */
+	public function sendMessage(int $chatId, string $message): void {
+
+		$this->send($chatId, 'sendMessage', [
+			'chat_id' => $chatId,
+			'text'    => $message
+		]);
 
 	}
 
