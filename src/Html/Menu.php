@@ -162,7 +162,12 @@ class Menu {
 			return '';
 		}
 
-		$active = ($item->url == $this->activeItem ? ' class="active"' : '');
+		if ($item->url == $this->activeItem) {
+			$active = ' class="active"';
+			$app->pageHeading($app->pageHeading ?? $item->title);
+		} else {
+			$active = '';
+		}
 
 		return '<li><a href="' . $item->url . '"' . ($item->target ? ' target="' . $item->target . '"' : '') .
 			$active . '><i class="' . $this->faStyle . ' ' . $this->faSize . ' fa-fw ' . $item->class . '"></i> <span class="nav-label">' . $item->title .'</span> ' .
@@ -193,6 +198,7 @@ class Menu {
 				$active	= 'active';
 				$menuLi	= ' active';
 				$menuA	= ' active subdrop';
+				$app->pageHeading($app->pageHeading ?? $item->title);
 			} else {
 				$active		= '';
 			}

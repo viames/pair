@@ -114,6 +114,11 @@ class Application {
 	private ?string $activeMenuItem = NULL;
 
 	/**
+	 * The page heading text (default is the label shown for the active menu item).
+	 */
+	private ?string $pageHeading = NULL;
+
+	/**
 	 * Template’s object.
 	 */
 	private ?Template $template = NULL;
@@ -191,7 +196,7 @@ class Application {
 		}
 
 		// default page title, maybe overwritten
-		$this->setPageTitle(Env::get('APP_NAME'));
+		$this->pageTitle(Env::get('APP_NAME'));
 
 		// raw calls will jump templates inclusion, so turn-out output buffer
 		if (!$router->isRaw()) {
@@ -231,7 +236,7 @@ class Application {
 
 			default:
 
-				$allowedProperties = ['activeRecordCache', 'activeMenuItem', 'currentUser', 'userClass', 'pageTitle', 'pageContent', 'template', 'messages'];
+				$allowedProperties = ['activeRecordCache', 'activeMenuItem', 'currentUser', 'userClass', 'pageTitle', 'pageHeading', 'pageContent', 'template', 'messages'];
 
 				// search into variable assigned to the template as first
 				if (array_key_exists($name, $this->vars)) {
@@ -565,7 +570,7 @@ class Application {
 	 *
 	 * @param	string	Name of module that executes API requests. Default is “api”.
 	 */
-	public function handleApiRequest(string $name = 'api'): void {
+	private function handleApiRequest(string $name = 'api'): void {
 
 		$router = Router::getInstance();
 
@@ -950,6 +955,35 @@ class Application {
 	}
 
 	/**
+	 * Set the web page heading.
+	 */
+	public function pageHeading(string $heading): void {
+
+		$this->pageHeading = $heading;
+
+	}
+
+	/**
+	 * Set the web page HTML title tag.
+	 */
+	public function pageTitle(string $title): void {
+
+		$this->pageTitle = $title;
+
+	}
+
+	/**
+	 * Set a modal alert queued for next page load.
+	 */
+	public function persistentModal(string $title, string $text, ?string $icon = NULL): void {
+
+		$modal = new SweetAlert($title, $text, $icon);
+
+		$this->setPersistentState('Modal', $modal);
+
+	}
+
+	/**
 	 * Prints the page Javascript content.
 	 */
 	final public function printScripts(): void {
@@ -1025,17 +1059,6 @@ class Application {
 		}
 
 		print $pageStyles;
-
-	}
-
-	/**
-	 * Set a modal alert queued for next page load.
-	 */
-	public function persistentModal(string $title, string $text, ?string $icon = NULL): void {
-
-		$modal = new SweetAlert($title, $text, $icon);
-
-		$this->setPersistentState('Modal', $modal);
 
 	}
 
@@ -1161,6 +1184,12 @@ class Application {
 
 	}
 
+	/**
+	 * Run the application.
+	 *
+	 * This method is the main entry point of the application. It initializes the session,
+	 * handles API requests if applicable, and runs the MVC pattern to render the page.
+	 */
 	final public function run(): void {
 
 		$router = Router::getInstance();
@@ -1179,9 +1208,9 @@ class Application {
 	}
 
 	/**
-	 * Parse template file, replace variables and return it.
+	 * Run the MVC pattern to handle the request and render the page.
 	 */
-	final public function runMvc(): void {
+	private function runMvc(): void {
 
 		$router	= Router::getInstance();
 
@@ -1195,7 +1224,7 @@ class Application {
 
 			$this->toastError(Translator::do('ERROR'), Translator::do('RESOURCE_NOT_FOUND', $router->url));
 			$this->style = '404';
-			$this->setPageTitle('HTTP 404 error');
+			$this->pageTitle('HTTP 404 error');
 			http_response_code(404);
 
 		} else {
@@ -1309,15 +1338,6 @@ class Application {
 	public function setGuestModules(array|string $modules): void {
 
 		$this->guestModules = (array)$modules;
-
-	}
-
-	/**
-	 * Set the web page HTML title tag.
-	 */
-	public function setPageTitle(string $title): void {
-
-		$this->pageTitle = $title;
 
 	}
 

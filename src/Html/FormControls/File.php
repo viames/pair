@@ -121,16 +121,20 @@ class File extends FormControl {
 	protected ?string $accept = NULL;
 
 	/**
-	 * Set accepted file type by input field. Chainable method.
+	 * Sets accepted file type by input field. Chainable method.
 	 *
 	 * @param	string|array	Single MIME type or file extension, or an array of them.
 	 */
 	public function accept(string|array $mimeType): self {
 
+		if (!is_null($this->accept)) {
+			$this->accept .= ',';
+		}
+
 		if (is_array($mimeType) and count($mimeType)) {
-			$mimeType .= ',' . implode(',', $mimeType);
+			$this->accept .= implode(',', $mimeType);
 		} else if (is_string($mimeType)) {
-			$mimeType .= ',' . $mimeType;
+			$this->accept .= $mimeType;
 		}
 
 		return $this;
@@ -138,7 +142,7 @@ class File extends FormControl {
 	}
 
 	/**
-	 * Add a whole group of MIME types to the accepted list by category (audio|binary|csv|document|image|pdf|presentation|spreadsheet|video|zip).
+	 * Adds a whole group of MIME types to the accepted list by category (audio|binary|csv|document|image|pdf|presentation|spreadsheet|video|zip).
 	 * Chainable method.
 	 */
 	public function acceptCategory(string $mimeCategory): self {
@@ -158,7 +162,7 @@ class File extends FormControl {
 	}
 
 	/**
-	 * Add groups of MIME types to the accepted list by category (audio|binary|csv|document|image|pdf|presentation|spreadsheet|video|zip).
+	 * Adds groups of MIME types to the accepted list by category (audio|binary|csv|document|image|pdf|presentation|spreadsheet|video|zip).
 	 * Chainable method.
 	 */
 	public function acceptCategories(array $mimeCategories): self {
@@ -166,6 +170,17 @@ class File extends FormControl {
 		foreach ($mimeCategories as $mimeCategory) {
 			$this->acceptCategory($mimeCategory);
 		}
+
+		return $this;
+
+	}
+
+	/**
+	 * Sets the camera facing mode for the file input.
+	 */
+	public function capture(?string $cameraFacingMode=NULL): self {
+
+		$this->attributes['capture'] = $cameraFacingMode;
 
 		return $this;
 

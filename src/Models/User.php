@@ -253,7 +253,13 @@ class User extends ActiveRecord {
 		$acl = $this->getAcl();
 
 		foreach ($acl as $rule) {
-			if ($rule->moduleName == $module and (($rule->adminOnly and $this->admin) or !$rule->action or ($rule->action and $rule->action == $action))) {
+			if ($rule->moduleName != $module) {
+				continue;
+			}
+			if ($rule->adminOnly and $this->admin) {
+				return TRUE;
+			}
+			if (is_null($rule->action) or $rule->action == $action or (is_null($action) and 'default' == $rule->action)) {
 				return TRUE;
 			}
 		}

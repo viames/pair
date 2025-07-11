@@ -158,16 +158,17 @@ abstract class Model {
 	}
 
 	/**
-	 * Create SQL code about ORDER and LIMIT.
+	 * Returns SQL for ordering and limiting results based on the current pagination settings
+	 * and the order options defined by parameter (priority) or defined in the child model.
 	 */
-	protected function getOrderLimitSql(): string {
+	protected function getOrderLimitSql(array $orderOptions=[]): string {
 
 		$ret = '';
 
 		$router = Router::getInstance();
 
 		// retrieves any options defined in the child model
-		$orderOptions = $this->getOrderOptions();
+		$orderOptions = count($orderOptions) ? $orderOptions : $this->getOrderOptions();
 
 		// sort according to the router param or the default first option
 		if (count($orderOptions)) {

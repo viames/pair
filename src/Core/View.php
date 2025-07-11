@@ -331,9 +331,9 @@ abstract class View {
 	/**
 	 * Shortcut to print a “No data” message box.
 	 */
-	public function printNoDataMessageBox(): void {
+	public function noData(): void {
 
-		Utilities::printNoDataMessageBox();
+		Utilities::showNoDataAlert();
 
 	}
 

@@ -1139,15 +1139,15 @@ class Utilities {
 	}
 
 	/**
-	 * Prints a message "NoData..." in a special container.
+	 * Prints a message "NoData..." in a contextual feedback messages.
 	 *
-	 * @param	string	Custom message to print in the container.
+	 * @param	string	Optional custom message to print in the alert message container.
 	 */
-	public static function printNoDataMessageBox(?string $customMessage=NULL) {
+	public static function showNoDataAlert(?string $customMessage=NULL) {
 
 		Router::exceedingPaginationFallback();
 
-		?><div class="messageNodata"><?php print ($customMessage ? $customMessage : Translator::do('NOTHING_TO_SHOW')) ?></div><?php
+		?><div class="alert alert-primary" role="alert"><?php print ($customMessage ? $customMessage : Translator::do('NO_DATA')) ?></div><?php
 
 	}
 

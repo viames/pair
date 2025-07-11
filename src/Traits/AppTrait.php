@@ -84,11 +84,20 @@ trait AppTrait {
 	}
 
 	/**
+	 * Set the web page heading.
+	 */
+	public function pageHeading(string $heading): void {
+
+		Application::getInstance()->pageHeading($heading);
+
+	}
+
+	/**
 	 * Set the web page HTML title tag.
 	 */
-	public function setPageTitle(string $title): void {
+	public function pageTitle(string $title): void {
 
-		Application::getInstance()->setPageTitle($title);
+		Application::getInstance()->pageTitle($title);
 
 	}
 

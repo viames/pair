@@ -13,7 +13,7 @@ use Pair\Services\AmazonSes;
 use Pair\Services\InsightHub;
 use Pair\Services\SendMail;
 use Pair\Services\SmtpMailer;
-use Pair\Services\TelegramNotifier;
+use Pair\Services\TelegramSender;
 
 /**
  * Singleton object for managing internal logger functions.
@@ -329,14 +329,14 @@ class Logger {
 		// send Telegram notification, if level is below threshold and recipients are set
 		if ($this->telegramThreshold >= $level and $this->telegramBotToken and count($this->telegramChatIds)) {
 
-			$tgNotifier = new TelegramNotifier($this->telegramBotToken);
+			$sender = new TelegramSender($this->telegramBotToken);
 
 			$message = $levelDescription . ' level in ' . Env::get('APP_NAME') . ' ' . Env::get('APP_VERSION') . ' ' . Application::getEnvironment() . ' at ' . date('Y-m-d H:i:s');
 			$message .= "\n\n" . $description;
 
 			foreach ($this->telegramChatIds as $chatId) {
 				if ($chatId>0) {
-					$tgNotifier->sendMessage($chatId, $message);
+					$sender->message($chatId, $message);
 				}
 			}
 

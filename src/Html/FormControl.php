@@ -100,7 +100,7 @@ abstract class FormControl {
 	 * @param	string	Control name.
 	 * @param	array	Optional attributes (tag=>value).
 	 */
-	public function __construct(string $name, ?array $attributes=[]) {
+	public function __construct(string $name, array $attributes=[]) {
 
 		// remove [] from array and set TRUE to arrayName property
 		if (substr($name, -2) == '[]') {
@@ -109,7 +109,7 @@ abstract class FormControl {
 		}
 
 		$this->name = $name;
-		$this->attributes = (array)$attributes;
+		$this->attributes = $attributes;
 
 	}
 
@@ -438,7 +438,13 @@ abstract class FormControl {
 
 		// misc tag attributes
 		foreach ($this->attributes as $attr=>$val) {
-			$ret .= ' ' . $attr . '="' . str_replace('"','\"',$val) . '"';
+
+			$ret .= ' ' . $attr;
+
+			if (!is_null($val)) {
+				$ret .= '="' . str_replace('"','\"',$val) . '"';
+			}
+
 		}
 
 		return $ret;

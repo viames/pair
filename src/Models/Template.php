@@ -247,6 +247,7 @@ class Template extends PluginBase {
 		$placeholders = [
 			'content'	=> 'pageContent',
 			'title'		=> 'pageTitle',
+			'heading'	=> 'pageHeading',
 			'langCode'	=> 'langCode',
 			'logBar'	=> 'logBar'
 		];

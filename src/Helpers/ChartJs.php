@@ -52,23 +52,31 @@ class ChartJs {
 		'#9269F7', // vibrant lavender purple
 		'#C9D1CB', // muted sage gray
 		'#3E7CB1', // deep ocean blue
-		'#D47A5E', // warm terracotta orange
-		'#7ACC91', // fresh mint green
-		'#F2A2E8', // soft lavender pink
-		'#F7D6A3', // soft golden yellow
-		'#A3A380', // muted olive green
-		'#F2C3A9', // soft peach pink
-		'#B5EAD7', // soft mint green
-		'#F2E8C4'  // soft beige yellow
+		'#8CD0A4', // pale seafoam green
+		'#D3A4F9', // light orchid purple
+		'#FFBC8B', // light apricot orange
+		'#A1C9F1', // light periwinkle blue
+		'#FFE599', // pastel butter yellow
+		'#B9CBC2', // cool light sage
+		'#F88D9C', // bright soft rose
+		'#9ED0F0', // icy blue
+		'#C295D8', // dusty lilac
+		'#F6A785', // peachy coral
+		'#A8BFA3', // soft olive-sage green
+		'#F0E1B2', // balanced soft beige-yellow
+		'#B37D5E', // soft cocoa brown
+		'#95B2C2', // light steel blue
+		'#6F9E75', // desaturated moss green
+		'#D65555'  // warm coral red
 	];
 
 	/**
 	 * Constructor. Set the HTML element ID and the type of the chart.
 	 *
-	 * @param	string	The HTML element ID where the chart will be rendered.
 	 * @param	string	The type of the chart (line, bar, radar, doughnut, pie, polarArea, bubble, scatter).
+	 * @param	string	Optional HTML element ID where the chart will be rendered. If not provided, a unique ID will be generated.
 	 */
-	public function __construct(string $elementId, string $type) {
+	public function __construct(string $type, ?string $elementId = NULL) {
 
 		$validTypes = ['line', 'bar', 'radar', 'doughnut', 'pie', 'polarArea', 'bubble', 'scatter'];
 
@@ -78,11 +86,11 @@ class ChartJs {
 
 		$this->type = $type;
 
-		if (!preg_match('/^[a-zA-Z][a-zA-Z0-9-_]*$/', $elementId)) {
+		if (!is_null($elementId) and !preg_match('/^[a-zA-Z][a-zA-Z0-9-_]*$/', $elementId)) {
 			throw new AppException('Invalid element ID: ' . $elementId);
 		}
 
-		$this->elementId = $elementId;
+		$this->elementId = $elementId ? $elementId : 'chart-' . uniqid();
 
 	}
 
@@ -610,30 +618,42 @@ class ChartJs {
 	}
 
 	/**
-	 * Return the JS script to render the chart.
+	 * Add the chart JS code to the application scripts and return the HTML canvas element.
+	 * This method should be called in the view to render the chart.
 	 */
 	public function render(): string {
 
-		$data = json_encode([
-			'labels' => $this->labels,
-			'datasets' => array_map(function($dataset) {
-				return $dataset->export();
-			}, $this->datasets)
-		]);
-
 		$script = 'var chartJsObject = document.getElementById("' . $this->elementId . '");' . PHP_EOL;
-		$script.= 'new Chart(chartJsObject, {type: "' . $this->type . '", data: ' . $data;
-
-		if (count($this->options)) {
-			$script .= ', options: ' . json_encode($this->options);
-		}
-
-		$script .= '});';
+		$script.= 'new Chart(chartJsObject,' . $this->renderConfig() . ');' . PHP_EOL;
 
 		$app = Application::getInstance();
 		$app->addScript($script);
 
 		return '<canvas id="' . $this->elementId . '"></canvas>';
+
+	}
+
+	/**
+	 * Render the chart configuration as a JSON string.
+	 * This method is used to generate the configuration object for the Chart.js library.
+	 */
+	public function renderConfig(): string {
+
+		$config = [
+			'type' => $this->type,
+			'data' => [
+				'labels' => $this->labels,
+				'datasets' => array_map(function($dataset) {
+					return $dataset->export();
+				}, $this->datasets)
+			]
+		];
+
+		if (count($this->options)) {
+			$config['options'] = $this->options;
+		}
+
+		return json_encode($config);
 
 	}
 

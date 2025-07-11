@@ -10,7 +10,7 @@
 		"daniel-zahariev/php-aws-ses":"^0.9",
 		"league/flysystem-aws-s3-v3": "^1|^3",
 		"phpmailer/phpmailer": "^6",
-		"phpoffice/phpspreadsheet": "^1|^2|^3|^4",
+		"phpoffice/phpspreadsheet": "^1|^2|^3|^4|^5",
 		"sentry/sdk": "^4",
 		"sistemi-etime/flysystem-plugin-aws-s3-v3": "^1"
 	},
