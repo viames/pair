@@ -101,9 +101,6 @@ abstract class View {
 		$this->model = $model;
 		$this->model->pagination = $this->pagination;
 
-		// sets the default menu item -- can be overwritten if needed
-		$this->app->activeMenuItem = $router->module;
-
 		try {
 			$this->_init();
 		} catch (\Exception $e) {

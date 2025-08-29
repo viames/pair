@@ -277,7 +277,7 @@ class LogBar {
 		}
 
 		// log header
-		$ret = '<div class="card mt-3" id="logbar">
+		$ret = '<div class="card mt-5" id="logbar">
 			<div class="card-header">
 				<div class="float-end">';
 

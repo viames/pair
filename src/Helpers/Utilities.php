@@ -347,6 +347,37 @@ class Utilities {
 	}
 
 	/**
+	 *  Returns list of dates based on date range
+	 *
+	 * @param  string	Start Date
+	 * @param  string	End Date
+	 * @return array
+	 */
+	public static function getDatesFromRange($sStartDate, $sEndDate) {
+
+		// Start the variable off with the start date
+		$aDays[] = $sStartDate;
+
+		// Set a 'temp' variable, sCurrentDate, with
+		// the start date - before beginning the loop
+		$sCurrentDate = $sStartDate;
+
+		// While the current date is less than the end date
+		while ($sCurrentDate < $sEndDate){
+			// Add a day to the current date
+			$sCurrentDate = date("Y-m-d", strtotime("+1 day", strtotime($sCurrentDate)));
+
+			// Add this new day to the aDays array
+			$aDays[] = $sCurrentDate;
+		}
+
+		// Once the loop has finished, return the
+		// array of days.
+		return $aDays;
+
+	}
+
+	/**
 	 * Get the backtrace and assemble an array with comprehensible items.
 	 *
 	 * @return string[]
@@ -425,37 +456,6 @@ class Utilities {
 		}
 
 		return $fileList;
-
-	}
-
-	/**
-	 *  Returns list of dates based on date range
-	 *
-	 * @param  string	Start Date
-	 * @param  string	End Date
-	 * @return array
-	 */
-	public static function getDatesFromRange($sStartDate, $sEndDate) {
-
-		// Start the variable off with the start date
-		$aDays[] = $sStartDate;
-
-		// Set a 'temp' variable, sCurrentDate, with
-		// the start date - before beginning the loop
-		$sCurrentDate = $sStartDate;
-
-		// While the current date is less than the end date
-		while ($sCurrentDate < $sEndDate){
-			// Add a day to the current date
-			$sCurrentDate = date("Y-m-d", strtotime("+1 day", strtotime($sCurrentDate)));
-
-			// Add this new day to the aDays array
-			$aDays[] = $sCurrentDate;
-		}
-
-		// Once the loop has finished, return the
-		// array of days.
-		return $aDays;
 
 	}
 
@@ -574,118 +574,6 @@ class Utilities {
 		}
 
 		return NULL;
-
-	}
-
-	/**
-	 * Will returns a div tag with timeago content.
-	 *
-	 * @param	mixed	DateTime, integer-timestamp or string date.
-	 */
-	public static function getTimeago($date): string {
-
-		$app = Application::getInstance();
-
-		// create DateTime object with int or strings
-		if (is_int($date)) {
-			$dateTime = new \DateTime();
-			$dateTime->setTimestamp($date);
-			$dateTime->setTimezone($app->currentUser->getDateTimeZone());
-		} else if (is_string($date)) {
-			if (0!==strpos($date, '0000-00-00 00:00:00')) {
-				$dateTime = new \DateTime($date);
-				$dateTime->setTimezone($app->currentUser->getDateTimeZone());
-			} else {
-				$dateTime = NULL;
-			}
-		} else if (is_a($date,'\DateTime')) {
-			$dateTime = $date;
-			$dateTime->setTimezone($app->currentUser->getDateTimeZone());
-		} else {
-			$dateTime = NULL;
-		}
-
-		// if date valid, create the expected object
-		if (is_a($dateTime,'\DateTime')) {
-
-			$humanDate = self::intlFormat(NULL, $dateTime);
-
-			return '<span class="timeago" title="' . $dateTime->format(DATE_W3C) . '">' . $humanDate . '</span>';
-
-		// otherwise return n.a. date
-		} else {
-
-			return '<span class="timeago">' . Translator::do('NOT_AVAILABLE') . '</span>';
-
-		}
-
-	}
-
-	/**
-	 * Determines whether the brightness of the color code passed as a parameter is less
-	 * than 128, so it is a dark color. Useful for dynamically choosing a foreground or
-	 * background color that contrasts with the color passed.
-	 */
-	public static function isDarkColor(string $hexColor): bool {
-
-		// removes the # symbol, if present
-		$hexColor = ltrim($hexColor, '#');
-
-		// converts HEX color to RGB components
-		$r = hexdec(substr($hexColor, 0, 2));
-		$g = hexdec(substr($hexColor, 2, 2));
-		$b = hexdec(substr($hexColor, 4, 2));
-
-		// calculate brightness using the perceived formula
-		$brightness = ($r * 299 + $g * 587 + $b * 114) / 1000;
-
-		// if the brightness is less than 128, the color is dark
-		return $brightness < 128;
-
-	}
-
-	/**
-	 * Check if the passed string is a serialized data for PHP until version 8.3.
-	 */
-	public static function isSerialized(string $data, array $allowedClasses=[]): bool {
-
-		$data = trim($data);
-
-		// serialized NULL
-		if ('N;' === $data) return TRUE;
-
-		// check that it starts with a valid type
-		if (!preg_match('/^([adObis]):/', $data, $match)) return FALSE;
-
-		// uses @ to suppress any unserialize warnings
-		try {
-			$result = unserialize($data, ['allowed_classes' => $allowedClasses]);
-		} catch (\Throwable $e) {
-			return FALSE;
-		}
-
-		// if the result is false and the string is not "b:0;", it is not valid
-		return FALSE !== $result or $data === 'b:0;';
-
-	}
-
-	/**
-	 * Check if the server’s user agent contains a word about mobile devices and return TRUE if found.
-	 */
-	public static function isUserAgentMobile(): bool {
-
-		$user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? strtolower($_SERVER['HTTP_USER_AGENT']) : '';
-
-		$devices = ['phone', 'iphone', 'itouch', 'ipod', 'symbian', 'android', 'htc_', 'htc-',
-				'palmos', 'blackberry', 'opera mini', 'iemobile', 'windows ce', 'nokia', 'fennec',
-				'hiptop', 'kindle', 'mot ', 'mot-', 'webos\/', 'samsung', 'sonyericsson', '^sie-',
-				'nintendo'];
-
-		if (preg_match('/' . implode('|', $devices) . '/', $user_agent)) {
-			return TRUE;
-		} else {
-			return FALSE;
-		}
 
 	}
 
@@ -934,6 +822,88 @@ class Utilities {
 	}
 
 	/**
+	 * Will returns a div tag with timeago content.
+	 *
+	 * @param	mixed	DateTime, integer-timestamp or string date.
+	 */
+	public static function getTimeago($date): string {
+
+		$app = Application::getInstance();
+
+		// create DateTime object with int or strings
+		if (is_int($date)) {
+			$dateTime = new \DateTime();
+			$dateTime->setTimestamp($date);
+			$dateTime->setTimezone($app->currentUser->getDateTimeZone());
+		} else if (is_string($date)) {
+			if (0!==strpos($date, '0000-00-00 00:00:00')) {
+				$dateTime = new \DateTime($date);
+				$dateTime->setTimezone($app->currentUser->getDateTimeZone());
+			} else {
+				$dateTime = NULL;
+			}
+		} else if (is_a($date,'\DateTime')) {
+			$dateTime = $date;
+			$dateTime->setTimezone($app->currentUser->getDateTimeZone());
+		} else {
+			$dateTime = NULL;
+		}
+
+		// if date valid, create the expected object
+		if (is_a($dateTime,'\DateTime')) {
+
+			$humanDate = self::intlFormat(NULL, $dateTime);
+
+			return '<span class="timeago" title="' . $dateTime->format(DATE_W3C) . '">' . $humanDate . '</span>';
+
+		// otherwise return n.a. date
+		} else {
+
+			return '<span class="timeago">' . Translator::do('NOT_AVAILABLE') . '</span>';
+
+		}
+
+	}
+
+	/**
+	 * Return a date in the local language using the IntlDateFormatter::format() method.
+	 * @param	string		Formatting pattern, for example “dd MMMM Y hh:mm”.
+	 * @param	\DateTime	The date object to be formatted, it will be the current date if NULL.
+	 */
+	public static function intlFormat(?string $format=NULL, \DateTime|NULL $dateTime=NULL): string {
+
+		$formatter = new \IntlDateFormatter(NULL, \IntlDateFormatter::MEDIUM, \IntlDateFormatter::SHORT);
+		if ($format) {
+			$formatter->setPattern($format);
+		}
+		return $formatter->format($dateTime ?? new \DateTime());
+
+	}
+
+	/**
+	 * Determines whether the brightness of the color code passed as a parameter is less
+	 * than 128, so it is a dark color. Useful for dynamically choosing a foreground or
+	 * background color that contrasts with the color passed.
+	 */
+	public static function isDarkColor(string $hexColor): bool {
+
+		// removes the # symbol, if present
+		$hexColor = ltrim($hexColor, '#');
+
+		// converts HEX color to RGB components
+		$r = hexdec(substr($hexColor, 0, 2));
+		$g = hexdec(substr($hexColor, 2, 2));
+		$b = hexdec(substr($hexColor, 4, 2));
+
+		// calculate brightness using the perceived formula
+		$brightness = ($r * 299 + $g * 587 + $b * 114) / 1000;
+
+		// if the brightness is less than 128, the color is dark
+		return $brightness < 128;
+
+	}
+
+	/**
 	 * Check if passed file is an image.
 	 *
 	 * @param	string	Path to file.
@@ -980,17 +950,47 @@ class Utilities {
 	}
 
 	/**
-	 * Return a date in the local language using the IntlDateFormatter::format() method.
-	 * @param	string		Formatting pattern, for example “dd MMMM Y hh:mm”.
-	 * @param	\DateTime	The date object to be formatted, it will be the current date if NULL.
+	 * Check if the passed string is a serialized data for PHP until version 8.3.
 	 */
-	public static function intlFormat(?string $format=NULL, \DateTime|NULL $dateTime=NULL): string {
+	public static function isSerialized(string $data, array $allowedClasses=[]): bool {
 
-		$formatter = new \IntlDateFormatter(NULL, \IntlDateFormatter::MEDIUM, \IntlDateFormatter::SHORT);
-		if ($format) {
-			$formatter->setPattern($format);
+		$data = trim($data);
+
+		// serialized NULL
+		if ('N;' === $data) return TRUE;
+
+		// check that it starts with a valid type
+		if (!preg_match('/^([adObis]):/', $data, $match)) return FALSE;
+
+		// uses @ to suppress any unserialize warnings
+		try {
+			$result = unserialize($data, ['allowed_classes' => $allowedClasses]);
+		} catch (\Throwable $e) {
+			return FALSE;
 		}
-		return $formatter->format($dateTime ?? new \DateTime());
+
+		// if the result is false and the string is not "b:0;", it is not valid
+		return FALSE !== $result or $data === 'b:0;';
+
+	}
+
+	/**
+	 * Check if the server’s user agent contains a word about mobile devices and return TRUE if found.
+	 */
+	public static function isUserAgentMobile(): bool {
+
+		$user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? strtolower($_SERVER['HTTP_USER_AGENT']) : '';
+
+		$devices = ['phone', 'iphone', 'itouch', 'ipod', 'symbian', 'android', 'htc_', 'htc-',
+				'palmos', 'blackberry', 'opera mini', 'iemobile', 'windows ce', 'nokia', 'fennec',
+				'hiptop', 'kindle', 'mot ', 'mot-', 'webos\/', 'samsung', 'sonyericsson', '^sie-',
+				'nintendo'];
+
+		if (preg_match('/' . implode('|', $devices) . '/', $user_agent)) {
+			return TRUE;
+		} else {
+			return FALSE;
+		}
 
 	}
 
@@ -1139,19 +1139,6 @@ class Utilities {
 	}
 
 	/**
-	 * Prints a message "NoData..." in a contextual feedback messages.
-	 *
-	 * @param	string	Optional custom message to print in the alert message container.
-	 */
-	public static function showNoDataAlert(?string $customMessage=NULL) {
-
-		Router::exceedingPaginationFallback();
-
-		?><div class="alert alert-primary" role="alert"><?php print ($customMessage ? $customMessage : Translator::do('NO_DATA')) ?></div><?php
-
-	}
-
-	/**
 	 * Forces the HTTP response as download of an XML file
 	 *
 	 * @param	string	string containing XML data.
@@ -1191,6 +1178,50 @@ class Utilities {
 		}
 
 		return $filename;
+
+	}
+
+	/**
+	 * Prints a message "NoData..." in a contextual feedback messages.
+	 *
+	 * @param	string	Optional custom message to print in the alert message container.
+	 */
+	public static function showNoDataAlert(?string $customMessage=NULL) {
+
+		Router::exceedingPaginationFallback();
+
+		?><div class="alert alert-primary" role="alert"><?php print ($customMessage ? $customMessage : Translator::do('NO_DATA')) ?></div><?php
+
+	}
+
+	/**
+	 * Generates a URL-friendly "slug" from any string.
+	 */
+	public static function slugify(string $text): string {
+
+		// replace non letter or digits by -
+		$text = preg_replace('~[^\pL\d]+~u', '-', $text);
+
+		// transliterate
+		$text = iconv('utf-8', 'us-ascii//TRANSLIT', $text);
+
+		// remove unwanted characters
+		$text = preg_replace('~[^-\w]+~', '', $text);
+
+		// trim
+		$text = trim($text, '-');
+
+		// remove duplicate -
+		$text = preg_replace('~-+~', '-', $text);
+
+		// lowercase
+		$text = strtolower($text);
+
+		if (empty($text)) {
+			return 'n-a';
+		}
+
+		return $text;
 
 	}
 

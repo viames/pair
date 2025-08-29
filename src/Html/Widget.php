@@ -24,6 +24,27 @@ class Widget {
 
 	}
 
+	public function __get(string $name): mixed {
+
+		return match ($name) {
+			'name' => $this->name,
+			default => NULL
+		};
+
+	}
+
+	public static function availableWidgets(): array {
+
+		$widgets = [];
+		$files = glob(self::WIDGET_FOLDER . '*.php');
+
+		foreach ($files as $file) {
+			$widgets[] = basename($file, '.php');
+		}
+
+		return $widgets;
+	}
+
 	/**
 	 * Renders the widget layout and returns it.
 	 * 

@@ -3,13 +3,21 @@
 namespace Pair\Html;
 
 use Pair\Core\Application;
+use Pair\Core\Router;
 use Pair\Exceptions\AppException;
 use Pair\Helpers\Translator;
 
 class Menu {
 
 	/**
-	 * Item object list.
+	 * URL of the active menu item.
+	*/
+	protected ?string $activeItem = NULL;
+
+	/**
+	 * Menu item object list.
+	 *
+	 * @var MenuEntry[]
 	 */
 	protected array $items = [];
 
@@ -23,10 +31,14 @@ class Menu {
 	 */
 	protected string $faSize = 'fa-lg';
 
-	/**
-	 * URL of the active menu item.
-	 */
-	protected ?string $activeItem = NULL;
+	public function __construct() {
+
+		$app = Application::getInstance();
+		$router = Router::getInstance();
+
+		$this->activeItem = $app->menuUrl ?? $router->module . ($router->action ? '/' . $router->action : '');
+
+	}
 
 	public function __toString(): string {
 
@@ -35,232 +47,15 @@ class Menu {
 	}
 
 	/**
-	 * Create an item object for single-item menu entry. The optional badge can be a subtitle.
-	 *
-	 * @param	string	Url of item.
-	 * @param	string	Title shown.
-	 * @param	string	Optional, can be an icon, a subtitle or icon placeholder.
-	 * @param	string	Optional, is CSS extra class definition.
-	 * @param	string	Optional, the anchor target.
-	 * @param	string	Optional, the badge type as Bootstrap class (ex. primary, info, error etc.).
-	 */
-	public function item(string $url, string $title, ?string $class=NULL, ?string $badge=NULL, ?string $badgeType=NULL, ?string $target=NULL): void {
-
-		$item 			= new \stdClass();
-		$item->type		= 'single';
-		$item->url		= $url;
-		$item->title	= $this->translateTitle($title);
-		$item->class	= $class;
-		$item->badge	= $badge;
-		$item->target	= $target;
-		$item->badgeType= $badgeType ?? 'primary';
-
-		$this->items[] = $item;
-
-	}
-
-	/**
-	 * Adds a multi-entry menu item. The list is array of single-item objects.
-	 * @param	string	Title for this item.
-	 * @param	array	List of single-item menu entry.
-	 * @param	string	Optional, can be an icon, a subtitle or icon placeholder.
-	 */
-	public function multiItem(string $title, array $list, ?string $class=NULL): void {
-
-		$multi 			= new \stdClass();
-		$multi->type	= 'multi';
-		$multi->title	= $this->translateTitle($title);
-		$multi->class	= $class;
-		$multi->list	= [];
-
-		foreach ($list as $i) {
-
-			// required fields
-			if (!isset($i[0]) or !isset($i[1])) {
-				continue;
-			}
-
-			$item = new \stdClass();
-			$item->type		= 'single';
-			$item->url		= $i[0];
-			$item->title	= $this->translateTitle($i[1]);
-			$item->class	= $i[2] ?? NULL;
-			$item->badge	= $i[3] ?? NULL;
-			$item->badgeType= $i[4] ?? 'primary';
-			$item->target	= $i[5] ?? NULL;
-
-			$multi->list[] = $item;
-
-		}
-
-		$this->items[] = $multi;
-
-	}
-
-	/**
-	 * Builds HTML of this menu.
-	 */
-	public function render(): string {
-
-		$app = Application::getInstance();
-		$this->activeItem = $app->activeMenuItem;
-
-		$ret = '';
-
-		foreach ($this->items as $item) {
-
-			switch ($item->type) {
-
-				// menu title rendering
-				case 'title':
-					$ret .= $this->renderTitle($item);
-					break;
-
-				// single menu item rendering
-				case 'single':
-					$ret .= $this->renderSingle($item);
-					break;
-
-				// menu item with many sub-items rendering
-				case 'multi':
-					$ret .= $this->renderMulti($item);
-					break;
-
-				// menu separator rendering
-				case 'separator':
-					$ret .= $this->renderSeparator($item);
-					break;
-
-			}
-
-		}
-
-		return $ret;
-
-	}
-
-	/**
-	 * Menu title rendering.
-	 * @param	\stdClass Menu item object.
-	 */
-	protected function renderTitle(\stdClass $item): string {
-
-		return '<li class="menu-title">' . $item->title . '</li>';
-
-	}
-
-	/**
-	 * Single menu item rendering.
-	 * @param	\stdClass Menu item object.
-	 */
-	protected function renderSingle(\stdClass $item): string {
-
-		$app = Application::getInstance();
-
-		// check permissions
-		if (!isset($item->url) or (is_a($app->currentUser, 'Pair\Models\User') and !$app->currentUser->canAccess($item->url))) {
-			return '';
-		}
-
-		if ($item->url == $this->activeItem) {
-			$active = ' class="active"';
-			$app->pageHeading($app->pageHeading ?? $item->title);
-		} else {
-			$active = '';
-		}
-
-		return '<li><a href="' . $item->url . '"' . ($item->target ? ' target="' . $item->target . '"' : '') .
-			$active . '><i class="' . $this->faStyle . ' ' . $this->faSize . ' fa-fw ' . $item->class . '"></i> <span class="nav-label">' . $item->title .'</span> ' .
-			($item->badge ? '<span class="float-end badge badge-' . $item->badgeType . '">' . $item->badge . '</span>' : '') . '</a></li>';
-
-	}
-
-	/**
-	 * Menu item with many sub-items rendering.
-	 * @param	\stdClass Menu item object.
-	 */
-	protected function renderMulti(\stdClass $item): string {
-
-		$app = Application::getInstance();
-
-		$links = $menuLi = $menuA = '';
-
-		// builds each sub-item link
-		foreach ($item->list as $i) {
-
-			// check permissions
-			if (isset($i->url) and (!is_a($app->currentUser, 'Pair\Models\User') or !$app->currentUser->canAccess($i->url))) {
-				continue;
-			}
-
-			// trigger the menu open
-			if ($i->url == $this->activeItem) {
-				$active	= 'active';
-				$menuLi	= ' active';
-				$menuA	= ' active subdrop';
-				$app->pageHeading($app->pageHeading ?? $item->title);
-			} else {
-				$active		= '';
-			}
-
-			$links .=
-				'<li class="' . $active . '"><a href="' . $i->url . '" class="' . $active . '">' .
-				'<i class="' . $this->faStyle . ' fa-fw ' . $i->class . '"></i>' . $i->title .
-				($i->badge ? '<span class="float-end badge badge-' . $item->badgeType . '">' . $i->badge . '</span>' : '') .
-				'</a></li>';
-
-		}
-
-		// prevent empty multi-menu
-		if ('' == $links) {
-			return '';
-		}
-
-		// assembles the multi-menu
-		return '<li class="has-sub' . $menuLi . '">' .
-			'<a href="javascript: void(0);" class="waves-effect ' . $menuA . '">
-					<i class="' . $this->faStyle . ' fa-fw ' . ($item->class ? $item->class : 'fa-th-large') . '"></i>
-					<span class="nav-label">' . $item->title . '</span>
-					<span class="' . $this->faStyle . ' fa-angle-down float-right"></span>
-			</a>' .
-			'<ul class="nav nav-second-level collapse">' . $links . '</ul></li>';
-
-	}
-
-	/**
-	 * Menu separator rendering.
-	 * @param	\stdClass Menu item object.
-	 */
-	protected function renderSeparator(\stdClass $item): string {
-
-		if (!$item->title) $item->title = '&nbsp;';
-		return '<div class="separator">' . $item->title . '</div>';
-
-	}
-
-	/**
-	 * Add a graphic or text separator to the menu.
-	 * @param	string	Separator title (optional).
-	 */
-	public function separator(?string $title=NULL): void {
-
-		$item 			= new \stdClass();
-		$item->type		= 'separator';
-		$item->title	= $title;
-		$this->items[]	= $item;
-
-	}
-
-	/**
 	 * Set the FontAwesome icon size. Like Font Awesome’s icons, the relative sizing scale
 	 * is created with modern browsers’ default 16px font-size in mind and creates steps
 	 * up/down from there. Default size is 'fa-lg'.
-	 * 
+	 *
 	 * @param	string	FontAwesome size (ex. fa-xs, fa-sm, fa-lg, fa-xl, fa-2x, etc.).
 	 * @throws	AppException
 	 * @see		https://docs.fontawesome.com/web/style/size
 	 */
-	public function setFontAwesomeSize(string $size): void {
+	public function fontAwesomeSize(string $size): void {
 
 		$valid = [
 			'fa-2xs', // 0.625x
@@ -291,12 +86,12 @@ class Menu {
 
 	/**
 	 * Set the FontAwesome icon style. Default style is 'fa-solid'.
-	 * 
+	 *
 	 * @param	string	FontAwesome style (ex. fa-solid, fa-regular, fa-brands, fa-light, fa-thin).
 	 * @throws	AppException
 	 * @see		https://docs.fontawesome.com/web/setup/upgrade/whats-changed
 	 */
-	public function setFontAwesomeStyle(string $style): void {
+	public function fontAwesomeStyle(string $style): void {
 
 		// new style class => old style class (still works)
 		$valid = [
@@ -330,11 +125,292 @@ class Menu {
 	}
 
 	/**
-	 * Add a Title item to menu.
+	 * Adds a dropdown with a header and a list of single items.
+	 *
+	 * @param string      Dropdown header shown in the menu.
+	 * @param array       List of items. Each item must be a numeric tuple:
+	 *                        [string $url, string $title, ?string $icon, ?string $badge, ?string $badgeType, ?string $target]
+	 *                      `$badgeType` maps to Bootstrap styles (e.g. "primary", "info", "danger"). Default is "primary".
+	 * @param string|null Optional FontAwesome icon class for the dropdown header (e.g. "fal-cog").
+	 *
+	 * Example:
+	 * $menu->group('Settings', [
+	 *   ['/profile',  'Profile',  'fa-user'],
+	 *   ['/security', 'Security', 'fa-lock', '23', 'info', '_blank'],
+	 *   ['url'=>'/about','title'=>'About','icon'=>'fa-info-circle','badge'=>'new','badge_type'=>'success'],
+	 * ], 'fa-cog');
+	 */
+	public function group(string $title, array $items, ?string $icon=NULL): void {
+
+        $group = new MenuEntry();
+        $group->type  = 'dropdown';
+        $group->title = $this->translateTitle($title);
+        $group->icon  = $icon;
+        $group->list  = [];
+
+        foreach ($items as $entry) {
+
+			if (!is_array($entry)) {
+                continue;
+            }
+
+            try {
+                [$url, $t, $i, $b, $bt, $tg] = $this->normalizeItem($entry);
+            } catch (\InvalidArgumentException $e) {
+                continue;
+            }
+
+            $item = $this->makeItem($url, $t, $i, $b, $bt, $tg);
+            $group->list[] = $item;
+
+		}
+
+        // avoids empty groups
+        if ($group->list) {
+            $this->items[] = $group;
+        }
+
+	}
+
+	/**
+     * Creates a single menu item.
+     *
+     * Each item can include a title, URL, an optional icon (FontAwesome class),
+     * an optional badge (e.g. status label or subtitle), and other properties.
+     *
+	 * @param string      	URL of the menu item.
+	 * @param string      	Displayed title of the menu item.
+	 * @param string|NULL	Optional FontAwesome icon class (e.g. "fa-user", "fal-cog").
+	 * @param string|NULL	Optional text used as a badge or subtitle.
+	 * @param string|NULL	Optional badge type, usually mapped to Bootstrap classes (e.g. "primary", "info", "danger"). Default: "primary".
+	 * @param string|NULL	Optional link target attribute (e.g. "_blank").
+	 */
+	public function item(string $url, string $title, ?string $icon=NULL, ?string $badge=NULL, ?string $badgeType=NULL, ?string $target=NULL): void {
+
+        $e = $this->makeItem($url, $title, $icon, $badge, $badgeType, $target);
+        $this->items[] = $e;
+
+	}
+
+	/**
+	 * Creates a single MenuEntry and manages the active state.
+     */
+    private function makeItem(string $url, string $title, ?string $icon, ?string $badge, ?string $badgeType, ?string $target): MenuEntry {
+
+        $e = new MenuEntry();
+
+        $e->type      = 'single';
+        $e->url       = $url;
+        $e->title     = $this->translateTitle($title);
+        $e->icon      = $icon;
+        $e->badge     = $badge;
+        $e->badgeType = $badgeType ?? 'primary';
+        $e->target    = $target;
+        $e->active    = ($url === $this->activeItem);
+
+        if ($e->active) {
+            $app = Application::getInstance();
+            $app->menuLabel = $e->title;
+        }
+
+        return $e;
+
+	}
+
+    /**
+	 * Normalizes an item into a tuple: [url, title, icon, badge, badgeType, target].
+	 * Accepts both numeric tuples and associative arrays.
+     *
+     * @param	array $a
+     * @return	array{0:string,1:string,2:?string,3:?string,4:?string,5:?string}
+     */
+    private function normalizeItem(array $a): array {
+
+		// associative
+        if (isset($a['url'], $a['title'])) {
+            return [
+                (string)$a['url'],
+                (string)$a['title'],
+                $a['icon']       ?? NULL,
+                $a['badge']      ?? NULL,
+                $a['badge_type'] ?? 'primary',
+                $a['target']     ?? NULL,
+            ];
+        }
+
+        // numeric tuple
+        if (isset($a[0], $a[1])) {
+
+            // pad to 6 items: url, title, icon, badge, badgeType, target
+            $b = $a + [0=>NULL, 1=>NULL, 2=>NULL, 3=>NULL, 4=>'primary', 5=>NULL];
+            return [
+                (string)$b[0],
+                (string)$b[1],
+                $b[2],
+                $b[3],
+                $b[4],
+                $b[5],
+            ];
+        }
+
+        throw new \InvalidArgumentException('Invalid menu item shape');
+
+    }
+
+	/**
+	 * Builds HTML of this menu.
+	 */
+	public function render(): string {
+
+		$ret = '';
+
+		foreach ($this->items as $item) {
+
+			switch ($item->type) {
+
+				// menu title rendering
+				case 'title':
+					$ret .= $this->renderTitle($item);
+					break;
+
+				// single menu item rendering
+				case 'single':
+					$ret .= $this->renderSingle($item);
+					break;
+
+				// menu item with many sub-items rendering
+				case 'dropdown':
+					$ret .= $this->renderDropdown($item);
+					break;
+
+				// menu separator rendering
+				case 'separator':
+					$ret .= $this->renderSeparator($item);
+					break;
+
+			}
+
+		}
+
+		return $ret;
+
+	}
+
+	/**
+	 * Menu entry with many sub-items rendering.
+	 */
+	protected function renderDropdown(MenuEntry $entry): string {
+
+		$app = Application::getInstance();
+
+		$links = $menuLi = $menuA = '';
+
+		// builds each sub-item link
+		foreach ($entry->list as $subitem) {
+
+			// check permissions
+			if (isset($subitem->url) and (!is_a($app->currentUser, 'Pair\Models\User') or !$app->currentUser->canAccess($subitem->url))) {
+				continue;
+			}
+
+			// trigger the menu open
+			if ($subitem->active) {
+				$class = 'active';
+				$aria = ' aria-current="page"';
+				$menuLi	= ' active';
+				$menuA	= ' active subdrop';
+			} else {
+				$class = $aria = '';
+			}
+
+			$links .=
+				'<li class="' . $class . '"><a href="' . $subitem->url . '" class="' . $class . '" ' . $aria . '>' .
+				'<i aria-hidden="true" class="' . $this->faStyle . ' fa-fw ' . $subitem->icon . '"></i>' . $subitem->title .
+				($subitem->badge ? '<span aria-label="' . $subitem->badge . '" class="float-end badge badge-' . $subitem->badgeType . '">' . $subitem->badge . '</span>' : '') .
+				'</a></li>';
+
+		}
+
+		// prevent empty dropdown
+		if ('' == $links) {
+			return '';
+		}
+
+		// assembles the dropdown
+		return '<li class="has-sub' . $menuLi . '">' .
+			'<a href="javascript: void(0);" class="waves-effect ' . $menuA . '">
+					<i aria-hidden="true" class="' . $this->faStyle . ' fa-fw ' . ($entry->icon ?: 'fa-th-large') . '"></i>
+					<span class="nav-label">' . $entry->title . '</span>
+					<span class="' . $this->faStyle . ' fa-angle-down float-right"></span>
+			</a>' .
+			'<ul class="nav nav-second-level collapse">' . $links . '</ul></li>';
+
+	}
+
+	/**
+	 * Menu separator rendering.
+	 *
+	 * @param	MenuEntry Menu item object.
+	 */
+	protected function renderSeparator(MenuEntry $item): string {
+
+		if (!$item->title) $item->title = '&nbsp;';
+		return '<div aria-hidden="true" class="separator" role="separator">' . $item->title . '</div>';
+
+	}
+
+	/**
+	 * Single menu item rendering.
+	 */
+	protected function renderSingle(MenuEntry $item): string {
+
+		$app = Application::getInstance();
+
+		// check permissions
+		if (!isset($item->url) or (is_a($app->currentUser, 'Pair\Models\User') and !$app->currentUser->canAccess($item->url))) {
+			return '';
+		}
+
+		$current = $item->active ? ' class="active" aria-current="page"' : '';
+
+		return '<li><a href="' . $item->url . '"' . ($item->target ? ' target="' . $item->target . '"' : '') .
+			$current . '><i aria-hidden="true" class="' . $this->faStyle . ' ' . $this->faSize . ' fa-fw ' . $item->icon . '"></i> <span class="nav-label">' . $item->title .'</span> ' .
+			($item->badge
+				? '<span aria-label="' . $item->badge . '" class="float-end badge badge-' . $item->badgeType . '">' . $item->badge . '</span>'
+				: '')
+			. '</a></li>';
+
+	}
+
+	/**
+	 * Menu title rendering.
+	 */
+	protected function renderTitle(MenuEntry $item): string {
+
+		return '<li class="menu-title">' . $item->title . '</li>';
+
+	}
+
+	/**
+	 * Adds a graphic or text separator to the menu.
+	 *
+	 * @param	string	Separator title (optional).
+	 */
+	public function separator(?string $title=NULL): void {
+
+		$item 			= new MenuEntry();
+		$item->type		= 'separator';
+		$item->title	= $title;
+		$this->items[]	= $item;
+
+	}
+
+	/**
+	 * Adds a Title item to menu.
 	 */
 	public function title(string $title): void {
 
-		$item 			= new \stdClass();
+		$item 			= new MenuEntry();
 		$item->type		= 'title';
 		$item->title	= $title;
 		$this->items[]	= $item;
@@ -342,7 +418,7 @@ class Menu {
 	}
 
 	/**
-	 * Translate the title string if it is uppercase.
+	 * Translates the title string if it is uppercase.
 	 */
 	private function translateTitle(string $title): string {
 

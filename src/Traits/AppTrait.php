@@ -57,6 +57,12 @@ trait AppTrait {
 
 	}
 
+	public function menuUrl(string $url): void {
+
+		Application::getInstance()->menuUrl($url);
+
+	}
+
 	/**
 	 * Add a persistent alert modal to the page.
 	 *

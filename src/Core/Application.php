@@ -63,9 +63,24 @@ class Application {
 	private string $pageTitle = '';
 
 	/**
+	 * The page heading text.
+	 */
+	private string $pageHeading = '';
+
+	/**
 	 * HTML content of web page.
 	 */
 	private string $pageContent = '';
+
+	/**
+	 * The label of the current selected menu item.
+	 */
+	private ?string $menuLabel = NULL;
+
+	/**
+	 * The url of the current selected menu item.
+	 */
+	private ?string $menuUrl = NULL;
 
 	/**
 	 * Contains a list of plain text script to add.
@@ -107,16 +122,6 @@ class Application {
 	 * Contents variables for layouts.
 	 */
 	private array $vars = [];
-
-	/**
-	 * URL of the active menu item.
-	 */
-	private ?string $activeMenuItem = NULL;
-
-	/**
-	 * The page heading text (default is the label shown for the active menu item).
-	 */
-	private ?string $pageHeading = NULL;
 
 	/**
 	 * Template’s object.
@@ -236,7 +241,7 @@ class Application {
 
 			default:
 
-				$allowedProperties = ['activeRecordCache', 'activeMenuItem', 'currentUser', 'userClass', 'pageTitle', 'pageHeading', 'pageContent', 'template', 'messages'];
+				$allowedProperties = ['activeRecordCache', 'currentUser', 'userClass', 'pageTitle', 'pageHeading', 'pageContent', 'menuLabel', 'menuUrl', 'template', 'messages'];
 
 				// search into variable assigned to the template as first
 				if (array_key_exists($name, $this->vars)) {
@@ -951,6 +956,15 @@ class Application {
 		$this->modal = new SweetAlert($title, $text, $icon);
 
 		return $this->modal;
+
+	}
+
+	/**
+	 * Set the URL of the current selected menu item.
+	 */
+	public function menuUrl(string $url): void {
+
+		$this->menuUrl = $url;
 
 	}
 

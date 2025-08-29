@@ -8,6 +8,7 @@ use Pair\Exceptions\CriticalException;
 use Pair\Helpers\Plugin;
 use Pair\Helpers\PluginBase;
 use Pair\Helpers\Utilities;
+use Pair\Html\Widget;
 
 class Template extends PluginBase {
 
@@ -236,19 +237,35 @@ class Template extends PluginBase {
 
 	}
 
+	/**
+	 * Parses the template style file and replaces placeholders with HTML code.
+	 */
 	public static function parse(string $styleFile): void {
+
+		$app = Application::getInstance();
 
 		// load the style page file
 		$templateHtml = file_get_contents($styleFile);
 
-		$app = Application::getInstance();
+		$widgets = [];
+
+		foreach (Widget::availableWidgets() as $name) {
+
+			$pattern = '/\{\{\s*' . preg_quote($name, '/') . '\s*\}\}/';
+
+			// replace the widget placeholder with its rendered output
+			if (preg_match($pattern, $templateHtml)) {
+				$widgets[] = new Widget($name);
+			}
+
+		}
 
 		// placeholders to replace with $app properties
 		$placeholders = [
-			'content'	=> 'pageContent',
+			'langCode'	=> 'langCode',
 			'title'		=> 'pageTitle',
 			'heading'	=> 'pageHeading',
-			'langCode'	=> 'langCode',
+			'content'	=> 'pageContent',
 			'logBar'	=> 'logBar'
 		];
 
@@ -263,8 +280,14 @@ class Template extends PluginBase {
 			}
 
 			// replace in template
-			$templateHtml = preg_replace($pattern, $app->$property, $templateHtml);
+			$templateHtml = preg_replace($pattern, $app->$property, $templateHtml, 1);
 
+		}
+
+		// renders each existing widget
+		foreach ($widgets as $widget) {
+			$pattern = '/\{\{\s*' . preg_quote($widget->name, '/') . '\s*\}\}/';
+			$templateHtml = preg_replace($pattern, $widget->render(), $templateHtml, 1);
 		}
 
 		eval('?>' . $templateHtml);
