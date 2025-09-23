@@ -327,19 +327,18 @@ class Form {
 	}
 
 	/**
-	 * Generate and print a CSRF token field for form security.
+	 * Generates and returns a CSRF token field for form security.
 	 *
-	 * @return string HTML of the hidden input field with the CSRF token.
+	 * @return Hidden Hidden input field with the CSRF token.
 	 */
-	public function printToken(): void {
+	public function generateToken(): Hidden {
 
-		// generate a unique CSRF token
-		$token = bin2hex(\random_bytes(32));
+		// generates a new token if not present in session
+		if (!isset($_SESSION['csrf_token'])) {
+			$_SESSION['csrf_token'] = bin2hex(\random_bytes(32));
+		}
 
-		// store the token in the session
-		$_SESSION['csrf_token'] = $token;
-
-		print $this->hidden('csrf_token')->value($token);
+		return $this->hidden('csrf_token')->value($_SESSION['csrf_token']);
 
 	}
 
@@ -457,6 +456,15 @@ class Form {
 			}
 			$control->printLabel();
 		}
+
+	}
+
+	/**
+	 * Print a CSRF token field for form security.
+	 */
+	public function printToken(): void {
+
+		print $this->generateToken();
 
 	}
 

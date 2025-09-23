@@ -936,6 +936,10 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 				}
 
+			} else {
+
+				throw new PairException('In method ' . get_called_class() . '::findByAttributes() unexistent property “' . $property . '” can’t be used as filter');
+
 			}
 
 		}
