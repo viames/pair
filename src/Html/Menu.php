@@ -326,7 +326,7 @@ class Menu {
 			$links .=
 				'<li class="' . $class . '"><a href="' . $subitem->url . '" class="' . $class . '" ' . $aria . '>' .
 				'<i aria-hidden="true" class="' . $this->faStyle . ' fa-fw ' . $subitem->icon . '"></i>' . $subitem->title .
-				($subitem->badge ? '<span aria-label="' . $subitem->badge . '" class="float-end badge badge-' . $subitem->badgeType . '">' . $subitem->badge . '</span>' : '') .
+				(!is_null($subitem->badge) ? '<span aria-label="' . $subitem->badge . '" class="float-end badge badge-' . $subitem->badgeType . '">' . $subitem->badge . '</span>' : '') .
 				'</a></li>';
 
 		}
@@ -375,7 +375,7 @@ class Menu {
 
 		return '<li><a href="' . $item->url . '"' . ($item->target ? ' target="' . $item->target . '"' : '') .
 			$current . '><i aria-hidden="true" class="' . $this->faStyle . ' ' . $this->faSize . ' fa-fw ' . $item->icon . '"></i> <span class="nav-label">' . $item->title .'</span> ' .
-			($item->badge
+			(!is_null($item->badge)
 				? '<span aria-label="' . $item->badge . '" class="float-end badge badge-' . $item->badgeType . '">' . $item->badge . '</span>'
 				: '')
 			. '</a></li>';

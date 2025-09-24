@@ -35,7 +35,7 @@ class BootstrapMenu extends Menu {
 			$links .=
 				'<li' . $liClass . '><a ' . $aria . 'href="' . $subitem->url . '">' .
 				'<i aria-hidden="true" class="' . $this->faStyle . ' fa-fw ' . $subitem->icon . '"></i> ' . $subitem->title .
-				((isset($subitem->badge) and $subitem->badge) ? '<span aria-label="' . $subitem->badge . '" class="float-end badge badge-' . $subitem->badgeType . '">' . $subitem->badge . '</span>' : '') .
+				((isset($subitem->badge) and !is_null($subitem->badge)) ? '<span aria-label="' . $subitem->badge . '" class="float-end badge badge-' . $subitem->badgeType . '">' . $subitem->badge . '</span>' : '') .
 				'</a></li>';
 
 		}
@@ -77,7 +77,7 @@ class BootstrapMenu extends Menu {
 		$ret = '<li' . ($entry->active ? ' class="active"' : '') . '>' .
 			'<a' . ($entry->active ? ' aria-current="page"' : '') . ' href="' . $entry->url . '"' . ($entry->target ? ' target="' . $entry->target . '"' : '') .
 			'><i aria-hidden="true" class="' . $this->faStyle . ' ' . $this->faSize . ' fa-fw ' . $entry->icon . '"></i> <span class="nav-label">' . $entry->title .'</span> ' .
-			((isset($entry->badge) and $entry->badge) ? '<span aria-label="' . $entry->badge . '" class="float-end badge badge-' . $entry->badgeType . '">' . $entry->badge . '</span>' : '') .
+			((isset($entry->badge) and !is_null($entry->badge)) ? '<span aria-label="' . $entry->badge . '" class="float-end badge badge-' . $entry->badgeType . '">' . $entry->badge . '</span>' : '') .
 			'</a></li>';
 
 		return $ret;
