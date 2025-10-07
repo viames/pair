@@ -49,11 +49,12 @@ class Form {
 	private ?string $labelClasses = NULL;
 
 	/**
-	 * Add a FormControl object to controls list of this Form.
+	 * Add a FormControl object to controls list of this Form. Chainable method.
 	 */
-	private function addControl(FormControl $control): void {
+	public function add(FormControl $control): FormControl {
 
 		$this->controls[$control->name] = $control;
+		return $control;
 
 	}
 
@@ -66,7 +67,7 @@ class Form {
 	public function address(string $name, array $attributes = []): Address {
 
 		$control = new Address($name, $attributes);
-		$this->addControl($control);
+		$this->add($control);
 		return $control;
 
 	}
@@ -175,7 +176,7 @@ class Form {
 	public function button(string $name, array $attributes = []): Button {
 
 		$control = new Button($name, $attributes);
-		$this->addControl($control);
+		$this->add($control);
 		return $control;
 
 	}
@@ -189,7 +190,7 @@ class Form {
 	public function checkbox(string $name, array $attributes = []): Checkbox {
 
 		$control = new Checkbox($name, $attributes);
-		$this->addControl($control);
+		$this->add($control);
 		return $control;
 
 	}
@@ -229,7 +230,7 @@ class Form {
 	public function color(string $name, array $attributes = []): Color {
 
 		$control = new Color($name, $attributes);
-		$this->addControl($control);
+		$this->add($control);
 		return $control;
 
 	}
@@ -279,7 +280,7 @@ class Form {
 	public function date(string $name, array $attributes = []): Date {
 
 		$control = new Date($name, $attributes);
-		$this->addControl($control);
+		$this->add($control);
 		return $control;
 
 	}
@@ -293,7 +294,7 @@ class Form {
 	public function datetime(string $name, array $attributes = []): Datetime {
 
 		$control = new Datetime($name, $attributes);
-		$this->addControl($control);
+		$this->add($control);
 		return $control;
 
 	}
@@ -307,7 +308,7 @@ class Form {
 	public function email(string $name, array $attributes = []): Email {
 
 		$control = new Email($name, $attributes);
-		$this->addControl($control);
+		$this->add($control);
 		return $control;
 
 	}
@@ -321,7 +322,7 @@ class Form {
 	public function file(string $name, array $attributes = []): File {
 
 		$control = new File($name, $attributes);
-		$this->addControl($control);
+		$this->add($control);
 		return $control;
 
 	}
@@ -352,7 +353,7 @@ class Form {
 	public function hidden(string $name, array $attributes = []): Hidden {
 
 		$control = new Hidden($name, $attributes);
-		$this->addControl($control);
+		$this->add($control);
 		return $control;
 
 	}
@@ -366,7 +367,7 @@ class Form {
 	public function image(string $name, array $attributes = []): Image {
 
 		$control = new Image($name, $attributes);
-		$this->addControl($control);
+		$this->add($control);
 		return $control;
 
 	}
@@ -396,7 +397,7 @@ class Form {
 	public function month(string $name, array $attributes = []): Month {
 
 		$control = new Month($name, $attributes);
-		$this->addControl($control);
+		$this->add($control);
 		return $control;
 
 	}
@@ -410,7 +411,7 @@ class Form {
 	public function number(string $name, array $attributes = []): Number {
 
 		$control = new Number($name, $attributes);
-		$this->addControl($control);
+		$this->add($control);
 		return $control;
 
 	}
@@ -424,7 +425,7 @@ class Form {
 	public function password(string $name, array $attributes = []): Password {
 
 		$control = new Password($name, $attributes);
-		$this->addControl($control);
+		$this->add($control);
 		return $control;
 
 	}
@@ -522,7 +523,7 @@ class Form {
 	public function search(string $name, array $attributes = []): Search {
 
 		$control = new Search($name, $attributes);
-		$this->addControl($control);
+		$this->add($control);
 		return $control;
 
 	}
@@ -537,7 +538,7 @@ class Form {
 	public function select(string $name, array $attributes = []): Select {
 
 		$control = new Select($name, $attributes);
-		$this->addControl($control);
+		$this->add($control);
 		return $control;
 
 	}
@@ -551,7 +552,7 @@ class Form {
 	public function tel(string $name, array $attributes = []): Tel {
 
 		$control = new Tel($name, $attributes);
-		$this->addControl($control);
+		$this->add($control);
 		return $control;
 
 	}
@@ -566,7 +567,7 @@ class Form {
 	public function text(string $name, array $attributes = []): Text {
 
 		$control = new Text($name, $attributes);
-		$this->addControl($control);
+		$this->add($control);
 		return $control;
 
 	}
@@ -580,7 +581,7 @@ class Form {
 	public function textarea(string $name, array $attributes = []): Textarea {
 
 		$control = new Textarea($name, $attributes);
-		$this->addControl($control);
+		$this->add($control);
 		return $control;
 
 	}
@@ -588,7 +589,7 @@ class Form {
 	public function time(string $name, array $attributes = []): Time {
 
 		$control = new Time($name, $attributes);
-		$this->addControl($control);
+		$this->add($control);
 		return $control;
 
 	}
@@ -602,7 +603,7 @@ class Form {
 	public function url(string $name, array $attributes = []): Url {
 
 		$control = new Url($name, $attributes);
-		$this->addControl($control);
+		$this->add($control);
 		return $control;
 
 	}

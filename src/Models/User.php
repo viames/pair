@@ -193,7 +193,7 @@ class User extends ActiveRecord {
 	protected function beforeDelete(): void {
 
 		// deletes user sessions
-		Database::run('DELETE FROM `sessions` WHERE `id_user` = ?', [$this->id]);
+		Database::run('DELETE FROM `sessions` WHERE `user_id` = ?', [$this->id]);
 
 		// deletes error_logs of this user
 		Database::run('DELETE FROM `error_logs` WHERE `user_id` = ?', [$this->id]);
@@ -249,19 +249,24 @@ class User extends ActiveRecord {
 			return TRUE;
 		}
 
-		// acl is cached
+		// acl is a cached Collection of Rule objects
 		$acl = $this->getAcl();
 
-		foreach ($acl as $rule) {
-			if ($rule->moduleName != $module) {
-				continue;
-			}
+		// select only rules of the given module
+		$rules = $acl->filter(function($rule) use ($module) {
+			return $rule->moduleName == $module;
+		});
+
+		foreach ($rules as $rule) {
+
 			if ($rule->adminOnly and $this->admin) {
 				return TRUE;
 			}
+
 			if (is_null($rule->action) or $rule->action == $action or (is_null($action) and 'default' == $rule->action)) {
 				return TRUE;
 			}
+
 		}
 
 		return FALSE;
@@ -332,7 +337,7 @@ class User extends ActiveRecord {
 		$session = new Session();
 
 		$session->id				= session_id();
-		$session->idUser			= $this->id;
+		$session->userId			= $this->id;
 		$session->startTime			= new \DateTime();
 		$session->timezoneOffset	= $offset;
 		$session->timezoneName		= $timezone;
@@ -342,7 +347,7 @@ class User extends ActiveRecord {
 
 		// deletes all other sessions for this user
 		if (Env::get('PAIR_SINGLE_SESSION')) {
-			Database::run('DELETE FROM `sessions` WHERE `id_user` = ? AND `id` != ?', [$this->id, session_id()]);
+			Database::run('DELETE FROM `sessions` WHERE `user_id` = ? AND `id` != ?', [$this->id, session_id()]);
 		}
 
 		// updates last user login
@@ -645,23 +650,6 @@ class User extends ActiveRecord {
 	}
 
 	/**
-	 * Get landing module and action as object properties where the user goes after login.
-	 */
-	public function getLanding(): ?\stdClass {
-
-		$query =
-			'SELECT m.`name` AS `module`, r.`action`
-			FROM `acl` AS a
-			INNER JOIN `rules` AS r ON r.id = a.`rule_id`
-			INNER JOIN `modules` AS m ON m.`id` = r.`module_id`
-			WHERE a.`is_default` = 1
-			AND a.`group_id` = ?';
-
-		return Database::load($query, [$this->__get('groupId')], Database::OBJECT);
-
-	}
-
-	/**
 	 * Return the language code of this user. Cached.
 	 */
 	public function getLanguageCode(): ?string {
@@ -715,19 +703,59 @@ class User extends ActiveRecord {
 	}
 
 	/**
+	 * Impersonate the User passed in parameters.
+	 */
+	public function impersonate(User $newUser): void {
+
+		if (!$this->isAdmin()) {
+			throw new \Exception('Only admin users can impersonate other users.');
+		}
+
+		$session = Session::current();
+		$session->formerUserId = $this->id;
+		$session->userId = $newUser->id;
+		$session->store();
+
+		Audit::impersonate($newUser);
+
+	}
+
+	/**
+	 * Stop impersonation and go back to former user.
+	 */
+	public function impersonateStop(): void {
+
+		$session = Session::current();
+		$impersonatedUser = $session->getUser();
+		$formerUser = $session->getFormerUser();
+
+		if (!$formerUser) {
+			throw new \Exception('No former user to stop impersonation.');
+		}
+
+		Database::run('UPDATE `sessions` SET `user_id` = `former_user_id`, `former_user_id` = NULL WHERE `id` = ?', [session_id()]);
+
+		Audit::impersonateStop($formerUser);
+
+	}
+
+	/**
 	 * Return TRUE if this user or the the former User object if impersonating, is admin.
 	 */
 	public function isAdmin(): bool {
 
 		if ($this->admin) {
 			return TRUE;
-		} else {
-			$query =
-				'SELECT COUNT(1) FROM `users`
-				INNER JOIN `sessions` AS s ON u.`id` = s.`id_user`
-				WHERE s.`id` = ? AND u.`id` = ? AND `admin` = 1';
-			return (bool)Database::load($query, [Session::current(), $this->id], Database::COUNT);
 		}
+
+		$session = Session::current();
+		$formerUser = $session->getFormerUser();
+
+		if ($formerUser?->admin) {
+			return TRUE;
+		}
+
+		return FALSE;
 
 	}
 
@@ -757,6 +785,30 @@ class User extends ActiveRecord {
 	}
 
 	/**
+	 * Get landing module and action as object properties where the user goes after login.
+	 * Returns NULL if no landing is defined. Cached.
+	 */
+	public function landing(): ?\stdClass {
+
+		if (!$this->issetCache('landing')) {
+
+			$query =
+				'SELECT m.`name` AS `module`, r.`action`
+				FROM `acl` AS a
+				INNER JOIN `rules` AS r ON r.`id` = a.`rule_id`
+				INNER JOIN `modules` AS m ON m.`id` = r.`module_id`
+				WHERE a.`is_default` = 1
+				AND a.`group_id` = ?';
+
+			$this->setCache('landing', Database::load($query, [$this->__get('groupId')], Database::OBJECT));
+
+		}
+
+		return $this->getCache('landing');
+
+	}
+
+	/**
 	 * If time zone name or offset is null, will loads from session table their values and
 	 * populates this object cache properties.
 	 */
@@ -767,57 +819,6 @@ class User extends ActiveRecord {
 			$this->tzOffset	= $session->timezoneOffset;
 			$this->tzName	= $session->timezoneName;
 		}
-
-	}
-
-	/**
-	 * Performs a login for the user passed in parameters. It returns an
-	 * \stdClass with error, message and userId parameters.
-	 *
-	 * @param	\Pair\Models\User 	$user
-	 * @param	string		$timezone	IANA time zone identifier.
-	 * @param	int|NULL	Former user ID.
-	 */
-	public static function loginAs(User $user, string $timezone, ?int $formerUserId = null): \stdClass {
-
-		$ret = new \stdClass();
-
-		$ret->error		= FALSE;
-		$ret->message	= NULL;
-		$ret->userId	= NULL;
-		$ret->sessionId	= NULL;
-
-		// track ip address and user_agent for audit
-		$ipAddress = $_SERVER['REMOTE_ADDR'] ?? NULL;
-		$userAgent = $_SERVER['HTTP_USER_AGENT'] ?? NULL;
-
-		// user account is disabled
-		if ('0' == $user->enabled) {
-
-			$ret->error = TRUE;
-			$ret->message = Translator::do('USER_IS_DISABLED');
-			$user->addFault();
-
-			Audit::loginFailed($user->email, $ipAddress, $userAgent);
-
-		} else {
-
-			// hook for tasks to be executed before login
-			$user->beforeLogin();
-
-			// creates session for this user
-			$user->createSession($timezone, $formerUserId);
-			$ret->userId = $user->id;
-			$ret->sessionId = session_id();
-
-			// hook for tasks to be executed after login
-			$user->afterLogin();
-
-			Audit::loginSuccessful($user, $ipAddress, $userAgent);
-
-		}
-
-		return $ret;
 
 	}
 
@@ -863,11 +864,17 @@ class User extends ActiveRecord {
 
 	/**
 	 * Redirect user’s browser to his default landing web-page.
+	 *
+	 * @throws	\Exception	if no landing page is defined for this user group.
 	 */
 	public function redirectToDefault() {
 
 		$app	 = Application::getInstance();
-		$landing = $this->getLanding();
+		$landing = $this->landing();
+
+		if (!is_a($landing, '\stdClass') or !isset($landing->module)) {
+			throw new \Exception('No landing page defined for this user group.');
+		}
 
 		$app->redirect($landing->module . '/' . $landing->action);
 

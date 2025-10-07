@@ -684,7 +684,7 @@ class Application {
 
 			// create User object for API
 			$userClass = $this->userClass;
-			$user = new $userClass($session->idUser);
+			$user = new $userClass($session->userId);
 			$this->setCurrentUser($user);
 
 			// set session and start controller
@@ -889,7 +889,7 @@ class Application {
 				$session->extendTimeout();
 
 				// create User object
-				$user = new $userClass($session->idUser);
+				$user = new $userClass($session->userId);
 				$this->setCurrentUser($user);
 
 				$eventMessage = 'User session for ' . $user->fullName . ' is alive' .
@@ -901,11 +901,11 @@ class Application {
 
 				// set defaults in case of no module
 				if (!$router->module) {
-					$landing = $user->getLanding();
+					$landing = $user->landing();
 					$router->module = $landing->module;
 					$router->action = $landing->action;
 				} else if ('user'==$router->module and 'login'==$router->action) {
-					$landing = $user->getLanding();
+					$landing = $user->landing();
 					$this->redirect($landing->module . '/' . $landing->action);
 				}
 
@@ -913,7 +913,7 @@ class Application {
 
 				// access denied
 				if (!$this->currentUser->canAccess((string)$router->module, $router->action)) {
-					$landing = $user->getLanding();
+					$landing = $user->landing();
 					$this->toastError(Translator::do('ERROR'), 'Access denied to ' . $resource);
 					// avoid infinite loop
 					if ($resource != $landing->module . '/' . $landing->action) {

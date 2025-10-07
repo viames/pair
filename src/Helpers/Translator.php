@@ -333,8 +333,8 @@ class Translator {
 			$router = Router::getInstance();
 			if ($router->module) {
 				$this->module = $router->module;
-			} else if (is_a($app->currentUser, 'Pair\Models\User') and $app->currentUser->getLanding() and $app->currentUser->getLanding()->module) {
-				$this->module = (string)$app->currentUser->getLanding()->module;
+			} else if (is_a($app->currentUser, 'Pair\Models\User') and $app->currentUser->landing() and $app->currentUser->landing()->module) {
+				$this->module = (string)$app->currentUser->landing()->module;
 			}
 		}
 

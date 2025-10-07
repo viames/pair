@@ -3,6 +3,7 @@
 namespace Pair\Models;
 
 use Pair\Core\Application;
+use Pair\Core\Env;
 use Pair\Models\Acl;
 use Pair\Models\Session;
 use Pair\Models\User;
@@ -64,218 +65,6 @@ class Audit extends ActiveRecord {
 	}
 
 	/**
-	 * Set the current logged-in user and the createdAt value before saving the record into db.
-	 */
-	protected function beforeCreate() {
-
-		$app = Application::getInstance();
-
-		if (!$this->userId and is_a($app->currentUser, 'Pair\Models\User')) {
-			$this->userId = $app->currentUser->id;
-		}
-
-	}
-
-	/**
-	 * Return a current list and state of all audit items with readable “name”, coded “type” and “enabled”.
-	 * 
-	 * @return	array
-	 */
-	public static function getAuditList(): array {
-
-		$events = ['login_failed','login_successful','logout','password_changed','permissions_changed',
-				'remember_me_login','session_expired','user_changed','user_created','user_deleted'];
-
-		$list = [];
-
-		foreach($events as $e) {
-			$list[] = (object)[
-				'type'    => $e,
-				'name'    => ucfirst(str_replace('_',' ', $e)),
-				'enabled' => constant(strtoupper('PAIR_AUDIT_'.$e))
-				];
-		}
-
-		return $list;
-
-	}
-
-	/**
-	 * Track the user’s password change.
-	 */
-	public static function passwordChanged(User $subject): bool {
-
-		if (!isset($_ENV['PAIR_AUDIT_PASSWORD_CHANGED']) or !$_ENV['PAIR_AUDIT_PASSWORD_CHANGED']) {
-			return FALSE;
-		}
-
-		$wantedProperties = ['id','username','name','surname'];
-
-		$audit = new Audit();
-		$audit->event = 'password_changed';
-		$audit->details = $subject->convertToStdclass($wantedProperties);
-
-		return $audit->store();
-		
-	}
-	
-	public static function loginFailed(string $username, ?string $ipAddress, ?string $userAgent): bool {
-
-		if (!isset($_ENV['PAIR_AUDIT_LOGIN_FAILED']) or !$_ENV['PAIR_AUDIT_LOGIN_FAILED']) {
-			return FALSE;
-		}
-
-		$obj = new \stdClass();
-		$obj->username  = $username;
-		$obj->ipAddress = $ipAddress;
-		$obj->userAgent = $userAgent;
-
-		$audit = new Audit();
-		$audit->event = 'login_failed';
-		$audit->details = $obj;
-
-		return $audit->store();
-
-	}
-
-	public static function loginSuccessful(User $user, ?string $ipAddress, ?string $userAgent): bool {
-
-		if (!isset($_ENV['PAIR_AUDIT_LOGIN_SUCCESSFUL']) or !$_ENV['PAIR_AUDIT_LOGIN_SUCCESSFUL']) {
-			return FALSE;
-		}
-
-		$obj = new \stdClass();
-		$obj->ipAddress = $ipAddress;
-		$obj->userAgent = $userAgent;
-
-		$audit = new Audit();
-		$audit->userId = $user->id;
-		$audit->event = 'login_successful';
-		$audit->details = $obj;
-
-		return $audit->store();
-
-	}
-
-	public static function logout(User $user): bool {
-
-		if (!isset($_ENV['PAIR_AUDIT_LOGOUT']) or !$_ENV['PAIR_AUDIT_LOGOUT']) {
-			return FALSE;
-		}
-
-		$audit = new Audit();
-		$audit->userId = $user->id;
-		$audit->event = 'logout';
-		$audit->details = NULL;
-
-		return $audit->store();
-
-	}
-
-	public static function sessionExpired(Session $session): bool {
-
-		if (!isset($_ENV['PAIR_AUDIT_SESSION_EXPIRED']) or !$_ENV['PAIR_AUDIT_SESSION_EXPIRED']) {
-			return FALSE;
-		}
-
-		$user = $session->getUser();
-
-		$audit = new Audit();
-		$audit->userId = $user->id;
-		$audit->event = 'session_expired';
-		$audit->details = NULL;
-
-		return $audit->store();
-
-	}
-
-	public static function rememberMeLogin(): void {
-
-		if (isset($_ENV['PAIR_AUDIT_REMEMBER_ME_LOGIN']) and $_ENV['PAIR_AUDIT_REMEMBER_ME_LOGIN']) {
-		
-			$audit = new Audit();
-			$audit->event = 'remember_me_login';
-			$audit->store();
-		}
-
-	}
-
-	public static function userCreated(User $subject): bool {
-
-		if (!isset($_ENV['PAIR_AUDIT_USER_CREATED']) or !$_ENV['PAIR_AUDIT_USER_CREATED']) {
-			return FALSE;
-		}
-
-		$wantedProperties = ['id','groupId','localeId','username','name','surname','email','admin','enabled'];
-
-		$audit = new Audit();
-		$audit->event = 'user_created';
-		$audit->details = $subject->convertToStdclass($wantedProperties);
-
-		return $audit->store();
-
-	}
-
-	public static function userDeleted(User $subject): bool {
-
-		if (!isset($_ENV['PAIR_AUDIT_USER_DELETED']) or !$_ENV['PAIR_AUDIT_USER_DELETED']) {
-			return FALSE;
-		}
-
-		$wantedProperties = ['id','groupId','username','name','surname'];
-
-		$audit = new Audit();
-		$audit->event = 'user_deleted';
-		$audit->details = $subject->convertToStdclass($wantedProperties);
-
-		return $audit->store();
-
-	}
-
-	/**
-	 * Keep track of changed property in user edit.
-	 * 
-	 * @param	User	The old user object.
-	 * @param	User	The new user object.
-	 */
-	public static function userChanged(User $oldUser, User $newUser): bool {
-
-		if (!isset($_ENV['PAIR_AUDIT_USER_CHANGED']) or !$_ENV['PAIR_AUDIT_USER_CHANGED']) {
-			return FALSE;
-		}
-
-		$details = new \stdClass();
-		$details->subjectId = $newUser->id;
-		$details->fullName = $newUser->fullName;
-		$details->username = $newUser->username;
-		$details->changes = [];
-		
-		$wantedProperties = ['id','groupId','localeId','username','name','surname','email','admin','enabled'];
-
-		foreach ($wantedProperties as $wp) {
-			if ($oldUser->$wp != $newUser->$wp) {
-				$c = new \stdClass();
-				$c->property = $wp;
-				$c->oldValue = $oldUser->$wp;
-				$c->newValue = $newUser->$wp;
-				$details->changes[] = $c;
-			}
-		}
-
-		// if nothing has changed, avoid storing the record
-		if (!count($details->changes)) {
-			return FALSE;
-		}
-
-		$audit = new Audit();
-		$audit->event = 'user_changed';
-		$audit->details = $details;
-
-		return $audit->store();
-
-	}
-
-	/**
 	 * Add a new ACL into an existent Audit record or create a new one.
 	 *
 	 * @param  Acl	Object to set as removed.
@@ -311,9 +100,184 @@ class Audit extends ActiveRecord {
 
 	}
 
+	/**
+	 * Set the current logged-in user and the createdAt value before saving the record into db.
+	 */
+	protected function beforeCreate() {
+
+		$app = Application::getInstance();
+
+		if (!$this->userId and is_a($app->currentUser, 'Pair\Models\User')) {
+			$this->userId = $app->currentUser->id;
+		}
+
+	}
+
+	/**
+	 * Return a current list and state of all audit items with readable “name”, coded “type” and “enabled”.
+	 */
+	public static function getAuditList(): array {
+
+		$events = [
+			'impersonate',
+			'impersonate_stop',
+			'login_failed',
+			'login_successful',
+			'logout',
+			'password_changed',
+			'permissions_changed',
+			'remember_me_login',
+			'session_expired',
+			'user_changed',
+			'user_created',
+			'user_deleted'
+		];
+
+		$list = [];
+
+		foreach($events as $e) {
+			$list[] = (object)[
+				'type'    => $e,
+				'name'    => ucfirst(str_replace('_',' ', $e)),
+				'enabled' => constant(strtoupper('PAIR_AUDIT_'.$e))
+				];
+		}
+
+		return $list;
+
+	}
+
+	/**
+	 * Get last audit item by the same user and date.
+	 */
+	private static function getMyLatestPermissionsChanged(): ?Audit {
+
+		$app = Application::getInstance();
+
+		$query = 'SELECT * FROM `audit` WHERE `event` = "permissions_changed" AND `user_id` = ? AND `created_at` = ?';
+
+		$now = new \DateTime();
+		$createdAt = $now->format('Y-m-d H:i:s');
+
+		return Audit::getObjectByQuery($query, [$app->currentUser->id, $createdAt]);
+
+	}
+
+	/**
+	 * Track the impersonation action.
+	 *
+	 * @param	User	The user that is being impersonated.
+	 */
+	public static function impersonate(User $impersonated): bool {
+
+		if (!Env::get('PAIR_AUDIT_IMPERSONATE') or !Env::get('PAIR_AUDIT_ALL')) {
+			return FALSE;
+		}
+
+		$audit = new Audit();
+		$audit->event = 'impersonate';
+		$audit->details = (object)['impersonated' => $impersonated->id];
+
+		return $audit->store();
+
+	}
+
+	/**
+	 * Track the end of an impersonation action.
+	 *
+	 * @param	User	The user that was being impersonated.
+	 */
+	public static function impersonateStop(User $impersonatedBy): bool {
+
+		if (!Env::get('PAIR_AUDIT_IMPERSONATE_STOP') or !Env::get('PAIR_AUDIT_ALL')) {
+			return FALSE;
+		}
+
+		$wantedProperties = ['id','username','name','surname'];
+
+		$audit = new Audit();
+		$audit->event = 'impersonate_stop';
+		$audit->details = (object)['impersonatedBy' => $impersonatedBy->id];
+
+		return $audit->store();
+
+	}
+	
+	public static function loginFailed(string $username, ?string $ipAddress, ?string $userAgent): bool {
+
+		if (!Env::get('PAIR_AUDIT_LOGIN_FAILED') or !Env::get('PAIR_AUDIT_ALL')) {
+			return FALSE;
+		}
+
+		$obj = new \stdClass();
+		$obj->username  = $username;
+		$obj->ipAddress = $ipAddress;
+		$obj->userAgent = $userAgent;
+
+		$audit = new Audit();
+		$audit->event = 'login_failed';
+		$audit->details = $obj;
+
+		return $audit->store();
+
+	}
+
+	public static function loginSuccessful(User $user, ?string $ipAddress, ?string $userAgent): void {
+
+		if (!Env::get('PAIR_AUDIT_LOGIN_SUCCESSFUL') or !Env::get('PAIR_AUDIT_ALL')) {
+			return;
+		}
+
+		$obj = new \stdClass();
+		$obj->ipAddress = $ipAddress;
+		$obj->userAgent = $userAgent;
+
+		$audit = new Audit();
+		$audit->userId = $user->id;
+		$audit->event = 'login_successful';
+		$audit->details = $obj;
+
+		$audit->store();
+
+	}
+
+	public static function logout(User $user): bool {
+
+		if (!Env::get('PAIR_AUDIT_LOGOUT') or !Env::get('PAIR_AUDIT_ALL')) {
+			return FALSE;
+		}
+
+		$audit = new Audit();
+		$audit->userId = $user->id;
+		$audit->event = 'logout';
+		$audit->details = NULL;
+
+		return $audit->store();
+
+	}
+
+	/**
+	 * Track the user’s password change.
+	 */
+	public static function passwordChanged(User $subject): bool {
+
+		if (!Env::get('PAIR_AUDIT_PASSWORD_CHANGED') or !Env::get('PAIR_AUDIT_ALL')) {
+			return FALSE;
+		}
+
+		$wantedProperties = ['id','username','name','surname'];
+
+		$audit = new Audit();
+		$audit->event = 'password_changed';
+		$audit->details = $subject->convertToStdclass($wantedProperties);
+
+		return $audit->store();
+		
+	}
+
 	private static function permissionsChanged(\stdClass $detail): bool {
 
-		if (!isset($_ENV['PAIR_AUDIT_PERMISSIONS_CHANGED']) or !$_ENV['PAIR_AUDIT_PERMISSIONS_CHANGED']) {
+		if (!Env::get('PAIR_AUDIT_PERMISSIONS_CHANGED') or !Env::get('PAIR_AUDIT_ALL')) {
 			return FALSE;
 		}
 
@@ -335,19 +299,106 @@ class Audit extends ActiveRecord {
 
 	}
 
+	public static function rememberMeLogin(): void {
+
+		if (Env::get('PAIR_AUDIT_REMEMBER_ME_LOGIN') and Env::get('PAIR_AUDIT_ALL')) {
+		
+			$audit = new Audit();
+			$audit->event = 'remember_me_login';
+			$audit->store();
+		}
+
+	}
+
+	public static function sessionExpired(Session $session): bool {
+
+		if (!Env::get('PAIR_AUDIT_SESSION_EXPIRED') or !Env::get('PAIR_AUDIT_ALL')) {
+			return FALSE;
+		}
+
+		$user = $session->getUser();
+
+		$audit = new Audit();
+		$audit->userId = $user->id;
+		$audit->event = 'session_expired';
+		$audit->details = NULL;
+
+		return $audit->store();
+
+	}
+
 	/**
-	 * Get last audit item by the same user and date.
+	 * Keep track of changed property in user edit.
+	 * 
+	 * @param	User	The old user object.
+	 * @param	User	The new user object.
 	 */
-	private static function getMyLatestPermissionsChanged(): ?Audit {
+	public static function userChanged(User $oldUser, User $newUser): bool {
 
-		$app = Application::getInstance();
+		if (!Env::get('PAIR_AUDIT_USER_CHANGED') or !Env::get('PAIR_AUDIT_ALL')) {
+			return FALSE;
+		}
 
-		$query = 'SELECT * FROM `audit` WHERE `event` = "permissions_changed" AND `user_id` = ? AND `created_at` = ?';
+		$details = new \stdClass();
+		$details->subjectId = $newUser->id;
+		$details->fullName = $newUser->fullName;
+		$details->username = $newUser->username;
+		$details->changes = [];
+		
+		$wantedProperties = ['id','groupId','localeId','username','name','surname','email','admin','enabled'];
 
-		$now = new \DateTime();
-		$createdAt = $now->format('Y-m-d H:i:s');
+		foreach ($wantedProperties as $wp) {
+			if ($oldUser->$wp != $newUser->$wp) {
+				$c = new \stdClass();
+				$c->property = $wp;
+				$c->oldValue = $oldUser->$wp;
+				$c->newValue = $newUser->$wp;
+				$details->changes[] = $c;
+			}
+		}
 
-		return Audit::getObjectByQuery($query, [$app->currentUser->id, $createdAt]);
+		// if nothing has changed, avoid storing the record
+		if (!count($details->changes)) {
+			return FALSE;
+		}
+
+		$audit = new Audit();
+		$audit->event = 'user_changed';
+		$audit->details = $details;
+
+		return $audit->store();
+
+	}
+
+	public static function userCreated(User $subject): bool {
+
+		if (!Env::get('PAIR_AUDIT_USER_CREATED') or !Env::get('PAIR_AUDIT_ALL')) {
+			return FALSE;
+		}
+
+		$wantedProperties = ['id','groupId','localeId','username','name','surname','email','admin','enabled'];
+
+		$audit = new Audit();
+		$audit->event = 'user_created';
+		$audit->details = $subject->convertToStdclass($wantedProperties);
+
+		return $audit->store();
+
+	}
+
+	public static function userDeleted(User $subject): bool {
+
+		if (!Env::get('PAIR_AUDIT_USER_DELETED') or !Env::get('PAIR_AUDIT_ALL')) {
+			return FALSE;
+		}
+
+		$wantedProperties = ['id','groupId','username','name','surname'];
+
+		$audit = new Audit();
+		$audit->event = 'user_deleted';
+		$audit->details = $subject->convertToStdclass($wantedProperties);
+
+		return $audit->store();
 
 	}
 

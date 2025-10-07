@@ -175,7 +175,8 @@ abstract class Controller {
 	/**
 	 * Return View object related to this controller.
 	 *
-	 * @throws CriticalException
+	 * @throws CriticalException If view is not set.
+	 * @throws AppException If view file or class is not found.
 	 */
 	public function getView(): ?View {
 
@@ -186,7 +187,6 @@ abstract class Controller {
 		$file = $this->modulePath .'/view'. ucfirst($this->view) .'.php';
 
 		if (!file_exists($file)) {
-			throw new AppException('The page ' . strtolower($this->name) . '/' . $this->view . ' does not exist', ErrorCodes::VIEW_LOAD_ERROR);
 			$this->view = 'default';
 			$file = $this->modulePath .'/view'. ucfirst($this->view) .'.php';
 		}

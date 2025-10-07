@@ -264,6 +264,36 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	}
 
 	/**
+	 * Return a copy of the collection.
+	 *
+	 * By default this is a shallow copy (the internal array is duplicated but
+	 * nested objects remain the same instances). If $deep is TRUE, the copy is
+	 * performed recursively: arrays are duplicated and objects are cloned. If an
+	 * item cannot be cloned (e.g. closures, resources), the original reference
+	 * is preserved.
+	 *
+	 * Examples:
+	 *   $copy = $collection->copy();       // shallow copy
+	 *   $clone = $collection->copy(TRUE);  // deep copy (clone inner objects)
+	 */
+	public function copy(bool $deep=FALSE): static {
+
+		if (!$deep) {
+			// Shallow copy: duplicate the items array, preserve keys
+			return new static($this->items);
+		}
+
+		$cloned = [];
+
+		foreach ($this->items as $key => $value) {
+			$cloned[$key] = $this->deepCopyValue($value);
+		}
+
+		return new static($cloned);
+
+	}
+
+	/**
 	 * Count the number of items in the collection.
 	 */
 	public function count(): int {
@@ -318,6 +348,39 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 		var_dump($this->items);
 
 		die;
+
+	}
+
+	/**
+	 * Recursively copy a value. Arrays are copied element-by-element and objects
+	 * are cloned when possible; scalars are returned as-is.
+	 */
+	private function deepCopyValue(mixed $value): mixed {
+
+		// Arrays: deep-copy each element.
+		if (is_array($value)) {
+			$result = [];
+			foreach ($value as $k => $v) {
+				$result[$k] = $this->deepCopyValue($v);
+			}
+			return $result;
+		}
+
+		// Objects: attempt to clone; if not possible, keep original reference.
+		if (is_object($value)) {
+			// Avoid cloning closures (not cloneable) and similar special cases.
+			if ($value instanceof \Closure) {
+				return $value;
+			}
+			try {
+				return clone $value;
+			} catch (\Throwable $e) {
+				return $value;
+			}
+		}
+
+		// Scalars and resources: return as-is (resources can't be cloned).
+		return $value;
 
 	}
 

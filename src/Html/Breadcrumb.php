@@ -28,18 +28,35 @@ class Breadcrumb {
 	private function __construct() {
 
 		$app = Application::getInstance();
+		
+		$this->segment('Home', BASE_HREF);
 
-		// add user-landing path if user is available
-		if (is_a($app->currentUser, 'Pair\Models\User')) {
-			$landing = $app->currentUser->getLanding();
-			$resource = $landing->module . '/' . $landing->action;
-			$this->segment('Home', $resource);
+	}
+
+	/**
+	 * Disables last URL in getPath().
+	 */
+	public function disableLastUrl(): void {
+
+		$this->lastUrlDisabled = TRUE;
+
+	}
+
+	/**
+	 * Returns the path before the last one, or NULL if not available.
+	 */
+	public function getBackPath(): ?\stdClass {
+
+		if (count($this->segments) > 2) {
+			return $this->segments[count($this->segments)-2];
+		} else {
+			return NULL;
 		}
 
 	}
 
 	/**
-	 * Returns singleton object.
+	 * Returns the singleton instance.
 	 */
 	public static function getInstance(): self {
 
@@ -48,6 +65,47 @@ class Breadcrumb {
 		}
 
 		return self::$instance;
+
+	}
+
+	/**
+	 * Returns all path’s segments as array.
+	 * 
+	 * @return \stdClass[]
+	 */
+	public function getPath(): array {
+
+		if ($this->lastUrlDisabled) {
+			$newPaths = $this->segments;
+			end($newPaths)->url = NULL;
+			return $newPaths;
+		} else {
+			return $this->segments;
+		}
+
+	}
+
+	/**
+	 * Overwrite the standard Home path.
+	 */
+	public function home(string $title, ?string $url=NULL): void {
+
+		$path			= new \stdClass();
+		$path->title	= $title;
+		$path->url		= $url;
+		$path->active	= count($this->segments) > 1 ? FALSE : TRUE;
+
+		$this->segments[0] = $path;
+
+	}
+
+	/**
+	 * Returns title of last item of breadcrumb.
+	 */
+	public function lastPathTitle(): string {
+
+		$path = end($this->segments);
+		return $path->title;
 
 	}
 
@@ -88,72 +146,6 @@ class Breadcrumb {
 		}
 
 		$this->segments[] = $path;
-
-	}
-
-	/**
-	 * Returns all path’s segments as array.
-	 * @return \stdClass[]
-	 */
-	public function getPath(): array {
-
-		if ($this->lastUrlDisabled) {
-			$newPaths = $this->segments;
-			end($newPaths)->url = NULL;
-			return $newPaths;
-		} else {
-			return $this->segments;
-		}
-
-	}
-
-	/**
-	 * Returns all path’s segments as array.
-	 * @deprecated
-	 */
-	public function getPaths(): array {
-
-		return $this->getPath();
-
-	}
-
-	/**
-	 * Overwrite the standard Home path.
-	 */
-	public function setHome(string $title, ?string $url=NULL): void {
-
-		$path			= new \stdClass();
-		$path->title	= $title;
-		$path->url		= $url;
-		$path->active	= count($this->segments) > 1 ? FALSE : TRUE;
-
-		$this->segments[0] = $path;
-
-	}
-
-	/**
-	 * Returns title of last item of breadcrumb.
-	 */
-	public function getLastPathTitle(): string {
-
-		$path = end($this->segments);
-		return $path->title;
-
-	}
-
-	public function disableLastUrl(): void {
-
-		$this->lastUrlDisabled = TRUE;
-
-	}
-
-	public function getBackPath(): ?\stdClass {
-
-		if (count($this->segments) > 2) {
-			return $this->segments[count($this->segments)-2];
-		} else {
-			return NULL;
-		}
 
 	}
 

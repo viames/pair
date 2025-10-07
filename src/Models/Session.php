@@ -14,9 +14,9 @@ class Session extends ActiveRecord {
 	protected string $id;
 
 	/**
-	 * Property that binds db field id_user.
+	 * Property that binds db field user_id.
 	 */
-	protected ?int $idUser = NULL;
+	protected ?int $userId = NULL;
 
 	/**
 	 * Property that binds db field start_time.
@@ -53,7 +53,7 @@ class Session extends ActiveRecord {
 	 */
 	const TABLE_DESCRIPTION = [
 		'id'				=> ['varchar(100)', 'NO', 'PRI', '', ''],
-		'id_user'			=> ['int unsigned', 'YES', 'MUL', 'NULL', ''],
+		'user_id'			=> ['int unsigned', 'YES', 'MUL', 'NULL', ''],
 		'start_time'		=> ['datetime', 'NO', '', 'NULL', ''],
 		'timezone_offset'	=> ['decimal(2,1)', 'YES', '', 'NULL', ''],
 		'timezone_name'		=> ['varchar(100)', 'YES', '', 'NULL', ''],
@@ -69,7 +69,7 @@ class Session extends ActiveRecord {
 
 		$this->bindAsFloat('timezoneOffset');
 
-		$this->bindAsInteger('idUser', 'formerUserId');
+		$this->bindAsInteger('userId', 'formerUserId');
 
 	}
 
@@ -144,7 +144,7 @@ class Session extends ActiveRecord {
 
 		$binds = [
 			'id'				=> 'id',
-			'idUser'			=> 'id_user',
+			'userId'			=> 'user_id',
 			'startTime'			=> 'start_time',
 			'timezoneOffset'	=> 'timezone_offset',
 			'timezoneName'		=> 'timezone_name',
@@ -179,13 +179,13 @@ class Session extends ActiveRecord {
 	 */
 	public function getUser(): ?User {
 
-		if (!isset($this->idUser) or is_null($this->idUser)) {
+		if (!isset($this->userId) or is_null($this->userId)) {
 			return NULL;
 		}
 
 		if (!$this->issetCache('user')) {
 			$userClass = Application::getInstance()->userClass;
-			$user = new $userClass($this->idUser);
+			$user = new $userClass($this->userId);
 			$this->setCache('user', $user->isLoaded() ? $user : NULL);
 		}
 

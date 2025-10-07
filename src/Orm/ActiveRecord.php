@@ -307,9 +307,9 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	public function __isset(string $name): bool {
 
-        return isset($this->$name);
+		return isset($this->$name);
 
-    }
+	}
 
 	/**
 	 * Magic method to set an object property value. If DateTime property, will properly manage integer or string date.
@@ -1168,7 +1168,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 			// get a camelCase name, with first low case
 			$property = lcfirst(str_replace(' ', '', ucwords(str_replace(['_','\\'], ' ', $col->Field))));
-			
+
 			// if property doesn’t exist in the class, it will be handled as dynamic property
 			if (!property_exists(static::class, $property)) {
 				throw new PairException('Property “' . $property . '” not found for class ' . static::class, ErrorCodes::PROPERTY_NOT_FOUND);
@@ -1304,7 +1304,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// build a select control
 		$getSelectControl = function ($property, $field, $values) use ($form) {
 
-			$control = $form->select($property)->options($values, $values);
+			$control = $form->select($property)->options($values);
 
 			if (static::isNullable($field) or static::isEmptiable($field)) {
 				$control->empty();
@@ -2389,6 +2389,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * Output an object property or method properly formatted and escaped.
 	 *
 	 * @param	string	Property or method (with or without parentheses) name.
+	 * @param	array	Optional settings for use in children classes.
 	 */
 	public function printHtml(string $name): void {
 
@@ -2724,7 +2725,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$this->updatedProperties = [];
 
 		$className = basename(str_replace('\\', '/', $class));
-		
+
 		// suppress notices for error logs to avoid loops
 		if ('error_logs' != static::TABLE_NAME) {
 			Logger::notice('Updated ' . $className . ' object with ' . $logParam, Logger::DEBUG);
