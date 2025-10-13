@@ -274,4 +274,14 @@ class ErrorCodes {
 	 */
 	const FORM_CONTROL_NOT_FOUND = 1054;
 
+	/**
+	 * Unvalid form control method.
+	 */
+	const UNVALID_FORM_CONTROL_METHOD = 1055;
+
+	/**
+	 * Unvalid form control property.
+	 */
+	const UNVALID_FORM_CONTROL_PROPERTY = 1056;
+
 }

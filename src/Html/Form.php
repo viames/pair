@@ -29,6 +29,29 @@ use Pair\Helpers\Post;
 use Pair\Orm\ActiveRecord;
 use Pair\Orm\Collection;
 
+/**
+ * Represents an HTML form element within the Pair PHP Framework.
+ * This class provides an object-oriented interface for building, rendering,
+ * and managing complete web forms, encapsulating structure, attributes,
+ * and submission behavior.
+ *
+ * A Form instance can dynamically register and manage its FormControl
+ * children, handle form-level validation, and automatically inject CSRF
+ * protection tokens when required. It supports advanced configuration of
+ * form attributes such as `action`, `method`, `enctype`, `target`, and
+ * allows programmatic control over client-side and server-side behaviors.
+ *
+ * The Form class is designed to be lightweight, expressive, and easily
+ * integrated with the MVC architecture of the Pair Framework. Its purpose
+ * is to separate the logical structure of a form from its HTML presentation,
+ * promoting code reusability and maintainability.
+ *
+ * Typical use:
+ *  - Create a new form instance.
+ *  - Add FormControl objects.
+ *  - Set attributes, default values, and validation rules.
+ *  - Render the form in a view or serialize it for AJAX submission.
+ */
 class Form {
 
 	/**
@@ -392,6 +415,20 @@ class Form {
 	}
 
 	/**
+	 * Adds a Meter input object to this Form object. Chainable method.
+	 *
+	 * @param	string	Control name.
+	 * @param	array	List of attributes.
+	 */
+	public function meter(string $name, array $attributes = []): Meter {
+
+		$control = new Meter($name, $attributes);
+		$this->add($control);
+		return $control;
+
+	}
+
+	/**
 	 * Adds a Month input object to this Form object. Chainable method.
 	 */
 	public function month(string $name, array $attributes = []): Month {
@@ -466,6 +503,20 @@ class Form {
 	public function printToken(): void {
 
 		print $this->generateToken();
+
+	}
+
+	/**
+	 * Adds a Progress input object to this Form object. Chainable method.
+	 *
+	 * @param	string	Control name.
+	 * @param	array	List of attributes.
+	 */
+	public function progress(string $name, array $attributes = []): Progress {
+
+		$control = new Progress($name, $attributes);
+		$this->add($control);
+		return $control;
 
 	}
 

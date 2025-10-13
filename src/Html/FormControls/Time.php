@@ -2,6 +2,7 @@
 
 namespace Pair\Html\FormControls;
 
+use Pair\Core\Env;
 use Pair\Html\FormControl;
 
 class Time extends FormControl {
@@ -66,6 +67,33 @@ class Time extends FormControl {
 		$ret .= $this->processProperties() . ' />';
 
 		return $ret;
+
+	}
+
+	/**
+	 * Sets the value for this control. Chainable method.
+	 *
+	 * @param	string|int|float|\DateTime|NULL Value to set.
+	 */
+	public function value(string|int|float|\DateTime|NULL $value): static {
+
+		if (is_a($value, '\DateTime')) {
+
+			// if UTC date, set user timezone
+			if (Env::get('UTC_DATE')) {
+				$app = Application::getInstance();
+				$value->setTimezone($app->currentUser->getDateTimeZone());
+			}
+
+			$this->value = $value->format('H:i');
+
+		} else {
+
+			$this->value = (string)$value;
+
+		}
+
+		return $this;
 
 	}
 

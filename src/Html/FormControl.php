@@ -3,13 +3,31 @@
 namespace Pair\Html;
 
 use Pair\Core\Application;
-use Pair\Core\Env;
 use Pair\Core\Logger;
 use Pair\Exceptions\AppException;
 use Pair\Exceptions\ErrorCodes;
 use Pair\Helpers\Post;
 use Pair\Helpers\Translator;
 
+/**
+ * Defines a single form control (input, select, textarea, checkbox, radio,
+ * or button) as part of an HTML form in the Pair PHP Framework.
+ *
+ * Each FormControl instance encapsulates all attributes, value handling,
+ * and validation logic for a specific field. It provides a consistent API
+ * for configuring common HTML attributes (id, name, class, placeholder, aria-*,
+ * etc.), attaching validation rules, and generating HTML markup safely.
+ *
+ * The class also manages accessibility features, dynamic data binding,
+ * and error messages, ensuring that user input is properly validated and
+ * rendered according to the form’s current state.
+ *
+ * FormControl objects are usually created and attached to a Form instance,
+ * but can also be used independently when rendering custom UI components.
+ * 
+ * @see		Form
+ * @package	Pair\Html
+ */
 abstract class FormControl {
 
 	/**
@@ -95,6 +113,11 @@ abstract class FormControl {
 	protected ?string $pattern = NULL;
 
 	/**
+	 * The caption text for this control, used by some subclasses.
+	 */
+	protected ?string $caption = NULL;
+
+	/**
 	 * Build control with HTML name tag and optional attributes.
 	 *
 	 * @param	string	Control name.
@@ -151,11 +174,73 @@ abstract class FormControl {
 	}
 
 	/**
+	 * Adds a single ARIA attribute, prepending the string "aria-" to the given name. Chainable method.
+	 *
+	 * @param	string	ARIA attribute name.
+	 * @param	string	Value.
+	 */
+	public function aria(string $name, string $value): static {
+
+		// if child class doesn't support aria (hidden,file,image"), do nothing
+		$unsupportedClasses = [
+			'Pair\Html\FormControls\Hidden',
+			'Pair\Html\FormControls\File',
+			'Pair\Html\FormControls\Image'
+		];
+
+		if (!in_array(get_class($this), $unsupportedClasses)) {
+			$this->attributes['aria-' . $name] = $value;
+		}
+
+		return $this;
+
+	}
+
+	/**
 	 * Sets this field as array. Will add [] to control name. Chainable method.
 	 */
 	public function arrayName(): static {
 
 		$this->arrayName = TRUE;
+		return $this;
+
+	}
+
+	/**
+	 * Sets or unsets the autofocus attribute for this control. Chainable method.
+	 */
+	public function autofocus(bool $autofocus = TRUE): static {
+
+		if ($autofocus) {
+			$this->attributes['autofocus'] = 'autofocus';
+		} else {
+			unset($this->attributes['autofocus']);
+		}
+
+		return $this;
+
+	}
+
+	/**
+	 * Set a caption for this control as text. Chainable method.
+	 *
+	 * @param	string	The text caption.
+	 * @throws	AppException	If caption is not allowed for this control.
+	 */
+	public function caption(string $caption): static {
+
+		$allowedSubclasses = [
+			'Pair\Html\FormControls\Button',
+			'Pair\Html\FormControls\Meter',
+			'Pair\Html\FormControls\Progress',
+			'Pair\Html\FormControls\Textarea',
+		];
+
+		if (!in_array(get_class($this), $allowedSubclasses)) {
+			throw new AppException('Caption is not allowed for the ' . get_class($this) . ' control “' . $this->name . '”', ErrorCodes::UNVALID_FORM_CONTROL_METHOD);
+		}
+
+		$this->caption = $caption;
 		return $this;
 
 	}
@@ -203,28 +288,6 @@ abstract class FormControl {
 	}
 
 	/**
-	 * Set the control ID. Chainable method.
-	 *
-	 * @param	string	Control unique identifier.
-	 */
-	public function id(string $id): static {
-
-		$this->id = $id;
-		return $this;
-
-	}
-
-	/**
-	 * Sets this field as disabled only. Chainable method.
-	 */
-	public function disabled(): static {
-
-		$this->disabled = TRUE;
-		return $this;
-
-	}
-
-	/**
 	 * Set a description for this control as text. Chainable method.
 	 *
 	 * @param	string	The text description.
@@ -232,6 +295,28 @@ abstract class FormControl {
 	public function description(string $description): static {
 
 		$this->description = $description;
+		return $this;
+
+	}
+
+	/**
+	 * Sets this field as disabled only. Chainable method.
+	 */
+	public function disabled(bool $disabled = TRUE): static {
+
+		$this->disabled = $disabled;
+		return $this;
+
+	}
+
+	/**
+	 * Sets the form ID this control belongs to. Chainable method.
+	 *
+	 * @param	string	Form ID.
+	 */
+	public function form(string $formId): static {
+
+		$this->attributes['form'] = $formId;
 		return $this;
 
 	}
@@ -263,6 +348,51 @@ abstract class FormControl {
 	}
 
 	/**
+	 * Set the control ID. Chainable method.
+	 *
+	 * @param	string	Control unique identifier.
+	 */
+	public function id(string $id): static {
+
+		$this->id = $id;
+		return $this;
+
+	}
+
+	/**
+	 * Provides a hint about the type of data that might be entered by the user while editing
+	 * the element or its contents. This allows the browser to display an appropriate virtual
+	 * keyboard. Chainable method.
+	 *
+	 * @param	string	Input mode value.
+	 */
+	public function inputmode(string $mode): static {
+
+		$unsupportedClasses = [
+			'Pair\Html\FormControls\Button',
+			'Pair\Html\FormControls\Checkbox',
+			'Pair\Html\FormControls\Color',
+			'Pair\Html\FormControls\Date',
+			'Pair\Html\FormControls\Datetime',
+			'Pair\Html\FormControls\File',
+			'Pair\Html\FormControls\Hidden',
+			'Pair\Html\FormControls\Image',
+			'Pair\Html\FormControls\Month',
+			'Pair\Html\FormControls\Password',
+			'Pair\Html\FormControls\Select',
+			'Pair\Html\FormControls\Textarea',
+			'Pair\Html\FormControls\Time',
+		];
+
+		if (!in_array(get_class($this), $unsupportedClasses)) {
+			$this->attributes['inputmode'] = $mode;
+		}
+
+		return $this;
+
+	}
+
+	/**
 	 * Set a label for this control as text or translation key. Chainable method.
 	 *
 	 * @param	string	The text label or the uppercase translation key.
@@ -285,18 +415,6 @@ abstract class FormControl {
 	}
 
 	/**
-	 * Sets minimum length for value of this control. It’s a chainable method.
-	 *
-	 * @param	int	Minimum length for value.
-	 */
-	public function minLength(int $length): static {
-
-		$this->minLength = $length;
-		return $this;
-
-	}
-
-	/**
 	 * Sets maximum length for value of this control. It’s a chainable method.
 	 *
 	 * @param	int	Maximum length for value.
@@ -304,6 +422,18 @@ abstract class FormControl {
 	public function maxLength(int $length): static {
 
 		$this->maxLength = $length;
+		return $this;
+
+	}
+
+	/**
+	 * Sets minimum length for value of this control. It’s a chainable method.
+	 *
+	 * @param	int	Minimum length for value.
+	 */
+	public function minLength(int $length): static {
+
+		$this->minLength = $length;
 		return $this;
 
 	}
@@ -454,9 +584,9 @@ abstract class FormControl {
 	/**
 	 * Sets this field as read only. Chainable method.
 	 */
-	public function readonly(): static {
+	public function readonly(bool $readonly = TRUE): static {
 
-		$this->readonly = TRUE;
+		$this->readonly = $readonly;
 		return $this;
 
 	}
@@ -502,6 +632,19 @@ abstract class FormControl {
 
 	}
 
+	public function title(string $title): static {
+
+		$unsupportedClasses = [
+			'Pair\Html\FormControls\Hidden',
+			'Pair\Html\FormControls\File',
+			'Pair\Html\FormControls\Image'
+		];
+
+		$this->attributes['title'] = $title;
+		return $this;
+
+	}
+
 	/**
 	 * This is the FormControl’s default validation method. Validates this control against empty values,
 	 * minimum length, maximum length, and returns TRUE if these checks pass.
@@ -537,44 +680,7 @@ abstract class FormControl {
 	 */
 	public function value(string|int|float|\DateTime|NULL $value): static {
 
-		// special behavior for DateTime
-		if (is_a($value, '\DateTime')) {
-
-			// if UTC date, set user timezone
-			if (Env::get('UTC_DATE')) {
-				$app = Application::getInstance();
-				$value->setTimezone($app->currentUser->getDateTimeZone());
-			}
-
-			// can be datetime or just date
-			if (is_a($this, 'Pair\Html\FormControls\Date')) {
-
-				$this->value = $value->format($this->dateFormat);
-
-			} else if (is_a($this, 'Pair\Html\FormControls\Datetime')) {
-
-				$this->value = $value->format($this->datetimeFormat);
-
-			} else if (is_a($this, 'Pair\Html\FormControls\Month')) {
-
-				$this->value = $value->format('Y-m');
-
-			} else if (is_a($this, 'Pair\Html\FormControls\Time')) {
-
-				$this->value = $value->format('H:i');
-
-			} else {
-
-				$this->value = (string)$value;
-
-			}
-
-		} else {
-
-			$this->value = (string)$value;
-
-		}
-
+		$this->value = (string)$value;
 		return $this;
 
 	}

@@ -11,16 +11,6 @@ class Textarea extends FormControl {
 	private $cols = 20;
 
 	/**
-	 * Sets rows for this textarea. Chainable method.
-	 */
-	public function rows(int $rowsNumber): self {
-
-		$this->rows = $rowsNumber;
-		return $this;
-
-	}
-
-	/**
 	 * Sets columns for this textarea. Chainable method.
 	 */
 	public function cols(int $columnsNumber): self {
@@ -38,9 +28,29 @@ class Textarea extends FormControl {
 		$ret  = '<textarea ' . $this->nameProperty();
 		$ret .= ' rows="' . $this->rows . '" cols="' . $this->cols . '"';
 		$ret .= $this->processProperties() . '>';
-		$ret .= htmlspecialchars((string)$this->value) . '</textarea>';
+		$ret .= htmlspecialchars((string)$this->caption) . '</textarea>';
 
 		return $ret;
+
+	}
+
+	/**
+	 * Sets rows for this textarea. Chainable method.
+	 */
+	public function rows(int $rowsNumber): self {
+
+		$this->rows = $rowsNumber;
+		return $this;
+
+	}
+
+	/**
+	 * Useful to set the caption on textarea by ActiveRecord automated methods.
+	 */
+	public function value(string|int|float|\DateTime|NULL $value): static {
+
+		$this->caption((string)$value);
+		return $this;
 
 	}
 
