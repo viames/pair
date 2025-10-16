@@ -3,21 +3,32 @@
 namespace Pair\Services;
 
 use Aws\S3\S3Client;
+use Aws\Exception\AwsException;
 
-use Etime\Flysystem\Plugin\AWS_S3\PresignedUrl;
+use Composer\InstalledVersions;
 
-use League\Flysystem\AwsS3v3\AwsS3Adapter;
+use League\Flysystem\AwsS3V3\AwsS3V3Adapter;
 use League\Flysystem\Filesystem;
+use League\Flysystem\FilesystemOperator;
 
 use Pair\Exceptions\ErrorCodes;
 use Pair\Exceptions\PairException;
 
+/**
+ * Amazon S3 wrapper built on Flysystem v3.
+ *
+ * Requirements:
+ *   composer require league/flysystem:^3 league/flysystem-aws-s3-v3:^3 aws/aws-sdk-php:^3
+ *
+ * This class exposes common file operations (exists, read, put, delete, deleteDir),
+ * plus a simple presigned URL generator and a URL validator designed for S3 SigV4.
+ */
 class AmazonS3 {
 
 	/**
-	 * FileSystem Variable (for internal use).
+	 * FilesystemOperator object (for internal use).
 	 */
-	protected Filesystem $filesystem;
+	protected FilesystemOperator $filesystem;
 
 	/**
 	 * Amazon S3 Client (for internal use).
@@ -30,17 +41,7 @@ class AmazonS3 {
 	protected string $bucket;
 
 	/**
-	 * Bucket region (for internal use).
-	 */
-	protected string $region;
-
-	/**
-	 * Default TTL for presigned URLs (in seconds).
-	 */
-	protected int $defaultTtl = 3600;
-
-	/**
-	 * Starts Amazon S3 Driver.
+	 * Starts Amazon S3 driver with AWS SDK v3 and Flysystem v3.
 	 *
 	 * @param	string	Access Key ID.
 	 * @param	string	Secret Access Key.
@@ -49,27 +50,76 @@ class AmazonS3 {
 	 */
 	public function __construct(string $key, string $secret, string $region, string $bucket) {
 
-		// Creates the S3 Client
-		$this->client = new S3Client([
-			'credentials' => [
-				'key'    => $key,
-				'secret' => $secret,
-			],
-			'region' => $region,
-			'version' => 'latest',
-		]);
+		$this->assertDependencies();
 
-		$this->bucket = $bucket;
-		$this->region = $region;
+		try {
 
-		// Creates the S3 adapter to cast to the filesystem object
-		$adapter = new AwsS3Adapter($this->client, $this->bucket);
+			$this->client = new S3Client([
+				'version' => 'latest',
+				'region' => $region,
+				'credentials' => [
+					'key' => $key,
+					'secret' => $secret
+				]
+			]);
 
-		// Creates the filesystem object
-		$this->filesystem = new Filesystem($adapter);
+			$this->bucket = $bucket;
 
-		// Adds the plugin to create file URLs
-		$this->filesystem->addPlugin(new PresignedUrl());
+			// creates the S3 adapter to cast to the filesystem object
+			$adapter = new AwsS3V3Adapter($this->client, $this->bucket);
+
+			// default config, can be overridden per-call
+			$this->filesystem = new Filesystem($adapter, [
+				'visibility' => 'private',
+			]);
+
+		} catch (\Throwable $e) {
+			throw new PairException('Unable to initialize Amazon S3 driver: ' . $e->getMessage(), ErrorCodes::AMAZON_S3_ERROR);
+		}
+
+	}
+
+	/**
+	 * Verifies that required Composer packages are installed:
+	 * 1. league/flysystem-aws-s3-v3 (implies league/flysystem ^3)
+	 * 2. aws/aws-sdk-php ^3
+	 *
+	 * @throws PairException if any dependency is missing
+	 */
+	private function assertDependencies(): void {
+
+		$missing = [];
+
+		if (class_exists(InstalledVersions::class) and method_exists(InstalledVersions::class, 'isInstalled')) {
+
+			if (!InstalledVersions::isInstalled('league/flysystem-aws-s3-v3')) {
+				$missing[] = 'league/flysystem-aws-s3-v3:^3';
+			}
+
+			if (!InstalledVersions::isInstalled('aws/aws-sdk-php')) {
+				$missing[] = 'aws/aws-sdk-php:^3';
+			}
+
+		} else {
+
+			// fallback if InstalledVersions is not available
+			if (!class_exists(\League\Flysystem\AwsS3V3\AwsS3V3Adapter::class)) {
+				$missing[] = 'league/flysystem-aws-s3-v3:^3';
+			}
+
+			if (!class_exists(\Aws\S3\S3Client::class)) {
+				$missing[] = 'aws/aws-sdk-php:^3';
+			}
+
+		}
+
+		if ($missing) {
+			$cmd = 'composer require ' . implode(' ', $missing);
+			throw new PairException(
+				'Missing required packages for AmazonS3: ' . implode(', ', $missing) . '. Install with: ' . $cmd,
+				ErrorCodes::AMAZON_S3_ERROR
+			);
+		}
 
 	}
 
@@ -112,14 +162,19 @@ class AmazonS3 {
 	}
 
 	/**
-	 * Controls if the remote file (with its path) exists.
+	 * Checks if a remote file exists in S3.
 	 *
-	 * @param string Path of the remote file.
+	 * @param string	Path of the remote file in the bucket.
+	 * @return bool		TRUE if the file exists, FALSE otherwise.
 	 * @throws PairException
 	 */
 	public function exists(string $remoteFile): bool {
 
-		return $this->filesystem->has($remoteFile);
+		try {
+			return $this->filesystem->fileExists($remoteFile);
+		} catch (\Throwable $e) {
+			throw new PairException('S3 exists() failed: ' . $e->getMessage(), ErrorCodes::AMAZON_S3_ERROR);
+		}
 
 	}
 
@@ -145,21 +200,21 @@ class AmazonS3 {
 	}
 
 	/**
-	 * Returns a presigned URL for the file if it exists, null otherwise.
+	 * Returns a presigned URL for the file if it exists, NULL otherwise.
 	 *
-	 * @param string Path of the remote file.
+	 * @param string Object key within the bucket.
 	 * @param int Expiration time in seconds (default 3600, max 604800).
-	 * @return string|null The presigned URL or null if the file does not exist.
+	 * @return string|NULL The presigned URL or NULL if the file does not exist.
 	 * @throws PairException In case of error generating the URL.
 	 */
 	public function presignedUrl(string $remoteFile, int $expiration = 3600): ?string {
-		
-		// clamp to the S3 allowed range: 1 to 7 days
+
+		// clamp to the S3 allowed range: 1 sec to 7 days
 		$ttl = max(1, min(604800, (int)$expiration));
 
-		// Verify object existence with a cheap HEAD request
+		// verify object existence with a cheap HEAD request
 		try {
-			
+
 			$this->client->headObject([
 				'Bucket' => $this->bucket,
 				'Key'    => $remoteFile,
@@ -167,20 +222,20 @@ class AmazonS3 {
 
 		} catch (S3Exception $e) {
 
-			// Treat 404/403 as “not available”
+			// treat 404/403 as “not available”
 			if ($e->getStatusCode() === 404 || $e->getStatusCode() === 403) {
-				return null;
+				return NULL;
 			}
 
-			throw new \Exception('Failed to check object existence: ' . $e->getMessage(), 0, $e);
+			throw new PairException('Failed to check object existence: ' . $e->getMessage(), 0, $e);
 
 		} catch (\Throwable $e) {
 
-			throw new \Exception('Failed to check object existence: ' . $e->getMessage(), 0, $e);
+			throw new PairException('Failed to check object existence: ' . $e->getMessage(), 0, $e);
 
 		}
 
-		// Generate a presigned URL using a relative expiration
+		// generate a presigned URL using a relative expiration
 		try {
 			$cmd = $this->client->getCommand('GetObject', [
 				'Bucket' => $this->bucket,
@@ -192,33 +247,51 @@ class AmazonS3 {
 
 			return (string)$req->getUri();
 
+		} catch (AwsException $e) {
+
+			throw new PairException('S3 presignedUrl() AWS error: ' . $e->getAwsErrorMessage(), ErrorCodes::AMAZON_S3_ERROR);
+
 		} catch (\Throwable $e) {
 
-			throw new \Exception('Failed to generate presigned URL: ' . $e->getMessage(), 0, $e);
-		
+			throw new PairException('Failed to generate presigned URL: ' . $e->getMessage(), 0, $e);
+
 		}
-	
+
 	}
 
 	/**
-	 * Loads local file on S3 bucket.
+	 * Uploads a local file to S3 (streaming) with optional automatic MIME.
 	 *
-	 * @param string Local file path, including file name.
-	 * @param string Remote file path, including file name.
+	 * @param string	Local source path
+	 * @param string	Remote path in bucket
+	 * @throws PairException
 	 */
-	public function put(string $filePath, string $destination): bool {
+	public function put(string $filePath, string $destination): void {
 
-		if (!file_exists($filePath)) return FALSE;
-
-		$fileContents = file_get_contents($filePath);
-
-		try {
-			$result = $this->filesystem->put($destination, $fileContents);
-		} catch (\Exception $e) {
-			throw new PairException($e->getMessage(), ErrorCodes::AMAZON_S3_ERROR, $e);
+		if (!is_file($filePath) or !is_readable($filePath)) {
+			throw new PairException('Local file not readable: ' . $filePath, ErrorCodes::AMAZON_S3_ERROR);
 		}
 
-		return $result;
+		$stream = fopen($filePath, 'rb');
+		if (FALSE === $stream) {
+			throw new PairException('Unable to open local file: ' . $filePath, ErrorCodes::AMAZON_S3_ERROR);
+		}
+
+		// try to detect MIME for proper Content-Type on S3
+		$mime = function_exists('mime_content_type') ? @mime_content_type($filePath) : NULL;
+		$options = [];
+		if ($mime) {
+			// Flysystem v3 S3 adapter maps "mimetype" to S3 ContentType
+			$options['mimetype'] = $mime;
+		}
+
+		try {
+			$this->filesystem->writeStream($destination, $stream, $options);
+		} catch (\Throwable $e) {
+			throw new PairException('S3 put() failed: ' . $e->getMessage(), ErrorCodes::AMAZON_S3_ERROR);
+		} finally {
+			@fclose($stream);
+		}
 
 	}
 
@@ -252,7 +325,7 @@ class AmazonS3 {
 	 *
 	 * @param	string	The URL to verify.
 	 * @param	int		Optional time skew in seconds to allow for clock differences (default 30s).
-	 * @return	bool	True if the URL is still valid, false otherwise.
+	 * @return	bool	TRUE if the URL is still valid, FALSE otherwise.
 	 */
 	public function validUrl(string $url, int $skew = 30): bool {
 
@@ -297,7 +370,7 @@ class AmazonS3 {
 		$err  = curl_errno($ch);
 		$code = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
 		curl_close($ch);
-		
+
 		// network/transport error
 		if (0 !== $err) {
 			return FALSE;
