@@ -653,21 +653,23 @@ abstract class FormControl {
 
 		$value	= Post::get($this->name);
 		$valid	= TRUE;
-
+		
+		$logger = Logger::getInstance();
+		
 		if ($this->required and ''==$value) {
-			Logger::notice('Control validation on field “' . $this->name . '” has failed (required)', Logger::NOTICE);
+			$logger->notice('Control validation on field “' . $this->name . '” has failed (required)');
 			$valid = FALSE;
 		}
 
 		// check validity of minlength attribute
 		if ($this->minLength and ''!=$value and strlen($value) < $this->minLength) {
-			Logger::notice('Control validation on field “' . $this->name . '” has failed (minLength=' . $this->minLength . ')', Logger::NOTICE);
+			$logger->notice('Control validation on field “' . $this->name . '” has failed (minLength=' . $this->minLength . ')');
 			$valid = FALSE;
 		}
 
 		// check validity of minlength attribute
 		if ($this->maxLength and strlen($value) > $this->maxLength) {
-			Logger::notice('Control validation on field “' . $this->name . '” has failed (maxLength=' . $this->maxLength . ')', Logger::NOTICE);
+			$logger->notice('Control validation on field “' . $this->name . '” has failed (maxLength=' . $this->maxLength . ')');
 			$valid = FALSE;
 		}
 

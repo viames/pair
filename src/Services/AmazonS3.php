@@ -279,15 +279,31 @@ class AmazonS3 {
 		}
 
 		// non presigned, optional check HEAD
-		$client = new \GuzzleHttp\Client();
-		$options = [
-			'http_errors' => FALSE,
-			'timeout' => 5
-		];
+		$ch = curl_init($url);
 
-		$res = $client->request('HEAD', $url, $options);
+		curl_setopt_array($ch, [
+			CURLOPT_NOBODY         => TRUE,  // HEAD-like request
+			CURLOPT_CUSTOMREQUEST  => 'HEAD',
+			CURLOPT_RETURNTRANSFER => TRUE,  // do not output anything
+			CURLOPT_FOLLOWLOCATION => FALSE, // treat 3xx as success without following
+			CURLOPT_CONNECTTIMEOUT => $timeout,
+			CURLOPT_TIMEOUT        => $timeout,
+			CURLOPT_SSL_VERIFYPEER => TRUE,
+			CURLOPT_SSL_VERIFYHOST => 2,
+			CURLOPT_USERAGENT      => 'Pair/HTTP-Check'
+		]);
 
-		return ($res->getStatusCode() >= 200 and $res->getStatusCode() < 400);
+		curl_exec($ch);
+		$err  = curl_errno($ch);
+		$code = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+		curl_close($ch);
+		
+		// network/transport error
+		if (0 !== $err) {
+			return FALSE;
+		}
+
+		return ($code >= 200 and $code < 400);
 
 	}
 

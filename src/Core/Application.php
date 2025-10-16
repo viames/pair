@@ -256,7 +256,12 @@ class Application {
 				// then return NULL
 				} else {
 
-					Logger::error('Property “'. $name .'” doesn’t exist for this object '. get_called_class());
+					$logger = Logger::getInstance();
+					$context = [
+						'name' => $name,
+						'class' => get_called_class()
+					];
+					$logger->error('Property “{name}” doesn’t exist for this object of class {class}', $context);
 					$value = NULL;
 
 				}
@@ -897,7 +902,8 @@ class Application {
 					' (' . sprintf('%+06.2f', (float)$this->currentUser->tzOffset) . ')';
 
 				// add log about user session
-				Logger::notice($eventMessage, Logger::DEBUG);
+				$logger = Logger::getInstance();
+				$logger->notice($eventMessage);
 
 				// set defaults in case of no module
 				if (!$router->module) {
@@ -1101,7 +1107,8 @@ class Application {
 
 			$class = get_class($object);
 			$className = basename(str_replace('\\', '/', $class));
-			Logger::notice('Cached ' . $className . ' object with id=' . (string)$object->getId(), Logger::DEBUG);
+			$logger = Logger::getInstance();
+			$logger->debug('Cached ' . $className . ' object with id=' . (string)$object->getId());
 
 		}
 
@@ -1258,12 +1265,14 @@ class Application {
 				foreach ($router->vars as $key=>$value) {
 					$params[] = $key . '=' . Utilities::varToText($value);
 				}
-				Logger::notice(date('Y-m-d H:i:s') . ' AJAX call on ' . $router->module . '/' . $router->action . ' with params ' . implode(', ', $params), Logger::DEBUG);
+				$logger = Logger::getInstance();
+				$logger->debug(date('Y-m-d H:i:s') . ' AJAX call on ' . $router->module . '/' . $router->action . ' with params ' . implode(', ', $params));
 
 			// log controller method call
 			} else {
 
-				Logger::notice('Called controller method ' . $controllerName . '->' . $action . '()', Logger::DEBUG);
+				$logger = Logger::getInstance();
+				$logger->debug('Called controller method ' . $controllerName . '->' . $action . '()');
 
 			}
 
@@ -1284,7 +1293,8 @@ class Application {
 					// nothing to do
 				}
 			} else {
-				Logger::notice('Method ' . $controllerName . '->' . $action . '() not found', Logger::DEBUG);
+				$logger = Logger::getInstance();
+				$logger->info('Method ' . $controllerName . '->' . $action . '() not found');
 			}
 
 			// raw calls will jump controller->display, ob and log

@@ -293,7 +293,9 @@ abstract class View {
 	public function getPaginationBar(): string {
 
 		if (is_null($this->pagination->count)) {
-			Logger::error('The “count” parameter needed for pagination has not been set');
+			$logger = Logger::getInstance();
+			$logger->warning('The “count” parameter needed for pagination has not been set');
+
 		}
 
 		return $this->pagination->render();

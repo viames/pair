@@ -24,7 +24,8 @@ class CriticalException extends PairException {
 		// intercept any previous message
 		$trackedMessage = ($previous and $previous->getMessage()) ? $previous->getMessage() : $message;
 
-		Logger::error($trackedMessage, Logger::EMERGENCY, $code);
+		$logger = Logger::getInstance();
+		$logger->emergency($trackedMessage, ['errorCode' => $code]);
 
 		self::terminate($message, $code);
 
@@ -52,15 +53,15 @@ class CriticalException extends PairException {
 			'content'	=> 'production' == Application::getEnvironment() ? 'Application is not available' : $message,
 			'title'		=> 'Critical error'
 		];
-		
+
 		foreach ($placeholders as $placeholder => $replacement) {
-		
+
 			// regex for both {{placeholder}} and {{ placeholder }}
 			$pattern = '/\{\{\s*' . preg_quote($placeholder, '/') . '\s*\}\}/';
-		
+
 			// replace in template
 			$templateHtml = preg_replace($pattern, $replacement, $templateHtml);
-		
+
 		}
 
 		eval('?>' . $templateHtml);

@@ -264,7 +264,8 @@ abstract class Controller {
 			: Translator::do('ERROR_ON_LAST_REQUEST');
 
 		// after the message has been queued, store the error data
-		Logger::error('Failure in ' . \get_class($object) . ' class', Logger::ERROR);
+		$logger = Logger::getInstance();
+		$logger->error('Failure in {objectClass} class', ['objectClass' => \get_class($object)]);
 
 		// enqueue a toast notification to the UI
 		throw new \Exception($message);

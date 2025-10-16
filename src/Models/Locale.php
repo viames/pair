@@ -174,7 +174,10 @@ class Locale extends ActiveRecord {
 	public function getRepresentation(string $separator='-'): string {
 
 		if (!in_array($separator, ['-', '_'])) {
-			Logger::error('Invalid separator for Locale representation');
+			$logger = Logger::getInstance();
+			$logger->error('Invalid separator for Locale representation', [
+				'separator' => $separator
+			]);
 		}
 
 		$country = $this->getCountry() ?? new Country($this->countryId);

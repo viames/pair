@@ -11,6 +11,8 @@ use SimpleEmailServiceMessage;
 
 /**
  * Class specialized in sending emails in HTML format with PHPMailer or Amazon Simple Email Service (SES).
+ * Extends the Mailer base class.
+ * Requires the daniel-zahariev/php-aws-ses package: composer require daniel-zahariev/php-aws-ses
  */
 class AmazonSes extends Mailer {
 

@@ -22,7 +22,9 @@ class ApiException extends PairException {
 	public function __construct(string $message, int $code = 0, ?\Throwable $previous = NULL) {
 
 		$trackedMessage = ($previous and $previous->getMessage()) ? $previous->getMessage() : $message;
-		Logger::error($trackedMessage, Logger::ERROR, $code);
+
+		$logger = Logger::getInstance();
+		$logger->error($trackedMessage, ['errorCode' => $code]);
 
 	}
 

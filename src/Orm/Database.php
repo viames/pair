@@ -7,6 +7,7 @@ use Pair\Core\Logger;
 use Pair\Exceptions\CriticalException;
 use Pair\Exceptions\ErrorCodes;
 use Pair\Exceptions\PairException;
+use Pair\Helpers\LogBar;
 
 /**
  * Manages a PDO DB connection using the singleton pattern.
@@ -169,7 +170,8 @@ class Database {
 
 		unset($this->handler);
 
-		Logger::notice('Database connection closed', Logger::DEBUG);
+		$logger = Logger::getInstance();
+		$logger->info('Database connection closed');
 
 	}
 
@@ -663,7 +665,7 @@ class Database {
 
 		$subtext = (int)$result . ' ' . (1==$result ? 'row' : 'rows');
 
-		Logger::query($query, $subtext);
+		LogBar::event($query, 'query', $subtext);
 
 	}
 

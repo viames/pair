@@ -324,7 +324,8 @@ class Upload {
 	private function setError(string $error): void {
 
 		$this->errors[] = $error;
-		Logger::error($error);
+		$logger = Logger::getInstance();
+		$logger->error($error);
 
 	}
 

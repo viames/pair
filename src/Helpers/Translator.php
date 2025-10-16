@@ -241,13 +241,15 @@ class Translator {
 			// search into strings of default language
 			if (isset($self->defaultStrings) and is_array($self->defaultStrings) and array_key_exists($key, $self->defaultStrings) and $self->defaultStrings[$key]) {
 
-				Logger::warning('Language string ' . $key . ' is untranslated for current language [' . $self->currentLocale->code . ']');
+				$logger = Logger::getInstance();
+				$logger->warning('Language string ' . $key . ' is untranslated for current language [' . $self->currentLocale->code . ']');
 				$string = $self->defaultStrings[$key];
 
 			// return the string constant, as debug info
 			} else {
 
-				Logger::warning('Language string ' . $key . ' is untranslated');
+				$logger = Logger::getInstance();
+				$logger->warning('Language string ' . $key . ' is untranslated');
 				$string = '[' . $key . ']';
 
 			}

@@ -5,14 +5,13 @@
 	"minimum-stability": "dev",
 	"prefer-stable": true,
 	"require": {
-		"php": "^8.3||^8.4",
-		"bugsnag/bugsnag": "^3",
-		"daniel-zahariev/php-aws-ses":"^0.9",
-		"league/flysystem-aws-s3-v3": "^1|^3",
-		"phpmailer/phpmailer": "^6",
-		"phpoffice/phpspreadsheet": "^1|^2|^3|^4|^5",
-		"sentry/sdk": "^4",
-		"sistemi-etime/flysystem-plugin-aws-s3-v3": "^1"
+		"ext-curl": "*",
+		"ext-intl": "*",
+		"ext-json": "*",
+		"ext-mbstring": "*",
+		"ext-pdo": "*",
+		"php": "^8.3||^8.4||^8.5",
+		"psr/log": "^1.1|^2.0|^3.0"
 	},
 	"repositories": [
 		{

@@ -104,30 +104,32 @@ class Number extends FormControl {
 		$value	= Post::get($this->name);
 		$valid	= TRUE;
 
+		$logger = Logger::getInstance();
+
 		if ($this->required and !is_numeric($value)) {
-			Logger::notice('Control validation on field “' . $this->name . '” has failed (number required)', Logger::NOTICE);
+			$logger->notice('Control validation on field “' . $this->name . '” has failed (number required)');
 			$valid = FALSE;
 		}
 
 		if ($this->min and $value < $this->min) {
-			Logger::notice('Control validation on field “' . $this->name . '” has failed (min=' . $this->min . ')', Logger::NOTICE);
+			$logger->notice('Control validation on field “' . $this->name . '” has failed (min=' . $this->min . ')');
 			$valid = FALSE;
 		}
 
 		if ($this->max and $value > $this->max) {
-			Logger::notice('Control validation on field “' . $this->name . '” has failed (max=' . $this->max . ')', Logger::NOTICE);
+			$logger->notice('Control validation on field “' . $this->name . '” has failed (max=' . $this->max . ')');
 			$valid = FALSE;
 		}
 
 		// check validity of minlength attribute
 		if ($this->minLength and ''!=$value and strlen($value) < $this->minLength) {
-			Logger::notice('Control validation on field “' . $this->name . '” has failed (minLength=' . $this->minLength . ')', Logger::NOTICE);
+			$logger->notice('Control validation on field “' . $this->name . '” has failed (minLength=' . $this->minLength . ')');
 			$valid = FALSE;
 		}
 
-		// check validity of minlength attribute
+		// check validity of maxlength attribute
 		if ($this->maxLength and strlen($value) > $this->maxLength) {
-			Logger::notice('Control validation on field “' . $this->name . '” has failed (maxLength=' . $this->maxLength . ')', Logger::NOTICE);
+			$logger->notice('Control validation on field “' . $this->name . '” has failed (maxLength=' . $this->maxLength . ')');
 			$valid = FALSE;
 		}
 

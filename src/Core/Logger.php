@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Pair\Core;
 
 use Pair\Core\Env;
@@ -15,10 +17,19 @@ use Pair\Services\SendMail;
 use Pair\Services\SmtpMailer;
 use Pair\Services\TelegramSender;
 
+use Psr\Log\LoggerInterface;
+
+use \Sentry\captureLastError as sentryCaptureLastError;
+use \Sentry\init as sentryInit;
+
 /**
- * Singleton object for managing internal logger functions.
+ * Singleton object for managing internal logger functions. It can log errors in the database,
+ * send e-mail and Telegram notifications, and log messages in LogBar.
+ * It also provides custom error and exception handlers.
+ * Requires Sentry SDK for error tracking: composer require sentry/sdk
+ * Requires Insight Hub SDK (formerly Bugsnag) for error tracking: composer require bugsnag/bugsnag
  */
-class Logger {
+class Logger implements LoggerInterface {
 
 	/**
 	 * Singleton property.
@@ -48,7 +59,7 @@ class Logger {
 	/**
 	 * If a log has a level equal or lower than this number, a Telegram notification is sent.
 	 */
-	protected $telegramThreshold = 4;
+	protected int $telegramThreshold = 4;
 
 	/**
 	 * Telegram bot token.
@@ -131,9 +142,13 @@ class Logger {
 		}
 
 		if (Env::get('PAIR_LOGGER_EMAIL_THRESHOLD')) {
-			$this->emailThreshold = (int)Env::get('PAIR_LOGGER_EMAIL_THRESHOLD');
-			if ($this->emailThreshold < 1 or $this->emailThreshold > 8) {
-				self::error('Invalid PAIR_LOGGER_EMAIL_THRESHOLD value in configuration file.', self::ERROR, ErrorCodes::INVALID_LOGGER_CONFIGURATION);
+			$val = (int) Env::get('PAIR_LOGGER_EMAIL_THRESHOLD');
+			if ($val < 1 or $val > 8) {
+				$this->emailThreshold = 4; // default
+				// avoid Logger->error() here: potential recursion
+				trigger_error('Invalid PAIR_LOGGER_EMAIL_THRESHOLD; fallback to 4', E_USER_WARNING);
+			} else {
+				$this->emailThreshold = $val;
 			}
 		}
 
@@ -146,20 +161,25 @@ class Logger {
 		}
 
 		if (Env::get('PAIR_LOGGER_TELEGRAM_THRESHOLD')) {
-			$this->telegramThreshold = (int)Env::get('PAIR_LOGGER_TELEGRAM_THRESHOLD');
-			if ($this->telegramThreshold < 1 or $this->telegramThreshold > 8) {
-				self::error('Invalid PAIR_LOGGER_TELEGRAM_THRESHOLD value in configuration file.', self::ERROR, ErrorCodes::INVALID_LOGGER_CONFIGURATION);
+			$val = (int) Env::get('PAIR_LOGGER_TELEGRAM_THRESHOLD');
+			if ($val < 1 or $val > 8) {
+				$this->telegramThreshold = 4;
+				trigger_error('Invalid PAIR_LOGGER_TELEGRAM_THRESHOLD; fallback to 4', E_USER_WARNING);
+			} else {
+				$this->telegramThreshold = $val;
 			}
 		}
 
 	}
 
 	/**
-	 * Log an API call in LogBar.
+	 * Requires immediate action.
+	 * Example: Data loss or a critical security issue that needs attention right away.
+	 * Typical Message: "Database connection lost."
 	 */
-	public static function api(string $description, ?string $subtext=NULL): void {
+	public function alert(\Stringable|string $message, array $context = []): void {
 
-		LogBar::event($description, 'api', $subtext);
+		$this->handle(self::ALERT, $message, $context);
 
 	}
 
@@ -169,10 +189,32 @@ class Logger {
 	private function checkMailer(): void {
 
 		if (!$this->mailer) {
-			self::error('Mailer not configured.', self::ERROR, ErrorCodes::INVALID_LOGGER_CONFIGURATION);
+			$this->error('Mailer not configured.', ['errorCode' => ErrorCodes::INVALID_LOGGER_CONFIGURATION]);
 		}
 
 		$this->mailer->checkConfig();
+
+	}
+
+	/**
+	 * Critical conditions that may prevent key application features from working.
+	 * Example: A critical service is down.
+	 * Typical Message: "Payment system unavailable."
+	 */
+	public function critical(\Stringable|string $message, array $context = []): void {
+
+		$this->handle(self::CRITICAL, $message, $context);
+
+	}
+
+	/**
+	 * Detailed debugging information for development purposes.
+	 * Example: API responses during testing or SQL query execution.
+	 * Typical Message: "Query executed: SELECT * FROM users."
+	 */
+	public function debug(\Stringable|string $message, array $context = []): void {
+
+		$this->handle(self::DEBUG, $message, $context);
 
 	}
 
@@ -182,6 +224,17 @@ class Logger {
 	public function disable(): void {
 
 		$this->enabled = FALSE;
+
+	}
+
+	/**
+	 * The most critical level. Indicates that the system is completely unusable.
+	 * Example: The entire platform is down or a critical dependency has failed.
+	 * Typical Message: "System is unusable."
+	 */
+	public function emergency(\Stringable|string $message, array $context = []): void {
+
+		$this->handle(self::EMERGENCY, $message, $context);
 
 	}
 
@@ -197,13 +250,20 @@ class Logger {
 	public static function errorHandler(int $errno, string $errstr, ?string $errfile=NULL, ?int $errline=NULL): bool {
 
 		// log the error internally
-		$fullMsg = 'Error ' . $errno . ': ' . $errstr . ($errfile ? ' in ' . $errfile . ' line ' . $errline : '');
-		self::error($fullMsg, self::ERROR);
+		$context = [
+			'type'		=> $errno,
+			'file'		=> $errfile ?? 'n/a',
+			'line'		=> $errline ?? 0,
+			'message'	=> $errstr
+		];
+		$fullMsg = 'Error {type}: {message} in {file} line {line}';
+		$self = Logger::getInstance();
+		$self->error($fullMsg, $context);
 
 		// send the error to Sentry if enabled
 		if (Env::get('SENTRY_DSN')) {
-			\Sentry\init(['dsn' => Env::get('SENTRY_DSN'),'environment'=>Application::getEnvironment()]);
-			\Sentry\captureLastError();
+			sentryInit(['dsn' => Env::get('SENTRY_DSN'),'environment'=>Application::getEnvironment()]);
+			sentryCaptureLastError();
 		}
 
 		// send the error to Insight Hub if enabled
@@ -220,19 +280,16 @@ class Logger {
 	}
 
 	/**
+	 * Runtime errors that do not halt the application but require fixing.
+	 * Example: An exception that was caught or a missing file.
+	 * Typical Message: "File not found."
 	 * Log a critical error in LogBar, database and send notifications.
 	 */
-	public static function error(string $description, int $level=4, ?int $errorCode=NULL): void {
+	public function error(\Stringable|string $message, array $context = []): void {
 
-		LogBar::event($description, 'error');
+		LogBar::event($message, 'error');
 
-		// if level is out of range, set to the default value
-		if (self::ERROR < $level or self::EMERGENCY > $level) {
-			$level = self::ERROR;
-		}
-
-		$self = self::getInstance();
-		$self->handle($description, $level, $errorCode);
+		$this->handle(self::ERROR, $message, $context);
 
 	}
 
@@ -242,18 +299,25 @@ class Logger {
 	public static function exceptionHandler(\Throwable $e): void {
 
 		// send the error to Sentry if enabled
-		if (Env::get('SENTRY_DSN')) {
-			\Sentry\init(['dsn' => Env::get('SENTRY_DSN'),'environment'=>Application::getEnvironment()]);
-			\Sentry\captureException($e);
+		if (Env::get('SENTRY_DSN') and function_exists('\\Sentry\\init') and function_exists('\\Sentry\\captureLastError')) {
+			sentryInit(['dsn' => Env::get('SENTRY_DSN'),'environment'=>Application::getEnvironment()]);
+			sentryCaptureLastError();
 		}
 
 		// send the error to Insight Hub if enabled
 		InsightHub::exception($e);
 
 		// log the error internally
-		$trace = $e->getTrace()[0];
-		$fullMsg = get_class($e) . ': ' . $e->getMessage() . ' in ' . $trace['file'] . ' line ' . $trace['line'];
-		self::error($fullMsg, self::ERROR, $e->getCode());
+		$context = [
+			'exception'	=> get_class($e),
+			'file'		=> $e->getFile(),
+			'line'		=> $e->getLine(),
+			'message'	=> $e->getMessage(),
+			'errorCode' => $e->getCode()
+		];
+		$fullMsg = '{exception}: {message} in {file} line {line}';
+		$self = Logger::getInstance();
+    	$self->error($fullMsg, $context);
 
 	}
 
@@ -262,34 +326,32 @@ class Logger {
 	 */
 	public static function getInstance(): self {
 
-		if (!self::$instance) {
-			self::$instance = new self();
-		}
-
-		return self::$instance;
+		return self::$instance ??= new self();
 
 	}
 
 	/**
 	 * Register an error in the database and send telegram and e-mail notifications.
 	 *
-	 * @param string	Description of the error.
+	 * @param string	Description message of the error.
 	 * @param int		PSR-3 log level number equivalent.
 	 */
-	private function handle(string $description, int $level, ?int $errorCode=NULL): void {
+	private function handle(int $level, string $description, array $context=[], ?int $errorCode=NULL): void {
 
 		if (!$this->enabled) {
 			return;
 		}
 
-		// register error in database
+		$description = $this->interpolate($description, $context);
+
+		// register error in database only if not a DB connection error
 		$dbErrorCodes = [
 			ErrorCodes::DB_CONNECTION_FAILED,
 			ErrorCodes::MYSQL_GENERAL_ERROR,
 			ErrorCodes::MISSING_DB,
 		];
 
-		if ((!$errorCode or ($errorCode and !in_array($errorCode, $dbErrorCodes))) and Database::getInstance()->isConnected()) {
+		if ((!$errorCode or ($errorCode and !in_array($errorCode, $dbErrorCodes, TRUE))) and Database::getInstance()->isConnected()) {
 			$this->storeError($description, $level);
 		}
 
@@ -317,9 +379,9 @@ class Logger {
 			$title = 'Error occurred';
 			$text = $subject . ' ' . $app->getEnvironment() . ' at ' . date('Y-m-d H:i:s') . "\n\n" . $description;
 			$text .= "\n\nUser ID: " . ($app->currentUser->id ?? 'Guest');
-			$text .= "\nUser IP: " . $_SERVER['REMOTE_ADDR'];
-			$text .= "\nUser Agent: " . $_SERVER['HTTP_USER_AGENT'];
-			$text .= "\nReferer: " . $_SERVER['HTTP_REFERER'];
+			$text .= "\nUser IP: " . ($_SERVER['REMOTE_ADDR']     ?? 'CLI');
+			$text .= "\nUser Agent: " . ($_SERVER['HTTP_USER_AGENT'] ?? 'n/a');
+			$text .= "\nReferer: " . ($_SERVER['HTTP_REFERER']   ?? 'n/a');
 			$text .= "\nYou can personalize the error notification threshold in the configuration file.";
 
 			$this->mailer->send($this->emailRecipients, $subject, $title, $text);
@@ -345,16 +407,58 @@ class Logger {
 	}
 
 	/**
+	 * Informational messages about the system’s normal operations.
+	 * Example: A user logs in or a connection is successfully established.
+	 * Typical Message: "User logged in."
+	 */
+	public function info(\Stringable|string $message, array $context = []): void {
+
+		LogBar::event($message);
+
+		$this->handle(self::INFO, $message, $context);
+
+	}
+
+	/**
+	 * Interpolate context values into the message {placeholders}.
+	 */
+    private function interpolate(string $message, array $context): string {
+
+        $replace = [];
+
+		foreach ($context as $key => $val) {
+
+            if (is_null($val) or is_scalar($val) or (is_object($val) and method_exists($val, '__toString'))) {
+
+				$replace['{'.$key.'}'] = (string)$val;
+
+			}
+
+		}
+
+		return strtr($message, $replace);
+
+	}
+
+	public function log($level, \Stringable|string $message, array $context = []): void {
+
+		$this->handle($level, $message, $context);
+
+	}
+
+	/**
+	 * Normal but noteworthy events that may be of interest for monitoring.
+	 * Example: A configuration setting is suboptimal.
+	 * Typical Message: “Using default configuration.”
 	 * Log a notice in LogBar.
 	 */
-	public static function notice(string $description, int $level=6): void {
+	public function notice(\Stringable|string $message, array $context = []): void {
 
-		LogBar::event($description);
+		LogBar::event($message);
 
-		// log the notice if debug mode is enabled
+		// handle the notice if debug mode is enabled
 		if (Env::get('APP_DEBUG')) {
-			$self = self::getInstance();
-			$self->handle($description, $level);
+			$this->handle(self::NOTICE, $message, $context);
 		}
 
 	}
@@ -384,7 +488,7 @@ class Logger {
 
 		set_error_handler([self::class, 'errorHandler']);
 		set_exception_handler([self::class, 'exceptionHandler']);
-		//register_shutdown_function([self::class, 'shutdownHandler']);
+		register_shutdown_function([self::class, 'shutdownHandler']);
 
 	}
 
@@ -403,7 +507,7 @@ class Logger {
 	public function setEmailThreshold(int $threshold): void {
 
 		if ($threshold < 1 or $threshold > 8) {
-			self::error('Invalid E-mail error threshold value', self::ERROR, ErrorCodes::INVALID_LOGGER_CONFIGURATION);
+			$this->error('Invalid E-mail error threshold value', ['errorCode' => ErrorCodes::INVALID_LOGGER_CONFIGURATION]);
 		}
 
 		$this->emailThreshold = $threshold;
@@ -452,7 +556,7 @@ class Logger {
 	public function setTelegramThreshold(int $threshold): void {
 
 		if ($threshold < 1 or $threshold > 8) {
-			self::error('Invalid Telegram error threshold value', self::ERROR, ErrorCodes::INVALID_LOGGER_CONFIGURATION);
+			$this->error('Invalid Telegram error threshold value', ['errorCode' => ErrorCodes::INVALID_LOGGER_CONFIGURATION]);
 		}
 
 		$this->telegramThreshold = $threshold;
@@ -472,13 +576,20 @@ class Logger {
 		}
 
 		// log the error internally
-		$fullMsg = 'Fatal error [' . $error['type'] . ']: ' . $error['message'] . ' in ' . $error['file'] . ' line ' . $error['line'];
-		self::error($fullMsg, self::ERROR);
+		$context = [
+			'type'		=> $error['type'],
+			'file'		=> $error['file'],
+			'line'		=> $error['line'],
+			'message'	=> $error['message'] ?? 'Unknown error'
+		];
+		$fullMsg = 'Fatal error [{type}]: {message} in {file} line {line}';
+		$self = Logger::getInstance();
+		$self->error($fullMsg, $context);
 
 		// send the error to Sentry if enabled
 		if (Env::get('SENTRY_DSN')) {
-			\Sentry\init(['dsn' => Env::get('SENTRY_DSN'),'environment'=>Application::getEnvironment()]);
-			\Sentry\captureLastError();
+			sentryInit(['dsn' => Env::get('SENTRY_DSN'),'environment'=>Application::getEnvironment()]);
+			sentryCaptureLastError();
 		}
 
 		// send the error to Insight Hub if enabled
@@ -537,15 +648,11 @@ class Logger {
 	/**
 	 * Log a warning in LogBar.
 	 */
-	public static function warning(string $description, int $level=5): void {
+	public function warning(\Stringable|string $message, array $context = []): void {
 
-		LogBar::event($description, 'warning');
+		LogBar::event($message, 'warning');
 
-		// log the warning if debug mode is enabled
-		if (Env::get('APP_DEBUG')) {
-			$self = self::getInstance();
-			$self->handle($description, $level);
-		}
+		$this->handle(self::WARNING, $message, $context);
 
 	}
 

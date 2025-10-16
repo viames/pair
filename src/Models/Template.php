@@ -115,25 +115,20 @@ class Template extends PluginBase {
 
 	/**
 	 * Removes files of this Module object before its deletion.
+	 * 
+	 * @throws	PairException
 	 */
 	protected function beforeDelete(): void {
 
 		// delete plugin folder
 		$plugin = $this->getPlugin();
-		$res = Utilities::deleteFolder($plugin->baseFolder);
-
-		if ($res) {
-
-			Logger::notice('Plugin folder ' . $plugin->baseFolder . ' has been deleted', Logger::DEBUG);
-
-		} else {
-
-			$msg = is_dir($plugin->baseFolder)
-				? 'Plugin folder ' . $plugin->baseFolder . ' has not been deleted due unexpected error'
-				: 'Plugin folder ' . $plugin->baseFolder . ' has not been found';
-
-			Logger::warning($msg);
+		
+		if (!Utilities::deleteFolder($plugin->baseFolder)) {
+			throw new PairException('Could not delete template folder ' . $plugin->baseFolder);
 		}
+
+		$logger = Logger::getInstance();
+		$logger->info('Plugin folder ' . $plugin->baseFolder . ' has been deleted');
 
 	}
 

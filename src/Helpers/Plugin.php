@@ -292,7 +292,8 @@ class Plugin {
 		$zip->close();
 
 		// add some log
-		Logger::notice('Created ZIP file archive ' . $zipFile . ' for ' . $this->type . ' plugin', Logger::DEBUG);
+		$logger = Logger::getInstance();
+		$logger->debug('Created ZIP file archive ' . $zipFile . ' for ' . $this->type . ' plugin');
 
 		// lets user download the ZIP file
 		header("Content-Type: application/zip");
@@ -355,7 +356,8 @@ class Plugin {
 	public static function removeOldFiles() {
 
 		if (!is_dir(TEMP_PATH)) {
-			Logger::error('Folder ' . TEMP_PATH . ' cannot be accessed');
+			$logger = Logger::getInstance();
+			$logger->error('Folder {path} cannot be accessed', ['path' => TEMP_PATH]);
 			return;
 		}
 
@@ -376,10 +378,11 @@ class Plugin {
 
 		}
 
-		Logger::notice($counter
+		$logger = Logger::getInstance();
+		$logger->info($counter
 			? $counter . ' files has been deleted from temporary folder'
 			: 'No old files deleted from temporary folder'
-		, Logger::DEBUG);
+		);
 
 	}
 
@@ -400,7 +403,8 @@ class Plugin {
 				} else if (is_int($value) or is_string($value)) {
 					$element->addChild($name, (string)$value);
 				} else {
-					Logger::error('Option item ' . $name . ' is not valid');
+					$logger = Logger::getInstance();
+					$logger->error('Option item {name} is not valid', ['name' => $name]);
 				}
 
 			}
@@ -409,7 +413,12 @@ class Plugin {
 
 		// prevent missing folders
 		if (!is_dir($this->baseFolder)) {
-			Logger::error('Folder ' . $this->baseFolder . ' of ' . $this->name . ' ' . $this->type . ' plugin cannot be accessed');
+			$logger = Logger::getInstance();
+			$logger->error('Folder {path} of {name} {type} plugin cannot be accessed', [
+				'path' => $this->baseFolder,
+				'name' => $this->name,
+				'type' => $this->type
+			]);
 			return FALSE;
 		}
 

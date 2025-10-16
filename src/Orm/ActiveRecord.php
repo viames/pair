@@ -229,7 +229,15 @@ abstract class ActiveRecord implements \JsonSerializable {
 		} else if ('development' == Application::getEnvironment()) {
 
 			$backtrace = debug_backtrace();
-			Logger::error('Method '. get_called_class() . $backtrace[0]['type'] . $name .'(), which doesn’t exist, has been called by '. $backtrace[0]['file'] .' on line '. $backtrace[0]['line']);
+			$logger = Logger::getInstance();
+			$context = [
+				'class'		=> get_called_class(),
+				'method'	=> $name,
+				'type'		=> $backtrace[0]['type'],
+				'file'		=> $backtrace[0]['file'],
+				'line'		=> $backtrace[0]['line']
+			];
+			$logger->error('Method {class}::{method}(), which doesn’t exist, has been called by {file} on line {line}', $context);
 
 		}
 
@@ -257,7 +265,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$this->resetErrors();
 
 		// log the reload
-		Logger::notice('Cloned ' . $class . ' object', Logger::DEBUG);
+		$logger = Logger::getInstance();
+		$logger->debug('Cloned ' . $class . ' object');
 
 	}
 
@@ -414,7 +423,9 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 
 		$className = basename(str_replace('\\', '/', $class));
-		Logger::notice('Loaded ' . count($records) . ' ' . $className . ' objects', Logger::DEBUG);
+		
+		$logger = Logger::getInstance();
+		$logger->debug('Loaded ' . count($records) . ' ' . $className . ' objects');
 
 		return $collection;
 
@@ -716,7 +727,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$query = 'SELECT COUNT(1) FROM `' . $class::TABLE_NAME . '`' . $where;
 		$count = Database::load($query, [], Database::COUNT);
 
-		Logger::notice('Counted ' . $count . ' ' . $class . ' objects' . $whereLog, Logger::DEBUG);
+		$logger = Logger::getInstance();
+		$logger->debug('Counted ' . $count . ' ' . $class . ' objects' . $whereLog);
 
 		return $count;
 
@@ -795,7 +807,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		// suppress notices for error logs to avoid loops
 		if ('error_logs' != static::TABLE_NAME) {
-			Logger::notice('Created a new ' . $class . ' object with ' . $this->getKeysForEventlog(), Logger::DEBUG);
+			$logger = Logger::getInstance();
+			$logger->debug('Created a new ' . $class . ' object with ' . $this->getKeysForEventlog());
 		}
 
 		// hook for tasks to be executed after creation
@@ -1128,7 +1141,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 
 		$className = basename(str_replace('\\', '/', $class));
-		Logger::notice('Loaded ' . count($objects) . ' ' . $className . ' objects' . $whereLog, Logger::DEBUG);
+		$logger = Logger::getInstance();
+		$logger->debug('Loaded ' . count($objects) . ' ' . $className . ' objects' . $whereLog);
 
 		return new Collection($objects);
 
@@ -1665,8 +1679,13 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// turn on loaded-from-db flag
 		$object->loadedFromDb = TRUE;
 
-		$className = basename(str_replace('\\', '/', $class));
-		Logger::notice('Loaded a ' . $className . ' object' . (count($dynamicBinds) ? ' with custom columns ' . implode(',', $dynamicBinds) : ''), Logger::DEBUG);
+		$className = 
+		$logger = Logger::getInstance();
+		$context = [
+			'class'  => basename(str_replace('\\', '/', $class)),
+			'customColumns' => count($dynamicBinds) ? ' with custom columns ' . implode(',', $dynamicBinds) : ''
+		];
+		$logger->debug('Loaded a {class} object {customColumns}', $context);
 
 		return $object;
 
@@ -1725,7 +1744,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 
 		$className = basename(str_replace('\\', '/', $class));
-		Logger::notice('Loaded ' . count($objects) . ' ' . $className . ' objects with custom columns ' . implode(',', $dynamicBinds), Logger::DEBUG);
+		$logger = Logger::getInstance();
+		$logger->debug('Loaded ' . count($objects) . ' ' . $className . ' objects with custom columns ' . implode(',', $dynamicBinds));
 
 		return new Collection($objects);
 
@@ -2502,7 +2522,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$this->loadFromDb($this->getSqlKeyValues());
 
 		// log the reload
-		Logger::notice('Reloaded ' . $class . ' object with ' . $this->getKeysForEventlog(), Logger::DEBUG);
+		$logger = Logger::getInstance();
+		$logger->debug('Reloaded ' . $class . ' object with ' . $this->getKeysForEventlog());
 
 	}
 
@@ -2728,7 +2749,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		// suppress notices for error logs to avoid loops
 		if ('error_logs' != static::TABLE_NAME) {
-			Logger::notice('Updated ' . $className . ' object with ' . $logParam, Logger::DEBUG);
+			$logger = Logger::getInstance();
+			$logger->debug('Updated a {class} object with {keys}', ['class' => $className,'keys' => $logParam]);
 		}
 
 		// check and update this object in the common cache
@@ -2736,7 +2758,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 		if (isset($app->activeRecordCache[$class][$uniqueId])) {
 			$app->putActiveRecordCache($class, $this);
 			if ('error_logs' != static::TABLE_NAME) {
-				Logger::notice('Updated ' . $className . ' object with id=' . $uniqueId . ' in common cache', Logger::DEBUG);
+				$logger = Logger::getInstance();
+				$logger->debug('Updated {class} object with id={uniqueId} in common cache', ['class' => $className,'uniqueId' => $uniqueId]);
 			}
 		}
 

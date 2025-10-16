@@ -720,7 +720,8 @@ class Utilities {
 		exec('which ' . $executable, $output, $resultCode);
 
 		if (!isset($output[0]) or !is_executable($output[0])) {
-			Logger::error($executable . ' is not available on this server');
+			$logger = Logger::getInstance();
+			$logger->error('{executable} is not available on this server', ['executable' => $executable, 'resultCode' => $resultCode, 'output' => $output]);
 		}
 
 		return ($output[0] ?? NULL);

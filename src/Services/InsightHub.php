@@ -8,7 +8,10 @@ use Pair\Core\Env;
 use \Bugsnag\Client;
 
 /**
- * This class provides a simple interface to Insight Hub.
+ * This class provides a simple interface to Insight Hub. It allows sending
+ * errors, exceptions, warnings, and info messages to Insight Hub, if the
+ * API key is set in the environment variables.
+ * Requires the Bugsnag PHP SDK: composer require bugsnag/bugsnag
  */
 class InsightHub {
 

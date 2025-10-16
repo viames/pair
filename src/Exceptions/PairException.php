@@ -39,7 +39,8 @@ class PairException extends \Exception {
 
 		// intercept any previous message and track it
 		$trackedMessage = ($previous and $previous->getMessage()) ? $previous->getMessage() : $message;
-		Logger::error($trackedMessage);
+		$logger = Logger::getInstance();
+		$logger->error($trackedMessage, ['errorCode' => $code]);
 
 	}
 

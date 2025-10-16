@@ -52,7 +52,8 @@ class Widget {
 	 */
 	public function render(): string {
 
-		Logger::notice('Rendering ' . $this->name . ' widget', Logger::DEBUG);
+		$logger = Logger::getInstance();
+		$logger->debug('Rendering ' . $this->name . ' widget');
 
 		$file = self::WIDGET_FOLDER . $this->name .'.php';
 

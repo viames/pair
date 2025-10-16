@@ -10,6 +10,8 @@ use PHPMailer\PHPMailer\PHPMailer;
 
 /**
  * Class specialized in sending emails in HTML format with PHPMailer or Amazon Simple Email Service (SES).
+ * It extends the base Mailer class, adding SMTP-specific configuration and functionality.
+ * Requires the PHPMailer library: composer require phpmailer/phpmailer
  */
 class SmtpMailer extends Mailer {
 

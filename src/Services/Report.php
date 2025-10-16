@@ -15,8 +15,14 @@ use PhpOffice\PhpSpreadsheet\Settings;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+
 /**
- * This class is a base for creating Excel reports.
+ * This class is a base for creating Excel reports, using PhpSpreadsheet (https://phpspreadsheet.readthedocs.io/).
+ * It is not responsible for data retrieval or business logic.
+ * It can be extended to create custom reports, or used directly by setting columns and rows and
+ * supports saving the report to a file or sending it to the browser for download.
+ * It also supports CSV export if the csv2xlsx utility is available.
+ * Requires the PhpSpreadsheet library: composer require phpoffice/phpspreadsheet
  */
 abstract class Report {
 
