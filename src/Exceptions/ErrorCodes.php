@@ -284,4 +284,9 @@ class ErrorCodes {
 	 */
 	const UNVALID_FORM_CONTROL_PROPERTY = 1056;
 
+	/**
+	 * Stripe error.
+	 */
+	const STRIPE_ERROR = 1057;
+
 }
