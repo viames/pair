@@ -179,7 +179,7 @@ class Logger implements LoggerInterface {
 	 */
 	public function alert(\Stringable|string $message, array $context = []): void {
 
-		$this->handle(self::ALERT, $message, $context);
+		$this->log(self::ALERT, $message, $context);
 
 	}
 
@@ -203,7 +203,7 @@ class Logger implements LoggerInterface {
 	 */
 	public function critical(\Stringable|string $message, array $context = []): void {
 
-		$this->handle(self::CRITICAL, $message, $context);
+		$this->log(self::CRITICAL, $message, $context);
 
 	}
 
@@ -214,7 +214,7 @@ class Logger implements LoggerInterface {
 	 */
 	public function debug(\Stringable|string $message, array $context = []): void {
 
-		$this->handle(self::DEBUG, $message, $context);
+		$this->log(self::DEBUG, $message, $context);
 
 	}
 
@@ -234,7 +234,7 @@ class Logger implements LoggerInterface {
 	 */
 	public function emergency(\Stringable|string $message, array $context = []): void {
 
-		$this->handle(self::EMERGENCY, $message, $context);
+		$this->log(self::EMERGENCY, $message, $context);
 
 	}
 
@@ -287,9 +287,7 @@ class Logger implements LoggerInterface {
 	 */
 	public function error(\Stringable|string $message, array $context = []): void {
 
-		LogBar::event($message, 'error');
-
-		$this->handle(self::ERROR, $message, $context);
+		$this->log(self::ERROR, $message, $context);
 
 	}
 
@@ -341,8 +339,6 @@ class Logger implements LoggerInterface {
 		if (!$this->enabled) {
 			return;
 		}
-
-		$description = $this->interpolate($description, $context);
 
 		// register error in database only if not a DB connection error
 		$dbErrorCodes = [
@@ -413,9 +409,7 @@ class Logger implements LoggerInterface {
 	 */
 	public function info(\Stringable|string $message, array $context = []): void {
 
-		LogBar::event($message);
-
-		$this->handle(self::INFO, $message, $context);
+		$this->log(self::INFO, $message, $context);
 
 	}
 
@@ -442,7 +436,20 @@ class Logger implements LoggerInterface {
 
 	public function log($level, \Stringable|string $message, array $context = []): void {
 
-		$this->handle($level, $message, $context);
+		$rendered = $this->interpolate((string)$message, $context);
+
+		if ($level === self::ERROR or $level === self::CRITICAL or $level === self::ALERT or $level === self::EMERGENCY) {
+			LogBar::event($rendered, 'error');
+		} elseif ($level === self::WARNING) {
+			LogBar::event($rendered, 'warning');
+		} else {
+			LogBar::event($rendered, 'notice');
+		}
+
+		// handle the notice if debug mode is enabled
+		if ($level >= self::NOTICE or Env::get('APP_DEBUG')) {
+			$this->handle($level, $rendered, $context);
+		}
 
 	}
 
@@ -454,21 +461,7 @@ class Logger implements LoggerInterface {
 	 */
 	public function notice(\Stringable|string $message, array $context = []): void {
 
-		LogBar::event($message);
-
-		// handle the notice if debug mode is enabled
-		if (Env::get('APP_DEBUG')) {
-			$this->handle(self::NOTICE, $message, $context);
-		}
-
-	}
-
-	/**
-	 * Log a query in LogBar.
-	 */
-	public static function query(string $description, ?string $subtext=NULL): void {
-
-		LogBar::event($description, 'query', $subtext);
+		$this->log(self::NOTICE, $message, $context);
 
 	}
 
@@ -650,9 +643,7 @@ class Logger implements LoggerInterface {
 	 */
 	public function warning(\Stringable|string $message, array $context = []): void {
 
-		LogBar::event($message, 'warning');
-
-		$this->handle(self::WARNING, $message, $context);
+		$this->log(self::WARNING, $message, $context);
 
 	}
 
