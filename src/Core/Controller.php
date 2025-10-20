@@ -30,9 +30,9 @@ abstract class Controller {
 	protected Model $model;
 
 	/**
-	 * View’s file name, without file extension.
+	 * View object.
 	 */
-	protected string $view;
+	protected View $view;
 
 	/**
 	 * Translator object.
@@ -70,11 +70,6 @@ abstract class Controller {
 		// sets language subfolder’s name
 		$this->translator->setModuleName($this->name);
 
-		// sets same view as the controller action
-		$this->view = $this->router->action ?: 'default';
-
-		$this->_init();
-
 		// if a model is not specified, load the default one
 		if (!isset($this->model) or is_null($this->model)) {
 			include ($this->modulePath .'/model.php');
@@ -82,17 +77,11 @@ abstract class Controller {
 			$this->model = new $modelName();
 		}
 
-		// look for extended classes
-		if (is_dir($this->modulePath . '/classes')) {
+		$this->_init();
 
-			// get all folder files
-			$filenames = Utilities::getDirectoryFilenames($this->modulePath . '/classes');
-
-			// include each class file
-			foreach ($filenames as $filename) {
-				include_once $this->modulePath . '/classes/' . $filename;
-			}
-
+		// children classes could have not set a view, so we set a default one
+		if (!isset($this->view) or is_null($this->view)) {
+			$this->setView($this->router->action ?: 'default');
 		}
 
 	}
@@ -173,38 +162,11 @@ abstract class Controller {
 	}
 
 	/**
-	 * Return View object related to this controller.
-	 *
-	 * @throws CriticalException If view is not set.
-	 * @throws AppException If view file or class is not found.
+	 * Get the View object related to this controller.
 	 */
-	public function getView(): ?View {
+	final public function getView(): View {
 
-		if (!$this->view) {
-			throw new CriticalException('View page not set for module ' . $this->name, ErrorCodes::CONTROLLER_CONFIG_ERROR);
-		}
-
-		$file = $this->modulePath .'/view'. ucfirst($this->view) .'.php';
-
-		if (!file_exists($file)) {
-			$this->view = 'default';
-			$file = $this->modulePath .'/view'. ucfirst($this->view) .'.php';
-		}
-
-		// if view file still not found, throw an exception
-		if (!file_exists($file)) {
-			throw new AppException('The page ' . strtolower($this->name) . '/' . $this->view . ' does not exist', ErrorCodes::VIEW_LOAD_ERROR);
-		}
-
-		include_once($file);
-
-		$viewName = ucfirst($this->name) .'View'. ucfirst($this->view);
-
-		if (!class_exists($viewName)) {
-			throw new AppException('Class ' . $viewName . ' was not found in file ' . $file, ErrorCodes::VIEW_LOAD_ERROR);
-		}
-
-		return new $viewName($this->model);
+		return $this->view;
 
 	}
 
@@ -247,10 +209,45 @@ abstract class Controller {
 	}
 
 	/**
+	 * Load a view from the file system and return View object related to this controller.
+	 *
+	 * @throws CriticalException If view is not set.
+	 * @throws AppException If view file or class is not found.
+	 */
+	private function loadView(string $viewName): View {
+
+		if (!$viewName) {
+			throw new CriticalException('View page not set for module ' . $this->name, ErrorCodes::CONTROLLER_CONFIG_ERROR);
+		}
+
+		$file = $this->modulePath .'/view'. ucfirst($viewName) .'.php';
+
+		if (!file_exists($file)) {
+			$viewName = 'default';
+			$file = $this->modulePath .'/view'. ucfirst($viewName) .'.php';
+		}
+
+		// if view file still not found, throw an exception
+		if (!file_exists($file)) {
+			throw new AppException('The page ' . strtolower($this->name) . '/' . $viewName . ' does not exist', ErrorCodes::VIEW_LOAD_ERROR);
+		}
+
+		include_once($file);
+
+		$className = ucfirst($this->name) .'View'. ucfirst($viewName);
+
+		if (!class_exists($className)) {
+			throw new AppException('Class ' . $className . ' was not found in file ' . $file, ErrorCodes::VIEW_LOAD_ERROR);
+		}
+
+		return new $className($this->model);
+
+	}
+
+	/**
 	 * Get error list from an ActiveRecord object and show it to the user.
 	 *
 	 * @param	ActiveRecord	The inherited object.
-	 *
 	 * @throws	\Exception
 	 */
 	protected function raiseError(ActiveRecord $object): void {
@@ -288,24 +285,26 @@ abstract class Controller {
 	 */
 	public function renderView(): void {
 
-		$view = $this->getView();
-
-		if (!is_subclass_of($view, 'Pair\Core\View')) {
+		if (!is_subclass_of($this->view, 'Pair\Core\View')) {
 			throw new CriticalException('View class not found');
 		}
 
-		$view->display();
+		$this->view->display();
 
 	}
 
 	/**
-	 * Set the view name.
+	 * Set a view name and load the related View object.
 	 *
 	 * @param	string	The view name.
 	 */
-	public function setView(string $view): void {
+	public function setView(string $viewName): void {
 
-		$this->view = $view;
+		$viewClassName = ucfirst($this->name) .'View'. ucfirst($viewName);
+
+		if (!isset($this->view) or get_class($this->view) !== $viewClassName) {
+			$this->view = $this->loadView($viewName);
+		}
 
 	}
 

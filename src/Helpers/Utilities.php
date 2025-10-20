@@ -1140,6 +1140,34 @@ class Utilities {
 	}
 
 	/**
+	 * Prints an A-Z list with link for build an alpha filter.
+	 * @param	string	Current selected list item, if any.
+	 */
+	public function printAlphaFilter(?string $selected=NULL): void {
+
+		$router = Router::getInstance();
+
+		$letters = [];
+
+		foreach (range('A', 'Z') as $a) {
+
+			$filter = new \stdClass();
+			$filter->href	= $router->module . '/' . $router->action . '/' . strtolower($a);
+			$filter->text	= $a;
+			$filter->active	= ($selected and strtolower((string)$a) == strtolower((string)$selected));
+
+			$letters[] = $filter;
+
+		}
+
+		?><a href="<?php print $router->module ?>/<?php print $router->action ?>"><?php Translator::do('ALL') ?></a><?php
+		foreach ($letters as $letter) {
+			?><a href="<?php print $letter->href ?>"<?php print ($letter->active ? ' class="active"' : '') ?>><?php print $letter->text ?></a><?php
+		}
+
+	}
+
+	/**
 	 * Forces the HTTP response as download of an XML file
 	 *
 	 * @param	string	string containing XML data.

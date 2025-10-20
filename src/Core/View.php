@@ -82,15 +82,15 @@ abstract class View {
 
 		// sets view name and default layout
 		$class = get_called_class();
-		$this->name = substr($class, 0, strpos($class, 'View'));
+		$moduleName = strtolower(substr($class, 0, strpos($class, 'View')));
 		$this->layout = strtolower(substr($class, strpos($class, 'View') + 4, 1)) . substr($class, strpos($class, 'View') + 5);
+
+		// url to the module
+		$this->moduleUrl = 'modules/' . $moduleName;
 
 		// path to module folder
 		$ref = new \ReflectionClass($this);
 		$this->modulePath = dirname($ref->getFileName());
-
-		// url to the module
-		$this->moduleUrl = 'modules/' . strtolower($this->name);
 
 		// pagination
 		$this->pagination			= new Pagination();
@@ -109,15 +109,17 @@ abstract class View {
 
 	}
 
-	/**
-	 * Adds a variable-item to the object array “vars”.
-	 *
-	 * @param	string	Variable-item name.
-	 * @param	mixed	Variable-item value.
-	 */
-	public function assign($name, $val): void {
 
-		$this->vars[$name] = $val;
+
+	/**
+	 * Management of unknown view’s function.
+	 *
+	 * @param	string	$name
+	 * @param	array	$arguments
+	 */
+	public function __call($name, $arguments): void {
+
+		throw new AppException('Method '. get_called_class() . '->' . $name .'(), which doesn’t exist, has been called', ErrorCodes::METHOD_NOT_FOUND);
 
 	}
 
@@ -141,14 +143,14 @@ abstract class View {
 	}
 
 	/**
-	 * Management of unknown view’s function.
+	 * Sets the property’s value.
 	 *
-	 * @param	string	$name
-	 * @param	array	$arguments
+	 * @param	string	Property’s name.
+	 * @param	mixed	Property’s value.
 	 */
-	public function __call($name, $arguments): void {
+	public function __set(string $name, mixed $value): void {
 
-		throw new AppException('Method '. get_called_class() . '->' . $name .'(), which doesn’t exist, has been called', ErrorCodes::METHOD_NOT_FOUND);
+		$this->$name = $value;
 
 	}
 
@@ -158,6 +160,18 @@ abstract class View {
 	 * @throws	CriticalException if the layout file doesn’t exist.
 	 */
 	protected function _init(): void {}
+
+	/**
+	 * Adds a variable-item to the object array “vars”.
+	 *
+	 * @param	string	Variable-item name.
+	 * @param	mixed	Variable-item value.
+	 */
+	public function assign($name, $val): void {
+
+		$this->vars[$name] = $val;
+
+	}
 
 	/**
 	 * Formats page layout including variables and returns.
@@ -242,27 +256,6 @@ abstract class View {
 	}
 
 	/**
-	 * Return an A-Z list with link for build an alpha filter.
-	 * @param	string	Current selected list item, if any.
-	 */
-	public function getAlphaFilter(?string $selected=NULL): \Generator {
-
-		$router = Router::getInstance();
-
-		foreach (range('A', 'Z') as $a) {
-
-			$filter = new \stdClass();
-			$filter->href	= $router->module . '/' . $router->action . '/' . strtolower($a);
-			$filter->text	= $a;
-			$filter->active	= ($selected and strtolower((string)$a) == strtolower((string)$selected));
-
-			yield $filter;
-
-		}
-
-	}
-
-	/**
 	 * Returns the object of inherited class when called with id as first parameter.
 	 *
 	 * @param	string	Expected object class type.
@@ -309,21 +302,6 @@ abstract class View {
 	public function mustUsePagination(array $itemsToShow): bool {
 
 		return (count($itemsToShow) >= $this->pagination->perPage or $this->pagination->page > 1);
-
-	}
-
-	/**
-	 * Prints the alpha filter bar.
-	 */
-	public function printAlphaFilter(?string $selected=NULL): void {
-
-		$router = Router::getInstance();
-		$letters = $this->getAlphaFilter($selected);
-
-		?><a href="<?php print $router->module ?>/<?php print $router->action ?>"><?php $this->_('ALL') ?></a><?php
-		foreach ($letters as $letter) {
-			?><a href="<?php print $letter->href ?>"<?php print ($letter->active ? ' class="active"' : '') ?>><?php print $letter->text ?></a><?php
-		}
 
 	}
 

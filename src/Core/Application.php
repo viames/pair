@@ -188,7 +188,7 @@ class Application {
 		}
 
 		// custom error handlers
-		Logger::setCustomErrorHandlers();
+		Logger::registerHandlers();
 
 		// routing initialization
 		$router = Router::getInstance();

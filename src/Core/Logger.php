@@ -13,7 +13,7 @@ use Pair\Models\ErrorLog;
 use Pair\Orm\Database;
 use Pair\Services\AmazonSes;
 use Pair\Services\InsightHub;
-use Pair\Services\SendMail;
+use Pair\Services\Sendmail;
 use Pair\Services\SmtpMailer;
 use Pair\Services\TelegramSender;
 
@@ -37,7 +37,7 @@ class Logger implements LoggerInterface {
 	protected static ?self $instance = NULL;
 
 	/**
-	 * Default property is TRUE, can be disabled either by config or by method disable().
+	 * Whether the logger is enabled. Can be turned off by config or by method disable().
 	 */
 	protected bool $enabled = TRUE;
 
@@ -47,7 +47,7 @@ class Logger implements LoggerInterface {
 	protected int $emailThreshold = 4;
 
 	/**
-	 * E-mail recipients for error notifications.
+	 * E-mail recipients for alerts.
 	 */
 	protected array $emailRecipients = [];
 
@@ -127,6 +127,17 @@ class Logger implements LoggerInterface {
 	 */
 	const DEBUG = 8;
 
+	const LEVEL_NAMES = [
+		self::EMERGENCY	=> 'emergency',
+		self::ALERT		=> 'alert',
+		self::CRITICAL	=> 'critical',
+		self::ERROR		=> 'error',
+		self::WARNING	=> 'warning',
+		self::NOTICE	=> 'notice',
+		self::INFO		=> 'info',
+		self::DEBUG		=> 'debug'
+	];
+
 	/**
 	 * Private constructor called by getInstance().
 	 */
@@ -184,19 +195,6 @@ class Logger implements LoggerInterface {
 	}
 
 	/**
-	 * Check if the mailer is configured.
-	 */
-	private function checkMailer(): void {
-
-		if (!$this->mailer) {
-			$this->error('Mailer not configured.', ['errorCode' => ErrorCodes::INVALID_LOGGER_CONFIGURATION]);
-		}
-
-		$this->mailer->checkConfig();
-
-	}
-
-	/**
 	 * Critical conditions that may prevent key application features from working.
 	 * Example: A critical service is down.
 	 * Typical Message: "Payment system unavailable."
@@ -239,13 +237,25 @@ class Logger implements LoggerInterface {
 	}
 
 	/**
-	 * Custom error handler.
+	 * Verify mailer configuration and throw on misconfiguration.
+	 */
+	private function ensureMailer(): void {
+
+		if (!$this->mailer) {
+			$this->error('Mailer not configured.', ['errorCode' => ErrorCodes::INVALID_LOGGER_CONFIGURATION]);
+		}
+
+		$this->mailer->checkConfig();
+
+	}
+
+	/**
+	 * Custom PHP error handler. Returns true to suppress the default PHP handler; false to allow it.
 	 *
 	 * @param	int		Error number.
 	 * @param	string	Error text message.
 	 * @param	string	Error full file path.
 	 * @param	int		Error line.
-	 * @param	array	(Optional) it will be passed an array that points to the active symbol table at the point the error occurred.
 	 */
 	public static function errorHandler(int $errno, string $errstr, ?string $errfile=NULL, ?int $errline=NULL): bool {
 
@@ -280,10 +290,9 @@ class Logger implements LoggerInterface {
 	}
 
 	/**
-	 * Runtime errors that do not halt the application but require fixing.
+	 * Runtime errors that need attention but do not halt execution.
 	 * Example: An exception that was caught or a missing file.
 	 * Typical Message: "File not found."
-	 * Log a critical error in LogBar, database and send notifications.
 	 */
 	public function error(\Stringable|string $message, array $context = []): void {
 
@@ -292,7 +301,7 @@ class Logger implements LoggerInterface {
 	}
 
 	/**
-	 * Custom exception handler for all uncaught exceptions.
+	 * Handle uncaught exceptions; optionally forward to Sentry/InsightHub and log internally.
 	 */
 	public static function exceptionHandler(\Throwable $e): void {
 
@@ -320,7 +329,7 @@ class Logger implements LoggerInterface {
 	}
 
 	/**
-	 * Singleton method.
+	 * Return the singleton Logger instance.
 	 */
 	public static function getInstance(): self {
 
@@ -329,16 +338,92 @@ class Logger implements LoggerInterface {
 	}
 
 	/**
-	 * Register an error in the database and send telegram and e-mail notifications.
-	 *
-	 * @param string	Description message of the error.
-	 * @param int		PSR-3 log level number equivalent.
+	 * Informational messages about the system’s normal operations.
+	 * Example: A user logs in or a connection is successfully established.
+	 * Typical Message: "User logged in."
 	 */
-	private function handle(int $level, string $description, array $context=[], ?int $errorCode=NULL): void {
+	public function info(\Stringable|string $message, array $context = []): void {
+
+		$this->log(self::INFO, $message, $context);
+
+	}
+
+	/**
+	 * Replace {placeholders} with scalar/Stringable values from $context; ignore others.
+	 */
+    private function interpolate(string $message, array $context): string {
+
+        $replace = [];
+
+		foreach ($context as $key => $val) {
+
+            if (is_null($val) or is_scalar($val) or (is_object($val) and method_exists($val, '__toString'))) {
+
+				$replace['{'.$key.'}'] = (string)$val;
+
+			}
+
+		}
+
+		return strtr($message, $replace);
+
+	}
+
+	/**
+	 * PSR-3 core method. Log with an arbitrary level; interpolates {placeholders} from $context.
+	 */
+	public function log(mixed $level, \Stringable|string $message, array $context = []): void {
 
 		if (!$this->enabled) {
 			return;
 		}
+
+		// convert level name to number
+		if (is_string($level)) {
+			$level = array_search(strtolower($level), self::LEVEL_NAMES, TRUE) ?: self::DEBUG;
+		} else if (!is_int($level) or $level < 1 or $level > 8) {
+			$level = self::DEBUG;
+		}
+
+		// render the message with context values
+		$rendered = $this->interpolate((string)$message, $context);
+
+		// log the message in LogBar
+		if (in_array($level, [self::DEBUG, self::INFO, self::NOTICE], TRUE)) {
+			LogBar::event($rendered, 'notice');
+		} else if ($level === self::WARNING) {
+			LogBar::event($rendered, 'warning');
+		} else {
+			LogBar::event($rendered, 'error');
+		}
+
+		// process the message (store in DB, send notifications) if level is WARNING or worse
+		if ($level <= self::WARNING) {
+			$this->process($level, $rendered, $context);
+		}
+
+	}
+
+	/**
+	 * Normal but noteworthy events.
+	 * Example: A configuration setting is suboptimal.
+	 * Typical Message: “Using default configuration.”
+	 */
+	public function notice(\Stringable|string $message, array $context = []): void {
+
+		$this->log(self::NOTICE, $message, $context);
+
+	}
+
+	/**
+	 * Persist the log record and send notifications according to thresholds.
+	 *
+	 * @param string	Description message of the error.
+	 * @param int		PSR-3 log level number equivalent.
+	 * @param array		Context array.
+	 * @param int|NULL	Optional error code to avoid logging certain errors.
+	 */
+	private function process(int $level, string $description, array $context=[], ?int $errorCode=NULL): void {
 
 		// register error in database only if not a DB connection error
 		$dbErrorCodes = [
@@ -348,26 +433,15 @@ class Logger implements LoggerInterface {
 		];
 
 		if ((!$errorCode or ($errorCode and !in_array($errorCode, $dbErrorCodes, TRUE))) and Database::getInstance()->isConnected()) {
-			$this->storeError($description, $level);
+			$this->snapshot($description, $level);
 		}
 
-		$levels = [
-			self::EMERGENCY	=> 'Emergency',
-			self::ALERT		=> 'Alert',
-			self::CRITICAL	=> 'Critical',
-			self::ERROR		=> 'Error',
-			self::WARNING	=> 'Warning',
-			self::NOTICE	=> 'Notice',
-			self::INFO		=> 'Info',
-			self::DEBUG		=> 'Debug'
-		];
-
-		$levelDescription = $levels[$level] ?? 'Unknown';
+		$levelDescription = self::LEVEL_NAMES[$level] ?? 'Unknown';
 
 		// send e-mail, if level is below threshold and recipients are set
 		if ($this->mailer and count($this->emailRecipients) and $level <= $this->emailThreshold) {
 
-			$this->checkMailer();
+			$this->ensureMailer();
 
 			$app = Application::getInstance();
 
@@ -403,85 +477,22 @@ class Logger implements LoggerInterface {
 	}
 
 	/**
-	 * Informational messages about the system’s normal operations.
-	 * Example: A user logs in or a connection is successfully established.
-	 * Typical Message: "User logged in."
+	 * Register error, exception, and shutdown handlers.
 	 */
-	public function info(\Stringable|string $message, array $context = []): void {
-
-		$this->log(self::INFO, $message, $context);
-
-	}
-
-	/**
-	 * Interpolate context values into the message {placeholders}.
-	 */
-    private function interpolate(string $message, array $context): string {
-
-        $replace = [];
-
-		foreach ($context as $key => $val) {
-
-            if (is_null($val) or is_scalar($val) or (is_object($val) and method_exists($val, '__toString'))) {
-
-				$replace['{'.$key.'}'] = (string)$val;
-
-			}
-
-		}
-
-		return strtr($message, $replace);
-
-	}
-
-	public function log($level, \Stringable|string $message, array $context = []): void {
-
-		$rendered = $this->interpolate((string)$message, $context);
-
-		if ($level === self::ERROR or $level === self::CRITICAL or $level === self::ALERT or $level === self::EMERGENCY) {
-			LogBar::event($rendered, 'error');
-		} elseif ($level === self::WARNING) {
-			LogBar::event($rendered, 'warning');
-		} else {
-			LogBar::event($rendered, 'notice');
-		}
-
-		// handle the notice if debug mode is enabled
-		if ($level >= self::NOTICE or Env::get('APP_DEBUG')) {
-			$this->handle($level, $rendered, $context);
-		}
-
-	}
-
-	/**
-	 * Normal but noteworthy events that may be of interest for monitoring.
-	 * Example: A configuration setting is suboptimal.
-	 * Typical Message: “Using default configuration.”
-	 * Log a notice in LogBar.
-	 */
-	public function notice(\Stringable|string $message, array $context = []): void {
-
-		$this->log(self::NOTICE, $message, $context);
-
-	}
-
-	/**
-	 * Set Amazon SES configuration for sending error notification e-mails.
-	 */
-	public function setAmazonSesConfig(array $config): void {
-
-		$this->mailer = new AmazonSes($config);
-
-	}
-
-	/**
-	 * Set custom handlers for errors and uncaught exceptions.
-	 */
-	public static function setCustomErrorHandlers(): void {
+	public static function registerHandlers(): void {
 
 		set_error_handler([self::class, 'errorHandler']);
 		set_exception_handler([self::class, 'exceptionHandler']);
 		register_shutdown_function([self::class, 'shutdownHandler']);
+
+	}
+
+	/**
+	 * Configure Amazon SES transport for error emails.
+	 */
+	private function setSesConfig(array $config): void {
+
+		$this->mailer = new AmazonSes($config);
 
 	}
 
@@ -495,31 +506,31 @@ class Logger implements LoggerInterface {
 	}
 
 	/**
-	 * Set the e-mail notification threshold.
+	 * Set the e-mail maximum level number that triggers notifications (1=most severe).
 	 */
-	public function setEmailThreshold(int $threshold): void {
+	public function setEmailThreshold(int $level): void {
 
-		if ($threshold < 1 or $threshold > 8) {
+		if ($level < 1 or $level > 8) {
 			$this->error('Invalid E-mail error threshold value', ['errorCode' => ErrorCodes::INVALID_LOGGER_CONFIGURATION]);
 		}
 
-		$this->emailThreshold = $threshold;
+		$this->emailThreshold = $level;
 
 	}
 
 	/**
-	 * Set Mailer configuration for sending error notification e-mails.
+	 * Configure sendmail transport for error emails.
 	 */
-	public function setSendMailConfig(array $config): void {
+	private function setSendmailConfig(array $config): void {
 
-		$this->mailer = new SendMail($config);
+		$this->mailer = new Sendmail($config);
 
 	}
 
 	/**
 	 * Set SmtpMailer configuration for sending error notification e-mails.
 	 */
-	public function setSmtpMailerConfig(array $config): void {
+	private function setSmtpMailerConfig(array $config): void {
 
 		$this->mailer = new SmtpMailer($config);
 
@@ -544,20 +555,20 @@ class Logger implements LoggerInterface {
 	}
 
 	/**
-	 * Set the Telegram notification threshold.
+	 * Set the Telegram maximum level number that triggers notifications (1=most severe).
 	 */
-	public function setTelegramThreshold(int $threshold): void {
+	public function setTelegramThreshold(int $level): void {
 
-		if ($threshold < 1 or $threshold > 8) {
+		if ($level < 1 or $level > 8) {
 			$this->error('Invalid Telegram error threshold value', ['errorCode' => ErrorCodes::INVALID_LOGGER_CONFIGURATION]);
 		}
 
-		$this->telegramThreshold = $threshold;
+		$this->telegramThreshold = $level;
 
 	}
 
 	/**
-	 * Manages fatal errors (out of memory etc.) sending email to all address in options.
+	 * Handle fatal errors on shutdown and notify configured recipients.
 	 */
 	public static function shutdownHandler(): void {
 
@@ -591,12 +602,12 @@ class Logger implements LoggerInterface {
 	}
 
 	/**
-	 * Allows to keep the current Application and browser state.
+	 * Persist a snapshot of request/app state to ErrorLog. Level defaults to DEBUG (1–8 bounds).
 	 *
 	 * @param	string	Description of the snapshot moment.
 	 * @param	int		Optional PSR-3 log level number equivalent, default is 8 (DEBUG).
 	 */
-	private function storeError(string $description, ?int $level=NULL): void {
+	private function snapshot(string $description, ?int $level=NULL): void {
 
 		if (!$this->enabled) {
 			return;
@@ -639,7 +650,28 @@ class Logger implements LoggerInterface {
 	}
 
 	/**
-	 * Log a warning in LogBar.
+	 * Configure the transport to use for sending error notification e-mails.
+	 */
+	public function useTransport(string $type, array $config): void {
+
+		switch ($type) {
+			case 'smtp':
+				$this->setSmtpMailerConfig($config);
+				break;
+			case 'ses':
+				$this->setSesConfig($config);
+				break;
+			case 'sendmail':
+				$this->setSendmailConfig($config);
+				break;
+			default:
+				throw new InvalidArgumentException('Unknown transport type: ' . $type);
+		}
+
+	}
+
+	/**
+	 * Exceptional occurrences that are not errors.
 	 */
 	public function warning(\Stringable|string $message, array $context = []): void {
 

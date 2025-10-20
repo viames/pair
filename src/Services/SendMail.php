@@ -9,7 +9,7 @@ use Pair\Helpers\Mailer;
 /**
  * Class specialized in sending emails in HTML format.
  */
-class SendMail extends Mailer {
+class Sendmail extends Mailer {
 
 	/**
 	 * Send a simple email using sendmail without attachments.
