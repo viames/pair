@@ -245,6 +245,19 @@ class Post {
 	}
 
 	/**
+	 * Get data by POST array returning a string. In case of not found,
+	 * return default value.
+	 *
+	 * @param	string	HTTP parameter name.
+	 * @param	string	Default value to return, in case of null or empty.
+	 */
+	public static function string(string $name, ?string $default=NULL): string {
+
+		return self::get($name, 'string', $default);
+
+	}
+
+	/**
 	 * Method to understand if page comes from an HTTP post submit.
 	 *
 	 * @return	bool	TRUE if method is post.
@@ -256,15 +269,15 @@ class Post {
 	}
 
 	/**
-	 * Get data by POST array returning a trimmed string. In case
-	 * of not found, return default value.
+	 * Get data by POST array returning a trimmed string. In case of not found,
+	 * return default value.
 	 *
 	 * @param	string	HTTP parameter name.
 	 * @param	string	Default value to return, in case of null or empty.
 	 */
 	public static function trim(string $name, ?string $default=NULL): string {
 
-		return self::get(trim($name), 'string', $default);
+		return trim(self::string($name, $default));
 
 	}
 

@@ -219,6 +219,28 @@ class Form {
 	}
 
 	/**
+	 * Checks whether the CSRF token provided by the client matches the one stored in the session. Intended
+	 * for conditional flows (e.g., early returns). For an exception-based variant, use validateToken().
+	 */
+	public function checkToken(): bool {
+
+		// checks if token is present in session
+		if ('POST' !== $_SERVER['REQUEST_METHOD'] or !isset($_SESSION['csrf_token'])) {
+			return FALSE;
+		}
+
+		// checks if token is present in POST data
+		$postedToken = Post::trim('csrf_token');
+		if (!$postedToken) {
+			return FALSE;
+		}
+
+		// compares both tokens
+		return hash_equals($_SESSION['csrf_token'], $postedToken);
+
+	}
+
+	/**
 	 * Adds a common CSS class to all controls of this form at render time. Chainable method.
 	 *
 	 * @param	string	CSS Class name.
@@ -681,7 +703,8 @@ class Form {
 	}
 
 	/**
-	 * Validate a submitted CSRF token or throw an AppException.
+	 * Validate a submitted CSRF token or throw an AppException. If you need a boolean
+	 * result, use checkToken() method.
 	 *
 	 * @throws	AppException
 	 */
