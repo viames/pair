@@ -805,6 +805,11 @@ class Application {
 	 */
 	public function manageSession(): void {
 
+		// stop processing if it is a CLI
+		if (static::isCli()) {
+			return;
+		}
+
 		// can be customized before Application is initialized
 		$userClass = PAIR_USER_CLASS;
 
@@ -816,11 +821,6 @@ class Application {
 
 		// session time length in minutes
 		$sessionTime = Options::get('session_time');
-
-		// stop processing if it is a CLI or guest module
-		if (static::isCli() or in_array($router->module, $this->guestModules)) {
-			return;
-		}
 
 		// get existing previous session
 		$session = new Session(session_id());
@@ -928,8 +928,9 @@ class Application {
 				$this->currentUser->redirectToDefault();
 			}
 
-			// redirect to login page if action is not login or password reset
-			if (!('user'==$router->module and in_array($router->action, ['login','reset','confirm','sendResetEmail','newPassword','setNewPassword']))) {
+			// redirect to login page if action is not login or password reset and not guest module
+			if (!('user'==$router->module and in_array($router->action, ['login','reset','confirm','sendResetEmail','newPassword','setNewPassword']))
+				and !in_array($router->module, $this->guestModules)) {
 				$this->redirect('user/login');
 			}
 
