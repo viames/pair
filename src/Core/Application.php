@@ -43,9 +43,9 @@ class Application {
 	private array $apiModules = ['api'];
 
 	/**
-	 * List of modules that can run with no authentication required.
+	 * List of modules [name => [actions]] that can run with no authentication required.
 	 */
-	private array $guestModules = ['oauth2'];
+	private array $guestModules = ['oauth2' => []];
 
 	/**
 	 * List of temporary variables, stored also in the browser cookie.
@@ -576,6 +576,20 @@ class Application {
 	}
 
 	/**
+	 * Add the name of a module to the list of guest modules, for which authorization is not required.
+	 * The optional allowedActions array can contain the list of actions that are allowed without
+	 * authentication, otherwise all actions are allowed.
+	 *
+	 * @param	string	Module or modules name.
+	 * @param	array	Optional list of allowed actions.
+	 */
+	public function guestModule(string $moduleName, array $allowedActions = []): void {
+
+		$this->guestModules[$moduleName] = $allowedActions;
+
+	}
+
+	/**
 	 * Handle API login, logout and custom requests.
 	 *
 	 * @param	string	Name of module that executes API requests. Default is “api”.
@@ -712,6 +726,127 @@ class Application {
 
 	}
 
+	private function handleUnauthenticated(): void {
+
+		// check RememberMe cookie
+		if (User::loginByRememberMe()) {
+			return;
+		}
+
+		$router = Router::getInstance();
+
+		// sends js message about session expired
+		if ($router->isRaw()) {
+
+			Utilities::jsonError('AUTH_SESSION_EXPIRED','User session expired',401);
+
+		// redirects to login page
+		} else {
+
+			// avoid to return POST requests
+			if (isset($_SERVER['REQUEST_METHOD']) and 'POST' !== $_SERVER['REQUEST_METHOD']) {
+				$this->setPersistentState('lastRequestedUrl', $router->getUrl());
+			}
+
+			// check if the request is for user module/action
+			$userRequest = ('user'==$router->module and in_array($router->action, ['login','reset','confirm','sendResetEmail','newPassword','setNewPassword']));
+
+			// check if the request is for guest module/action
+			$guestRequest = (in_array($router->module, array_keys($this->guestModules)) and in_array($router->action, $this->guestModules[$router->module]));
+
+			// redirect to login page if action is not login or password reset or guest module
+			if (!$userRequest and !$guestRequest) {
+				$this->redirect('user/login');
+			}
+
+		}
+
+	}
+
+	/**
+	 * Start the session and set the User class (Pair/Models/User or a custom one that inherites
+	 * from Pair/Models/User). Must use only for command-line and web application access.
+	 */
+	private function initializeSession(): void {
+
+		// get required singleton instances
+		$router = Router::getInstance();
+
+		// start session or resume session started by handleApiRequest
+		session_start();
+
+		// session time length in minutes
+		$sessionTime = Options::get('session_time');
+
+		// get existing previous session
+		$session = new Session(session_id());
+
+		// clean all old sessions
+		Session::cleanOlderThan($sessionTime);
+
+		// can be customized before Application is initialized
+		$userClass = $this->userClass;
+
+		// sets an empty user object
+		$this->setCurrentUser(new $userClass());
+
+		// handle session not loaded
+		if (!$session->isLoaded()) {
+			$this->handleUnauthenticated();
+			return;
+		}
+
+		// session is expired
+		if ($session->isExpired($sessionTime)) {
+
+			Audit::sessionExpired($session);
+			$session->delete();
+			$this->handleUnauthenticated();
+			return;
+
+		}
+
+		// session exists, extend session timeout
+		$session->extendTimeout();
+
+		// create User object
+		$user = new $userClass($session->userId);
+		$this->setCurrentUser($user);
+
+		$eventMessage = 'User session for ' . $user->fullName . ' is alive' .
+			', user time zone is ' . $this->currentUser->tzName .
+			' (' . sprintf('%+06.2f', (float)$this->currentUser->tzOffset) . ')';
+
+		// add log about user session
+		$logger = Logger::getInstance();
+		$logger->notice($eventMessage);
+
+		// set defaults in case of no module
+		if (!$router->module) {
+			$landing = $user->landing();
+			$router->module = $landing->module;
+			$router->action = $landing->action;
+		} else if ('user'==$router->module and 'login'==$router->action) {
+			$landing = $user->landing();
+			$this->redirect($landing->module . '/' . $landing->action);
+		}
+
+		$resource = $router->module . '/' . $router->action;
+
+		// access denied
+		if (!$this->currentUser->canAccess((string)$router->module, $router->action)) {
+			$landing = $user->landing();
+			$this->toastError(Translator::do('ERROR'), 'Access denied to ' . $resource);
+			// avoid infinite loop
+			if ($resource != $landing->module . '/' . $landing->action) {
+				$this->redirect($landing->module . '/' . $landing->action);
+			} else {
+				$this->redirect('user/logout');
+			}
+		}
+
+	}
+
 	/**
 	 * Return TRUE if Pair was invoked by CLI.
 	 */
@@ -812,145 +947,6 @@ class Application {
 	public function makeToastNotificationsPersistent(): void {
 
 		$this->setPersistentState('ToastNotifications', $this->toasts);
-
-	}
-
-	/**
-	 * Start the session and set the User class (Pair/Models/User or a custom one that inherites
-	 * from Pair/Models/User). Must use only for command-line and web application access.
-	 */
-	public function initializeSession(): void {
-
-		// get required singleton instances
-		$router = Router::getInstance();
-
-		// start session or resume session started by handleApiRequest
-		session_start();
-
-		// session time length in minutes
-		$sessionTime = Options::get('session_time');
-
-		// stop processing if it is a CLI or guest module
-		if (static::isCli() or in_array($router->module, $this->guestModules)) {
-			return;
-		}
-
-		// get existing previous session
-		$session = new Session(session_id());
-
-		// clean all old sessions
-		Session::cleanOlderThan($sessionTime);
-
-		// can be customized before Application is initialized
-		$userClass = $this->userClass;
-
-		// sets an empty user object
-		$this->setCurrentUser(new $userClass());
-
-		// session exists
-		if ($session->isLoaded()) {
-
-			// session is expired
-			if ($session->isExpired($sessionTime)) {
-
-				Audit::sessionExpired($session);
-
-				// check RememberMe cookie
-				if (User::loginByRememberMe()) {
-					Audit::rememberMeLogin();
-					return;
-				}
-
-				$comment = Translator::do('USER_SESSION_EXPIRED');
-
-				// sends js message about session expired
-				if ($router->isRaw()) {
-
-					Utilities::jsonError('AUTH_SESSION_EXPIRED','User session expired',401);
-
-				// redirects to login page
-				} else {
-
-					// delete the expired session from DB
-					$session->delete();
-
-					// set the page coming from avoiding post requests
-					if (isset($_SERVER['REQUEST_METHOD']) and 'POST' !== $_SERVER['REQUEST_METHOD']) {
-						$this->setPersistentState('lastRequestedUrl', $router->getUrl());
-					}
-
-					// queue a toast notification for the connected user
-					$this->toast($comment);
-
-					// goes to login page
-					$this->redirect('user/login');
-
-				}
-
-			// session loaded
-			} else {
-
-				// if session exists, extend session timeout
-				$session->extendTimeout();
-
-				// create User object
-				$user = new $userClass($session->userId);
-				$this->setCurrentUser($user);
-
-				$eventMessage = 'User session for ' . $user->fullName . ' is alive' .
-					', user time zone is ' . $this->currentUser->tzName .
-					' (' . sprintf('%+06.2f', (float)$this->currentUser->tzOffset) . ')';
-
-				// add log about user session
-				$logger = Logger::getInstance();
-				$logger->notice($eventMessage);
-
-				// set defaults in case of no module
-				if (!$router->module) {
-					$landing = $user->landing();
-					$router->module = $landing->module;
-					$router->action = $landing->action;
-				} else if ('user'==$router->module and 'login'==$router->action) {
-					$landing = $user->landing();
-					$this->redirect($landing->module . '/' . $landing->action);
-				}
-
-				$resource = $router->module . '/' . $router->action;
-
-				// access denied
-				if (!$this->currentUser->canAccess((string)$router->module, $router->action)) {
-					$landing = $user->landing();
-					$this->toastError(Translator::do('ERROR'), 'Access denied to ' . $resource);
-					// avoid infinite loop
-					if ($resource != $landing->module . '/' . $landing->action) {
-						$this->redirect($landing->module . '/' . $landing->action);
-					} else {
-						$this->redirect('user/logout');
-					}
-				}
-
-			}
-
-		// user is not logged in
-		} else {
-
-			// in case of AJAX call, sends a JSON error
-			if ($router->isRaw()) {
-				Utilities::jsonError('AUTH_SESSION_EXPIRED','User session expired',401);
-			}
-
-			// check RememberMe cookie
-			if (User::loginByRememberMe()) {
-				Audit::rememberMeLogin();
-				$this->currentUser->redirectToDefault();
-			}
-
-			// redirect to login page if action is not login or password reset
-			if (!('user'==$router->module and in_array($router->action, ['login','reset','confirm','sendResetEmail','newPassword','setNewPassword']))) {
-				$this->redirect('user/login');
-			}
-
-		}
 
 	}
 
@@ -1221,7 +1217,10 @@ class Application {
 
 		} else {
 
-			$this->initializeSession();
+			if (!static::isCli()) {
+				$this->initializeSession();
+			}
+
 			$this->runMvc();
 
 		}
@@ -1351,17 +1350,6 @@ class Application {
 		// sets user language
 		$tran = Translator::getInstance();
 		$tran->setLocale($user->getLocale());
-
-	}
-
-	/**
-	 * Add the name of a module to the list of guest modules, for which authorization is not required.
-	 *
-	 * @param	array|string	Module or modules name.
-	 */
-	public function setGuestModules(array|string $modules): void {
-
-		$this->guestModules = (array)$modules;
 
 	}
 

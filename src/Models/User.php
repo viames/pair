@@ -840,11 +840,17 @@ class User extends ActiveRecord {
 
 		// if user exists, return it
 		if (is_a($user, 'Pair\Models\User')) {
+
 			$user->createSession($cookieContent->timezone);
 			$user->renewRememberMe();
+			
 			$app = Application::getInstance();
 			$app->setCurrentUser($user);
+
+			Audit::rememberMeLogin();
+			
 			return TRUE;
+		
 		}
 
 		// login unsucceded

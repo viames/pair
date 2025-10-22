@@ -302,7 +302,7 @@ class Audit extends ActiveRecord {
 	public static function rememberMeLogin(): void {
 
 		if (Env::get('PAIR_AUDIT_REMEMBER_ME_LOGIN') and Env::get('PAIR_AUDIT_ALL')) {
-		
+
 			$audit = new Audit();
 			$audit->event = 'remember_me_login';
 			$audit->store();
