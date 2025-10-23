@@ -192,35 +192,14 @@ class Router {
 	}
 
 	/**
-	 * Remove special prefixes (ajax, raw) and return all the parameters found in the URL.
+	 * Return all the parameters found in the URL.
 	 */
 	private function getParameters(): array {
 
 		$url = ($this->url and '/' == $this->url[0]) ? substr($this->url,1) : (string)$this->url;
 
 		// split parameters by slash
-		$params = explode('/', $url);
-
-		// reveal ajax calls and raw requests and cuts special prefix from URL
-		if (array_key_exists(0, $params)) {
-
-			switch ($params[0]) {
-
-				case 'ajax':
-					$this->ajax = $this->raw = TRUE;
-					array_shift($params);
-					break;
-
-				case 'raw':
-					$this->raw = TRUE;
-					array_shift($params);
-					break;
-
-			}
-
-		}
-
-		return $params;
+		return explode('/', $url);
 
 	}
 
@@ -263,7 +242,6 @@ class Router {
 
 				// assign action
 				$this->action = $r->action;
-				$this->raw = $r->raw;
 
 				// assign even module
 				if (!$moduleRoute and !$this->module) {
@@ -627,19 +605,6 @@ class Router {
 	}
 
 	/**
-	 * Set page to be viewed with no template, useful for ajax requests and API.
-	 */
-	public static function setRaw(): void {
-
-		try {
-			self::$instance->raw = TRUE;
-		} catch (\Exception $e) {
-			die('Router instance has not been created yet');
-		}
-
-	}
-
-	/**
 	 * Add a new route path.
 	 *
 	 * @param	string		Path with optional variable placeholders.
@@ -661,7 +626,6 @@ class Router {
 		$route->path	= $path;
 		$route->action	= $action;
 		$route->module	= $module;
-		$route->raw		= (bool)$raw;
 
 		try {
 			self::$instance->routes[] = $route;
@@ -792,15 +756,6 @@ class Router {
 		$this->page = $tmp;
 
 		return $url;
-
-	}
-
-	/**
-	 * Returns TRUE if request is raw (API) or ajax.
-	 */
-	public function isRaw(): bool {
-
-		return $this->raw;
 
 	}
 

@@ -149,6 +149,11 @@ class Application {
 	private string $userClass = 'Pair\Models\User';
 
 	/**
+	 * Headless mode flag to avoid any output.
+	 */
+	private bool $headless = FALSE;
+
+	/**
 	 * List of reserved cookie names and related allowed classes.
 	 */
 	const RESERVED_COOKIE_NAMES = [
@@ -200,12 +205,12 @@ class Application {
 			$db->setUtf8unicode();
 		}
 
-		// default page title, maybe overwritten
-		$this->pageTitle(Env::get('APP_NAME'));
-
 		// raw calls will jump templates inclusion, so turn-out output buffer
-		if (!$router->isRaw()) {
-
+		if (!$this->headless) {
+			
+			// default page title, maybe overwritten
+			$this->pageTitle(Env::get('APP_NAME'));
+	
 			$gzip  = (isset($_SERVER['HTTP_ACCEPT_ENCODING']) and substr_count($_SERVER['HTTP_ACCEPT_ENCODING'], 'gzip'));
 
 			// if supported, output is compressed with gzip
@@ -214,6 +219,8 @@ class Application {
 			} else {
 				ob_start();
 			}
+
+			return;
 
 		}
 
@@ -241,7 +248,7 @@ class Application {
 
 			default:
 
-				$allowedProperties = ['activeRecordCache', 'currentUser', 'userClass', 'pageTitle', 'pageHeading', 'pageContent', 'menuLabel', 'menuUrl', 'template', 'messages'];
+				$allowedProperties = ['activeRecordCache', 'currentUser', 'userClass', 'pageTitle', 'pageHeading', 'pageContent', 'menuLabel', 'menuUrl', 'template', 'messages','headless'];
 
 				// search into variable assigned to the template as first
 				if (array_key_exists($name, $this->vars)) {
@@ -603,9 +610,6 @@ class Application {
 			return;
 		}
 
-		// set as raw request
-		Router::setRaw();
-
 		$logBar = LogBar::getInstance();
 		$logBar->disable();
 
@@ -629,6 +633,8 @@ class Application {
 
 		// new API Controller instance
 		$apiCtl = new $ctlName();
+
+		$this->headless(TRUE);
 
 		// set the action function
 		$action = $router->action ? $router->action . 'Action' : 'defaultAction';
@@ -736,7 +742,7 @@ class Application {
 		$router = Router::getInstance();
 
 		// sends js message about session expired
-		if ($router->isRaw()) {
+		if ($this->headless) {
 
 			Utilities::jsonError('AUTH_SESSION_EXPIRED','User session expired',401);
 
@@ -761,6 +767,16 @@ class Application {
 
 		}
 
+	}
+
+	/**
+	 * Enable or disable headless mode, avoiding to render any output. Chainable.
+	 */
+	public function headless(bool $on = TRUE): static {
+ 
+		$this->headless = $on;
+    	return $this;
+	
 	}
 
 	/**
@@ -1297,7 +1313,7 @@ class Application {
 			}
 
 			// raw calls will jump controller->display, ob and log
-			if ($router->isRaw()) {
+			if ($this->headless) {
 				return;
 			}
 

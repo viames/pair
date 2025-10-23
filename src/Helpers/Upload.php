@@ -299,20 +299,23 @@ class Upload {
 
 	/**
 	 * Manages saving the uploaded file directly to an Amazon S3 folder with the specified file name.
+	 * 
 	 * @param	string	Relative destination path on Amazon S3.
+	 * @param	AmazonS3	Amazon S3 service object.
+	 * @return	bool		TRUE on success, FALSE on failure.
+	 * @throws	PairException
 	 */
-	public function saveS3(string $filePath, AmazonS3 $amazonS3): bool {
+	public function saveS3(string $filePath, AmazonS3 $amazonS3): void {
 
 		// check upload errors
 		if (UPLOAD_ERR_OK != $this->fileError) {
-			$this->setError($this->getErrorMessage());
-			return FALSE;
+			throw new PairException('Upload error: ' . $this->getErrorMessage());
 		}
 
 		// sanitize file-name
 		$this->filename = Utilities::cleanFilename($this->filename);
 
-		return $amazonS3->put($this->fileTmpname, $filePath);
+		$amazonS3->put($this->fileTmpname, $filePath);
 
 	}
 

@@ -32,7 +32,7 @@ abstract class Controller {
 	/**
 	 * View object.
 	 */
-	protected View $view;
+	protected ?View $view = NULL;
 
 	/**
 	 * Translator object.
@@ -80,7 +80,7 @@ abstract class Controller {
 		$this->_init();
 
 		// children classes could have not set a view, so we set a default one
-		if (!isset($this->view) or is_null($this->view)) {
+		if (!$this->app->headless and (!isset($this->view) or is_null($this->view))) {
 			$this->setView($this->router->action ?: 'default');
 		}
 
@@ -164,7 +164,7 @@ abstract class Controller {
 	/**
 	 * Get the View object related to this controller.
 	 */
-	final public function getView(): View {
+	final public function getView(): ?View {
 
 		return $this->view;
 

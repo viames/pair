@@ -57,7 +57,7 @@ class PairException extends \Exception {
 		$router = Router::getInstance();
 		
 		// JSON error for AJAX requests or modal for web requests
-		if ($router->isRaw()) {
+		if ($app->headless) {
 			Utilities::jsonError('INTERNAL_SERVER_ERROR',$message);
 		} else {
 			$app = Application::getInstance();

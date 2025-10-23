@@ -9,6 +9,15 @@ use Pair\Html\SweetAlert;
 trait AppTrait {
 
 	/**
+	 * Set the application to headless mode (no view rendering).
+	 */
+	public function headless(bool $headless = TRUE): void {
+
+		Application::getInstance()->headless($headless);
+
+	}
+
+	/**
 	 * Get a state variable from cookie.
 	 *
 	 * @param	string	Name of the variable.
