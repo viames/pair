@@ -3,6 +3,7 @@
 namespace Pair;
 
 use \Pair\Oauth\Oauth2Token;
+use \Pair\Template;
 
 /**
  * Singleton object globally available for caching, queuing messages and render the template.
@@ -265,15 +266,6 @@ class Application {
 	public function __get(string $name) {
 
 		switch ($name) {
-
-			/**
-			 * for login page we need a default template
-			 * @deprecated use Template::getPath() instead.
-			 */
-			case 'templatePath':
-
-				$value = $this->getTemplate()->getPath();
-				break;
 
 			// useful in html tag to set language code
 			case 'langCode':
@@ -1194,9 +1186,9 @@ class Application {
 	 * If current selected template is not valid, replace it with the default one. It’s private to avoid
 	 * loops on derived templates load.
 	 *
-	 * @return	Pair\Template
+	 * @return	NULL|Template
 	 */
-	private function getTemplate() {
+	public function getTemplate(): ?Template {
 
 		if (!$this->template or !$this->template->areKeysPopulated()) {
 			$this->template = Template::getDefault();

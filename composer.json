@@ -2,12 +2,15 @@
 	"name": "viames/pair",
 	"description": "lightweight PHP framework as the air",
 	"type": "library",
+	"minimum-stability": "stable",
+	"prefer-stable": true,
 	"require": {
-		"php": "8.3",
-		"league/flysystem-aws-s3-v3": "^1|^3",
-		"sistemi-etime/flysystem-plugin-aws-s3-v3": "^1",
-		"sentry/sdk": "^4",
-		"phpoffice/phpspreadsheet": "^1|^2"
+		"ext-curl": "*",
+		"ext-intl": "*",
+		"ext-json": "*",
+		"ext-mbstring": "*",
+		"ext-pdo": "*",
+		"php": "^8.3||^8.4"
 	},
 	"repositories": [
 		{
@@ -26,8 +29,6 @@
 		"framework",
 		"active-record",
 		"plugin-system",
-		"pagination",
-		"router",
 		"rest-api"
 	],
 	"autoload": {
@@ -44,7 +45,7 @@
 		"wiki": "https://github.com/viames/pair/wiki",
 		"source": "https://github.com/viames/pair/tree/master/src"
 	},
-	"homepage": "https://viames.github.io/Pair/",
+	"homepage": "https://viames.github.io/pair/",
 	"authors": [
 		{
 			"name": "Viames Marino",
@@ -53,11 +54,10 @@
 	],
 	"config": {
 		"platform": {
-			"php": "8.3"
+			"php": "8"
 		}
 	},
 	"suggest": {
 		"ext-xdebug": "*"
-	},
-	"minimum-stability": "stable"
+	}
 }
