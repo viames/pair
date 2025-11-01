@@ -125,7 +125,7 @@ abstract class View {
 
 	/**
 	 * Returns, if it exists, the variable assigned to the layout,
-	 * otherwise the property of the method, otherwise NULL.
+	 * otherwise the property of the method, otherwise null.
 	 *
 	 * @param	string	Name of the variable.
 	 * @throws	AppException	If the property doesn’t exist.
@@ -179,7 +179,7 @@ abstract class View {
 	 * @param	string	Layout file name without extension (.php).
 	 * @throws	\Exception	If layout file doesn’t exist.
 	 */
-	final public function display(?string $name=NULL): void {
+	final public function display(?string $name=null): void {
 
 		try {
 
@@ -237,7 +237,7 @@ abstract class View {
 	 * @param	string|array|null	List of parameters to bind on string (optional).
 	 * @param	bool	Show a warning if the key is not found.
 	 */
-	public function lang(string $key, string|array|NULL $vars=NULL, bool $warning=TRUE): string {
+	public function lang(string $key, string|array|null $vars=null, bool $warning=true): string {
 
 		return Translator::do($key, $vars, $warning);
 
@@ -249,7 +249,7 @@ abstract class View {
 	 * @param	string	The language key.
 	 * @param	array	List of parameters to bind on string (optional).
 	 */
-	public function _($key, $vars=NULL) {
+	public function _($key, $vars=null) {
 
 		print Translator::do($key, $vars);
 
@@ -261,7 +261,7 @@ abstract class View {
 	 * @param	string	Expected object class type.
 	 * @throws	AppException if the object is not loaded.
 	 */
-	protected function getObjectRequestedById(string $class, ?int $pos=NULL): ?ActiveRecord {
+	protected function getObjectRequestedById(string $class, ?int $pos=null): ?ActiveRecord {
 
 		// reads from url requested item id
 		$itemId = Router::get($pos ? abs($pos) : 0);
@@ -308,9 +308,9 @@ abstract class View {
 	/**
 	 * Shortcut to print a “No data” message box.
 	 */
-	public function noData(): void {
+	public function noData(?string $customMessage=null): void {
 
-		Utilities::showNoDataAlert();
+		Utilities::showNoDataAlert($customMessage);
 
 	}
 

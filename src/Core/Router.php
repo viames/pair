@@ -14,27 +14,27 @@ class Router {
 	/**
 	 * Request URL.
 	 */
-	private ?string $url = NULL;
+	private ?string $url = null;
 
 	/**
 	 * Flag that’s true if request is AJAX.
 	 */
-	private bool $ajax = FALSE;
+	private bool $ajax = false;
 
 	/**
 	 * Flag that’s true if page will avoid any templating.
 	 */
-	private bool $raw = FALSE;
+	private bool $raw = false;
 
 	/**
 	 * Module name.
 	 */
-	private ?string $module = NULL;
+	private ?string $module = null;
 
 	/**
 	 * Action name.
 	 */
-	private ?string $action = NULL;
+	private ?string $action = null;
 
 	/**
 	 * Extended variables.
@@ -44,22 +44,22 @@ class Router {
 	/**
 	 * Defautls value when empty URL.
 	 */
-	private array $defaults = ['module'=>NULL,'action'=>NULL];
+	private array $defaults = ['module'=>null,'action'=>null];
 
 	/**
 	 * Current page number.
 	 */
-	private ?int $page = NULL;
+	private ?int $page = null;
 
 	/**
 	 * Current ordering value.
 	 */
-	private ?int $order = NULL;
+	private ?int $order = null;
 
 	/**
 	 * Flag that’s true if the order has been changed.
 	 */
-	private bool $orderChanged = FALSE;
+	private bool $orderChanged = false;
 
 	/**
 	 * List of custom routing paths.
@@ -69,15 +69,15 @@ class Router {
 	/**
 	 * Flag for show log informations on AJAX calls.
 	 */
-	private bool $sendLog = TRUE;
+	private bool $sendLog = true;
 
 	/**
 	 * Private constructor, called by getInstance() method.
 	 */
 	private function __construct() {
 
-		// request URL, NULL for CLI
-		$this->url = Application::isCli() ? NULL : $_SERVER['REQUEST_URI'];
+		// request URL, null for CLI
+		$this->url = Application::isCli() ? null : $_SERVER['REQUEST_URI'];
 
 		// remove URL_PATH from URL
 		if (URL_PATH and (is_null($this->url) or strpos((string)$this->url,URL_PATH)===0)) {
@@ -90,7 +90,7 @@ class Router {
 	}
 
 	/**
-	 * Returns property’s value or NULL.
+	 * Returns property’s value or null.
 	 *
 	 * @param	string	Property’s name.
 	 * @throws	\Exception	If property doesn’t exist.
@@ -101,7 +101,7 @@ class Router {
 			throw new \Exception('Property “'. $name .'” doesn’t exist for '. get_called_class(), ErrorCodes::PROPERTY_NOT_FOUND);
 		}
 		
-		return isset($this->$name) ? $this->$name : NULL;
+		return isset($this->$name) ? $this->$name : null;
 	
 	}
 
@@ -130,6 +130,43 @@ class Router {
 
 	}
 
+	/**
+	 * Create then return the singleton object.
+	 */
+	public static function getInstance(): self {
+
+		if (!isset(self::$instance) or is_null(self::$instance)) {
+			self::$instance = new self();
+		}
+
+		return self::$instance;
+
+	}
+
+	/**
+	 * Return an URL parameter, if exists. Exclude routing base params (module and action).
+	 *
+	 * @param	mixed	Parameter position (zero based) or Key name.
+	 * @param	bool	Flag to decode a previously encoded value as char-only.
+	 */
+	public static function get(int|string $paramIdx, bool $decode=false): ?string {
+
+		$self = static::$instance;
+
+		if (!$self) return null;
+
+		if (array_key_exists($paramIdx, $self->vars) and ''!=$self->vars[$paramIdx]) {
+			$value = $self->vars[$paramIdx];
+			if ($decode) {
+				$value = json_decode(gzinflate(base64_decode(strtr($value, '-_', '+/'))));
+			}
+			return $value;
+		} else {
+			return null;
+		}
+
+	}
+
 	public function parseRoutes(): void {
 
 		// parse, add and remove from URL any CGI param after question mark
@@ -148,7 +185,7 @@ class Router {
 
 		// try matches in module specifics routes.php file
 		if (defined('MODULE_PATH')) {
-			$routeMatches2 = $this->parseCustomRoutes($params, APPLICATION_PATH . '/' . MODULE_PATH . 'routes.php', TRUE);
+			$routeMatches2 = $this->parseCustomRoutes($params, APPLICATION_PATH . '/' . MODULE_PATH . 'routes.php', true);
 		}
 
 		// if custom routes don't match, go for standard
@@ -164,7 +201,7 @@ class Router {
 	 */
 	private function parseCgiParameters(): void {
 
-		if (FALSE===strpos((string)$this->url, '?')) {
+		if (false===strpos((string)$this->url, '?')) {
 			return;
 		}
 
@@ -210,15 +247,15 @@ class Router {
 	 * @param	string			Path to routes file.
 	 * @param	bool			Flag to set as module routes.
 	 */
-	private function parseCustomRoutes(array $params, string $routesFile, bool $moduleRoute=FALSE): bool {
+	private function parseCustomRoutes(array $params, string $routesFile, bool $moduleRoute=false): bool {
 
 		// check if controller file exists
 		if (!file_exists($routesFile)) {
-			return FALSE;
+			return false;
 		}
 
 		// trigger for route processed
-		$routeMatches = FALSE;
+		$routeMatches = false;
 
 		// temporary store previous routes
 		$routesBackup = $this->routes;
@@ -268,7 +305,7 @@ class Router {
 						$regexPos = strpos($part, '(');
 
 						// remove the colon and any regex after variable name
-						$variables[$pos] = FALSE === $regexPos ?
+						$variables[$pos] = false === $regexPos ?
 							substr($part,1) :
 							substr($part,1,$regexPos-1);
 
@@ -282,7 +319,7 @@ class Router {
 					// flag to not send back log (useful for AJAX)
 					if ('noLog' == $value) {
 
-						$this->sendLog = FALSE;
+						$this->sendLog = false;
 
 					// ordering
 					} else if ('order-' == substr($value, 0, 6)) {
@@ -310,7 +347,7 @@ class Router {
 
 				}
 
-				$routeMatches = TRUE;
+				$routeMatches = true;
 
 				break;
 
@@ -354,7 +391,7 @@ class Router {
 					// flag to not send back log (useful for AJAX)
 					if ('noLog' == $param) {
 
-						$this->sendLog = FALSE;
+						$this->sendLog = false;
 					
 					// ordering
 					} else if ('order-' == substr($param, 0, 6)) {
@@ -384,49 +421,12 @@ class Router {
 	}
 
 	/**
-	 * Create then return the singleton object.
-	 */
-	public static function getInstance(): self {
-
-		if (!isset(self::$instance) or is_null(self::$instance)) {
-			self::$instance = new self();
-		}
-
-		return self::$instance;
-
-	}
-
-	/**
-	 * Return an URL parameter, if exists. Exclude routing base params (module and action).
-	 *
-	 * @param	mixed	Parameter position (zero based) or Key name.
-	 * @param	bool	Flag to decode a previously encoded value as char-only.
-	 */
-	public static function get(int|string $paramIdx, bool $decode=FALSE): ?string {
-
-		$self = static::$instance;
-
-		if (!$self) return NULL;
-
-		if (array_key_exists($paramIdx, $self->vars) and ''!=$self->vars[$paramIdx]) {
-			$value = $self->vars[$paramIdx];
-			if ($decode) {
-				$value = json_decode(gzinflate(base64_decode(strtr($value, '-_', '+/'))));
-			}
-			return $value;
-		} else {
-			return NULL;
-		}
-
-	}
-
-	/**
 	 * Return an URL parameter, if exists. It escludes routing base params (module and action).
 	 *
 	 * @param	mixed	Parameter position (zero based) or Key name.
 	 * @param	bool	Flag to decode a previously encoded value as char-only.
 	 */
-	public function getParam(int|string $paramIdx, bool $decode=FALSE): ?string {
+	public function getParam(int|string $paramIdx, bool $decode=false): ?string {
 
 		if (array_key_exists($paramIdx, $this->vars) and ''!=$this->vars[$paramIdx]) {
 			$value = $this->vars[$paramIdx];
@@ -435,7 +435,7 @@ class Router {
 			}
 			return $value;
 		} else {
-			return NULL;
+			return null;
 		}
 
 	}
@@ -447,7 +447,7 @@ class Router {
 	 * @param	string	Value to add.
 	 * @param	bool	Flag to encode as char-only the value.
 	 */
-	public function setParam(mixed $paramIdx, string $value, bool $encode=FALSE): void {
+	public function setParam(mixed $paramIdx, string $value, bool $encode=false): void {
 
 		if ($encode) {
 			$value = rtrim(strtr(base64_encode(gzdeflate(json_encode($value), 9)), '+/', '-_'), '=');
@@ -501,7 +501,7 @@ class Router {
 			if (preg_match('/\/order-(\d+)/', $_SERVER['HTTP_REFERER'], $matches)) {
 				$oldOrder = (int)$matches[1];
 				if ($oldOrder !== $order) {
-					$this->orderChanged = TRUE;
+					$this->orderChanged = true;
 				}
 			}
 		}
@@ -565,7 +565,7 @@ class Router {
 	/**
 	 * Set the action
 	 *
-	 * @param  string|NULL	Action string or NULL.
+	 * @param  string|null	Action string or null.
 	 */
 	public function setAction(?string $action): void {
 
@@ -609,10 +609,10 @@ class Router {
 	 *
 	 * @param	string		Path with optional variable placeholders.
 	 * @param	string		Action.
-	 * @param	string|NULL	Optional module name.
-	 * @param	bool|NULL	Optional raw flag.
+	 * @param	string|null	Optional module name.
+	 * @param	bool|null	Optional raw flag.
 	 */
-	public static function addRoute(string $path, string $action, ?string $module=NULL, ?bool $raw=FALSE) {
+	public static function addRoute(string $path, string $action, ?string $module=null, ?bool $raw=false) {
 
 		// fix empty path
 		if ('' == $path) {
@@ -637,7 +637,7 @@ class Router {
 
 	/**
 	 * Compare a custom route path as text or regex to the param URL and
-	 * return TRUE if it matches.
+	 * return true if it matches.
 	 *
 	 * @param	string	The custom Route path.
 	 * @param	string	The URL to check.
@@ -672,7 +672,7 @@ class Router {
 
 		}
 
-		return NULL;
+		return null;
 
 	}
 
@@ -720,12 +720,12 @@ class Router {
 	}
 
 	/**
-	 * Proxy method to get the current URL with a different order value. If NULL param, will
+	 * Proxy method to get the current URL with a different order value. If null param, will
 	 * reset ordering.
 	 *
-	 * @param	int|NULL	Optional order value to build the URL with.
+	 * @param	int|null	Optional order value to build the URL with.
 	 */
-	public function getOrderUrl(?int $val=NULL): string {
+	public function getOrderUrl(?int $val=null): string {
 
 		// save current order val
 		$tmp = $this->order;
@@ -740,12 +740,12 @@ class Router {
 	}
 
 	/**
-	 * Special method to get the current URL with a different page number. If NULL param, will
+	 * Special method to get the current URL with a different page number. If null param, will
 	 * reset pagination.
 	 *
-	 * @param	int|NULL	Optional page number to build the URL with.
+	 * @param	int|null	Optional page number to build the URL with.
 	 */
-	public function getPageUrl(?int $page=NULL): string {
+	public function getPageUrl(?int $page=null): string {
 
 		// save current order val
 		$tmp = $this->page;
@@ -760,7 +760,7 @@ class Router {
 	}
 
 	/**
-	 * Returns TRUE if log must be printed to user via ajax.
+	 * Returns true if log must be printed to user via ajax.
 	 */
 	public function sendLog(): bool {
 

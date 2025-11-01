@@ -6,50 +6,60 @@ use Pair\Core\Env;
 use Pair\Orm\ActiveRecord;
 use Pair\Orm\Database;
 
-class Oauth2Token extends ActiveRecord {
+/**
+ * OAuth2 access token model.
+ *
+ * Responsibilities:
+ * - Represents a row in the `oauth2_tokens` table.
+ * - Parses Authorization headers for Basic and Bearer schemes.
+ * - Validates token existence and freshness against configured lifetime.
+ * - Sends minimal RFC 2616 JSON responses for common HTTP statuses.
+ */
+class OAuth2Token extends ActiveRecord {
 
 	/**
-	 * This property maps “id” column.
+	 * Maps to the auto-increment `id` column.
 	 */
 	protected int $id;
 
 	/**
-	 * This property maps “client_id” column.
+	 * Maps to the `client_id` column (foreign key to oauth2_clients.id).
 	 */
 	protected string $clientId;
 
 	/**
-	 * This property maps “token” column.
+	 * Maps to the `token` column (bearer token string).
 	 */
 	protected string $token;
 
 	/**
-	 * This property maps “created_at” column.
+	 * Maps to the `created_at` column.
 	 */
 	protected \DateTime $createdAt;
 
 	/**
-	 * This property maps “updated_at” column.
+	 * Maps to the `updated_at` column.
 	 */
 	protected \DateTime $updatedAt;
 
 	/**
-	 * Name of related db table.
+	 * Name of the related database table.
 	 */
 	const TABLE_NAME = 'oauth2_tokens';
 
 	/**
-	 * Default token lifetime in seconds.
+	 * Legacy default lifetime in seconds (unused if `OAUTH2_TOKEN_LIFETIME` is set).
 	 */
 	const LIFETIME = 3600;
 
 	/**
-	 * Name of primary key db field.
+	 * Name of the primary key field.
 	 */
 	const TABLE_KEY = 'id';
 
 	/**
-	 * Method called by constructor just after having populated the object.
+	 * Called by the constructor after population.
+	 * Used to define casting/binding of fields to PHP types.
 	 */
 	protected function _init(): void {
 
@@ -60,11 +70,14 @@ class Oauth2Token extends ActiveRecord {
 	}
 
 	/**
-	 * Get the Authorization header.
+	 * Get the raw Authorization header value, if any. Supports common server variables and Apache’s request
+	 * headers.
+	 *
+	 * @return string|null The header value (e.g., "Bearer <token>" or "Basic <base64>"), or null if missing.
 	 */
 	private static function getAuthorizationHeader(): ?string {
 
-		$header = NULL;
+		$header = null;
 
 		if (isset($_SERVER['Authorization'])) {
 
@@ -78,7 +91,7 @@ class Oauth2Token extends ActiveRecord {
 
 			$requestHeaders = apache_request_headers();
 
-			// Server-side fix for bug in old Android versions (a nice side-effect of this fix means we don't care about capitalization for Authorization)
+			// normalize header names capitalization to catch "authorization" vs "Authorization"
 			$requestHeaders = array_combine(array_map('ucwords', array_keys($requestHeaders)), array_values($requestHeaders));
 
 			if (isset($requestHeaders['Authorization'])) {
@@ -92,7 +105,9 @@ class Oauth2Token extends ActiveRecord {
 	}
 
 	/**
-	 * Get access token from header.
+	 * Extract an OAuth2 Bearer token from the Authorization header.
+	 *
+	 * @return string|null The token string, or null if header is missing or not Bearer.
 	 */
 	public static function readBearerToken(): ?string {
 
@@ -102,12 +117,14 @@ class Oauth2Token extends ActiveRecord {
 			return $matches[1];
 		}
 
-		return NULL;
+		return null;
 
 	}
 
 	/**
-	 * Read client_id and client_secret from header authorization.
+	 * Extract client_id and client_secret from a Basic Authorization header.
+	 *
+	 * @return \stdClass|null An object with ->id and ->secret, or null if missing/invalid.
 	 */
 	public static function readBasicAuth(): ?\stdClass {
 
@@ -120,14 +137,16 @@ class Oauth2Token extends ActiveRecord {
 			return $client;
 		}
 
-		return NULL;
+		return null;
 
 	}
 
 	/**
-	 * Verify that the past token exists and has a compatible date and creates a past date for the number of seconds in duration
+	 * Validate that a given bearer token exists and is still within lifetime. Lifetime is evaluated
+	 * by checking tokens whose `updated_at` is greater than * "NOW() minus OAUTH2_TOKEN_LIFETIME seconds".
 	 *
-	 * @param string $bearerToken
+	 * @param	string	The token to validate.
+	 * @return	bool	True if valid and fresh, false otherwise.
 	 */
 	public static function validate(string $bearerToken): bool {
 
@@ -141,6 +160,11 @@ class Oauth2Token extends ActiveRecord {
 
 	}
 
+	/**
+	 * Send a 200 OK JSON response with details and terminate execution.
+	 *
+	 * @param string Human-readable detail message.
+	 */
 	public static function ok(string $detail): void {
 
 		self::sendRfc2616Response('#sec10.2.1','OK','200', $detail);
@@ -148,10 +172,11 @@ class Oauth2Token extends ActiveRecord {
 	}
 
 	/**
-	 * The request could not be understood by the server due to malformed syntax. The client
-	 * Should not repeat the request without modifications.
+	 * Send a 400 Bad Request JSON response and terminate execution. The request could not be
+	 * understood by the server due to malformed syntax. The client should not repeat the
+	 * request without modifications.
 	 *
-	 * @param string $detail
+	 * @param string Human-readable detail message.
 	 */
 	public static function badRequest(string $detail): void {
 
@@ -166,7 +191,7 @@ class Oauth2Token extends ActiveRecord {
 	 * (section 14.8). If the request already included Authorization credentials, then the 401
 	 * response indicates that authorization has been refused for those credentials.
 	 *
-	 * @param string $detail
+	 * @param string Human-readable detail message.
 	 */
 	public static function unauthorized(string $detail): void {
 
@@ -181,7 +206,8 @@ class Oauth2Token extends ActiveRecord {
 	 * describe the reason for the refusal in the entity. If the server does not wish to make
 	 * this information available to the client, the status code 404 (Not Found) can be used
 	 * instead.
-	 * @param string $detail
+	 *
+	 * @param string Human-readable detail message.
 	 */
 	public static function forbidden(string $detail): void {
 
@@ -191,15 +217,16 @@ class Oauth2Token extends ActiveRecord {
 
 	/**
 	 * Send a JSON object in HTTP response.
+	 * 
 	 * @see https://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html
-	 * @param string $type
-	 * @param string $title
-	 * @param string $status
-	 * @param NULL|string $detail
+	 * @param	string		RFC section hash suffix.
+	 * @param	string		Short status text.
+	 * @param	string		HTTP status code as string.
+	 * @param	string|null	Optional detail message.
 	 */
-	private static function sendRfc2616Response(string $type, string $title, string $status, ?string $detail=NULL): void {
+	private static function sendRfc2616Response(string $type, string $title, string $status, ?string $detail=null): void {
 
-		header('Content-Type: application/json', TRUE, (int)$status);
+		header('Content-Type: application/json', true, (int)$status);
 		$body = [
 			'type'	=> 'http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html' . $type,
 			'title'	=> $title,

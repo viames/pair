@@ -106,10 +106,6 @@ Feedback, code integration, and documentation adjustments are welcome.
 
 If you would like to contribute to this project, please feel free to submit a pull request.
 
-## Update from Pair v2 to v3
-
-Instructions and a script for upgrading applications from Pair 2 to Pair 3 are available in the file [UPGRADE.md](UPGRADE.md).
-
 # License
 
 MIT

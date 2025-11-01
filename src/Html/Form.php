@@ -69,7 +69,7 @@ class Form {
 	/**
 	 * Class to add on each labels.
 	 */
-	private ?string $labelClasses = NULL;
+	private ?string $labelClasses = null;
 
 	/**
 	 * Add a FormControl object to controls list of this Form. Chainable method.
@@ -96,6 +96,17 @@ class Form {
 	}
 
 	/**
+	 * Set all registered controls as disabled.
+	 */
+	public function allDisabled(): void {
+
+		foreach ($this->controls as $control) {
+			$control->disabled();
+		}
+
+	}
+
+	/**
 	 * Set all registered controls as readonly.
 	 */
 	public function allReadonly(): void {
@@ -115,7 +126,7 @@ class Form {
 	 * @param	string	More parameters as associative array tag=>value (optional).
 	 * @param	string	Name of Font Awesome icon class (optional).
 	 */
-	public static function buildButton(string $value, string $type='submit', ?string $name=NULL, $attributes=[], $faIcon=NULL): string {
+	public static function buildButton(string $value, string $type='submit', ?string $name=null, $attributes=[], $faIcon=null): string {
 
 		$control = new Button($name, $attributes);
 		$control->type($type)->faIcon($faIcon)->value($value);
@@ -128,11 +139,11 @@ class Form {
 	 * Creates an HTML input form control.
 	 *
 	 * @param	string	HTML name for this control.
-	 * @param	string	Default value (NULL default).
+	 * @param	string	Default value (null default).
 	 * @param	string	Type (text -default-, password, email, url, etc.).
 	 * @param	array	More parameters as associative array tag=>value (optional).
 	 */
-	public static function buildInput(string $name, ?string $value=NULL, ?string $type=NULL, array $attributes=[]): string {
+	public static function buildInput(string $name, ?string $value=null, ?string $type=null, array $attributes=[]): string {
 
 		if (!$type) {
 			$type = 'text';
@@ -155,11 +166,11 @@ class Form {
 	 * @param	Collection|array	Array with object as options.
 	 * @param	string	Property name of the value for option object (default is “value”).
 	 * @param	string	Property name of the text for option object (default is “text”).
-	 * @param	string	Value selected in this select (default NULL).
+	 * @param	string	Value selected in this select (default null).
 	 * @param	string	Extended parameters as associative array tag=>value.
-	 * @param	string	Prepend empty value (default NULL, no prepend).
+	 * @param	string	Prepend empty value (default null, no prepend).
 	 */
-	public static function buildSelect(string $name, Collection|array $list, string $valName='value', string $textName='text', $value=NULL, $attributes=NULL, $prependEmpty=NULL): string {
+	public static function buildSelect(string $name, Collection|array $list, string $valName='value', string $textName='text', $value=null, $attributes=null, $prependEmpty=null): string {
 
 		$control = new Select($name, $attributes);
 		$control->options($list, $valName, $textName)->value($value);
@@ -178,10 +189,10 @@ class Form {
 	 * @param	string	HTML name for this control.
 	 * @param   int		Rows value.
 	 * @param   int		Columns value.
-	 * @param	string	Default value (NULL default).
+	 * @param	string	Default value (null default).
 	 * @param	string	More parameters as associative array tag=>value (optional).
 	 */
-	public static function buildTextarea(string $name, int $rows, int $cols, $value=NULL, $attributes=[]): string {
+	public static function buildTextarea(string $name, int $rows, int $cols, $value=null, $attributes=[]): string {
 
 		$control = new Textarea($name, $attributes);
 		$control->rows($rows)->cols($cols)->value($value);
@@ -226,13 +237,13 @@ class Form {
 
 		// checks if token is present in session
 		if ('POST' !== $_SERVER['REQUEST_METHOD'] or !isset($_SESSION['csrf_token'])) {
-			return FALSE;
+			return false;
 		}
 
 		// checks if token is present in POST data
 		$postedToken = Post::trim('csrf_token');
 		if (!$postedToken) {
-			return FALSE;
+			return false;
 		}
 
 		// compares both tokens
@@ -422,12 +433,12 @@ class Form {
 	 */
 	public function isValid(): bool {
 
-		$valid = TRUE;
+		$valid = true;
 
 		foreach ($this->controls as $control) {
 
 			if (!$control->validate()) {
-				$valid = FALSE;
+				$valid = false;
 			}
 
 		}
@@ -552,11 +563,11 @@ class Form {
 		}
 
 		if (!$this->controlExists($controlName)) {
-			return FALSE;
+			return false;
 		}
 
 		unset($this->controls[$controlName]);
-		return TRUE;
+		return true;
 
 	}
 
