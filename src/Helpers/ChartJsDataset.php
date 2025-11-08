@@ -47,7 +47,7 @@ class ChartJsDataset {
 	 * second format is an object. This object is used when you want to display multiple datasets on the same chart.
 	 * The object has to contain the data property, which is an array of numbers.
 	 */
-	public function __construct(array $data, ?string $label=NULL) {
+	public function __construct(array $data, ?string $label = null) {
 
 		if (!count($data)) {
 			throw new AppException('ChartJS dataset must have at least one data point');
@@ -88,7 +88,7 @@ class ChartJsDataset {
 	 * @param	string	The interpolation mode. Possible values are: default, monotone.
 	 * @param	float	The Bezier curve tension of the line.
 	 */
-	public function interpolation(string $mode='default', float $tension=0.4): self {
+	public function interpolation(string $mode = 'default', float $tension = 0.4): self {
 
 		if (!in_array($mode, ['default', 'monotone'])) {
 			throw new AppException('ChartJs dataset interpolation mode is not valid: ' . $mode);

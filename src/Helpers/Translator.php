@@ -216,7 +216,7 @@ class Translator {
 	 * @param	bool|NULL	Show a warning if string is not found (optional).
 	 * @param	string|Callable	What to return if string is not found (optional).
 	 */
-	public static function do(string $key, string|array|NULL $vars=NULL, bool $warning=TRUE, string|Callable|NULL $default=NULL): string {
+	public static function do(string $key, string|array|NULL $vars = null, bool $warning = true, string|Callable|NULL $default = null): string {
 
 		$self = static::getInstance();
 

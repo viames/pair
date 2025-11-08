@@ -104,7 +104,7 @@ class TelegramSender {
 	 *
 	 * @throws PairException
 	 */
-	public function message(int $chatId, string $message, ?string $parseMode=NULL): void {
+	public function message(int $chatId, string $message, ?string $parseMode = null): void {
 
 		$postData = [
 			'chat_id' => $chatId,
@@ -125,7 +125,7 @@ class TelegramSender {
 	 *
 	 * @throws PairException
 	 */
-	public function photo(int $chatId, string $imagePath, ?string $caption=NULL): void {
+	public function photo(int $chatId, string $imagePath, ?string $caption = null): void {
 
 		if ($chatId < 1) {
 			throw new PairException('Telegram Chat ID value not valid (' . $chatId . ')', ErrorCodes::TELEGRAM_FAILURE);

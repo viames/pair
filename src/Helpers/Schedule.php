@@ -40,7 +40,7 @@ class Schedule {
 	 * @param callable $functionToRun
 	 * @param mixed|null $params
 	 */
-	public function command(callable $functionToRun, mixed $params=null): self {
+	public function command(callable $functionToRun, mixed $params = null): self {
 
 		$this->params = $params;
 

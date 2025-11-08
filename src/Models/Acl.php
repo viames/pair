@@ -2,14 +2,19 @@
 
 namespace Pair\Models;
 
+use Pair\Models\Audit;
 use Pair\Orm\ActiveRecord;
 use Pair\Orm\Database;
-use Pair\Models\Audit;
 
+/**
+ * Access control list (ACL) model. Represents authorization rules linking user groups to allowed
+ * modules/actions. Provides helpers to resolve rule-related metadata (e.g., module name) and to
+ * evaluate permissions through database-backed checks.
+ */
 class Acl extends ActiveRecord {
 
 	/**
-	 * Property that binds db primary key id.
+	 * Primary key of this ACL record (table `acl`).
 	 */
 	protected int $id;
 
@@ -50,22 +55,6 @@ class Acl extends ActiveRecord {
 	}
 
 	/**
-	 * Returns array with matching object property name on related db fields.
-	 */
-	protected static function getBinds(): array {
-
-		$varFields = [
-			'id'		=> 'id',
-			'ruleId'	=> 'rule_id',
-			'groupId'	=> 'group_id',
-			'default'	=> 'is_default'
-		];
-
-		return $varFields;
-
-	}
-
-	/**
 	 * Trigger function called after delete() method execution.
 	 */
 	protected function afterCreate(): void {
@@ -84,23 +73,27 @@ class Acl extends ActiveRecord {
 	}
 
 	/**
-	 * Checks if user-group is allowed on a module/action doing a single sql query to db.
-	 * Expensive function.
+	 * Determines whether a user group can access a given module/action with a single SQL COUNT query.
+	 * Behavior:
+	 * - Bypasses ACL checks when $admin is true or when $module === 'user'.
+	 * - Otherwise, validates the presence of a non-admin-only rule that either:
+	 *   a) matches the module with a null/empty action (wildcard), or
+	 *   b) matches the exact module + action pair.
 	 *
-	 * @param	bool	Flag for admin user (=TRUE).
-	 * @param	int		User group ID.
-	 * @param	string	Name of invoked module.
-	 * @param	string	Name of invoked action or null if any action is valid.
+	 * @param bool			Whether the current user is an administrator
+	 * @param int			The ID of the user's group
+	 * @param string		The target module name
+	 * @param string|null	The target action name, or null to allow any action
+	 * @return bool			True if access is granted by at least one matching rule, false otherwise
 	 */
-	public static function checkPermission($admin, $groupId, $module, $action=NULL): bool {
-
-		$db = Database::getInstance();
+	public static function checkPermission($admin, $groupId, $module, $action = null): bool {
 
 		// login and logout are always allowed
 		if ('user'==$module or $admin) {
 			return TRUE;
 		}
 
+		// build a single-count query to verify at least one matching acl rule exists
 		$query =
 			'SELECT COUNT(*)
 			FROM `rules` AS r
@@ -109,19 +102,39 @@ class Acl extends ActiveRecord {
 			AND r.`admin_only` = 0
 			AND (
 				(r.`module` = ? AND (r.`action` IS NULL OR r.`action`=""))
-				OR (r.module = ? AND r.action = ?)
+				OR (r.`module` = ? AND r.`action` = ?)
 			)';
 
-		$db->setQuery($query);
+		$count = Database::load($query, [$groupId, $module, $module, $action], Database::COUNT);
 
-		$count = $db->loadCount([$groupId, $module, $module, $action]);
-
+		// true if at least one rule matches
 		return (bool)$count;
 
 	}
 
 	/**
-	 * Returns module name for this ACL.
+	 * Returns array with matching object property name on related db fields.
+	 */
+	protected static function getBinds(): array {
+
+		$varFields = [
+			'id'		=> 'id',
+			'ruleId'	=> 'rule_id',
+			'groupId'	=> 'group_id',
+			'default'	=> 'is_default'
+		];
+
+		return $varFields;
+
+	}
+
+	/**
+	 * Returns the human-readable module name associated with this rule.
+	 *
+	 * Resolves the module label by joining the `rules` table with `modules`
+	 * using the current record's rule id.
+	 *
+	 * @return string the module name linked to this ACL rule
 	 */
 	public function getModuleName(): string {
 
@@ -131,6 +144,7 @@ class Acl extends ActiveRecord {
 			INNER JOIN `modules` as m ON m.`id` = r.`module_id`
 			WHERE r.`id` = ?';
 
+		// return single scalar result
 		return Database::load($query, [$this->ruleId], Database::RESULT);
 
 	}

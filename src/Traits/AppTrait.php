@@ -47,7 +47,7 @@ trait AppTrait {
 	 * @param	bool	Async attribute (default FALSE).
 	 * @param	array	Optional attribute list (type, integrity, crossorigin, charset).
 	 */
-	public function loadScript(string $src, bool $defer = FALSE, bool $async = FALSE, array $attribs=[]): void {
+	public function loadScript(string $src, bool $defer = FALSE, bool $async = FALSE, array $attribs = []): void {
 
 		Application::getInstance()->loadScript($src, $defer, $async, $attribs);
 
@@ -60,7 +60,7 @@ trait AppTrait {
 	 * @param	string	Message of the modal.
 	 * @param	string	Icon for the modal.
 	 */
-	public function modal(string $title, string $message, string $icon='info'): SweetAlert {
+	public function modal(string $title, string $message, string $icon = 'info'): SweetAlert {
 
 		return Application::getInstance()->modal($title, $message, $icon);
 
@@ -79,7 +79,7 @@ trait AppTrait {
 	 * @param	string	Message of the modal.
 	 * @param	string	Type of the modal.
 	 */
-	public function persistentModal(string $title, string $message, string $type='info'): void {
+	public function persistentModal(string $title, string $message, string $type = 'info'): void {
 
 		Application::getInstance()->persistentModal($title, $message, $type);
 
@@ -92,7 +92,7 @@ trait AppTrait {
 	 * @param	string	Location URL.
 	 * @param	bool	If TRUE, will avoids to add base url (default FALSE).
 	 */
-	public function redirect(?string $url=NULL, bool $externalUrl=FALSE): void {
+	public function redirect(?string $url = null, bool $externalUrl = false): void {
 
 		Application::getInstance()->redirect($url, $externalUrl);
 
@@ -143,7 +143,7 @@ trait AppTrait {
 	 * @param	string	Type of the toast (info|success|warning|error|question|progress), default info.
 
      */
-    public function toast(string $title, string $message='', ?string $type=NULL): IziToast {
+    public function toast(string $title, string $message = '', ?string $type = null): IziToast {
 
         return Application::getInstance()->toast($title, $message, $type);
 
@@ -155,7 +155,7 @@ trait AppTrait {
 	 * @param	string	Message’s text.
 	 * @param	string	Optional title.
 	 */
-	public function toastError(string $title, string $message=''): IziToast {
+	public function toastError(string $title, string $message = ''): IziToast {
 
 		return Application::getInstance()->toastError($title, $message);
 
@@ -168,7 +168,7 @@ trait AppTrait {
 	 * @param	string	Error message.
 	 * @param	string	Redirect URL, optional.
 	 */
-	public function toastErrorRedirect(string $title, string $message='', ?string $url=NULL): void {
+	public function toastErrorRedirect(string $title, string $message = '', ?string $url = null): void {
 
 		Application::getInstance()->toastErrorRedirect($title, $message, $url);
 
@@ -181,7 +181,7 @@ trait AppTrait {
 	 * @param	string	Message.
 	 * @param	string	Redirect URL, optional.
 	 */
-    public function toastRedirect(string $title, string $message='', ?string $url=NULL): void {
+    public function toastRedirect(string $title, string $message = '', ?string $url = null): void {
 
 		Application::getInstance()->toastRedirect($title, $message, $url);
 

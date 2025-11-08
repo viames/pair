@@ -633,7 +633,7 @@ abstract class Mailer {
 	/**
 	 * Send a test email.
 	 */
-	public function test(?string $textToSend=NULL, ?string $recipientName=NULL, $recipientEmail=NULL): void {
+	public function test(?string $textToSend = null, ?string $recipientName = null, $recipientEmail = null): void {
 
 		// custom recipient or admin emails
 		if ($recipientEmail) {

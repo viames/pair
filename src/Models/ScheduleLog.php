@@ -57,7 +57,7 @@ class ScheduleLog extends ActiveRecord {
 	/**
 	 * Scrive un record di log.
 	 */
-	public static function add(string $job, bool $result, ?string $info=NULL): bool {
+	public static function add(string $job, bool $result, ?string $info = null): bool {
 
 		$log = new self();
 

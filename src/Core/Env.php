@@ -2,7 +2,7 @@
 
 namespace Pair\Core;
 
-use Pair\Models\Oauth2Token;
+use Pair\Models\OAuth2Token;
 
 class Env {
 
@@ -18,40 +18,40 @@ class Env {
 		'APP_NAME' => 'Pair Application',
 		'APP_VERSION' => '1.0',
 		'APP_ENV' => 'production',
-		'APP_DEBUG' => FALSE,
-		'DB_UTF8' => TRUE,
-		'OAUTH2_TOKEN_LIFETIME' => Oauth2Token::LIFETIME,
-		'PAIR_SINGLE_SESSION' => TRUE,
-		'PAIR_AUDIT_ALL' => TRUE,
-		'PAIR_AUDIT_IMPERSONATE' => TRUE,
-		'PAIR_AUDIT_IMPERSONATE_STOP' => TRUE,
-		'PAIR_AUDIT_LOGIN_FAILED' => TRUE,
-		'PAIR_AUDIT_LOGIN_SUCCESSFUL' => TRUE,
-		'PAIR_AUDIT_LOGOUT' => TRUE,
-		'PAIR_AUDIT_PASSWORD_CHANGED' => TRUE,
-		'PAIR_AUDIT_PERMISSIONS_CHANGED' => TRUE,
-		'PAIR_AUDIT_REMEMBER_ME_LOGIN' => TRUE,
-		'PAIR_AUDIT_SESSION_EXPIRED' => TRUE,
-		'PAIR_AUDIT_USER_CHANGED' => TRUE,
-		'PAIR_AUDIT_USER_CREATED' => TRUE,
-		'PAIR_AUDIT_USER_DELETED' => TRUE,
-		'PAIR_AUTH_BY_EMAIL' => TRUE,
-		'UTC_DATE' => TRUE
+		'APP_DEBUG' => false,
+		'DB_UTF8' => true,
+		'OAUTH2_TOKEN_LIFETIME' => OAuth2Token::LIFETIME,
+		'PAIR_SINGLE_SESSION' => true,
+		'PAIR_AUDIT_ALL' => true,
+		'PAIR_AUDIT_IMPERSONATE' => true,
+		'PAIR_AUDIT_IMPERSONATE_STOP' => true,
+		'PAIR_AUDIT_LOGIN_FAILED' => true,
+		'PAIR_AUDIT_LOGIN_SUCCESSFUL' => true,
+		'PAIR_AUDIT_LOGOUT' => true,
+		'PAIR_AUDIT_PASSWORD_CHANGED' => true,
+		'PAIR_AUDIT_PERMISSIONS_CHANGED' => true,
+		'PAIR_AUDIT_REMEMBER_ME_LOGIN' => true,
+		'PAIR_AUDIT_SESSION_EXPIRED' => true,
+		'PAIR_AUDIT_USER_CHANGED' => true,
+		'PAIR_AUDIT_USER_CREATED' => true,
+		'PAIR_AUDIT_USER_DELETED' => true,
+		'PAIR_AUTH_BY_EMAIL' => true,
+		'UTC_DATE' => true
 	];
 
 	/**
 	 * Returns the default value of the specified key.
 	 *
-	 * @param	string	The key to search for default value. NULL if default is not set.
+	 * @param	string	The key to search for default value. null if default is not set.
 	 */
 	private static function default(string $key): mixed {
 
-		return self::DEFAULTS[$key] ?? NULL;
+		return self::DEFAULTS[$key] ?? null;
 
 	}
 
 	/**
-	 * Returns TRUE if the .env file exists.
+	 * Returns true if the .env file exists.
 	 */
 	public static function fileExists(): bool {
 
@@ -62,7 +62,7 @@ class Env {
 	/**
 	 * Returns the value of the specified key from the environment variables.
 	 *
-	 * @param	string	The key to search for. Default value or NULL if not found.
+	 * @param	string	The key to search for. Default value or null if not found.
 	 */
 	public static function get(string $key): mixed {
 
@@ -72,7 +72,7 @@ class Env {
 
 	/**
 	 * Load values from file to the environment variables. String values are trimmed.
-	 * Boolean values are converted to PHP TRUE or FALSE. Integer values are converted to PHP
+	 * Boolean values are converted to PHP true or false. Integer values are converted to PHP
 	 * integer. Float values are converted to PHP float.
 	 */
 	public static function load(): void {
@@ -95,7 +95,7 @@ class Env {
 		foreach ($lines as $line) {
 
 			// ignore comments and empty lines
-			if ('#' == substr(trim($line), 0, 1) or strpos($line, '=') === FALSE) {
+			if ('#' == substr(trim($line), 0, 1) or false === strpos($line, '=')) {
 				continue;
 			}
 
@@ -105,17 +105,17 @@ class Env {
 			$value = trim($value);
 
 			// cast to the correct type
-			if ('TRUE' == strtoupper($value)) {
-				$value = TRUE;
-			} else if ('FALSE' == strtoupper($value)) {
-				$value = FALSE;
+			if ('true' == strtolower($value)) {
+				$value = true;
+			} else if ('false' == strtolower($value)) {
+				$value = false;
 			} else if (is_numeric($value) and (int)$value == $value) {
 				$value = (int)$value;
 			} else if (is_numeric($value)) {
 				$value = (float)$value;
 			}
 
-			$_ENV[$key] = $value ?? NULL;
+			$_ENV[$key] = $value ?? null;
 
 		}
 

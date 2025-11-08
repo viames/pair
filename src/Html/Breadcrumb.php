@@ -88,7 +88,7 @@ class Breadcrumb {
 	/**
 	 * Overwrite the standard Home path.
 	 */
-	public function home(string $title, ?string $url=NULL): void {
+	public function home(string $title, ?string $url = null): void {
 
 		$path			= new \stdClass();
 		$path->title	= $title;
@@ -112,7 +112,7 @@ class Breadcrumb {
 	/**
 	 * Adds a new sub-path to Breadcrumb or a list of sub-paths.
 	 */
-	public static function path(array|string $titleOrList, ?string $url=NULL): void {
+	public static function path(array|string $titleOrList, ?string $url = null): void {
 
 		$self = self::getInstance();
 

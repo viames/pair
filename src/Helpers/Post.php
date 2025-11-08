@@ -16,7 +16,7 @@ class Post {
 	 * @param	string	HTTP parameter name.
 	 * @param	string	Default value to return, in case of null or empty.
 	 */
-	public static function array(string $name, ?array $default=NULL): array {
+	public static function array(string $name, ?array $default = null): array {
 
 		return self::get($name, 'array', $default);
 
@@ -29,7 +29,7 @@ class Post {
 	 * @param	string	HTTP parameter name.
 	 * @param	string	Default value to return, in case of null or empty.
 	 */
-	public static function bool(string $name, ?bool $default=NULL): bool {
+	public static function bool(string $name, ?bool $default = null): bool {
 
 		return self::get($name, 'bool', $default);
 
@@ -42,7 +42,7 @@ class Post {
 	 * @param	string	Type string, int, bool, date or datetime will be casted.
 	 * @param	string	Default value to return, in case of null or empty.
 	 */
-	public static function byRegex(string $pattern, $type='string', ?array $default=NULL): array {
+	public static function byRegex(string $pattern, $type = 'string', ?array $default = null): array {
 
 		$list = [];
 
@@ -151,7 +151,7 @@ class Post {
 	 * @param	string	HTTP parameter name.
 	 * @param	string	Default value to return, in case of null or empty.
 	 */
-	public static function date(string $name, ?\DateTime $default=NULL): ?\DateTime {
+	public static function date(string $name, ?\DateTime $default = null): ?\DateTime {
 
 		return self::get($name, 'date', $default);
 
@@ -164,7 +164,7 @@ class Post {
 	 * @param	string	HTTP parameter name.
 	 * @param	string	Default value to return, in case of null or empty.
 	 */
-	public static function datetime(string $name, ?\DateTime $default=NULL): ?\DateTime {
+	public static function datetime(string $name, ?\DateTime $default = null): ?\DateTime {
 
 		return self::get($name, 'datetime', $default);
 
@@ -178,7 +178,7 @@ class Post {
 	 * @param	string	Type string -default-, int, bool, date or datetime will be casted.
 	 * @param	string	Default value to return, in case of null or empty.
 	 */
-	public static function get(string $name, string $type='string', mixed $default=NULL): mixed {
+	public static function get(string $name, string $type = 'string', mixed $default = null): mixed {
 
 		// if the request method is POST, use $_POST
 		if (isset($_SERVER['REQUEST_METHOD']) and 'POST' == $_SERVER['REQUEST_METHOD']) {
@@ -212,7 +212,7 @@ class Post {
 	 * @param	string	HTTP parameter name.
 	 * @param	string	Default value to return, in case of null or empty.
 	 */
-	public static function int($name, $default=NULL): int {
+	public static function int($name, $default = null): int {
 
 		return self::get($name, 'int', $default);
 
@@ -221,7 +221,7 @@ class Post {
 	/**
 	 * Get data by POST array returning a float. In case
 	 */
-	public static function float(string $name, ?float $default=NULL): float {
+	public static function float(string $name, ?float $default = null): float {
 
 		return self::get($name, 'float', $default);
 
@@ -251,7 +251,7 @@ class Post {
 	 * @param	string	HTTP parameter name.
 	 * @param	string	Default value to return, in case of null or empty.
 	 */
-	public static function string(string $name, ?string $default=NULL): string {
+	public static function string(string $name, ?string $default = null): string {
 
 		return self::get($name, 'string', $default);
 
@@ -275,7 +275,7 @@ class Post {
 	 * @param	string	HTTP parameter name.
 	 * @param	string	Default value to return, in case of null or empty.
 	 */
-	public static function trim(string $name, ?string $default=NULL): string {
+	public static function trim(string $name, ?string $default = null): string {
 
 		return trim(self::string($name, $default));
 

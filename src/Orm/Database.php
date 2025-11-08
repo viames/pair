@@ -17,12 +17,12 @@ class Database {
 	/**
 	 * Singleton object for database.
 	 */
-	protected static ?self $instance = NULL;
+	protected static ?self $instance = null;
 
 	/**
 	 * DB Handler.
 	 */
-	private ?\PDO $handler = NULL;
+	private ?\PDO $handler = null;
 
 	/**
 	 * Temporary store for the SQL Query.
@@ -55,7 +55,7 @@ class Database {
 	const RESULT = 4;
 
 	/**
-	 * Constant for count of results return of the load() method.
+	 * Used as constant for count return of the load() method as integer.
 	 */
 	const COUNT = 5;
 
@@ -89,7 +89,7 @@ class Database {
 			if (is_bool($value)) {
 				$params[$key] = $value ? 1 : 0;
 			} else if (is_null($value)) {
-				$params[$key] = NULL;
+				$params[$key] = null;
 			} else if (is_a($value, \DateTime::class)) {
 				$params[$key] = $value->format('Y-m-d H:i:s');
 			}
@@ -98,30 +98,30 @@ class Database {
 	}
 
 	/**
-	 * Proxy to open a connection to DBMS if current PDO handler is NULL.
+	 * Proxy to open a connection to DBMS if current PDO handler is null.
 	 *
 	 * @throws	PairException
 	 */
 	public function connect(): void {
 
-		$this->openConnection(FALSE);
+		$this->openConnection(false);
 
 	}
 
 	/**
-	 * Proxy to open a persistent connection to DBMS if current PDO handler is NULL.
+	 * Proxy to open a persistent connection to DBMS if current PDO handler is null.
 	 *
 	 * @throws	PairException
 	 */
 	public function connectPersistent(): void {
 
-		$this->openConnection(TRUE);
+		$this->openConnection(true);
 
 	}
 
 	/**
 	 * Return data about a column scheme trying to load table description records by object cache.
-	 * FALSE in case of unvalid column name.
+	 * false in case of unvalid column name.
 	 *
 	 * @param	string	Name of table to describe.
 	 * @param	string	Column name.
@@ -139,7 +139,7 @@ class Database {
 
 		$res = self::load('DESCRIBE `' . $tableName . '` `' . $column . '`', [], Database::OBJECT);
 
-		return ($res ? $res : NULL);
+		return ($res ? $res : null);
 
 	}
 
@@ -187,14 +187,14 @@ class Database {
 	}
 
 	/**
-	 * Executes a query and returns TRUE if success.
+	 * Executes a query and returns true if success.
 	 *
 	 * @param	string		SQL Query da eseguire.
-	 * @param	array|NULL	Parameters to bind on sql query in array or simple value.
+	 * @param	array|null	Parameters to bind on sql query in array or simple value.
 	 * @return	int			Number of affected items.
 	 * @throws	PairException
 	 */
-	public function exec(string $query, array $params=[]): int {
+	public function exec(string $query, array $params = []): int {
 
 		$this->openConnection();
 
@@ -314,7 +314,7 @@ class Database {
 	/**
 	 * Return the MySQL version number.
 	 */
-	public function getMysqlVersion(): FALSE|string {
+	public function getMysqlVersion(): false|string {
 
 		$this->setQuery('SELECT VERSION()');
 		return $this->loadResult();
@@ -328,7 +328,7 @@ class Database {
 	 * @param	object	Object with property name as each column name.
 	 * @param	array	Optional list of encryptable columns.
 	 */
-	public function insertObject(string $table, \stdClass $object, ?array $encryptables=[]): bool {
+	public function insertObject(string $table, \stdClass $object, ?array $encryptables = []): bool {
 
 		$columns = [];
 		$values  = [];
@@ -374,11 +374,11 @@ class Database {
 
 		foreach ($columns as $column) {
 			if ('auto_increment' == $column->Extra) {
-				return TRUE;
+				return true;
 			}
 		}
 
-		return FALSE;
+		return false;
 
 	}
 
@@ -392,7 +392,7 @@ class Database {
 	}
 
 	/**
-	 * Checks if the indicated column is generated automatically and in this case returns TRUE
+	 * Checks if the indicated column is generated automatically and in this case returns true
 	 *
 	 * @param	string	Name of table to check.
 	 * @param	string	Name of the column in the table to check
@@ -407,7 +407,7 @@ class Database {
 			}
 		}
 
-		return FALSE;
+		return false;
 
 	}
 
@@ -420,9 +420,9 @@ class Database {
 	 * @param	int		Returned type (see class constants). self::OBJECT_LIST is default.
 	 * @throws	PairException
 	 */
-	public static function load(string $query, array $params=[], int $option=self::OBJECT_LIST): array|Collection|\stdClass|string|int|NULL {
+	public static function load(string $query, array $params = [], int $option=self::OBJECT_LIST): array|Collection|\stdClass|string|int|null {
 
-		$res = NULL;
+		$res = null;
 
 		$self = static::getInstance();
 		$self->openConnection();
@@ -446,9 +446,9 @@ class Database {
 					throw new PairException($e->getMessage(), ErrorCodes::INVALID_QUERY_SYNTAX, $e);
 
 				case '42S02':
-					if (strpos($e->getMessage(), 'Unknown database')!==FALSE) {
+					if (false !== strpos($e->getMessage(), 'Unknown database')) {
 						throw new CriticalException($e->getMessage(), ErrorCodes::MISSING_DB, $e);
-					} else if (strpos($e->getMessage(), 'Table')!==FALSE) {
+					} else if (false !== strpos($e->getMessage(), 'Table')) {
 						throw new CriticalException($e->getMessage(), ErrorCodes::MISSING_DB_TABLE, $e);
 					} else {
 						throw new PairException($e->getMessage(), ErrorCodes::INVALID_QUERY_SYNTAX, $e);
@@ -480,7 +480,7 @@ class Database {
 			// first row as \stdClass object
 			case self::OBJECT:
 				$res = $stat->fetch(\PDO::FETCH_OBJ);
-				if (!$res) $res = NULL;
+				if (!$res) $res = null;
 				$count = (bool)$res;
 				break;
 
@@ -529,7 +529,7 @@ class Database {
 	 * @param	array	Optional list of parameters to bind on sql query.
 	 * @throws	PairException
 	 */
-	public function loadCount(array $params=[]): int {
+	public function loadCount(array $params = []): int {
 
 		$this->openConnection();
 
@@ -558,9 +558,9 @@ class Database {
 	 * @param	array		List of parameters to bind on sql query.
 	 * @throws	PairException
 	 */
-	public function loadObjectList(array $params=[]): array {
+	public function loadObjectList(array $params = []): array {
 
-		$ret = NULL;
+		$ret = null;
 
 		$this->openConnection();
 
@@ -584,16 +584,16 @@ class Database {
 	}
 
 	/**
-	 * Returns first column value or NULL if row is not found.
+	 * Returns first column value or null if row is not found.
 	 *
-	 * @param	array|NULL	List of parameters to bind on sql query.
+	 * @param	array|null	List of parameters to bind on sql query.
 	 * @throws	PairException
 	 */
-	private function loadResult(array $params=[]): FALSE|string {
+	private function loadResult(array $params = []): false|string {
 
 		$this->openConnection();
 
-		$res = NULL;
+		$res = null;
 		$stat = $this->handler->prepare($this->query);
 
 		try {
@@ -621,7 +621,7 @@ class Database {
 	 * @param	int		Number of items in result-set or affected rows.
 	 * @param	array	Optional parameters to bind.
 	 */
-	private function logParamQuery(string $query, int $result, array $params=[]): void {
+	private function logParamQuery(string $query, int $result, array $params = []): void {
 
 		// indexed is binding with "?"
 		$indexed = $params==array_values($params);
@@ -672,10 +672,10 @@ class Database {
 	/**
 	 * Connects to DBMS with params only if PDO handler property is null, so not connected.
 	 *
-	 * @param	bool	Flag to open a persistent connection (TRUE). Default is FALSE.
+	 * @param	bool	Flag to open a persistent connection (true). Default is false.
 	 * @throws	CriticalException
 	 */
-	private function openConnection(bool $persistent=FALSE): void {
+	private function openConnection(bool $persistent = false): void {
 
 		// continue only if not already connected
 		if (is_a($this->handler, 'PDO')) {
@@ -686,7 +686,7 @@ class Database {
 		$options = [
 			\PDO::ATTR_PERSISTENT			=> $persistent,
 			\PDO::MYSQL_ATTR_INIT_COMMAND	=> "SET NAMES utf8",
-			\PDO::MYSQL_ATTR_FOUND_ROWS		=> TRUE
+			\PDO::MYSQL_ATTR_FOUND_ROWS		=> true
 		];
 
 		try {
@@ -732,7 +732,7 @@ class Database {
 	 * @param	array	List of parameters to bind on the sql query.
 	 * @throws	PairException
 	 */
-	public static function run(string $query, array $params=[]): int {
+	public static function run(string $query, array $params = []): int {
 
 		$self = static::getInstance();
 		$self->openConnection();
@@ -850,14 +850,14 @@ class Database {
 	}
 
 	/**
-	 * Update record of given key on the param object. Properly manage NULL values.
+	 * Update record of given key on the param object. Properly manage null values.
 	 *
 	 * @param	string		Table name.
 	 * @param	\stdClass	Object with properties of new values to update.
 	 * @param	\stdClass	Object with keys and values for where clause.
 	 * @param	array		Optional list of encryptable columns.
 	 */
-	public function updateObject(string $table, \stdClass &$object, \stdClass $key, ?array $encryptables=[]): int {
+	public function updateObject(string $table, \stdClass &$object, \stdClass $key, ?array $encryptables = []): int {
 
 		$sets		= [];
 		$where		= [];

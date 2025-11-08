@@ -206,7 +206,7 @@ class OAuth2Token extends ActiveRecord {
 	 * describe the reason for the refusal in the entity. If the server does not wish to make
 	 * this information available to the client, the status code 404 (Not Found) can be used
 	 * instead.
-	 *
+	 * 
 	 * @param string Human-readable detail message.
 	 */
 	public static function forbidden(string $detail): void {

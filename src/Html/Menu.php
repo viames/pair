@@ -140,7 +140,7 @@ class Menu {
 	 *   ['url'=>'/about','title'=>'About','icon'=>'fa-info-circle','badge'=>'new','badge_type'=>'success'],
 	 * ], 'fa-cog');
 	 */
-	public function group(string $title, array $items, ?string $icon=NULL): void {
+	public function group(string $title, array $items, ?string $icon = null): void {
 
         $group = new MenuEntry();
         $group->type  = 'dropdown';
@@ -185,7 +185,7 @@ class Menu {
 	 * @param string|NULL	Optional badge type, usually mapped to Bootstrap classes (e.g. "primary", "info", "danger"). Default: "primary".
 	 * @param string|NULL	Optional link target attribute (e.g. "_blank").
 	 */
-	public function item(string $url, string $title, ?string $icon=NULL, ?string $badge=NULL, ?string $badgeType=NULL, ?string $target=NULL): void {
+	public function item(string $url, string $title, ?string $icon = null, ?string $badge = null, ?string $badgeType = null, ?string $target = null): void {
 
         $e = $this->makeItem($url, $title, $icon, $badge, $badgeType, $target);
         $this->items[] = $e;
@@ -396,7 +396,7 @@ class Menu {
 	 *
 	 * @param	string	Separator title (optional).
 	 */
-	public function separator(?string $title=NULL): void {
+	public function separator(?string $title = null): void {
 
 		$item 			= new MenuEntry();
 		$item->type		= 'separator';

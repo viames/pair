@@ -46,7 +46,7 @@ class Select extends FormControl {
 	 * @param	string	Name of property’s text or an existent object function.
 	 * @param 	string	Optional attributes [name=>value].
 	 */
-	public function options(array|Collection $list, ?string $propertyValue=NULL, ?string $propertyText=NULL, ?array $propertyAttributes=NULL): self {
+	public function options(array|Collection $list, ?string $propertyValue = null, ?string $propertyText = null, ?array $propertyAttributes = null): self {
 
 		$allowedValues = ['string','integer','double'];
 
@@ -124,7 +124,7 @@ class Select extends FormControl {
 	 * 
 	 * @param	string|NULL	Option text for first null value.
 	 */
-	public function empty(?string $text=NULL): self {
+	public function empty(?string $text = null): self {
 
 		$this->emptyOption = is_null($text) ? Translator::do('SELECT_NULL_VALUE') : $text;
 

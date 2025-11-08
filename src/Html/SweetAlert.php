@@ -107,7 +107,7 @@ class SweetAlert {
 	 * Set the cancel button text and eventually the callback function and the button color.
 	 * The default button’s background color is #aaa.
 	 */
-	public function cancel(string $text, ?string $callback=NULL, ?string $buttonColor=NULL): self {
+	public function cancel(string $text, ?string $callback = null, ?string $buttonColor = null): self {
 
 		$this->cancelButtonText = $text;
 
@@ -127,7 +127,7 @@ class SweetAlert {
 	 * Set the confirm button text and eventually the callback function and the button color.
 	 * The default button’s background color is #3085d6. 
 	 */
-	public function confirm(string $text, ?string $callback=NULL, ?string $buttonColor=NULL): self {
+	public function confirm(string $text, ?string $callback = null, ?string $buttonColor = null): self {
 
 		$this->confirmButtonText = $text;
 
@@ -147,7 +147,7 @@ class SweetAlert {
 	 * Set the deny button text and eventually the callback function and the button color.
 	 * The default button’s background color is #dd6b55.
 	 */
-	public function deny(string $text, ?string $callback=NULL, ?string $buttonColor=NULL): self {
+	public function deny(string $text, ?string $callback = null, ?string $buttonColor = null): self {
 
 		$this->denyButtonText = $text;
 

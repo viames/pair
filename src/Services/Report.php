@@ -153,7 +153,7 @@ abstract class Report {
 	/**
 	 * Set the format and value of a cell in the Excel sheet.
 	 */
-	private function formatCell(Cell &$cell, mixed $value, NULL|string|Callable $format=NULL): void {
+	private function formatCell(Cell &$cell, mixed $value, NULL|string|Callable $format = null): void {
 
 		// default is auto format
 		if (is_null($format)) {

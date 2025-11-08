@@ -26,7 +26,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	/**
 	 * Create a new collection.
 	 */
-	public function __construct(?array $array=NULL) {
+	public function __construct(?array $array = null) {
 
 		$this->items = (array)$array;
 
@@ -74,7 +74,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	/**
 	 * Returns the average value of a given key.
 	 */
-	public function avg(?string $key=NULL): float {
+	public function avg(?string $key = null): float {
 
 		$sum = $this->sum($key);
 
@@ -276,7 +276,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 *   $copy = $collection->copy();       // shallow copy
 	 *   $clone = $collection->copy(TRUE);  // deep copy (clone inner objects)
 	 */
-	public function copy(bool $deep=FALSE): static {
+	public function copy(bool $deep = false): static {
 
 		if (!$deep) {
 			// Shallow copy: duplicate the items array, preserve keys
@@ -934,7 +934,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 * Returns the "mode value" of a given key. In statistics, the mode is the value that appears
 	 * most often in a set of data values.
 	 */
-	public function mode(?string $key=NULL): mixed {
+	public function mode(?string $key = null): mixed {
 
 		$count = $this->countBy($key);
 

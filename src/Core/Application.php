@@ -14,7 +14,7 @@ use Pair\Html\IziToast;
 use Pair\Html\SweetAlert;
 use Pair\Html\Widget;
 use Pair\Models\Audit;
-use Pair\Models\Oauth2Token;
+use Pair\Models\OAuth2Token;
 use Pair\Models\Session;
 use Pair\Models\Template;
 use Pair\Models\Token;
@@ -75,12 +75,12 @@ class Application {
 	/**
 	 * The label of the current selected menu item.
 	 */
-	private ?string $menuLabel = NULL;
+	private ?string $menuLabel = null;
 
 	/**
 	 * The url of the current selected menu item.
 	 */
-	private ?string $menuUrl = NULL;
+	private ?string $menuUrl = null;
 
 	/**
 	 * Contains a list of plain text script to add.
@@ -111,12 +111,12 @@ class Application {
 	/**
 	 * Modal alert to be shown on page load.
 	 */
-	private ?SweetAlert $modal = NULL;
+	private ?SweetAlert $modal = null;
 
 	/**
 	 * Currently connected user.
 	 */
-	private ?User $currentUser = NULL;
+	private ?User $currentUser = null;
 
 	/**
 	 * Contents variables for layouts.
@@ -126,7 +126,7 @@ class Application {
 	/**
 	 * Template’s object.
 	 */
-	private ?Template $template = NULL;
+	private ?Template $template = null;
 
 	/**
 	 * Template-style’s file name (without extension).
@@ -139,9 +139,9 @@ class Application {
 	protected string $pageScripts = '';
 
 	/**
-	 * Contains the LobBar render or NULL if disabled.
+	 * Contains the LobBar render or null if disabled.
 	 */
-	protected ?LogBar $lobgBar = NULL;
+	protected ?LogBar $lobgBar = null;
 
 	/**
 	 * Class for application user object.
@@ -151,7 +151,7 @@ class Application {
 	/**
 	 * Headless mode flag to avoid any output.
 	 */
-	private bool $headless = FALSE;
+	private bool $headless = false;
 
 	/**
 	 * List of reserved cookie names and related allowed classes.
@@ -168,7 +168,7 @@ class Application {
 
 		// override error settings on server
 		ini_set('error_reporting',	E_ALL);
-		ini_set('display_errors',	TRUE);
+		ini_set('display_errors',	true);
 
 		// prevent loop error for recursive __construct
 		if (defined('APPLICATION_PATH')) {
@@ -231,7 +231,7 @@ class Application {
 
 	/**
 	 * Returns, if any, variable assigned to the template,
-	 * otherwise the properties of the method, otherwise NULL
+	 * otherwise the properties of the method, otherwise null
 	 *
 	 * @param	string	Requested property’s name.
 	 */
@@ -260,7 +260,7 @@ class Application {
 
 					$value = $this->$name;
 
-				// then return NULL
+				// then return null
 				} else {
 
 					$logger = Logger::getInstance();
@@ -269,7 +269,7 @@ class Application {
 						'class' => get_called_class()
 					];
 					$logger->error('Property “{name}” doesn’t exist for this object of class {class}', $context);
-					$value = NULL;
+					$value = null;
 
 				}
 				break;
@@ -329,14 +329,14 @@ class Application {
 			define('BASE_TIMEZONE', (date_default_timezone_get() ?? 'UTC'));
 		}
 
-		// base URL is NULL
+		// base URL is null
 		if (static::isCli()) {
-			$baseHref = $urlPath = NULL;
-		// define full URL to web page index with trailing slash or NULL
+			$baseHref = $urlPath = null;
+		// define full URL to web page index with trailing slash or null
 		} else {
 			$protocol = ($_SERVER['SERVER_PORT'] == 443 or (isset($_SERVER['HTTPS']) and $_SERVER['HTTPS'] !== 'off')) ? "https://" : "http://";
 			$urlPath = substr($_SERVER['SCRIPT_NAME'], 0, -strlen('/public/index.php'));
-			$baseHref = isset($_SERVER['HTTP_HOST']) ? $protocol . $_SERVER['HTTP_HOST'] . $urlPath . '/' : NULL;
+			$baseHref = isset($_SERVER['HTTP_HOST']) ? $protocol . $_SERVER['HTTP_HOST'] . $urlPath . '/' : null;
 		}
 
 		define('URL_PATH', $urlPath);
@@ -355,31 +355,31 @@ class Application {
 			// remove any file named as wanted temporary folder
 			if (file_exists(TEMP_PATH) and !unlink(TEMP_PATH)) {
 				trigger_error('File ' . TEMP_PATH . ' exists and can’t be removed');
-				return FALSE;
+				return false;
 			}
 
 			// create the folder
 			$old = umask(0);
-			if (!mkdir(TEMP_PATH, 0777, TRUE)) {
+			if (!mkdir(TEMP_PATH, 0777, true)) {
 				trigger_error('Directory creation on ' . TEMP_PATH . ' failed');
-				return FALSE;
+				return false;
 			}
 			umask($old);
 
 			// sets full permissions
 			if (!chmod(TEMP_PATH, 0777)) {
 				trigger_error('Set permissions on directory ' . TEMP_PATH . ' failed');
-				return FALSE;
+				return false;
 			}
 
 		}
 
-		return TRUE;
+		return true;
 
 	}
 
 	/**
-	 * Return an ActiveRecord object cached or NULL if not found.
+	 * Return an ActiveRecord object cached or null if not found.
 	 *
 	 * @param	string		Name of the ActiveObject class.
 	 * @param	int|string	Unique identifier of the class.
@@ -388,7 +388,7 @@ class Application {
 
 		return (isset($this->activeRecordCache[$class][$id])
 			? $this->activeRecordCache[$class][$id]
-			: NULL);
+			: null);
 
 	}
 
@@ -519,7 +519,7 @@ class Application {
 
 		}
 
-		return NULL;
+		return null;
 
 	}
 
@@ -539,7 +539,7 @@ class Application {
 		if (array_key_exists($name, $this->state)) {
 			return $this->state[$name];
 		} else {
-			return NULL;
+			return null;
 		}
 
 	}
@@ -621,7 +621,7 @@ class Application {
 		$tokenValue	= Router::get('token');
 
 		// read the Bearer token via HTTP header
-		$bearerToken = Oauth2Token::readBearerToken();
+		$bearerToken = OAuth2Token::readBearerToken();
 
 		// assemble the API controller name
 		$ctlName = $name . 'Controller';
@@ -634,7 +634,7 @@ class Application {
 		// new API Controller instance
 		$apiCtl = new $ctlName();
 
-		$this->headless(TRUE);
+		$this->headless(true);
 
 		// set the action function
 		$action = $router->action ? $router->action . 'Action' : 'defaultAction';
@@ -655,9 +655,9 @@ class Application {
 		// or check for Oauth2 Bearer token via http header
 		} else if ($bearerToken) {
 
-			if (!Oauth2Token::validate($bearerToken)) {
+			if (!OAuth2Token::validate($bearerToken)) {
 				sleep(3);
-				Oauth2Token::unauthorized('Authentication failed');
+				OAuth2Token::unauthorized('Authentication failed');
 			}
 
 			// verify that the bearer token is valid
@@ -718,7 +718,7 @@ class Application {
 		// unauthorized request
 		} else {
 
-			Oauth2Token::unauthorized(Env::get('APP_NAME') . '-API: Authentication failed');
+			OAuth2Token::unauthorized(Env::get('APP_NAME') . '-API: Authentication failed');
 
 		}
 
@@ -755,7 +755,7 @@ class Application {
 			}
 
 			// check if the request is for user module/action
-			$userRequest = ('user'==$router->module and in_array($router->action, ['login','reset','confirm','sendResetEmail','newPassword','setNewPassword']));
+			$userRequest = ('user' == $router->module and in_array($router->action, ['login','reset','confirm','sendResetEmail','newPassword','setNewPassword']));
 
 			// check if the request is for guest module/action
 			$guestRequest = (in_array($router->module, array_keys($this->guestModules)) and in_array($router->action, $this->guestModules[$router->module]));
@@ -772,7 +772,7 @@ class Application {
 	/**
 	 * Enable or disable headless mode, avoiding to render any output. Chainable.
 	 */
-	public function headless(bool $on = TRUE): static {
+	public function headless(bool $on = true): static {
  
 		$this->headless = $on;
     	return $this;
@@ -864,7 +864,7 @@ class Application {
 	}
 
 	/**
-	 * Return TRUE if Pair was invoked by CLI.
+	 * Return true if Pair was invoked by CLI.
 	 */
 	final public static function isCli(): bool {
 
@@ -884,7 +884,7 @@ class Application {
 	}
 
 	/**
-	 * Returns TRUE if state has been previously set, NULL value included.
+	 * Returns true if state has been previously set, null value included.
 	 *
 	 * @param	string	Name of the state variable.
 	 */
@@ -920,19 +920,19 @@ class Application {
 	 * Set esternal script file load with optional attributes.
 	 *
 	 * @param	string	Path to script, absolute or relative with no trailing slash.
-	 * @param	bool	Defer attribute (default FALSE).
-	 * @param	bool	Async attribute (default FALSE).
+	 * @param	bool	Defer attribute (default false).
+	 * @param	bool	Async attribute (default false).
 	 * @param	array	Optional attribute list (type, integrity, crossorigin, charset).
 	 */
-	public function loadScript(string $src, bool $defer = FALSE, bool $async = FALSE, array $attribs=[]): void {
+	public function loadScript(string $src, bool $defer = false, bool $async = false, array $attribs = []): void {
 
 		// the script object
 		$script = new \stdClass();
 
 		$script->src = $src;
 
-		if ($defer)	$script->defer = TRUE;
-		if ($async) $script->async = TRUE;
+		if ($defer)	$script->defer = true;
+		if ($async) $script->async = true;
 
 		// list of valid type attributes
 		$validTypes = ['text/javascript','text/ecmascript','application/javascript','application/ecmascript'];
@@ -969,7 +969,7 @@ class Application {
 	/**
 	 * Add an alert modal to the page and return the object for further customization.
 	 */
-	public function modal(string $title, string $text, ?string $icon = NULL): SweetAlert {
+	public function modal(string $title, string $text, ?string $icon = null): SweetAlert {
 
 		$this->modal = new SweetAlert($title, $text, $icon);
 
@@ -1007,7 +1007,7 @@ class Application {
 	/**
 	 * Set a modal alert queued for next page load.
 	 */
-	public function persistentModal(string $title, string $text, ?string $icon = NULL): void {
+	public function persistentModal(string $title, string $text, ?string $icon = null): void {
 
 		$modal = new SweetAlert($title, $text, $icon);
 
@@ -1130,10 +1130,10 @@ class Application {
 	 * Redirect HTTP on the URL param. Relative path as default. Queued toast notifications
 	 * get a persistent storage in a cookie in order to being retrieved later.
 	 *
-	 * @param	string	Location URL. If NULL, redirect to the current module with default action.
-	 * @param	bool	If TRUE, will avoids to add base url (default FALSE).
+	 * @param	string	Location URL. If null, redirect to the current module with default action.
+	 * @param	bool	If true, will avoids to add base url (default false).
 	 */
-	public function redirect(?string $url=NULL, bool $externalUrl=FALSE): void {
+	public function redirect(?string $url = null, bool $externalUrl = false): void {
 
 		if (is_null($url)) {
 			$router = Router::getInstance();
@@ -1165,7 +1165,7 @@ class Application {
 				}
 
 				// if url contains just module, create a fake action placeholder
-				if (FALSE == strpos($url, '/')) {
+				if (false == strpos($url, '/')) {
 					$url .= '/';
 				}
 
@@ -1413,7 +1413,7 @@ class Application {
 	 * @param	string	Error message.
 	 * @param	string	Type of the toast (info|success|warning|error|question|progress), default info.
 	 */
-	public function toast(string $title, string $message='', ?string $type=NULL): IziToast {
+	public function toast(string $title, string $message = '', ?string $type = null): IziToast {
 
 		$toast = new IziToast($title, $message, $type);
 		$this->toasts[] = $toast;
@@ -1427,7 +1427,7 @@ class Application {
 	 * @param	string	Toast’s title, bold.
 	 * @param	string	Error message.
 	 */
-	public function toastError(string $title, string $message=''): IziToast {
+	public function toastError(string $title, string $message = ''): IziToast {
 
 		return $this->toast($title, $message, 'error');
 
@@ -1440,7 +1440,7 @@ class Application {
 	 * @param	string	Error message.
 	 * @param	string	Redirect URL, optional.
 	 */
-	public function toastErrorRedirect(string $title, string $message='', ?string $url=NULL): void {
+	public function toastErrorRedirect(string $title, string $message = '', ?string $url = null): void {
 
 		$this->toast($title, $message, 'error');
 		$this->makeToastNotificationsPersistent();
@@ -1455,7 +1455,7 @@ class Application {
 	 * @param	string	Message.
 	 * @param	string	Redirect URL, optional.
 	 */
-	public function toastRedirect(string $title, string $message='', ?string $url=NULL): void {
+	public function toastRedirect(string $title, string $message = '', ?string $url = null): void {
 
 		$this->toast($title, $message, 'success');
 		$this->makeToastNotificationsPersistent();

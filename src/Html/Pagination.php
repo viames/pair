@@ -112,9 +112,9 @@ class Pagination {
 		}
 
 		// render all pages number
-		for ($i=$min; $i <= $max; $i++) {
+		for ($i = $min; $i <= $max; $i++) {
 
-			if ($i==$this->page) {
+			if ($i == $this->page) {
 				$render .= '<li class="page-item current active"><a class="page-link" href="' . $router->getPageUrl($i) . '">' . $i . '</a></li>';
 			} else {
 				$render .= '<li class="page-item"><a class="page-link" href="' . $router->getPageUrl($i) . '">' . $i . '</a></li>';

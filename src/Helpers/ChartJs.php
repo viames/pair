@@ -76,7 +76,7 @@ class ChartJs {
 	 * @param	string	The type of the chart (line, bar, radar, doughnut, pie, polarArea, bubble, scatter).
 	 * @param	string	Optional HTML element ID where the chart will be rendered. If not provided, a unique ID will be generated.
 	 */
-	public function __construct(string $type, ?string $elementId = NULL) {
+	public function __construct(string $type, ?string $elementId = null) {
 
 		$validTypes = ['line', 'bar', 'radar', 'doughnut', 'pie', 'polarArea', 'bubble', 'scatter'];
 
@@ -116,7 +116,7 @@ class ChartJs {
 	 * @param	string	onProgress optional JS callback is called when animations start.
 	 * @param	string	onComplete optional JS callback is called when animations complete.
 	 */
-	public function animation(int $duration, string $easing = 'linear', ?string $onProgress = NULL, ?string $onComplete = NULL): self {
+	public function animation(int $duration, string $easing = 'linear', ?string $onProgress = null, ?string $onComplete = null): self {
 
 		$this->options['animation'] = [
 			'tension' => [
@@ -214,7 +214,7 @@ class ChartJs {
 		}
 
 		$this->options['decimation'] = [
-			'enabled' => TRUE,
+			'enabled' => true,
 			'algorithm' => $algorithm,
 			'samples' => $samples,
 			'threshold' => $threshold
@@ -288,7 +288,7 @@ class ChartJs {
 	 */
 	public function hideLegend(): self {
 
-		$this->options['plugins']['legend']['display'] = FALSE;
+		$this->options['plugins']['legend']['display'] = false;
 		return $this;
 
 	}
@@ -365,7 +365,7 @@ class ChartJs {
 	 * @param	array	Additional configuration options: boxWidth, boxHeight, color, font, padding, generateLabels,
 	 * 					filter, sort, pointStyle, textAlign, usePointStyle, pointStyleWidth, useBorderRadius, borderRadius.
 	 */
-	public function legend(string $position, string $align, array $config=[]): self {
+	public function legend(string $position, string $align, array $config = []): self {
 
 
 		if (!in_array($position, ['top', 'bottom', 'left', 'right', 'chartArea'])) {
@@ -688,10 +688,10 @@ class ChartJs {
 	 * @param	string	Subtitle text.
 	 * @param	array	Subtitle configuration array: align, color, display, fullSize, position, font, padding.
 	 */
-	public function subtitle(string $text, array $config=[]): self {
+	public function subtitle(string $text, array $config = []): self {
 
 		$this->options['plugins']['subtitle'] = [
-			'display' => TRUE,
+			'display' => true,
 			'text' => $text
 		];
 
@@ -717,10 +717,10 @@ class ChartJs {
 	 * @param	string	Title text.
 	 * @param	array	Title configuration array: align, color, display, fullSize, position, font, padding.
 	 */
-	public function title(string $text, array $config=[]): self {
+	public function title(string $text, array $config = []): self {
 
 		$this->options['plugins']['title'] = [
-			'display' => TRUE,
+			'display' => true,
 			'text' => $text
 		];
 

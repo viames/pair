@@ -61,7 +61,7 @@ class Plugin {
 	 * @param	string	Absolute path to plugin folder, without trailing slash.
 	 * @param	array	List of option fields (optional, specific to each plugin type).
 	 */
-	public function __construct($type=NULL, $name=NULL, $version=NULL, $dateReleased=NULL, $appVersion=NULL, $baseFolder=NULL, $options=[]) {
+	public function __construct($type = null, $name = null, $version = null, $dateReleased = null, $appVersion = null, $baseFolder = null, $options = []) {
 
 		$this->type			= $type;
 		$this->name			= $name;

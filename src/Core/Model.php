@@ -21,7 +21,7 @@ abstract class Model {
 	/**
 	 * Pagination object, started from the View.
 	 */
-	private ?Pagination $pagination = NULL;
+	private ?Pagination $pagination = null;
 
 	/**
 	 * Database handler object.
@@ -52,7 +52,7 @@ abstract class Model {
 	}
 
 	/**
-	 * Returns property’s value or NULL.
+	 * Returns property’s value or null.
 	 *
 	 * @param	string	Property’s name.
 	 * @throws	\Exception	If property doesn’t exist.
@@ -63,7 +63,7 @@ abstract class Model {
 			throw new \Exception('Property “'. $name .'” doesn’t exist for '. get_called_class(), ErrorCodes::PROPERTY_NOT_FOUND);
 		}
 		
-		return isset($this->$name) ? $this->$name : NULL;
+		return isset($this->$name) ? $this->$name : null;
 	
 	}
 
@@ -103,7 +103,7 @@ abstract class Model {
 	}
 
 	/**
-	 * Returns text of latest error. In case of no errors, returns FALSE.
+	 * Returns text of latest error. In case of no errors, returns false.
 	 */
 	public function getLastError(): array|bool {
 
@@ -128,7 +128,7 @@ abstract class Model {
 	 * @param	string	Ordering db field.
 	 * @param	bool	Sorting direction ASC or DESC (optional)
 	 */
-	public function getActiveRecordObjects(string $class, ?string $orderBy=NULL, bool $descOrder=FALSE): Collection {
+	public function getActiveRecordObjects(string $class, ?string $orderBy = null, bool $descOrder = false): Collection {
 
 		if (!class_exists($class) or !is_subclass_of($class, 'Pair\Orm\ActiveRecord')) {
 			throw new \Exception('Class ' . $class . ' not found or not a subclass of Pair\Orm\ActiveRecord');
@@ -141,7 +141,7 @@ abstract class Model {
 		$query =
 			'SELECT *
 			FROM `' . $class::TABLE_NAME . '`
-			' . ($orderBy ? ' ORDER BY `' . $orderBy . '` ' . $orderDir : NULL) . '
+			' . ($orderBy ? ' ORDER BY `' . $orderBy . '` ' . $orderDir : null) . '
 			LIMIT ' . $this->pagination->start . ', ' . $this->pagination->limit;
 
 		return $class::getObjectsByQuery($query);
@@ -161,7 +161,7 @@ abstract class Model {
 	 * Returns SQL for ordering and limiting results based on the current pagination settings
 	 * and the order options defined by parameter (priority) or defined in the child model.
 	 */
-	protected function getOrderLimitSql(array $orderOptions=[]): string {
+	protected function getOrderLimitSql(array $orderOptions = []): string {
 
 		$ret = '';
 
@@ -190,7 +190,7 @@ abstract class Model {
 	 * @param	string		Active record class name.
 	 * @param	Query|string	Optional query.
 	 */
-	public function getItems(string $class, Query|string|NULL $optionalQuery=NULL): Collection {
+	public function getItems(string $class, Query|string|null $optionalQuery = null): Collection {
 
 		// class must inherit Pair\Orm\ActiveRecord
 		if (!class_exists($class) or !is_subclass_of($class, 'Pair\Orm\ActiveRecord')) {
@@ -209,7 +209,7 @@ abstract class Model {
 	 * @param	string		Active record class name.
 	 * @param	Query|string	Optional query.
 	 */
-	public function countItems(string $class, Query|string|NULL $optionalQuery=NULL): int {
+	public function countItems(string $class, Query|string|null $optionalQuery = null): int {
 
 		$type = gettype($optionalQuery);
 

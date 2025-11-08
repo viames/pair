@@ -179,7 +179,7 @@ abstract class View {
 	 * @param	string	Layout file name without extension (.php).
 	 * @throws	\Exception	If layout file doesn’t exist.
 	 */
-	final public function display(?string $name=null): void {
+	final public function display(?string $name = null): void {
 
 		try {
 
@@ -237,7 +237,7 @@ abstract class View {
 	 * @param	string|array|null	List of parameters to bind on string (optional).
 	 * @param	bool	Show a warning if the key is not found.
 	 */
-	public function lang(string $key, string|array|null $vars=null, bool $warning=true): string {
+	public function lang(string $key, string|array|null $vars = null, bool $warning = true): string {
 
 		return Translator::do($key, $vars, $warning);
 
@@ -249,7 +249,7 @@ abstract class View {
 	 * @param	string	The language key.
 	 * @param	array	List of parameters to bind on string (optional).
 	 */
-	public function _($key, $vars=null) {
+	public function _($key, $vars = null) {
 
 		print Translator::do($key, $vars);
 
@@ -261,7 +261,7 @@ abstract class View {
 	 * @param	string	Expected object class type.
 	 * @throws	AppException if the object is not loaded.
 	 */
-	protected function getObjectRequestedById(string $class, ?int $pos=null): ?ActiveRecord {
+	protected function getObjectRequestedById(string $class, ?int $pos = null): ?ActiveRecord {
 
 		// reads from url requested item id
 		$itemId = Router::get($pos ? abs($pos) : 0);

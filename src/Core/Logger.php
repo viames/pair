@@ -34,12 +34,12 @@ class Logger implements LoggerInterface {
 	/**
 	 * Singleton property.
 	 */
-	protected static ?self $instance = NULL;
+	protected static ?self $instance = null;
 
 	/**
 	 * Whether the logger is enabled. Can be turned off by config or by method disable().
 	 */
-	protected bool $enabled = TRUE;
+	protected bool $enabled = true;
 
 	/**
 	 * If a log has a level equal or lower than this number, an e-mail is sent.
@@ -54,7 +54,7 @@ class Logger implements LoggerInterface {
 	/**
 	 * Mailer object.
 	 */
-	protected ?Mailer $mailer = NULL;
+	protected ?Mailer $mailer = null;
 
 	/**
 	 * If a log has a level equal or lower than this number, a Telegram notification is sent.
@@ -64,7 +64,7 @@ class Logger implements LoggerInterface {
 	/**
 	 * Telegram bot token.
 	 */
-	protected ?string $telegramBotToken = NULL;
+	protected ?string $telegramBotToken = null;
 
 	/**
 	 * Telegram chat ID recipients for error notifications.
@@ -144,8 +144,8 @@ class Logger implements LoggerInterface {
 	private function __construct() {
 
 		// can be disabled both by config and by disable() method
-		if (TRUE === Env::get('PAIR_LOGGER_DISABLED')) {
-			$this->enabled = FALSE;
+		if (true === Env::get('PAIR_LOGGER_DISABLED')) {
+			$this->enabled = false;
 		}
 
 		if (Env::get('PAIR_LOGGER_EMAIL_RECIPIENTS')) {
@@ -221,7 +221,7 @@ class Logger implements LoggerInterface {
 	 */
 	public function disable(): void {
 
-		$this->enabled = FALSE;
+		$this->enabled = false;
 
 	}
 
@@ -257,7 +257,7 @@ class Logger implements LoggerInterface {
 	 * @param	string	Error full file path.
 	 * @param	int		Error line.
 	 */
-	public static function errorHandler(int $errno, string $errstr, ?string $errfile=NULL, ?int $errline=NULL): bool {
+	public static function errorHandler(int $errno, string $errstr, ?string $errfile = null, ?int $errline = null): bool {
 
 		// log the error internally
 		$context = [
@@ -281,11 +281,11 @@ class Logger implements LoggerInterface {
 
 		 // in debug mode, allows the PHP internal error handler to run and display the error
 		if (Env::get('APP_DEBUG')) {
-			return FALSE;
+			return false;
 		}
 
 		// suppress the error and prevent it from being displayed
-		return TRUE;
+		return true;
 
 	}
 
@@ -380,7 +380,7 @@ class Logger implements LoggerInterface {
 
 		// convert level name to number
 		if (is_string($level)) {
-			$level = array_search(strtolower($level), self::LEVEL_NAMES, TRUE) ?: self::DEBUG;
+			$level = array_search(strtolower($level), self::LEVEL_NAMES, true) ?: self::DEBUG;
 		} else if (!is_int($level) or $level < 1 or $level > 8) {
 			$level = self::DEBUG;
 		}
@@ -389,7 +389,7 @@ class Logger implements LoggerInterface {
 		$rendered = $this->interpolate((string)$message, $context);
 
 		// log the message in LogBar
-		if (in_array($level, [self::DEBUG, self::INFO, self::NOTICE], TRUE)) {
+		if (in_array($level, [self::DEBUG, self::INFO, self::NOTICE], true)) {
 			LogBar::event($rendered, 'notice');
 		} else if ($level === self::WARNING) {
 			LogBar::event($rendered, 'warning');
@@ -421,9 +421,9 @@ class Logger implements LoggerInterface {
 	 * @param string	Description message of the error.
 	 * @param int		PSR-3 log level number equivalent.
 	 * @param array		Context array.
-	 * @param int|NULL	Optional error code to avoid logging certain errors.
+	 * @param int|null	Optional error code to avoid logging certain errors.
 	 */
-	private function process(int $level, string $description, array $context=[], ?int $errorCode=NULL): void {
+	private function process(int $level, string $description, array $context = [], ?int $errorCode = null): void {
 
 		// register error in database only if not a DB connection error
 		$dbErrorCodes = [
@@ -432,7 +432,7 @@ class Logger implements LoggerInterface {
 			ErrorCodes::MISSING_DB,
 		];
 
-		if ((!$errorCode or ($errorCode and !in_array($errorCode, $dbErrorCodes, TRUE))) and Database::getInstance()->isConnected()) {
+		if ((!$errorCode or ($errorCode and !in_array($errorCode, $dbErrorCodes, true))) and Database::getInstance()->isConnected()) {
 			$this->snapshot($description, $level);
 		}
 
@@ -607,7 +607,7 @@ class Logger implements LoggerInterface {
 	 * @param	string	Description of the snapshot moment.
 	 * @param	int		Optional PSR-3 log level number equivalent, default is 8 (DEBUG).
 	 */
-	private function snapshot(string $description, ?int $level=NULL): void {
+	private function snapshot(string $description, ?int $level = null): void {
 
 		if (!$this->enabled) {
 			return;
@@ -623,7 +623,7 @@ class Logger implements LoggerInterface {
 		$errorLog = new ErrorLog();
 
 		$errorLog->level 		= $level ?: self::DEBUG;
-		$errorLog->userId		= $app->currentUser->id ?? NULL;
+		$errorLog->userId		= $app->currentUser->id ?? null;
 		$errorLog->path			= substr((string)$router->url,1);
 		$errorLog->getData		= $_GET;
 		$errorLog->postData		= $_POST;

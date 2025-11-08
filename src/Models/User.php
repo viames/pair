@@ -221,7 +221,7 @@ class User extends ActiveRecord {
 	 * @param	string	Module name.
 	 * @param	string	Optional action name.
 	 */
-	public function canAccess(string $module, ?string $action=NULL): bool {
+	public function canAccess(string $module, ?string $action = null): bool {
 
 		// patch for public folder content
 		if ('public' == $module) {
@@ -322,7 +322,7 @@ class User extends ActiveRecord {
 	 * @param	string	IANA time zone identifier.
 	 * @param	int		Possible ID of the user before impersonation.
 	 */
-	private function createSession(string $timezone, ?int $formerUserId=NULL): bool {
+	private function createSession(string $timezone, ?int $formerUserId = null): bool {
 
 		// get a valid DateTimeZone object
 		$dateTimeZone = User::getValidTimeZone($timezone);

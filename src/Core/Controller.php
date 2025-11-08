@@ -118,7 +118,7 @@ abstract class Controller {
 	 *
 	 * @param	string	Optional message to enqueue.
 	 */
-	protected function accessDenied(?string $message=NULL): void {
+	protected function accessDenied(?string $message = null): void {
 
 		$this->toastRedirect(Translator::do('ERROR'), ($message ?: Translator::do('ACCESS_DENIED')), strtolower($this->name));
 
@@ -174,9 +174,9 @@ abstract class Controller {
 	 * Proxy function to translate a string, used for AJAX return messages.
 	 *
 	 * @param	string	The language key.
-	 * @param	string|array|NULL	Parameter or list of parameters to bind on translation string (optional).
+	 * @param	string|array|null	Parameter or list of parameters to bind on translation string (optional).
 	 */
-	public function lang(string $key, string|array|NULL $vars=NULL): string {
+	public function lang(string $key, string|array|null $vars = null): string {
 
 		return Translator::do($key, $vars);
 
@@ -272,7 +272,7 @@ abstract class Controller {
 	/**
 	 * Shortcut to HTTP redirect and show a toast notification error.
 	 */
-	public function redirectWithError(string $message, ?string $url=NULL): void {
+	public function redirectWithError(string $message, ?string $url = null): void {
 
 		$this->toastError($message);
 		$this->redirect($url);

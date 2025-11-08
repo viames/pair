@@ -126,7 +126,7 @@ class Form {
 	 * @param	string	More parameters as associative array tag=>value (optional).
 	 * @param	string	Name of Font Awesome icon class (optional).
 	 */
-	public static function buildButton(string $value, string $type='submit', ?string $name=null, $attributes=[], $faIcon=null): string {
+	public static function buildButton(string $value, string $type = 'submit', ?string $name = null, $attributes = [], $faIcon = null): string {
 
 		$control = new Button($name, $attributes);
 		$control->type($type)->faIcon($faIcon)->value($value);
@@ -143,7 +143,7 @@ class Form {
 	 * @param	string	Type (text -default-, password, email, url, etc.).
 	 * @param	array	More parameters as associative array tag=>value (optional).
 	 */
-	public static function buildInput(string $name, ?string $value=null, ?string $type=null, array $attributes=[]): string {
+	public static function buildInput(string $name, ?string $value = null, ?string $type = null, array $attributes = []): string {
 
 		if (!$type) {
 			$type = 'text';
@@ -170,7 +170,7 @@ class Form {
 	 * @param	string	Extended parameters as associative array tag=>value.
 	 * @param	string	Prepend empty value (default null, no prepend).
 	 */
-	public static function buildSelect(string $name, Collection|array $list, string $valName='value', string $textName='text', $value=null, $attributes=null, $prependEmpty=null): string {
+	public static function buildSelect(string $name, Collection|array $list, string $valName = 'value', string $textName = 'text', $value = null, $attributes = null, $prependEmpty = null): string {
 
 		$control = new Select($name, $attributes);
 		$control->options($list, $valName, $textName)->value($value);
@@ -192,7 +192,7 @@ class Form {
 	 * @param	string	Default value (null default).
 	 * @param	string	More parameters as associative array tag=>value (optional).
 	 */
-	public static function buildTextarea(string $name, int $rows, int $cols, $value=null, $attributes=[]): string {
+	public static function buildTextarea(string $name, int $rows, int $cols, $value = null, $attributes = []): string {
 
 		$control = new Textarea($name, $attributes);
 		$control->rows($rows)->cols($cols)->value($value);

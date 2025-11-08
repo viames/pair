@@ -91,7 +91,7 @@ class Upload {
 		if (!isset($file['tmp_name']) or !is_uploaded_file($file['tmp_name'])) {
 			throw new PairException('File ' . $fieldName . ' is not an uploaded file');
 		}
-		
+
 		// assign array values to the object properties
 		$this->filename		= $file['name'];
 		$this->formerName	= $file['name'];
@@ -112,7 +112,7 @@ class Upload {
 		// sets the upload error as readable message
 		if (UPLOAD_ERR_OK != $this->fileError) {
 			throw new PairException('Upload error: ' . $this->getErrorMessage());
-		}	
+		}
 
 	}
 
@@ -131,7 +131,7 @@ class Upload {
 
 			case UPLOAD_ERR_OK:
 				return 'No error';
-		
+
 			case UPLOAD_ERR_INI_SIZE:
 				return 'Uploaded file exceeds upload_max_filesize parameter set in php.ini: (' . ini_get('upload_max_filesize') . ')';
 
@@ -171,7 +171,7 @@ class Upload {
 
 	/**
 	 * Will returns Mime and Type for the file as parameter.
-	 * 
+	 *
 	 * @param	string	Path to file.
 	 */
 	private function getMime(string $file): \stdClass {
@@ -234,7 +234,7 @@ class Upload {
 	 * @param	string	Optional new file name, if NULL will be the same as uploaded.
 	 * @param	bool	Optional flag to save with random file name, default FALSE.
 	 */
-	public function save(string $path, ?string $name=NULL, bool $random=FALSE): bool {
+	public function save(string $path, ?string $name = null, bool $random = false): bool {
 
 		// check upload errors
 		if (UPLOAD_ERR_OK != $this->fileError) {
@@ -244,7 +244,7 @@ class Upload {
 
 		// fixes path if not containing trailing slash
 		Utilities::fixTrailingSlash($path);
-		$this->path = $path;  
+		$this->path = $path;
 
 		// sanitize file-name
 		$this->filename = Utilities::cleanFilename($this->filename);
@@ -299,29 +299,29 @@ class Upload {
 
 	/**
 	 * Manages saving the uploaded file directly to an Amazon S3 folder with the specified file name.
-	 * 
+	 *
 	 * @param	string	Relative destination path on Amazon S3.
-	 * @param	AmazonS3	Amazon S3 service object.
-	 * @return	bool		TRUE on success, FALSE on failure.
-	 * @throws	PairException
+	 * @param	AmazonS3	Instance of AmazonS3 service.
+	 * @throws	PairException	If there is an upload error.
 	 */
 	public function saveS3(string $filePath, AmazonS3 $amazonS3): void {
 
-		// check upload errors
+		// check on upload errors
 		if (UPLOAD_ERR_OK != $this->fileError) {
 			throw new PairException('Upload error: ' . $this->getErrorMessage());
 		}
 
-		// sanitize file-name
+		// sanitize the file name
 		$this->filename = Utilities::cleanFilename($this->filename);
 
+		// upload the file to S3 through the AmazonS3 service
 		$amazonS3->put($this->fileTmpname, $filePath);
 
 	}
 
 	/**
 	 * Will sets an error on queue of main Application singleton object.
-	 * 
+	 *
 	 * @param	string	Error text.
 	 */
 	private function setError(string $error): void {

@@ -93,7 +93,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @param	mixed	Record object from db table or just table key value (int, string or array, optional).
 	 */
-	final public function __construct($initParam=NULL) {
+	final public function __construct($initParam = null) {
 
 		// get DB instance
 		$this->db = Database::getInstance();
@@ -659,7 +659,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @param	array	Optional list of the properties you want to return, as a subset of those available.
 	 */
-	public function convertToStdClass(?array $wantedProperties=NULL): \stdClass {
+	public function convertToStdClass(?array $wantedProperties = null): \stdClass {
 
 		$stdClass = new \stdClass();
 		$binds = static::getBinds();
@@ -987,7 +987,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * @param	string	Optional pattern in the format provided by the DateTime object.
 	 * @return	string|NULL
 	 */
-	final public function formatDate(string $prop, ?string $format=NULL): ?string {
+	final public function formatDate(string $prop, ?string $format = null): ?string {
 
 		if (!is_a($this->$prop, '\DateTime')) {
 			return NULL;
@@ -1013,7 +1013,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * @param	string	Optional pattern in the format provided by the DateTime object.
 	 * @return	string|NULL
 	 */
-	final public function formatDateTime(string $prop, ?string $format=NULL): ?string {
+	final public function formatDateTime(string $prop, ?string $format = null): ?string {
 
 		if (!is_a($this->$prop, '\DateTime')) {
 			return NULL;
@@ -1275,7 +1275,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @param	string|NULL	Table alias.
 	 */
-	public static function getEncryptedColumnsQuery(?string $tableAlias=NULL): string {
+	public static function getEncryptedColumnsQuery(?string $tableAlias = null): string {
 
 		$encryptables = static::getEncryptableFields();
 
@@ -1475,7 +1475,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * Return a list of ActiveRecord objects related to this object. Can be filtered by a
 	 * specific class. If no related objects are found, an empty Collection is returned.
 	 */
-	final public function getRelateds(?string $refClass=NULL): Collection {
+	final public function getRelateds(?string $refClass = null): Collection {
 
 		// foreign keys flag
 		$foreignKeyFound = FALSE;
@@ -1644,7 +1644,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * @param	string	Query to run.
 	 * @param	array	Optional bind parameters for query.
 	 */
-	final public static function getObjectByQuery(string $query, array $params=[]): ?static {
+	final public static function getObjectByQuery(string $query, array $params = []): ?static {
 
 		// run query
 		$row = Database::load($query, $params, Database::OBJECT);
@@ -1697,7 +1697,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * @param	string	Query to run.
 	 * @param	array	Optional bind parameters for query.
 	 */
-	final public static function getObjectsByQuery(string $query, array $params=[]): Collection {
+	final public static function getObjectsByQuery(string $query, array $params = []): Collection {
 
 		$class = get_called_class();
 
@@ -1807,7 +1807,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * @param	string	Parent property name.
 	 * @param	string	Parent object class.
 	 */
-	final public function getParent(string $parentProperty, ?string $className=NULL): ?self {
+	final public function getParent(string $parentProperty, ?string $className = null): ?self {
 
 		$cacheName = $parentProperty . 'RelatedObject';
 
@@ -2687,7 +2687,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @param	mixed	Optional array of subject properties or single property to update.
 	 */
-	final public function update(mixed $properties=NULL): bool {
+	final public function update(mixed $properties = null): bool {
 
 		if (!$this->areKeysPopulated()) {
 

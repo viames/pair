@@ -171,7 +171,7 @@ class Locale extends ActiveRecord {
 	 *
 	 * @param	string	Separator character, default is '-'.
 	 */
-	public function getRepresentation(string $separator='-'): string {
+	public function getRepresentation(string $separator = '-'): string {
 
 		if (!in_array($separator, ['-', '_'])) {
 			$logger = Logger::getInstance();

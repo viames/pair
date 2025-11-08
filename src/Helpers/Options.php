@@ -13,7 +13,7 @@ class Options {
 	/**
 	 * Singleton instance object.
 	 */
-	private static ?self $instance = NULL;
+	private static ?self $instance = null;
 
 	/**
 	 * DB connection object.
@@ -23,7 +23,7 @@ class Options {
 	/**
 	 * Option list.
 	 */
-	private ?array $list = NULL;
+	private ?array $list = null;
 
 	/**
 	 * Constructor, connects to database.
@@ -39,7 +39,7 @@ class Options {
 	 */
 	public static function getInstance(): self {
 
-		if (NULL == self::$instance) {
+		if (null == self::$instance) {
 			self::$instance = new self();
 		}
 
@@ -74,7 +74,7 @@ class Options {
 		if (!static::exists($name)) {
 			$logger = Logger::getInstance();
 			$logger->warning('Option “'. $name .'” doesn’t exist.');
-			return NULL;
+			return null;
 		}
 
 		return $self->list[$name]->value;
@@ -90,7 +90,7 @@ class Options {
 	 */
 	public static function set(string $name, mixed $value): bool {
 
-		$ret = FALSE;
+		$ret = false;
 
 		// instance of the singleton
 		$self = static::getInstance();

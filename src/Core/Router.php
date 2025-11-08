@@ -44,7 +44,7 @@ class Router {
 	/**
 	 * Defautls value when empty URL.
 	 */
-	private array $defaults = ['module'=>null,'action'=>null];
+	private array $defaults = ['module' => null,'action' => null];
 
 	/**
 	 * Current page number.
@@ -149,13 +149,13 @@ class Router {
 	 * @param	mixed	Parameter position (zero based) or Key name.
 	 * @param	bool	Flag to decode a previously encoded value as char-only.
 	 */
-	public static function get(int|string $paramIdx, bool $decode=false): ?string {
+	public static function get(int|string $paramIdx, bool $decode = false): ?string {
 
 		$self = static::$instance;
 
 		if (!$self) return null;
 
-		if (array_key_exists($paramIdx, $self->vars) and ''!=$self->vars[$paramIdx]) {
+		if (array_key_exists($paramIdx, $self->vars) and '' != $self->vars[$paramIdx]) {
 			$value = $self->vars[$paramIdx];
 			if ($decode) {
 				$value = json_decode(gzinflate(base64_decode(strtr($value, '-_', '+/'))));
@@ -201,7 +201,7 @@ class Router {
 	 */
 	private function parseCgiParameters(): void {
 
-		if (false===strpos((string)$this->url, '?')) {
+		if (false === strpos((string)$this->url, '?')) {
 			return;
 		}
 
@@ -247,7 +247,7 @@ class Router {
 	 * @param	string			Path to routes file.
 	 * @param	bool			Flag to set as module routes.
 	 */
-	private function parseCustomRoutes(array $params, string $routesFile, bool $moduleRoute=false): bool {
+	private function parseCustomRoutes(array $params, string $routesFile, bool $moduleRoute = false): bool {
 
 		// check if controller file exists
 		if (!file_exists($routesFile)) {
@@ -426,7 +426,7 @@ class Router {
 	 * @param	mixed	Parameter position (zero based) or Key name.
 	 * @param	bool	Flag to decode a previously encoded value as char-only.
 	 */
-	public function getParam(int|string $paramIdx, bool $decode=false): ?string {
+	public function getParam(int|string $paramIdx, bool $decode = false): ?string {
 
 		if (array_key_exists($paramIdx, $this->vars) and ''!=$this->vars[$paramIdx]) {
 			$value = $this->vars[$paramIdx];
@@ -447,7 +447,7 @@ class Router {
 	 * @param	string	Value to add.
 	 * @param	bool	Flag to encode as char-only the value.
 	 */
-	public function setParam(mixed $paramIdx, string $value, bool $encode=false): void {
+	public function setParam(mixed $paramIdx, string $value, bool $encode = false): void {
 
 		if ($encode) {
 			$value = rtrim(strtr(base64_encode(gzdeflate(json_encode($value), 9)), '+/', '-_'), '=');
@@ -612,7 +612,7 @@ class Router {
 	 * @param	string|null	Optional module name.
 	 * @param	bool|null	Optional raw flag.
 	 */
-	public static function addRoute(string $path, string $action, ?string $module=null, ?bool $raw=false) {
+	public static function addRoute(string $path, string $action, ?string $module = null, ?bool $raw = false) {
 
 		// fix empty path
 		if ('' == $path) {
@@ -725,7 +725,7 @@ class Router {
 	 *
 	 * @param	int|null	Optional order value to build the URL with.
 	 */
-	public function getOrderUrl(?int $val=null): string {
+	public function getOrderUrl(?int $val = null): string {
 
 		// save current order val
 		$tmp = $this->order;
@@ -745,7 +745,7 @@ class Router {
 	 *
 	 * @param	int|null	Optional page number to build the URL with.
 	 */
-	public function getPageUrl(?int $page=null): string {
+	public function getPageUrl(?int $page = null): string {
 
 		// save current order val
 		$tmp = $this->page;

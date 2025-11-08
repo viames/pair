@@ -96,7 +96,7 @@ class Utilities {
 	 * @param	string		Original string.
 	 * @param	string|NULL	Optional custom separator.
 	 */
-	public static function cleanFilename(string $string, ?string $sep=NULL): string {
+	public static function cleanFilename(string $string, ?string $sep = null): string {
 
 		$sep = $sep ?: '-';
 
@@ -116,7 +116,7 @@ class Utilities {
 	 * @param	string	Original string.
 	 * @param	string|NULL	Optional custom separator to use instead of minus.
 	 */
-	public static function cleanUp(string $string, ?string $sep=NULL): string {
+	public static function cleanUp(string $string, ?string $sep = null): string {
 
 		$sep = $sep ?: '-';
 
@@ -140,7 +140,7 @@ class Utilities {
 	/**
 	 * Convert a CSV file to an Excel file using the https://github.com/mentax/csv2xlsx command line utility.
 	 */
-	public static function convertCsvToExcel(string $csvPath, ?string $excelPath=NULL, string $separator=','): string {
+	public static function convertCsvToExcel(string $csvPath, ?string $excelPath = null, string $separator=','): string {
 
 		$execPath = self::getExecutablePath('csv2xlsx', 'CSV2XLSX_PATH');
 
@@ -232,7 +232,7 @@ class Utilities {
 	 * @param	string Optional name for the document (with extension).
 	 * @return	bool
 	 */
-	public static function exportCsvForExcel(array $data, ?string $name=NULL): bool {
+	public static function exportCsvForExcel(array $data, ?string $name = null): bool {
 
 		// field delimiter
 		$delimiter = ";";
@@ -286,7 +286,7 @@ class Utilities {
 	 * @param string Value to search for.
 	 * @return object The closest object.
 	 */
-	public static function findSimilar(Collection|array $objectList, string $propertyName, string $searchedValue, ?bool $caseSensitive=FALSE): object {
+	public static function findSimilar(Collection|array $objectList, string $propertyName, string $searchedValue, ?bool $caseSensitive = false): object {
 
 		// temporary list to sort by similarity
 		$similarity = [];
@@ -420,7 +420,7 @@ class Utilities {
 	 * @param	string	Internal, subfolder recursive name-cache.
 	 * @param	array	Internal, empty array at first scan.
 	 */
-	public static function getDirectoryFilenames(string $path, ?string $subfolder=NULL, array $fileList=[]): array {
+	public static function getDirectoryFilenames(string $path, ?string $subfolder = null, array $fileList = []): array {
 
 		// usually insignificant files
 		$excludes = ['..', '.', '.DS_Store', 'thumbs.db', '.htaccess'];
@@ -679,7 +679,7 @@ class Utilities {
 	 * @param	string	Snake case variable name.
 	 * @param	bool	Optional to have first letter capital case.
 	 */
-	public static function getCamelCase(string $varName, bool $capFirst=FALSE): string {
+	public static function getCamelCase(string $varName, bool $capFirst = false): string {
 
 		$camelCase = str_replace(' ', '', ucwords(str_replace('_', ' ', $varName)));
 
@@ -711,7 +711,7 @@ class Utilities {
 	 * cannot be changed in the system, the path to the executable can be specified in the Pair .env
 	 * configuration file. Return the path to the executable if it is available, otherwise NULL.
 	 */
-	public static function getExecutablePath(string $executable, ?string $envKey=NULL): ?string {
+	public static function getExecutablePath(string $executable, ?string $envKey = null): ?string {
 
 		if ($envKey and Env::get($envKey) and is_executable(Env::get($envKey))) {
 			return Env::get($envKey);
@@ -871,7 +871,7 @@ class Utilities {
 	 * @param	string		Formatting pattern, for example “dd MMMM Y hh:mm”.
 	 * @param	\DateTime	The date object to be formatted, it will be the current date if NULL.
 	 */
-	public static function intlFormat(?string $format=NULL, \DateTime|NULL $dateTime=NULL): string {
+	public static function intlFormat(?string $format = null, \DateTime|NULL $dateTime = null): string {
 
 		$formatter = new \IntlDateFormatter(NULL, \IntlDateFormatter::MEDIUM, \IntlDateFormatter::SHORT);
 		if ($format) {
@@ -953,7 +953,7 @@ class Utilities {
 	/**
 	 * Check if the passed string is a serialized data for PHP until version 8.3.
 	 */
-	public static function isSerialized(string $data, array $allowedClasses=[]): bool {
+	public static function isSerialized(string $data, array $allowedClasses = []): bool {
 
 		$data = trim($data);
 
@@ -1003,7 +1003,7 @@ class Utilities {
 	 * @param	int		Optional HTTP code (default 400).
 	 * @param	array	Optional extra data to add to the JSON response.
 	 */
-	public static function jsonError(string $errorCode, string $errorMessage, int $httpCode=400, array $extra=[]): void {
+	public static function jsonError(string $errorCode, string $errorMessage, int $httpCode=400, array $extra = []): void {
 
 		self::jsonResponse(array_merge([
 			'code' => $errorCode,
@@ -1054,7 +1054,7 @@ class Utilities {
 	 * @param	int|NULL	HTTP code (optional, 400 by default).
 	 * @deprecated	Use jsonError() instead.
 	 */
-	public static function pairJsonError(string $message, ?int $code=NULL, ?int $httpCode=NULL): void {
+	public static function pairJsonError(string $message, ?int $code = null, ?int $httpCode = null): void {
 
 		if (is_null($httpCode)) {
 			$httpCode = 400;
@@ -1101,7 +1101,7 @@ class Utilities {
 	 * @param	int		HTTP code (optional).
 	 * @deprecated	Use jsonResponse() instead.
 	 */
-	public static function pairJsonData(mixed $data, ?string $message=NULL, bool $error=FALSE, ?int $code=NULL, ?int $httpCode=NULL): void {
+	public static function pairJsonData(mixed $data, ?string $message = null, bool $error = false, ?int $code = null, ?int $httpCode = null): void {
 
 		$ret = new \stdClass();
 
@@ -1143,7 +1143,7 @@ class Utilities {
 	 * Prints an A-Z list with link for build an alpha filter.
 	 * @param	string	Current selected list item, if any.
 	 */
-	public function printAlphaFilter(?string $selected=NULL): void {
+	public function printAlphaFilter(?string $selected = null): void {
 
 		$router = Router::getInstance();
 
@@ -1215,7 +1215,7 @@ class Utilities {
 	 *
 	 * @param	string	Optional custom message to print in the alert message container.
 	 */
-	public static function showNoDataAlert(?string $customMessage=NULL) {
+	public static function showNoDataAlert(?string $customMessage = null) {
 
 		Router::exceedingPaginationFallback();
 
@@ -1312,7 +1312,7 @@ class Utilities {
 	 * @param	mixed	Variable of any type.
 	 * @param	bool	Flag to hide var type.
 	 */
-	public static function varToText($var, bool $showTypes=TRUE, ?int $indent=0): string {
+	public static function varToText($var, bool $showTypes = true, ?int $indent=0): string {
 
 		$getIndent = function(int $incr=0) use ($indent) {
 			$indent += $incr;

@@ -178,7 +178,7 @@ class File extends FormControl {
 	/**
 	 * Sets the camera facing mode for the file input.
 	 */
-	public function capture(?string $cameraFacingMode=NULL): self {
+	public function capture(?string $cameraFacingMode = null): self {
 
 		$this->attributes['capture'] = $cameraFacingMode;
 

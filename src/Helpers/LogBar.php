@@ -144,7 +144,7 @@ class LogBar {
 	 * @param	string	Event type notice, query, api, warning or error (default is notice).
 	 * @param	NULL|string	Optional additional text.
 	 */
-	final public static function event(string $description, string $type='notice', ?string $subtext=NULL): void {
+	final public static function event(string $description, string $type = 'notice', ?string $subtext = null): void {
 
 		$self = self::getInstance();
 

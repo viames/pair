@@ -54,13 +54,13 @@ class PairException extends \Exception {
 			$message = Translator::do('AN_ERROR_OCCURRED');
 		}
 		
+		$app = Application::getInstance();
 		$router = Router::getInstance();
 		
 		// JSON error for AJAX requests or modal for web requests
 		if ($app->headless) {
 			Utilities::jsonError('INTERNAL_SERVER_ERROR',$message);
 		} else {
-			$app = Application::getInstance();
 			$app->modal(Translator::do('ERROR'), $message, 'error')->confirm(Translator::do('OK'));
 		}
 

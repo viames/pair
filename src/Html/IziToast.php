@@ -90,7 +90,7 @@ class IziToast {
 	/**
 	 * Constructor method.
 	 */
-	public function __construct(string $title, string $message, ?string $type='info') {
+	public function __construct(string $title, string $message, ?string $type = 'info') {
 
 		$this->title = $title;
 		$this->message = $message;
