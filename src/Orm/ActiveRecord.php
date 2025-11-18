@@ -154,8 +154,10 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * the table of this object and other tables in two directions. Furthermore, it prevents fatal
 	 * errors on non-existent functions.
 	 *
-	 * @param	string	Called method name.
-	 * @param	array	Arguments.
+	 * @param	string	$name		Called method name.
+	 * @param	array	$arguments	Arguments.
+	 * @return	mixed				Related ActiveRecord object(s) or NULL.
+	 * @throws	\Exception			If method doesn’t exist.
 	 */
 	public function __call(string $name, array $arguments): mixed {
 
@@ -225,27 +227,9 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 			}
 
-		// notify the problem only to the developers
-		} else if ('development' == Application::getEnvironment()) {
-
-			$backtrace = debug_backtrace();
-			$logger = Logger::getInstance();
-			$context = [
-				'class'		=> get_called_class(),
-				'method'	=> $name,
-				'type'		=> $backtrace[0]['type'],
-				'file'		=> $backtrace[0]['file'],
-				'line'		=> $backtrace[0]['line']
-			];
-			$logger->error('Method {class}::{method}(), which doesn’t exist, has been called by {file} on line {line}', $context);
-
 		}
 
-		// build the Exception message
-		$msg = 'Method '. get_called_class() . '::' . $name .'() doesn’t exist';
-		$code = ErrorCodes::METHOD_NOT_FOUND;
-
-		throw new PairException($msg, $code);
+		throw new \Exception('Method '. get_called_class() . '::' . $name .'() doesn’t exist', ErrorCodes::METHOD_NOT_FOUND);
 
 	}
 
@@ -423,7 +407,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 
 		$className = basename(str_replace('\\', '/', $class));
-		
+
 		$logger = Logger::getInstance();
 		$logger->debug('Loaded ' . count($records) . ' ' . $className . ' objects');
 
@@ -1474,6 +1458,10 @@ abstract class ActiveRecord implements \JsonSerializable {
 	/**
 	 * Return a list of ActiveRecord objects related to this object. Can be filtered by a
 	 * specific class. If no related objects are found, an empty Collection is returned.
+	 * 
+	 * @param	string|null	$refClass	Referring class name to filter related objects. NULL to get all related objects.
+	 * @return	Collection				Collection of related ActiveRecord objects.
+	 * @throws	\Exception				When no useful foreign key is found.
 	 */
 	final public function getRelateds(?string $refClass = null): Collection {
 
@@ -1493,7 +1481,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 				$refClass = Utilities::getActiveRecordClassByTable($ifk->TABLE_NAME);
 
 				if (!$refClass) {
-					throw new PairException('Class not found for table ' . $ifk->TABLE_NAME, ErrorCodes::CLASS_NOT_FOUND);
+					throw new \Exception('Class not found for table ' . $ifk->TABLE_NAME, ErrorCodes::CLASS_NOT_FOUND);
 				}
 
 				$foreignKeyFound = TRUE;
@@ -1511,7 +1499,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 			// the class was not found
 			if (!class_exists($refClass) or !is_subclass_of($refClass, 'Pair\Orm\ActiveRecord')) {
-				throw new PairException('Class ' . $refClass . ' not found', ErrorCodes::CLASS_NOT_FOUND);
+				throw new \Exception('Class ' . $refClass . ' not found', ErrorCodes::CLASS_NOT_FOUND);
 			}
 
 			// search for the object property that matches db fk
@@ -1540,7 +1528,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 				? Translator::do('NO_USEFUL_FOREIGN_KEY_FOR_CLASS', [$refClass, static::TABLE_NAME])
 				: Translator::do('NO_USEFUL_FOREIGN_KEY', [static::TABLE_NAME]);
 
-			throw new PairException($message, ErrorCodes::NO_FOREIGN_KEY);
+			throw new \Exception($message, ErrorCodes::NO_FOREIGN_KEY);
 
 		}
 
@@ -1679,7 +1667,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// turn on loaded-from-db flag
 		$object->loadedFromDb = TRUE;
 
-		$className = 
+		$className =
 		$logger = Logger::getInstance();
 		$context = [
 			'class'  => basename(str_replace('\\', '/', $class)),

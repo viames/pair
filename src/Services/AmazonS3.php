@@ -126,20 +126,17 @@ class AmazonS3 {
 	/**
 	 * Deletes the remote file at the specified path.
 	 *
-	 * @param string Path of the remote file.
+	 * @param	string	$remoteFile	Path of the remote file.
+	 * @return	bool				True if the file was deleted, false if it did not exist.
 	 */
 	public function delete(string $remoteFile): bool {
 
-		try {
-			if ($this->exists($remoteFile)) {
-				$this->filesystem->delete($remoteFile);
-				return TRUE;
-			}
-		} catch (\Exception $e) {
-			throw new PairException($e->getMessage(), ErrorCodes::AMAZON_S3_ERROR, $e);
+		if ($this->exists($remoteFile)) {
+			$this->filesystem->delete($remoteFile);
+			return true;
 		}
 
-		return FALSE;
+		return false;
 
 	}
 
@@ -151,61 +148,56 @@ class AmazonS3 {
 		try {
 			if ($this->exists($remoteDir)) {
 				$this->filesystem->deleteDir($remoteDir);
-				return TRUE;
+				return true;
 			}
 		} catch (\Exception $e) {
 			throw new PairException($e->getMessage(), ErrorCodes::AMAZON_S3_ERROR, $e);
 		}
 
-		return FALSE;
+		return false;
 
 	}
 
 	/**
-	 * Checks if a remote file exists in S3.
+	 * Checks if a file exists in the S3 bucket.
 	 *
-	 * @param string	Path of the remote file in the bucket.
-	 * @return bool		TRUE if the file exists, FALSE otherwise.
-	 * @throws PairException
+	 * @param string	$remoteFile	Path of the remote file to check.
+	 * @return bool					True if the file exists, false otherwise.
 	 */
 	public function exists(string $remoteFile): bool {
 
-		try {
-			return $this->filesystem->fileExists($remoteFile);
-		} catch (\Throwable $e) {
-			throw new PairException('S3 exists() failed: ' . $e->getMessage(), ErrorCodes::AMAZON_S3_ERROR);
-		}
+		return $this->filesystem->fileExists($remoteFile);
 
 	}
 
 	/**
 	 * Downloads the remote file on local filesystem.
 	 *
-	 * @param string Path of the remote file.
-	 * @param string Path of the local file (including file name).
-	 * @throws PairException In case of error creating the local file.
+	 * @param	string $remoteFile		Path of the remote file.
+	 * @param	string $localFilePath	Path of the local file (including file name).
+	 * @throws	\Exception				In case of error creating the local file.
 	 */
 	public function get(string $remoteFile, string $localFilePath): bool {
 
-		if (!$this->exists($remoteFile)) return FALSE;
+		if (!$this->exists($remoteFile)) return false;
 
 		try {
 			file_put_contents($localFilePath, $this->read($remoteFile));
 		} catch(\Throwable $e) {
-			throw new PairException($e->getMessage(), ErrorCodes::AMAZON_S3_ERROR, $e);
+			throw new \Exception($e->getMessage(), ErrorCodes::AMAZON_S3_ERROR, $e);
 		}
 
-		return TRUE;
+		return true;
 
 	}
 
 	/**
-	 * Returns a presigned URL for the file if it exists, NULL otherwise.
+	 * Returns a presigned URL for the file if it exists, null otherwise.
 	 *
-	 * @param string Object key within the bucket.
-	 * @param int Expiration time in seconds (default 3600, max 604800).
-	 * @return string|NULL The presigned URL or NULL if the file does not exist.
-	 * @throws PairException In case of error generating the URL.
+	 * @param	string	$remoteFile	Object key within the bucket.
+	 * @param	int		$expiration	Expiration time in seconds (default 3600, max 604800).
+	 * @return	string|null	The presigned URL or null if the file does not exist.
+	 * @throws	\Exception	In case of error generating the URL.
 	 */
 	public function presignedUrl(string $remoteFile, int $expiration = 3600): ?string {
 
@@ -224,14 +216,14 @@ class AmazonS3 {
 
 			// treat 404/403 as “not available”
 			if ($e->getStatusCode() === 404 || $e->getStatusCode() === 403) {
-				return NULL;
+				return null;
 			}
 
-			throw new PairException('Failed to check object existence: ' . $e->getMessage(), 0, $e);
+			throw new \Exception('Failed to check object existence: ' . $e->getMessage(), 0, $e);
 
 		} catch (\Throwable $e) {
 
-			throw new PairException('Failed to check object existence: ' . $e->getMessage(), 0, $e);
+			throw new \Exception('Failed to check object existence: ' . $e->getMessage(), 0, $e);
 
 		}
 
@@ -273,12 +265,12 @@ class AmazonS3 {
 		}
 
 		$stream = fopen($filePath, 'rb');
-		if (FALSE === $stream) {
+		if (false === $stream) {
 			throw new PairException('Unable to open local file: ' . $filePath, ErrorCodes::AMAZON_S3_ERROR);
 		}
 
 		// try to detect MIME for proper Content-Type on S3
-		$mime = function_exists('mime_content_type') ? @mime_content_type($filePath) : NULL;
+		$mime = function_exists('mime_content_type') ? @mime_content_type($filePath) : null;
 		$options = [];
 		if ($mime) {
 			// Flysystem v3 S3 adapter maps "mimetype" to S3 ContentType
@@ -312,7 +304,7 @@ class AmazonS3 {
 			throw new PairException($e->getMessage(), ErrorCodes::AMAZON_S3_ERROR, $e);
 		}
 
-		if (FALSE === $content) {
+		if (false === $content) {
 			throw new PairException('Error reading file: ' . $remoteFile, ErrorCodes::AMAZON_S3_ERROR);
 		}
 
@@ -325,7 +317,7 @@ class AmazonS3 {
 	 *
 	 * @param	string	The URL to verify.
 	 * @param	int		Optional time skew in seconds to allow for clock differences (default 30s).
-	 * @return	bool	TRUE if the URL is still valid, FALSE otherwise.
+	 * @return	bool	True if the URL is still valid, false otherwise.
 	 */
 	public function validUrl(string $url, int $skew = 30): bool {
 
@@ -333,7 +325,7 @@ class AmazonS3 {
 
 		// invalid URL
 		if (!$p or empty($p['host'])) {
-			return FALSE;
+			return false;
 		}
 
 		// parse query string
@@ -342,7 +334,7 @@ class AmazonS3 {
 		// presigned S3 (SigV4)
 		if (isset($q['X-Amz-Date'], $q['X-Amz-Expires'])) {
 			$dt = \DateTimeImmutable::createFromFormat('Ymd\THis\Z', $q['X-Amz-Date'], new \DateTimeZone('UTC'));
-			if (!$dt) return FALSE;
+			if (!$dt) return false;
 			return (time() + $skew) < ($dt->getTimestamp() + (int)$q['X-Amz-Expires']);
 		}
 
@@ -355,13 +347,13 @@ class AmazonS3 {
 		$ch = curl_init($url);
 
 		curl_setopt_array($ch, [
-			CURLOPT_NOBODY         => TRUE,  // HEAD-like request
+			CURLOPT_NOBODY         => true,  // HEAD-like request
 			CURLOPT_CUSTOMREQUEST  => 'HEAD',
-			CURLOPT_RETURNTRANSFER => TRUE,  // do not output anything
-			CURLOPT_FOLLOWLOCATION => FALSE, // treat 3xx as success without following
+			CURLOPT_RETURNTRANSFER => true,  // do not output anything
+			CURLOPT_FOLLOWLOCATION => false, // treat 3xx as success without following
 			CURLOPT_CONNECTTIMEOUT => $timeout,
 			CURLOPT_TIMEOUT        => $timeout,
-			CURLOPT_SSL_VERIFYPEER => TRUE,
+			CURLOPT_SSL_VERIFYPEER => true,
 			CURLOPT_SSL_VERIFYHOST => 2,
 			CURLOPT_USERAGENT      => 'Pair/HTTP-Check'
 		]);
@@ -373,7 +365,7 @@ class AmazonS3 {
 
 		// network/transport error
 		if (0 !== $err) {
-			return FALSE;
+			return false;
 		}
 
 		return ($code >= 200 and $code < 400);

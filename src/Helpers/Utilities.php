@@ -81,12 +81,12 @@ class Utilities {
 		foreach ($validMime as $item) {
 
 			if ($item == mime_content_type($file)) {
-				return TRUE;
+				return true;
 			}
 
 		}
 
-		return FALSE;
+		return false;
 
 	}
 
@@ -94,7 +94,7 @@ class Utilities {
 	 * Cleans out a string from any unwanted char. Useful for file-names.
 	 *
 	 * @param	string		Original string.
-	 * @param	string|NULL	Optional custom separator.
+	 * @param	string|null	Optional custom separator.
 	 */
 	public static function cleanFilename(string $string, ?string $sep = null): string {
 
@@ -114,7 +114,7 @@ class Utilities {
 	 * Also converts diacritics to standard ascii, reduces multiple separators and lowercases the string.
 	 *
 	 * @param	string	Original string.
-	 * @param	string|NULL	Optional custom separator to use instead of minus.
+	 * @param	string|null	Optional custom separator to use instead of minus.
 	 */
 	public static function cleanUp(string $string, ?string $sep = null): string {
 
@@ -199,8 +199,8 @@ class Utilities {
 	}
 
 	/**
-	 * Deletes folder with all files and subfolders. Returns TRUE if deletion happens,
-	 * FALSE if folder or file is not found or in case of errors.
+	 * Deletes folder with all files and subfolders. Returns true if deletion happens,
+	 * false if folder or file is not found or in case of errors.
 	 *
 	 * @param	string	Relative or absolute directory.
 	 */
@@ -273,7 +273,7 @@ class Utilities {
 		// writes the other data to a pointer to the file
 		fpassthru($file);
 
-		return TRUE;
+		return true;
 
 	}
 
@@ -342,7 +342,7 @@ class Utilities {
 			}
 		}
 
-		return NULL;
+		return null;
 
 	}
 
@@ -573,7 +573,7 @@ class Utilities {
 
 		}
 
-		return NULL;
+		return null;
 
 	}
 
@@ -608,10 +608,10 @@ class Utilities {
 
 				// Pair classes must prefix with namespace
 				if (is_null($pairPrefix)) {
-					$pair = FALSE;
+					$pair = false;
 				} else {
 					$class = $pairPrefix . $class;
-					$pair = TRUE;
+					$pair = true;
 				}
 
 				// check on class exists
@@ -623,7 +623,7 @@ class Utilities {
 				if (is_subclass_of($class, 'Pair\Orm\ActiveRecord') and !$reflection->isAbstract()) {
 
 					$constructMethod = new \ReflectionMethod($class, '__construct');
-					$constructor = $constructMethod->isPublic() ? TRUE : FALSE;
+					$constructor = $constructMethod->isPublic() ? true : false;
 
 					$getInstance = method_exists($class, 'getInstance');
 
@@ -646,12 +646,12 @@ class Utilities {
 		$checkFolder(APPLICATION_PATH . '/' . PAIR_FOLDER . '/Helpers', 'Pair\\Helpers\\');
 
 		// custom classes
-		$checkFolder(APPLICATION_PATH . '/classes', NULL);
+		$checkFolder(APPLICATION_PATH . '/classes', null);
 
 		// modules classes
 		$modules = array_diff(scandir(APPLICATION_PATH . '/modules'), ['..', '.', '.DS_Store']);
 		foreach ($modules as $module) {
-			$checkFolder(APPLICATION_PATH . '/modules/' . $module . '/classes', NULL);
+			$checkFolder(APPLICATION_PATH . '/modules/' . $module . '/classes', null);
 		}
 
 		return $classes;
@@ -709,7 +709,7 @@ class Utilities {
 	/**
 	 * Check if there is an executable available in the operating system for direct execution. If the path
 	 * cannot be changed in the system, the path to the executable can be specified in the Pair .env
-	 * configuration file. Return the path to the executable if it is available, otherwise NULL.
+	 * configuration file. Return the path to the executable if it is available, otherwise null.
 	 */
 	public static function getExecutablePath(string $executable, ?string $envKey = null): ?string {
 
@@ -724,7 +724,7 @@ class Utilities {
 			$logger->error('{executable} is not available on this server', ['executable' => $executable, 'resultCode' => $resultCode, 'output' => $output]);
 		}
 
-		return ($output[0] ?? NULL);
+		return ($output[0] ?? null);
 
 	}
 
@@ -732,18 +732,18 @@ class Utilities {
 	 * Return public URL of a document by its path in the file system.
 	 *
 	 * @param	string		Full path into the file system.
-	 * @param	bool		If TRUE, add timestamp of the last file edit. Default FALSE.
+	 * @param	bool		If true, add timestamp of the last file edit. Default false.
 	 *
 	 * @throws	PairException
 	 */
-	public static function getFileUrl($filePath, $addTimestamp = FALSE) {
+	public static function getFileUrl($filePath, $addTimestamp = false) {
 
 		if (!file_exists($filePath)) {
 			throw new PairException('File not found at path ' . $filePath);
 		}
 
 		// check if valid path
-		if (FALSE === strpos($filePath, APPLICATION_PATH)) {
+		if (false === strpos($filePath, APPLICATION_PATH)) {
 			throw new PairException('File path doesn’t match the application root folder ' . APPLICATION_PATH);
 		}
 
@@ -753,7 +753,7 @@ class Utilities {
 		if ($addTimestamp) {
 			$timestamp = filemtime($filePath);
 			// check if valid timestamp
-			if (FALSE == $timestamp) {
+			if (false == $timestamp) {
 				throw new PairException('File last change timestamp failed for ' . $filePath);
 			}
 			$url .= '?' . $timestamp;
@@ -841,19 +841,19 @@ class Utilities {
 				$dateTime = new \DateTime($date);
 				$dateTime->setTimezone($app->currentUser->getDateTimeZone());
 			} else {
-				$dateTime = NULL;
+				$dateTime = null;
 			}
 		} else if (is_a($date,'\DateTime')) {
 			$dateTime = $date;
 			$dateTime->setTimezone($app->currentUser->getDateTimeZone());
 		} else {
-			$dateTime = NULL;
+			$dateTime = null;
 		}
 
 		// if date valid, create the expected object
 		if (is_a($dateTime,'\DateTime')) {
 
-			$humanDate = self::intlFormat(NULL, $dateTime);
+			$humanDate = self::intlFormat(null, $dateTime);
 
 			return '<span class="timeago" title="' . $dateTime->format(DATE_W3C) . '">' . $humanDate . '</span>';
 
@@ -869,11 +869,11 @@ class Utilities {
 	/**
 	 * Return a date in the local language using the IntlDateFormatter::format() method.
 	 * @param	string		Formatting pattern, for example “dd MMMM Y hh:mm”.
-	 * @param	\DateTime	The date object to be formatted, it will be the current date if NULL.
+	 * @param	\DateTime	The date object to be formatted, it will be the current date if null.
 	 */
-	public static function intlFormat(?string $format = null, \DateTime|NULL $dateTime = null): string {
+	public static function intlFormat(?string $format = null, \DateTime|null $dateTime = null): string {
 
-		$formatter = new \IntlDateFormatter(NULL, \IntlDateFormatter::MEDIUM, \IntlDateFormatter::SHORT);
+		$formatter = new \IntlDateFormatter(null, \IntlDateFormatter::MEDIUM, \IntlDateFormatter::SHORT);
 		if ($format) {
 			$formatter->setPattern($format);
 		}
@@ -957,26 +957,26 @@ class Utilities {
 
 		$data = trim($data);
 
-		// serialized NULL
-		if ('N;' === $data) return TRUE;
+		// serialized null
+		if ('N;' === $data) return true;
 
 		// check that it starts with a valid type
-		if (!preg_match('/^([adObis]):/', $data, $match)) return FALSE;
+		if (!preg_match('/^([adObis]):/', $data, $match)) return false;
 
 		// uses @ to suppress any unserialize warnings
 		try {
 			$result = unserialize($data, ['allowed_classes' => $allowedClasses]);
 		} catch (\Throwable $e) {
-			return FALSE;
+			return false;
 		}
 
 		// if the result is false and the string is not "b:0;", it is not valid
-		return FALSE !== $result or $data === 'b:0;';
+		return false !== $result or $data === 'b:0;';
 
 	}
 
 	/**
-	 * Check if the server’s user agent contains a word about mobile devices and return TRUE if found.
+	 * Check if the server’s user agent contains a word about mobile devices and return true if found.
 	 */
 	public static function isUserAgentMobile(): bool {
 
@@ -988,9 +988,9 @@ class Utilities {
 				'nintendo'];
 
 		if (preg_match('/' . implode('|', $devices) . '/', $user_agent)) {
-			return TRUE;
+			return true;
 		} else {
-			return FALSE;
+			return false;
 		}
 
 	}
@@ -1019,9 +1019,9 @@ class Utilities {
 	 * @param	object|array	Data to be printed in JSON format.
 	 * @param	int			Optional HTTP code (default 200).
 	 */
-	public static function jsonResponse(object|array|NULL $data, int $httpCode=200): void {
+	public static function jsonResponse(object|array|null $data, int $httpCode=200): void {
 
-		header('Content-Type: application/json', TRUE);
+		header('Content-Type: application/json', true);
 
 		// no content response if data is empty
 		if (empty($data)) {
@@ -1050,8 +1050,8 @@ class Utilities {
 	 * Proxy method to print a JSON error message.
 	 *
 	 * @param	string	Error message to print on user.
-	 * @param	int|NULL	Error code (optional).
-	 * @param	int|NULL	HTTP code (optional, 400 by default).
+	 * @param	int|null	Error code (optional).
+	 * @param	int|null	HTTP code (optional, 400 by default).
 	 * @deprecated	Use jsonError() instead.
 	 */
 	public static function pairJsonError(string $message, ?int $code = null, ?int $httpCode = null): void {
@@ -1060,7 +1060,7 @@ class Utilities {
 			$httpCode = 400;
 		}
 
-		self::pairJsonData(NULL, $message, TRUE, $code, $httpCode);
+		self::pairJsonData(null, $message, true, $code, $httpCode);
 
 	}
 
@@ -1073,7 +1073,7 @@ class Utilities {
 	 */
 	public static function pairJsonMessage(string $message): void {
 
-		self::pairJsonData(NULL, $message);
+		self::pairJsonData(null, $message);
 
 	}
 
@@ -1086,7 +1086,7 @@ class Utilities {
 	 */
 	public static function pairJsonSuccess(): void {
 
-		self::pairJsonData(NULL);
+		self::pairJsonData(null);
 
 	}
 
@@ -1096,7 +1096,7 @@ class Utilities {
 	 *
 	 * @param	object	Structured object containing data.
 	 * @param	string	Error message to print on user (optional).
-	 * @param	bool	Error flag, set TRUE to notice about error (optional).
+	 * @param	bool	Error flag, set true to notice about error (optional).
 	 * @param	bool	Error code (optional).
 	 * @param	int		HTTP code (optional).
 	 * @deprecated	Use jsonResponse() instead.
@@ -1133,17 +1133,18 @@ class Utilities {
 			http_response_code($httpCode);
 		}
 
-		header('Content-Type: application/json', TRUE);
+		header('Content-Type: application/json', true);
 		print $json;
 		exit((int)$error);
 
 	}
 
 	/**
-	 * Prints an A-Z list with link for build an alpha filter.
-	 * @param	string	Current selected list item, if any.
+	 * Prints an alphabetical filter with links from A to Z.
+	 *
+	 * @param	string	$selected	Current selected list item, if any.
 	 */
-	public function printAlphaFilter(?string $selected = null): void {
+	public static function printAlphaFilter(?string $selected = null): void {
 
 		$router = Router::getInstance();
 
@@ -1170,8 +1171,8 @@ class Utilities {
 	/**
 	 * Forces the HTTP response as download of an XML file
 	 *
-	 * @param	string	string containing XML data.
-	 * @param	string	name that the downloaded file will have on client.
+	 * @param	string	$data		String containing XML data.
+	 * @param	string	$filename	Name of the file to be downloaded.
 	 */
 	public static function printXmlData(string $data, string $filename): void {
 
@@ -1197,12 +1198,12 @@ class Utilities {
 		$pathParts = pathinfo($extension);
 		$ext = isset($pathParts['extension']) ? $pathParts['extension'] : $extension;
 
-		$newName	= substr(md5(microtime(TRUE)),0,10);
+		$newName	= substr(md5(microtime(true)),0,10);
 		$filename	= $newName . '.' . $ext;
 
 		// in case exists, create a new name
 		while (file_exists($path . $filename)) {
-			$newName = substr(md5(microtime(TRUE)),0,10);
+			$newName = substr(md5(microtime(true)),0,10);
 			$filename = $newName . '.' . $ext;
 		}
 
@@ -1286,13 +1287,13 @@ class Utilities {
 		$zip = new \ZipArchive();
 
 		// open the zip file
-		if (TRUE !== $zip->open($filePath)) {
+		if (true !== $zip->open($filePath)) {
 			throw new PairException('Unable to open the ZIP file ' . $filePath);
 		}
 
 		// create the folder if not exists
 		if (!is_dir($folder)) {
-			mkdir($folder, 0777, TRUE);
+			mkdir($folder, 0777, true);
 		}
 
 		// extract all files
@@ -1322,7 +1323,7 @@ class Utilities {
 
 		$type = gettype($var);
 		$text = is_null($type) ?
-			'NULL' :
+			'null' :
 			($showTypes ? $type . ':' : '');
 
 		switch ($type) {
@@ -1358,7 +1359,7 @@ class Utilities {
 					$getIndent(0) . '}';
 				break;
 
-			case 'NULL':
+			case 'null':
 				$text .= 'null';
 				break;
 

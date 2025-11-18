@@ -6,10 +6,23 @@ use Pair\Core\Application;
 use Pair\Html\IziToast;
 use Pair\Html\SweetAlert;
 
+/**
+ * Convenience trait that exposes shortcuts to the Application singleton.
+ * Provides helper methods for common tasks such as:
+ * - enabling headless mode
+ * - managing persistent and in-memory state
+ * - loading CSS/JS assets
+ * - showing modals and toast notifications
+ * - redirecting the current request
+ *
+ * Intended to be used in controllers or other classes that need access to the application
+ * core without calling Application::getInstance() directly.
+ */
 trait AppTrait {
 
 	/**
-	 * Set the application to headless mode (no view rendering).
+	 * Sets the application to headless mode (no view rendering).
+	 * Proxy to Application::headless().
 	 */
 	public function headless(bool $headless = TRUE): void {
 
@@ -18,9 +31,11 @@ trait AppTrait {
 	}
 
 	/**
-	 * Get a state variable from cookie.
+	 * Retrieves a persistent state value from cookies.
+	 * Proxy to Application::getPersistentState().
 	 *
-	 * @param	string	Name of the variable.
+	 * @param  string $key Name of the state variable.
+	 * @return mixed       The stored value, or null if not found.
 	 */
 	public function getPersistentState(string $key): mixed {
 
@@ -29,9 +44,10 @@ trait AppTrait {
 	}
 
 	/**
-	 * Useful to collect CSS file list and render tags into page head.
+	 * Registers a CSS file to be included in the page head.
+	 * Proxy to Application::loadCss().
 	 *
-	 * @param	string	Path to stylesheet, absolute or relative with no trailing slash.
+	 * @param string $href Stylesheet path, absolute or relative without trailing slash.
 	 */
 	public function loadCss(string $href): void {
 
@@ -40,12 +56,13 @@ trait AppTrait {
 	}
 
 	/**
-	 * Set esternal script file load with optional attributes.
+	 * Registers an external script file to be loaded, with optional attributes.
+	 * Proxy to Application::loadScript().
 	 *
-	 * @param	string	Path to script, absolute or relative with no trailing slash.
-	 * @param	bool	Defer attribute (default FALSE).
-	 * @param	bool	Async attribute (default FALSE).
-	 * @param	array	Optional attribute list (type, integrity, crossorigin, charset).
+	 * @param string $src     Script path, absolute or relative without trailing slash.
+	 * @param bool   $defer   Whether to add the "defer" attribute (default false).
+	 * @param bool   $async   Whether to add the "async" attribute (default false).
+	 * @param array  $attribs Optional attributes (type, integrity, crossorigin, charset).
 	 */
 	public function loadScript(string $src, bool $defer = FALSE, bool $async = FALSE, array $attribs = []): void {
 
@@ -54,11 +71,13 @@ trait AppTrait {
 	}
 
 	/**
-	 * Add an alert modal to the page and return the object for further customization.
+	 * Adds an alert modal to the page and returns it for further customization.
+	 * Proxy to Application::modal().
 	 *
-	 * @param	string	Title of the modal.
-	 * @param	string	Message of the modal.
-	 * @param	string	Icon for the modal.
+	 * @param string $title   Modal title (bold).
+	 * @param string $message Modal message.
+	 * @param string $icon    Modal icon: info|success|error|warning|question (default 'info').
+	 * @return SweetAlert
 	 */
 	public function modal(string $title, string $message, string $icon = 'info'): SweetAlert {
 
@@ -66,6 +85,12 @@ trait AppTrait {
 
 	}
 
+	/**
+	 * Sets the URL of the currently selected menu item.
+	 * Proxy to Application::menuUrl().
+	 *
+	 * @param string $url Menu item URL.
+	 */
 	public function menuUrl(string $url): void {
 
 		Application::getInstance()->menuUrl($url);
@@ -73,11 +98,12 @@ trait AppTrait {
 	}
 
 	/**
-	 * Add a persistent alert modal to the page.
+	 * Queues a persistent alert modal to be shown on the next page load.
+	 * Proxy to Application::persistentModal().
 	 *
-	 * @param	string	Title of the modal.
-	 * @param	string	Message of the modal.
-	 * @param	string	Type of the modal.
+	 * @param string $title   Modal title.
+	 * @param string $message Modal message.
+	 * @param string $type    Modal icon/type (info|success|error|warning|question), default 'info'.
 	 */
 	public function persistentModal(string $title, string $message, string $type = 'info'): void {
 
@@ -86,11 +112,13 @@ trait AppTrait {
 	}
 
 	/**
-	 * Redirect HTTP on the URL param. Relative path as default. Queued toast notifications
-	 * get a persistent storage in a cookie in order to being retrieved later.
+	 * Redirects the client to the given URL. If a relative URL is provided, the application
+	 * base URL is automatically prepended (unless $externalUrl is true). Any queued toast
+	 * notifications and modal are stored in cookies so they can be retrieved on the next request.
+	 * Proxy to Application::redirect().
 	 *
-	 * @param	string	Location URL.
-	 * @param	bool	If TRUE, will avoids to add base url (default FALSE).
+	 * @param string|null $url         Target URL. If null, redirects to the current module.
+	 * @param bool        $externalUrl If true, treats $url as absolute and does not prepend the base URL.
 	 */
 	public function redirect(?string $url = null, bool $externalUrl = false): void {
 
@@ -99,7 +127,8 @@ trait AppTrait {
 	}
 
 	/**
-	 * Set the web page heading.
+	 * Sets the web page heading (h1).
+	 * Proxy to Application::pageHeading().
 	 */
 	public function pageHeading(string $heading): void {
 
@@ -108,7 +137,8 @@ trait AppTrait {
 	}
 
 	/**
-	 * Set the web page HTML title tag.
+	 * Sets the web page title (displayed in the browser tab).
+	 * Proxy to Application::pageTitle().
 	 */
 	public function pageTitle(string $title): void {
 
@@ -117,8 +147,11 @@ trait AppTrait {
 	}
 
 	/**
-	 * Store variables of any type in a cookie for next retrievement. Existent variables with
-	 * same name will be overwritten.
+	 * Stores a persistent state value in a cookie for later retrieval.
+	 * Proxy to Application::setPersistentState().
+	 *
+	 * @param string $key   State variable name.
+	 * @param mixed  $value Serializable value to store.
 	 */
 	public function setPersistentState(string $key, mixed $value): void {
 
@@ -127,7 +160,11 @@ trait AppTrait {
 	}
 
 	/**
-	 * Proxy to set a variable within global scope.
+	 * Sets an in-memory state variable on the Application instance.
+	 * Proxy to Application::setState().
+	 *
+	 * @param string $name  State variable name.
+	 * @param mixed  $value Value to store.
 	 */
 	public function setState(string $name, mixed $value): void {
 
@@ -135,14 +172,15 @@ trait AppTrait {
 
 	}
 
-    /**
-     * Appends a toast notification message to queue.
+	/**
+	 * Appends a toast notification to the queue.
+	 * Proxy to Application::toast().
 	 *
-	 * @param	string	Toast’s title, bold.
-	 * @param	string	Error message.
-	 * @param	string	Type of the toast (info|success|warning|error|question|progress), default info.
-
-     */
+	 * @param string      $title   Toast title (bold).
+	 * @param string      $message Toast message text.
+	 * @param string|null $type    Toast type (info|success|warning|error|question|progress).
+	 * @return IziToast
+	 */
     public function toast(string $title, string $message = '', ?string $type = null): IziToast {
 
         return Application::getInstance()->toast($title, $message, $type);
@@ -150,10 +188,12 @@ trait AppTrait {
     }
 
 	/**
-	 * Proxy method to queue an error with a toast notification.
+	 * Queues an error toast notification.
+	 * Proxy to Application::toastError().
 	 *
-	 * @param	string	Message’s text.
-	 * @param	string	Optional title.
+	 * @param string $title   Toast title (bold).
+	 * @param string $message Error message text.
+	 * @return IziToast
 	 */
 	public function toastError(string $title, string $message = ''): IziToast {
 
@@ -162,11 +202,12 @@ trait AppTrait {
 	}
 
 	/**
-	 * Proxy function to append an error toast notification to queue and redirect.
+	 * Queues an error toast notification and then redirects.
+	 * Proxy to Application::toastErrorRedirect().
 	 *
-	 * @param	string	Toast’s title, bold.
-	 * @param	string	Error message.
-	 * @param	string	Redirect URL, optional.
+	 * @param string      $title   Toast title (bold).
+	 * @param string      $message Error message text.
+	 * @param string|null $url     Redirect URL, optional.
 	 */
 	public function toastErrorRedirect(string $title, string $message = '', ?string $url = null): void {
 
@@ -175,11 +216,12 @@ trait AppTrait {
 	}
 
 	/**
-	 * Proxy function to append a toast notification to queue and redirect.
+	 * Queues a success toast notification and then redirects.
+	 * Proxy to Application::toastRedirect().
 	 *
-	 * @param	string	Toast’s title, bold.
-	 * @param	string	Message.
-	 * @param	string	Redirect URL, optional.
+	 * @param string      $title   Toast title (bold).
+	 * @param string      $message Message text.
+	 * @param string|null $url     Redirect URL, optional.
 	 */
     public function toastRedirect(string $title, string $message = '', ?string $url = null): void {
 
@@ -188,7 +230,10 @@ trait AppTrait {
     }
 
 	/**
-	 * Removes a state variable from cookie.
+	 * Removes a persistent state value from cookies.
+	 * Proxy to Application::unsetPersistentState().
+	 *
+	 * @param string $key State variable name.
 	 */
 	public function unsetPersistentState(string $key): void {
 
@@ -197,7 +242,10 @@ trait AppTrait {
 	}
 
 	/**
-	 * Proxy to unset a state variable.
+	 * Deletes an in-memory state variable from the Application instance.
+	 * Proxy to Application::unsetState().
+	 *
+	 * @param string $name State variable name.
 	 */
 	public function unsetState(string $name): void {
 
