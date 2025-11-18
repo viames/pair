@@ -17,7 +17,9 @@ use Pair\Models\Session;
 use Pair\Models\UserRemember;
 
 /**
- * Base class for Pair framework users. Can be extended to have more user’s properties.
+ * Base ActiveRecord model for application users. Handles authentication, access control (ACL),
+ * sessions, time zone handling and "remember me" functionality. Can be extended to add custom
+ * properties and behaviour.
  */
 class User extends ActiveRecord {
 
@@ -27,12 +29,12 @@ class User extends ActiveRecord {
 	protected int $id;
 
 	/**
-	 * Id group belongs to this user.
+	 * ID of the group this user belongs to.
 	 */
 	protected int $groupId;
 
 	/**
-	 * Id of user locale.
+	 * ID of the locale associated with this user.
 	 */
 	protected int $localeId;
 
@@ -59,10 +61,10 @@ class User extends ActiveRecord {
 	/**
 	 * Property that binds db field email.
 	 */
-	protected ?string $email = NULL;
+	protected ?string $email = null;
 
 	/**
-	 * If TRUE, this user is admin.
+	 * If true, this user is admin.
 	 */
 	protected bool $admin;
 
@@ -74,7 +76,7 @@ class User extends ActiveRecord {
 	/**
 	 * Last login’s date, properly converted when inserted into db.
 	 */
-	protected ?\DateTime $lastLogin = NULL;
+	protected ?\DateTime $lastLogin = null;
 
 	/**
 	 * Amount of wrong login.
@@ -84,17 +86,7 @@ class User extends ActiveRecord {
 	/**
 	 * Token to start password reset.
 	 */
-	protected ?string $pwReset = NULL;
-
-	/**
-	 * Time zone offset in hours. Cached.
-	 */
-	protected ?float $tzOffset = NULL;
-
-	/**
-	 * Time zone name. Cached.
-	 */
-	protected ?string $tzName = NULL;
+	protected ?string $pwReset = null;
 
 	/**
 	 * Name of related db table.
@@ -112,14 +104,20 @@ class User extends ActiveRecord {
 	const SHARED_CACHE_PROPERTIES = ['groupId', 'localeId'];
 
 	/**
-	 * Will returns property’s value if set. Throw an exception if not set.
-	 * Pass fullName to return name + surname.
+	 * Magic getter for virtual and inherited properties.
 	 *
-	 * @param	string	Property’s name.
+	 * Handles a few virtual properties:
+	 * - fullName   → "{$name} {$surname}"
+	 * - groupName  → related Group name
+	 *
+	 * For any other property, delegates to the parent ActiveRecord::__get().
+	 *
+	 * @param  string $name Property name.
+	 * @return mixed        Resolved value.
 	 */
 	public function __get(string $name): mixed {
 
-		if (isset($this->id) and in_array($name, ['fullName', 'groupName', 'tzName', 'tzOffset'])) {
+		if (isset($this->id) and in_array($name, ['fullName', 'groupName'])) {
 
 			switch ($name) {
 
@@ -128,14 +126,6 @@ class User extends ActiveRecord {
 
 				case 'groupName':
 					return $this->getGroup()->name;
-
-				case 'tzName':
-					$this->loadTimezone();
-					return $this->tzName;
-
-				case 'tzOffset':
-					$this->loadTimezone();
-					return $this->tzOffset;
 
 			}
 
@@ -146,7 +136,10 @@ class User extends ActiveRecord {
 	}
 
 	/**
-	 * Set for converts from string to Datetime, integer or boolean object in two ways.
+	 * Initializes field bindings for automatic type casting.
+	 *
+	 * Marks selected properties as boolean, integer or DateTime so they
+	 * are converted correctly when loading from or saving to the database.
 	 */
 	protected function _init(): void {
 
@@ -188,7 +181,8 @@ class User extends ActiveRecord {
 	protected function afterLogout() {}
 
 	/**
-	 * Deletes sessions of an user before its deletion.
+	 * Cleans up related records before deleting the user. Deletes all sessions and error logs
+	 * associated with this user and, when the user is deletable, writes an audit log entry.
 	 */
 	protected function beforeDelete(): void {
 
@@ -215,21 +209,26 @@ class User extends ActiveRecord {
 	protected function beforeLogout() {}
 
 	/**
-	 * Check if this user has access permission to a module and optionally to a specific action.
-	 * Admin can access everything. This method use cache variable to load once from db.
+	 * Checks whether this user has permission to access a module/action.
 	 *
-	 * @param	string	Module name.
-	 * @param	string	Optional action name.
+	 * Admin users can access everything. The ACL is loaded once from the
+	 * database and cached. The $module parameter can be either:
+	 * - "module"           (with $action provided separately), or
+	 * - "module/action"    (in which case $action can be omitted).
+	 *
+	 * @param string      $module Module name, or "module/action".
+	 * @param string|null $action Optional action name.
+	 * @return bool               True if access is allowed, false otherwise.
 	 */
 	public function canAccess(string $module, ?string $action = null): bool {
 
 		// patch for public folder content
 		if ('public' == $module) {
-			return TRUE;
+			return true;
 		}
 
 		// reveal module/action type
-		if (is_null($action) and FALSE !== strpos($module, '/')) {
+		if (is_null($action) and false !== strpos($module, '/')) {
 			list($module,$action) = explode('/', $module);
 		}
 
@@ -246,7 +245,7 @@ class User extends ActiveRecord {
 
 		// user module is for login and personal profile
 		if ('user'==$module) {
-			return TRUE;
+			return true;
 		}
 
 		// acl is a cached Collection of Rule objects
@@ -259,17 +258,19 @@ class User extends ActiveRecord {
 
 		foreach ($rules as $rule) {
 
+			// adminOnly rule
 			if ($rule->adminOnly and $this->admin) {
-				return TRUE;
+				return true;
 			}
 
+			// check action match
 			if (is_null($rule->action) or $rule->action == $action or (is_null($action) and 'default' == $rule->action)) {
-				return TRUE;
+				return true;
 			}
 
 		}
 
-		return FALSE;
+		return false;
 
 	}
 
@@ -301,7 +302,7 @@ class User extends ActiveRecord {
 		$ur->createdAt = new \DateTime('now', $dateTimeZone);
 
 		if (!$ur->store()) {
-			return FALSE;
+			return false;
 		}
 
 		// serialize an array with timezone and RememberMe string
@@ -316,24 +317,22 @@ class User extends ActiveRecord {
 	}
 
 	/**
-	 * Starts a new session, writes on db and updates users table for last login.
-	 * Returns true if both db writing has been done succesfully.
+	 * Starts a new session and persists it to the database.
 	 *
-	 * @param	string	IANA time zone identifier.
-	 * @param	int		Possible ID of the user before impersonation.
+	 * Creates a Session record, updates the user's last login info and,
+	 * when impersonating, stores the former user ID as well.
+	 *
+	 * @param string   $timezone     IANA time zone identifier.
+	 * @param int|null $formerUserId Optional ID of the user before impersonation.
 	 */
-	private function createSession(string $timezone, ?int $formerUserId = null): bool {
+	private function createSession(string $timezone, ?int $formerUserId = null): void {
 
-		// get a valid DateTimeZone object
+		// gets a valid DateTimeZone object
 		$dateTimeZone = User::getValidTimeZone($timezone);
 
 		// gets offset by timezone name
-		$dt = new \DateTime('now', $dateTimeZone);
-		$diff = $dt->format('P');
-		list ($hours, $mins) = explode(':', $diff);
-		$offset = (float)$hours + ($hours > 0 ? ($mins / 60) : -($mins / 60));
+		$offset = (new \DateTime('now', $dateTimeZone))->getOffset() / 3600;
 
-		// creates session
 		$session = new Session();
 
 		$session->id				= session_id();
@@ -343,7 +342,7 @@ class User extends ActiveRecord {
 		$session->timezoneName		= $timezone;
 		$session->formerUserId		= $formerUserId;
 
-		$res1 = $session->create();
+		$session->create();
 
 		// deletes all other sessions for this user
 		if (Env::get('PAIR_SINGLE_SESSION')) {
@@ -351,18 +350,13 @@ class User extends ActiveRecord {
 		}
 
 		// updates last user login
-		$this->lastLogin	= new \DateTime();
-		$this->tzOffset		= $offset;
-		$this->tzName		= $timezone;
-
-		$res2 = $this->update('lastLogin');
-
-		return ($res1 and $res2);
+		$this->lastLogin = new \DateTime();
+		$this->update('lastLogin');
 
 	}
 
 	/**
-	 * Return the current Application connected User object or its child, NULL otherwise.
+	 * Return the current Application connected User object or its child, null otherwise.
 	 */
 	public static function current(): ?static {
 
@@ -372,21 +366,21 @@ class User extends ActiveRecord {
 	}
 
 	/**
-	 * Checks if username/password matches a record into database for local auth and returns a
-	 * \stdClass with error, message and userId parameters.
+	 * Does the login action and returns an object with error, message, userId and sessionId
+	 * properties.
 	 *
-	 * @param	string	Username.
-	 * @param	string	Plain text password.
-	 * @param	string	IANA time zone identifier.
+	 * @param	string	$username	Username.
+	 * @param	string	$password	Plain text password.
+	 * @param	string	$timezone	IANA time zone identifier.
 	 */
 	public static function doLogin(string $username, string $password, string $timezone): \stdClass {
 
 		$ret = new \stdClass();
 
-		$ret->error		= FALSE;
-		$ret->message	= NULL;
-		$ret->userId	= NULL;
-		$ret->sessionId	= NULL;
+		$ret->error		= false;
+		$ret->message	= null;
+		$ret->userId	= null;
+		$ret->sessionId	= null;
 
 		$query = 'SELECT * FROM `users` WHERE `' . (Env::get('PAIR_AUTH_BY_EMAIL') ? 'email' : 'username') . '` = ?';
 
@@ -394,8 +388,8 @@ class User extends ActiveRecord {
 		$row = Database::load($query, [$username], Database::OBJECT);
 
 		// track ip address and user_agent for audit
-		$ipAddress = $_SERVER['REMOTE_ADDR'] ?? NULL;
-		$userAgent = $_SERVER['HTTP_USER_AGENT'] ?? NULL;
+		$ipAddress = $_SERVER['REMOTE_ADDR'] ?? null;
+		$userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
 
 		if (is_object($row)) {
 
@@ -405,7 +399,7 @@ class User extends ActiveRecord {
 			// over 9 faults
 			if ($user->faults > 9) {
 
-				$ret->error = TRUE;
+				$ret->error = true;
 				$ret->message = Translator::do('TOO_MANY_LOGIN_ATTEMPTS');
 				$user->addFault();
 
@@ -414,7 +408,7 @@ class User extends ActiveRecord {
 			// user disabled
 			} else if ('0' == $user->enabled) {
 
-				$ret->error = TRUE;
+				$ret->error = true;
 				$ret->message = Translator::do('USER_IS_DISABLED');
 				$user->addFault();
 
@@ -423,7 +417,7 @@ class User extends ActiveRecord {
 			// user password doesn’t match
 			} else if (!User::checkPassword($password, $user->hash)) {
 
-				$ret->error = TRUE;
+				$ret->error = true;
 				$ret->message = Translator::do('PASSWORD_IS_NOT_VALID');
 				$user->addFault();
 
@@ -443,14 +437,14 @@ class User extends ActiveRecord {
 
 				// clear any password-reset
 				if (!is_null($user->pwReset)) {
-					$user->pwReset = NULL;
+					$user->pwReset = null;
 					$user->store();
 				}
 
 				// hook for tasks to be executed after login
 				$user->afterLogin();
 
-				$userAgent = $_SERVER['HTTP_USER_AGENT'] ?? NULL;
+				$userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
 
 				Audit::loginSuccessful($user, $ipAddress, $userAgent);
 
@@ -461,7 +455,7 @@ class User extends ActiveRecord {
 
 			Audit::loginFailed($username, $ipAddress, $userAgent);
 
-			$ret->error = TRUE;
+			$ret->error = true;
 			$ret->message = Translator::do('USERNAME_NOT_VALID');
 
 		}
@@ -471,7 +465,7 @@ class User extends ActiveRecord {
 	}
 
 	/**
-	 * Does the logout action and returns TRUE if session is found and deleted.
+	 * Does the logout action and returns true if session is found and deleted.
 	 *
 	 * @param	string	Session ID to close.
 	 */
@@ -482,7 +476,7 @@ class User extends ActiveRecord {
 		$user = $session->getUser();
 
 		if (is_null($user)) {
-			return FALSE;
+			return false;
 		}
 
 		// hook for tasks to be executed before logout
@@ -502,7 +496,7 @@ class User extends ActiveRecord {
 		$user->unsetRememberMe();
 
 		// reset the user in Application object
-		$app->currentUser = NULL;
+		$app->currentUser = null;
 
 		// hook for tasks to be executed after logout
 		$user->afterLogout();
@@ -512,7 +506,21 @@ class User extends ActiveRecord {
 	}
 
 	/**
-	 * Load the rule list for this user. Cached.
+	 * Returns the user's full name as "name surname".
+	 */
+	public function fullName(): string {
+
+		return $this->name . ' ' . $this->surname;
+
+	}
+
+	/**
+	 * Loads the ACL rules for this user from the database.
+	 *
+	 * Returns a Collection of Rule entries and caches the result
+	 * for subsequent calls.
+	 *
+	 * @return Collection
 	 */
 	private function getAcl(): Collection {
 
@@ -534,7 +542,9 @@ class User extends ActiveRecord {
 	}
 
 	/**
-	 * Returns array with matching object property name on related db fields.
+	 * Returns the mapping between object properties and database fields.
+	 *
+	 * @return array<string,string> [propertyName => db_field_name]
 	 */
 	protected static function getBinds(): array {
 
@@ -557,9 +567,10 @@ class User extends ActiveRecord {
 	}
 
 	/**
-	 * Return an user that matches pw_reset string. NULL if not found.
+	 * Returns the user matching the given password reset token, if any.
 	 *
-	 * @param	string		PwReset value.
+	 * @param  string $pwReset Password reset token value.
+	 * @return User|null       Matching user or null if not found.
 	 */
 	public static function getByPwReset(string $pwReset): ?User {
 
@@ -570,59 +581,21 @@ class User extends ActiveRecord {
 	}
 
 	/**
-	 * Utility to unserialize and return the remember-me cookie content {timezone, rememberMe}.
-	 */
-	private static function getRememberMeCookie(): ?\stdClass {
-
-		// try to unserialize the cookie content
-		$app = Application::getInstance();
-		$content = $app->getPersistentState('RememberMe');
-
-		$regex = '#^[' . Utilities::RANDOM_STRING_CHARS . ']{32}$#';
-
-		// check if content exists and RememberMe length
-		if (is_array($content) and isset($content[0]) and isset($content[1]) and preg_match($regex, (string)$content[1])) {
-			$obj = new \stdClass();
-			$obj->timezone = ($content[0] and in_array($content[0], \DateTimeZone::listIdentifiers()))
-				? $content[0] : 'UTC';
-			$obj->rememberMe = (string)$content[1];
-			return $obj;
-		}
-
-		return NULL;
-
-	}
-
-	/**
-	 * Build and return the cookie name.
-	 */
-	private static function getRememberMeCookieName(): string {
-
-		return Application::getCookiePrefix() . 'RememberMe';
-
-	}
-
-	/**
-	 * It will returns DateTimeZone object for this User.
+	 * Returns a DateTimeZone instance for this user.
+	 *
+	 * If the user has no stored time zone, falls back to BASE_TIMEZONE.
 	 */
 	public function getDateTimeZone(): \DateTimeZone {
 
-		$this->loadTimezone();
+		$session = Session::current();
 
-		// tzName is still NULL for guest users
-		return new \DateTimeZone($this->tzName ? $this->tzName : BASE_TIMEZONE);
+		return new \DateTimeZone($session ? $session->timezoneName : BASE_TIMEZONE);
 
 	}
 
 	/**
-	 * Join the user’s name and surname and return it
+	 * Returns the Group this user belongs to.
 	 */
-	public function getFullName(): string {
-
-		return $this->name . ' ' . $this->surname;
-
-	}
-
 	public function getGroup(): Group {
 
 		return new Group($this->groupId);
@@ -685,11 +658,46 @@ class User extends ActiveRecord {
 	}
 
 	/**
-	 * Compare the past TimeZone value with the list of valid identifiers and,
-	 * if not found in this list, assign the system default. Then create the
-	 * object to be returned.
+	 * Utility to unserialize and return the remember-me cookie content {timezone, rememberMe}.
+	 */
+	private static function getRememberMeCookie(): ?\stdClass {
+
+		// try to unserialize the cookie content
+		$app = Application::getInstance();
+		$content = $app->getPersistentState('RememberMe');
+
+		$regex = '#^[' . Utilities::RANDOM_STRING_CHARS . ']{32}$#';
+
+		// check if content exists and RememberMe length
+		if (is_array($content) and isset($content[0]) and isset($content[1]) and preg_match($regex, (string)$content[1])) {
+			$obj = new \stdClass();
+			$obj->timezone = ($content[0] and in_array($content[0], \DateTimeZone::listIdentifiers()))
+				? $content[0] : 'UTC';
+			$obj->rememberMe = (string)$content[1];
+			return $obj;
+		}
+
+		return null;
+
+	}
+
+	/**
+	 * Build and return the cookie name.
+	 */
+	private static function getRememberMeCookieName(): string {
+
+		return Application::getCookiePrefix() . 'RememberMe';
+
+	}
+
+	/**
+	 * Validates a time zone identifier and returns a DateTimeZone instance.
 	 *
-	 * @param	string	IANA time zone identifier.
+	 * If the given identifier is not in the list of valid time zones,
+	 * falls back to the system default time zone.
+	 *
+	 * @param  string $timezone IANA time zone identifier.
+	 * @return \DateTimeZone
 	 */
 	public static function getValidTimeZone(string $timezone): \DateTimeZone {
 
@@ -703,7 +711,13 @@ class User extends ActiveRecord {
 	}
 
 	/**
-	 * Impersonate the User passed in parameters.
+	 * Starts impersonating another user.
+	 *
+	 * Creates a new session for $newUser, storing the current user as the "former" user so
+	 * that impersonation can be stopped later.
+	 * 
+	 * @param User $newUser User to impersonate.
+	 * @throws \Exception If the current user is not admin.
 	 */
 	public function impersonate(User $newUser): void {
 
@@ -721,7 +735,7 @@ class User extends ActiveRecord {
 	}
 
 	/**
-	 * Stop impersonation and go back to former user.
+	 * Stops impersonation and restores the former user session.
 	 */
 	public function impersonateStop(): void {
 
@@ -740,35 +754,38 @@ class User extends ActiveRecord {
 	}
 
 	/**
-	 * Return TRUE if this user or the the former User object if impersonating, is admin.
+	 * Returns true if this user, or the former user (when impersonating), is admin.
 	 */
 	public function isAdmin(): bool {
 
 		if ($this->admin) {
-			return TRUE;
+			return true;
 		}
 
 		$session = Session::current();
 		$formerUser = $session->getFormerUser();
 
 		if ($formerUser?->admin) {
-			return TRUE;
+			return true;
 		}
 
-		return FALSE;
+		return false;
 
 	}
 
 	/**
-	 * Check whether record of this object is deletable based on inverse foreign-key list
-	 * and the user is not the same connected.
+	 * Checks whether this user can be safely deleted.
+	 *
+	 * A user is deletable if:
+	 * - no inverse foreign-key constraints prevent deletion, and
+	 * - it is not the same user as the currently logged-in user.
 	 */
 	public function isDeletable(): bool {
 
 		$app = Application::getInstance();
 
 		if ($this->id == $app->currentUser->id) {
-			return FALSE;
+			return false;
 		}
 
 		return parent::isDeletable();
@@ -776,17 +793,20 @@ class User extends ActiveRecord {
 	}
 
 	/**
-	 * Check if the localeId parameter has been set and returns TRUE if so.
+	 * Check if the localeId parameter has been set and returns true if so.
 	 */
 	public function isLocaleSet(): bool {
 
-		return isset($this->localeId) ? (bool)$this->localeId : FALSE;
+		return isset($this->localeId) ? (bool)$this->localeId : false;
 
 	}
 
 	/**
-	 * Get landing module and action as object properties where the user goes after login.
-	 * Returns NULL if no landing is defined. Cached.
+	 * Returns the default landing module/action for this user.
+	 *
+	 * Reads the user's default Rule/Module association and returns an object
+	 * with "module" and "action" properties, or null if none is defined.
+	 * The result is cached.
 	 */
 	public function landing(): ?\stdClass {
 
@@ -809,21 +829,13 @@ class User extends ActiveRecord {
 	}
 
 	/**
-	 * If time zone name or offset is null, will loads from session table their values and
-	 * populates this object cache properties.
-	 */
-	private function loadTimezone(): void {
-
-		if (!is_null($this->id) and is_null($this->tzName) and is_null($this->tzOffset)) {
-			$session = Session::current();
-			$this->tzOffset	= $session->timezoneOffset;
-			$this->tzName	= $session->timezoneName;
-		}
-
-	}
-
-	/**
-	 * Check if the browser’s cookie contains a RememberMe. In case, do an auto-login.
+	 * Attempts to auto-login using the "remember me" cookie.
+	 *
+	 * If a valid remember-me token is found, loads the related user, creates
+	 * a new session, renews the remember-me token and sets the Application
+	 * current user.
+	 *
+	 * @return bool True on successful auto-login, false otherwise.
 	 */
 	public static function loginByRememberMe(): bool {
 
@@ -832,7 +844,7 @@ class User extends ActiveRecord {
 
 		// check if cookie exists
 		if (is_null($cookieContent)) {
-			return FALSE;
+			return false;
 		}
 
 		// try to load user
@@ -843,18 +855,18 @@ class User extends ActiveRecord {
 
 			$user->createSession($cookieContent->timezone);
 			$user->renewRememberMe();
-			
+
 			$app = Application::getInstance();
 			$app->setCurrentUser($user);
 
 			Audit::rememberMeLogin();
-			
-			return TRUE;
-		
+
+			return true;
+
 		}
 
 		// login unsucceded
-		return FALSE;
+		return false;
 
 	}
 
@@ -887,7 +899,12 @@ class User extends ActiveRecord {
 	}
 
 	/**
-	 * Update the expire date of RememberMe cookie.
+	 * Renews the remember-me token for this user.
+	 *
+	 * Updates the created_at timestamp in DB, deletes older tokens for the same
+	 * user and refreshes the browser cookie with a new expiration date.
+	 *
+	 * @return bool True if the cookie was updated, false otherwise.
 	 */
 	public function renewRememberMe(): bool {
 
@@ -896,7 +913,7 @@ class User extends ActiveRecord {
 
 		// check if cookie exists
 		if (!isset($_COOKIE[$cookieName])) {
-			return FALSE;
+			return false;
 		}
 
 		$cookieContent = self::getRememberMeCookie();
@@ -914,18 +931,20 @@ class User extends ActiveRecord {
 	}
 
 	/**
-	 * Apply a password reset for this User.
+	 * Applies a password reset for this user. Updates the stored password hash, logs the change, creates
+	 * a new session and resets the login fault counter.
 	 *
-	 * @param	string	New password to set.
-	 * @param	string	IANA time zone identifier.
+	 * @param  string $newPassword New password to set.
+	 * @param  string $timezone    IANA time zone identifier.
+	 * @return bool                True on success, false otherwise.
 	 */
 	public function setNewPassword(string $newPassword, string $timezone): bool {
 
-		$this->pwReset = NULL;
+		$this->pwReset = null;
 		$this->hash = static::getHashedPasswordWithSalt($newPassword);
 
 		if (!$this->store()) {
-			return FALSE;
+			return false;
 		}
 
 		Audit::passwordChanged($this);
@@ -934,12 +953,15 @@ class User extends ActiveRecord {
 		$this->createSession($timezone);
 		$this->resetFaults();
 
-		return TRUE;
+		return true;
 
 	}
 
 	/**
-	 * Delete DB record and browser’s cookie because when logout is invoked.
+	 * Removes the current remember-me token from DB and browser cookie. Used on logout to invalidate the
+	 * remember-me association.
+	 *
+	 * @return bool True if the cookie was removed, false otherwise.
 	 */
 	public function unsetRememberMe(): bool {
 
@@ -948,7 +970,7 @@ class User extends ActiveRecord {
 
 		// check if cookie exists
 		if (is_null($cookieContent)) {
-			return FALSE;
+			return false;
 		}
 
 		// delete the current remember-me DB record

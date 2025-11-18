@@ -178,7 +178,7 @@ class Database {
 	/**
 	 * Wrap a column name in a couple of backticks.
 	 *
-	 * @param	string	The column name.
+	 * @param	string	$text	The column name.
 	 */
 	public function escape(string $text): string {
 
@@ -189,10 +189,9 @@ class Database {
 	/**
 	 * Executes a query and returns true if success.
 	 *
-	 * @param	string		SQL Query da eseguire.
-	 * @param	array|null	Parameters to bind on sql query in array or simple value.
-	 * @return	int			Number of affected items.
-	 * @throws	PairException
+	 * @param	string		$query	SQL query to run.
+	 * @param	array|null	$params	Parameters to bind on sql query in array or simple value.
+	 * @return	int					Number of affected items.
 	 */
 	public function exec(string $query, array $params = []): int {
 
@@ -201,11 +200,7 @@ class Database {
 		$this->query = $query;
 		$stat = $this->handler->prepare($this->query);
 
-		try {
-			$stat->execute($params);
-		} catch (\PDOException $e) {
-			throw new PairException($e->getMessage(), ErrorCodes::DB_QUERY_FAILED, $e);
-		}
+		$stat->execute($params);
 
 		$affected = $stat->rowCount();
 		$stat->closeCursor();
@@ -219,7 +214,7 @@ class Database {
 	 * Returns the list of columns that are restricting a passed DB-table, an fk list.
 	 * Require grant on “references” permissions of connected db-user. Memory cached.
 	 *
-	 * @param	string	Name of table to check.
+	 * @param	string	$tableName Name of table to check.
 	 * @return	\stdClass[]
 	 */
 	public function getForeignKeys(string $tableName): array {
@@ -341,15 +336,20 @@ class Database {
 				continue;
 			}
 
+			$columns[] = '`' . $column . '`';
+			
 			if (is_null($v)) {
-				$columns[] = '`' . $column . '`';
 				$values[] = 'NULL';
 			} else if (Env::get('AES_CRYPT_KEY') and in_array($column, $encryptables)) {
-				$columns[] = '`' . $column . '`';
 				$values[] = 'AES_ENCRYPT(' . $this->quote($v) . ',' . $this->quote(Env::get('AES_CRYPT_KEY')) . ')';
-			} else if (is_string($v) or is_numeric($v)) {
-				$columns[] = '`' . $column . '`';
+			} else if (is_string($v)) {
 				$values[] = $this->quote($v);
+			} else if (is_bool($v)) {
+				$values[] = $v ? '1' : '0';
+			} else if (is_a($v, \DateTime::class)) {
+				$values[] = $this->quote($v->format('Y-m-d H:i:s'));
+			} else {
+				$values[] = $v;
 			}
 
 		}

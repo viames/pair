@@ -1509,6 +1509,10 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 */
 	public function sum(string $key): int {
 
+		if ($this->isEmpty()) {
+			return 0;
+		}
+
 		if (!property_exists($this->first(), $key)) {
 			throw new PairException('The key is not valid for sum.', ErrorCodes::INVALID_COLLECTION_KEY);
 		}

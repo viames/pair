@@ -561,7 +561,6 @@ abstract class Mailer {
 	 */
 	abstract public function send(array $recipients, string $subject, string $title, string $text, array $attachments = [], array $ccs = []);
 
-
 	/**
 	 * Create an HTML email with link to reset-password.
 	 *

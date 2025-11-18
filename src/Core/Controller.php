@@ -127,9 +127,8 @@ abstract class Controller {
 	/**
 	 * Returns the object of inherited class when called with id as first parameter.
 	 *
-	 * @param	string	Expected object class type.
-	 *
-	 * @throws	AppException
+	 * @param	string			$class	Expected object class type.
+	 * @throws	\Exception			If the id is not valid or the object is not found.
 	 */
 	protected function getObjectRequestedById(string $class): ?ActiveRecord {
 
@@ -137,13 +136,13 @@ abstract class Controller {
 		$itemId = Router::get(0);
 
 		if (!$itemId) {
-			throw new AppException(Translator::do('ID_OF_ITEM_TO_EDIT_IS_NOT_VALID', $class));
+			throw new \Exception(Translator::do('ID_OF_ITEM_TO_EDIT_IS_NOT_VALID', $class));
 		}
 
 		$object = new $class($itemId);
 
 		if (!$object->isLoaded()) {
-			throw new AppException(Translator::do('ID_OF_ITEM_TO_EDIT_IS_NOT_VALID', $class));
+			throw new \Exception(Translator::do('ID_OF_ITEM_TO_EDIT_IS_NOT_VALID', $class));
 		}
 
 		return $object;

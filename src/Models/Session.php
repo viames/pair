@@ -93,7 +93,7 @@ class Session extends ActiveRecord {
 	 */
 	public static function current(): self {
 
-		return new Session(session_id());
+		return Session::find(session_id());
 
 	}
 
@@ -120,7 +120,7 @@ class Session extends ActiveRecord {
 	public function extendTimeout() {
 
 		$this->startTime = new \DateTime();
-		$this->store();
+		$this->update('startTime');
 
 	}
 
@@ -231,7 +231,10 @@ class Session extends ActiveRecord {
 	}
 
 	/**
-	 * Set a value in the session.
+	 * Set a value into the session.
+	 * 
+	 * @param	string	$key Key to set.
+	 * @param	mixed	$value Value to set.
 	 */
 	public static function set(string $key, mixed $value): void {
 
@@ -242,7 +245,7 @@ class Session extends ActiveRecord {
 	/**
 	 * Store the former User or children object of this Session object into a cache.
 	 *
-	 * @param	User	User to set.
+	 * @param	User	$formerUser User to set.
 	 */
 	public function setFormerUser(User $formerUser) {
 
@@ -253,7 +256,7 @@ class Session extends ActiveRecord {
 	/**
 	 * Store the User or children object of this Session object into a cache.
 	 *
-	 * @param	User	User to set.
+	 * @param	User	$user User to set.
 	 */
 	public function setUser(User $user): void {
 
@@ -263,6 +266,8 @@ class Session extends ActiveRecord {
 
 	/**
 	 * Unset a value from the session.
+	 * 
+	 * @param	string	$key Key to unset.
 	 */
 	public static function unset(string $key): void {
 

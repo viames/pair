@@ -23,7 +23,8 @@ use Pair\Orm\ActiveRecord;
 use Pair\Orm\Database;
 
 /**
- * Singleton object globally available for caching, queuing messages and render the template.
+ * Singleton application core, globally available for caching, queuing messages
+ * and rendering views/templates.
  */
 class Application {
 
@@ -48,7 +49,7 @@ class Application {
 	private array $guestModules = ['oauth2' => []];
 
 	/**
-	 * List of temporary variables, stored also in the browser cookie.
+	 * Short-lived state variables persisted in browser cookies to survive redirects or a single subsequent request.
 	 */
 	private array $persistentState = [];
 
@@ -119,6 +120,11 @@ class Application {
 	private ?User $currentUser = null;
 
 	/**
+	 * Current session object.
+	 */
+	private ?Session $session = null;
+
+	/**
 	 * Contents variables for layouts.
 	 */
 	private array $vars = [];
@@ -139,9 +145,9 @@ class Application {
 	protected string $pageScripts = '';
 
 	/**
-	 * Contains the LobBar render or null if disabled.
+	 * Contains the LogBar rendered output for the current request, or null if LogBar is disabled.
 	 */
-	protected ?LogBar $lobgBar = null;
+	protected ?LogBar $logBar = null;
 
 	/**
 	 * Class for application user object.
@@ -207,11 +213,11 @@ class Application {
 
 		// raw calls will jump templates inclusion, so turn-out output buffer
 		if (!$this->headless) {
-			
+
 			// default page title, maybe overwritten
 			$this->pageTitle(Env::get('APP_NAME'));
-	
-			$gzip  = (isset($_SERVER['HTTP_ACCEPT_ENCODING']) and substr_count($_SERVER['HTTP_ACCEPT_ENCODING'], 'gzip'));
+
+			$gzip = (isset($_SERVER['HTTP_ACCEPT_ENCODING']) and substr_count($_SERVER['HTTP_ACCEPT_ENCODING'], 'gzip'));
 
 			// if supported, output is compressed with gzip
 			if ($gzip and extension_loaded('zlib') and !ini_get('zlib.output_compression')) {
@@ -220,20 +226,24 @@ class Application {
 				ob_start();
 			}
 
+			// retrieve persistent notifications and modal
+			$this->retrievePersistentNotifications();
+
 			return;
 
 		}
 
-		// retrieve persistent notifications and modal
-		$this->retrievePersistentNotifications();
-
 	}
 
 	/**
-	 * Returns, if any, variable assigned to the template,
-	 * otherwise the properties of the method, otherwise null
+	 * Magic getter.
 	 *
-	 * @param	string	Requested property’s name.
+	 * First tries to return a variable assigned to the template. If not found, falls
+	 * back to selected Application properties. Returns null if the requested name does
+	 * not match any of them.
+	 *
+	 * @param	string	Requested property name.
+	 * @return	mixed	The resolved value or null if not found.
 	 */
 	public function __get(string $name): mixed {
 
@@ -248,7 +258,21 @@ class Application {
 
 			default:
 
-				$allowedProperties = ['activeRecordCache', 'currentUser', 'userClass', 'pageTitle', 'pageHeading', 'pageContent', 'menuLabel', 'menuUrl', 'template', 'messages','headless'];
+				$allowedProperties = [
+					'activeRecordCache',
+					'currentUser',
+					'session',
+					'userClass',
+					'pageTitle',
+					'pageHeading',
+					'pageContent',
+					'menuLabel',
+					'menuUrl',
+					'template',
+					'messages',
+					'headless',
+					'logBar'
+				];
 
 				// search into variable assigned to the template as first
 				if (array_key_exists($name, $this->vars)) {
@@ -313,6 +337,13 @@ class Application {
 
 	}
 
+	/**
+	 * Defines core global constants derived from the current environment. This includes:
+	 * - PAIR_FOLDER: Pair framework folder path relative to APPLICATION_PATH
+	 * - TEMP_PATH:   path to the temporary folder
+	 * - URL_PATH:    base URL path of the application
+	 * - BASE_HREF:   absolute base URL, or null when not running under HTTP
+	 */
 	private function defineConstants(): void {
 
 		// Pair folder
@@ -392,6 +423,13 @@ class Application {
 
 	}
 
+	/**
+	 * Returns the plain-text messages of the current modal and all queued toasts. This
+	 * is useful for logging, debugging or tests that need access to the human-readable
+	 * notification messages.
+	 *
+	 * @return string[]
+	 */
 	final public function getAllNotificationsMessages(): array {
 
 		$messages = [];
@@ -405,6 +443,18 @@ class Application {
 		}
 
 		return $messages;
+
+	}
+
+	/**
+	 * Builds the full cookie name for a given state name using the application prefix.
+	 *
+	 * @param	string	State variable name.
+	 * @return	string	Fully qualified cookie name.
+	 */
+	private function getCookieName(string $stateName): string {
+
+		return static::getCookiePrefix() . ucfirst($stateName);
 
 	}
 
@@ -470,22 +520,13 @@ class Application {
 	}
 
 	/**
-	 * Returns javascript code for displaying toast notifications.
-	 */
-	private function getToastsScript(): string {
-
-		$script = '';
-
-		foreach ($this->toasts as $toast) {
-			$script .= $toast->render();
-		}
-
-		return $script;
-
-	}
-
-	/**
-	 * Retrieves variables of any type form a cookie named like in param.
+	 * Retrieves a persistent state value from cookies. The cookie name is derived
+	 * from the given state name and the application cookie prefix. Values are
+	 * unserialized with a whitelist of allowed classes for security and may throw
+	 * an AppException on failure.
+	 *
+	 * @param	string	Name of the state variable.
+	 * @return	mixed	The stored value, or null if not found.
 	 */
 	public function getPersistentState(string $stateName): mixed {
 
@@ -523,16 +564,10 @@ class Application {
 
 	}
 
-	private function getCookieName(string $stateName): string {
-
-		return static::getCookiePrefix() . ucfirst($stateName);
-
-	}
-
 	/**
 	 * Returns the requested session state variable.
 	 *
-	 * @param	string	State’s name.
+	 * @param	string	State name.
 	 */
 	final public function getState(string $name): mixed {
 
@@ -541,20 +576,6 @@ class Application {
 		} else {
 			return null;
 		}
-
-	}
-
-	/**
-	 * Returns the time zone of the logged in user, otherwise the default for the application.
-	 */
-	public static final function getTimeZone(): \DateTimeZone {
-
-		$app = Application::getInstance();
-
-		// in login page the currentUser doesn’t exist
-		return is_a($app->currentUser, 'User')
-			? $app->currentUser->getDateTimeZone()
-			: new \DateTimeZone(BASE_TIMEZONE);
 
 	}
 
@@ -579,6 +600,40 @@ class Application {
 		}
 
 		return $this->template;
+
+	}
+
+	/**
+	 * Returns the time zone of the logged in user, otherwise the default for the application.
+	 */
+	public static final function getTimeZone(): \DateTimeZone {
+
+		$app = Application::getInstance();
+
+		if ($app->session) {
+
+			return new \DateTimeZone($app->session->timezoneName);
+
+		} else {
+
+			return new \DateTimeZone(BASE_TIMEZONE);
+
+		}
+
+	}
+
+	/**
+	 * Returns javascript code for displaying toast notifications.
+	 */
+	private function getToastsScript(): string {
+
+		$script = '';
+
+		foreach ($this->toasts as $toast) {
+			$script .= $toast->render();
+		}
+
+		return $script;
 
 	}
 
@@ -610,8 +665,8 @@ class Application {
 			return;
 		}
 
-		$logBar = LogBar::getInstance();
-		$logBar->disable();
+		$this->logBar = LogBar::getInstance();
+		$this->logBar->disable();
 
 		// require controller file
 		require (APPLICATION_PATH . '/' . MODULE_PATH . 'controller.php');
@@ -732,6 +787,11 @@ class Application {
 
 	}
 
+	/**
+	 * Handles unauthenticated access according to the current context. If running headless,
+	 * returns a JSON error with HTTP 401. Otherwise, optionally stores the last requested
+	 * URL and redirects to the login page, unless the request targets a guest module/action.
+	 */
 	private function handleUnauthenticated(): void {
 
 		// check RememberMe cookie
@@ -773,10 +833,10 @@ class Application {
 	 * Enable or disable headless mode, avoiding to render any output. Chainable.
 	 */
 	public function headless(bool $on = true): static {
- 
+
 		$this->headless = $on;
     	return $this;
-	
+
 	}
 
 	/**
@@ -791,11 +851,11 @@ class Application {
 		// start session or resume session started by handleApiRequest
 		session_start();
 
+		// get existing previous session
+		$this->session = Session::find(session_id());
+
 		// session time length in minutes
 		$sessionTime = Options::get('session_time');
-
-		// get existing previous session
-		$session = new Session(session_id());
 
 		// clean all old sessions
 		Session::cleanOlderThan($sessionTime);
@@ -807,42 +867,36 @@ class Application {
 		$this->setCurrentUser(new $userClass());
 
 		// handle session not loaded
-		if (!$session->isLoaded()) {
+		if (!$this->session or !$this->session->isLoaded()) {
 			$this->handleUnauthenticated();
+			$this->initializeLandingPage();
 			return;
 		}
 
-		// session is expired
-		if ($session->isExpired($sessionTime)) {
-
-			Audit::sessionExpired($session);
-			$session->delete();
+		// handle expired session
+		if ($this->session->isExpired($sessionTime)) {
+			Audit::sessionExpired($this->session);
+			$this->session->delete();
 			$this->handleUnauthenticated();
+			$this->initializeLandingPage();
 			return;
-
 		}
 
-		// session exists, extend session timeout
-		$session->extendTimeout();
+		// if session exists, extend session timeout
+		$this->session->extendTimeout();
 
 		// create User object
-		$user = new $userClass($session->userId);
+		$user = new $userClass($this->session->userId);
 		$this->setCurrentUser($user);
-
-		$eventMessage = 'User session for ' . $user->fullName . ' is alive' .
-			', user time zone is ' . $this->currentUser->tzName .
-			' (' . sprintf('%+06.2f', (float)$this->currentUser->tzOffset) . ')';
 
 		// add log about user session
 		$logger = Logger::getInstance();
-		$logger->notice($eventMessage);
 
-		// set defaults in case of no module
-		if (!$router->module) {
-			$landing = $user->landing();
-			$router->module = $landing->module;
-			$router->action = $landing->action;
-		} else if ('user'==$router->module and 'login'==$router->action) {
+		// set landing page if not module/action specified
+		$this->initializeLandingPage();
+
+		// access control
+		if ('user'==$router->module and 'login'==$router->action) {
 			$landing = $user->landing();
 			$this->redirect($landing->module . '/' . $landing->action);
 		}
@@ -864,6 +918,21 @@ class Application {
 	}
 
 	/**
+	 * If no module/action is specified in the router, set them according to the current user, if any.
+	 */
+	private function initializeLandingPage(): void {
+
+		$router = Router::getInstance();
+
+		if ($this->currentUser instanceof User and !$router->module) {
+			$landing = $this->currentUser->landing();
+			$router->module = $landing->module;
+			$router->action = $landing->action;
+		}
+
+	}
+
+	/**
 	 * Return true if Pair was invoked by CLI.
 	 */
 	final public static function isCli(): bool {
@@ -873,7 +942,10 @@ class Application {
 	}
 
 	/**
-	 * Retrieves variables of any type form a cookie named like in param.
+	 * Checks whether a persistent state exists in cookies.
+	 *
+	 * @param	string	Name of the state variable.
+	 * @return	bool	True if the value is present, false otherwise.
 	 */
 	public function issetPersistentState(string $stateName): bool {
 
@@ -917,7 +989,7 @@ class Application {
 	}
 
 	/**
-	 * Set esternal script file load with optional attributes.
+	 * Registers an external script file to be loaded, with optional attributes.
 	 *
 	 * @param	string	Path to script, absolute or relative with no trailing slash.
 	 * @param	bool	Defer attribute (default false).
@@ -967,7 +1039,7 @@ class Application {
 	}
 
 	/**
-	 * Add an alert modal to the page and return the object for further customization.
+	 * Adds a modal alert to be shown on the next page load. Chainable.
 	 */
 	public function modal(string $title, string $text, ?string $icon = null): SweetAlert {
 
@@ -978,7 +1050,7 @@ class Application {
 	}
 
 	/**
-	 * Set the URL of the current selected menu item.
+	 * Sets the label of the current selected menu item.
 	 */
 	public function menuUrl(string $url): void {
 
@@ -987,7 +1059,7 @@ class Application {
 	}
 
 	/**
-	 * Set the web page heading.
+	 * Sets the label of the current selected menu item.
 	 */
 	public function pageHeading(string $heading): void {
 
@@ -996,7 +1068,9 @@ class Application {
 	}
 
 	/**
-	 * Set the web page HTML title tag.
+	 * Sets the web page title (displayed in the browser tab).
+	 *
+	 * @param	string	Title text.
 	 */
 	public function pageTitle(string $title): void {
 
@@ -1005,7 +1079,11 @@ class Application {
 	}
 
 	/**
-	 * Set a modal alert queued for next page load.
+	 * Queues a persistent alert modal to be shown on the next page load.
+	 *
+	 * @param string $title   Modal title.
+	 * @param string $message Modal message.
+	 * @param string $type    Modal icon/type (info|success|error|warning|question), default 'info'.
 	 */
 	public function persistentModal(string $title, string $text, ?string $icon = null): void {
 
@@ -1016,7 +1094,7 @@ class Application {
 	}
 
 	/**
-	 * Prints the page Javascript content.
+	 * Prints the page scripts before the closing body tag.
 	 */
 	final public function printScripts(): void {
 
@@ -1070,7 +1148,7 @@ class Application {
 	}
 
 	/**
-	 * Prints the page stylesheets.
+	 * Prints the page CSS stylesheets and manifest files.
 	 */
 	final public function printStyles(): void {
 
@@ -1095,7 +1173,9 @@ class Application {
 	}
 
 	/**
-	 * Print a widget by its name.
+	 * Print a widget by name.
+	 *
+	 * @param	string	$name	Name of the widget to render.
 	 */
 	public function printWidget(string $name): void {
 
@@ -1105,10 +1185,12 @@ class Application {
 	}
 
 	/**
-	 * Store an ActiveRecord object into the common cache of Application singleton.
+	 * Stores an ActiveRecord object into the Application-wide cache. The cache is
+	 * keyed by ActiveRecord class name and primary key. Composite primary keys are
+	 * not supported.
 	 *
-	 * @param	string			Name of the ActiveObject class.
-	 * @param	ActiveRecord	Object to cache.
+	 * @param	string			$class	ActiveRecord class name.
+	 * @param	ActiveRecord	$object	ActiveRecord instance to cache.
 	 */
 	final public function putActiveRecordCache(string $class, ActiveRecord $object): void {
 
@@ -1127,11 +1209,13 @@ class Application {
 	}
 
 	/**
-	 * Redirect HTTP on the URL param. Relative path as default. Queued toast notifications
-	 * get a persistent storage in a cookie in order to being retrieved later.
+	 * Redirects the client to the given URL. If a relative URL is provided, the
+	 * application base URL is automatically prepended (unless $externalUrl is true).
+	 * Before redirecting, any queued toast notifications and modal are stored in
+	 * cookies so they can be retrieved on the next request.
 	 *
-	 * @param	string	Location URL. If null, redirect to the current module with default action.
-	 * @param	bool	If true, will avoids to add base url (default false).
+	 * @param	string|null	$url			Target URL. If null, redirects to the current module with its default action.
+	 * @param	bool        $externalUrl	If true, the URL is treated as absolute and the base URL is not added.
 	 */
 	public function redirect(?string $url = null, bool $externalUrl = false): void {
 
@@ -1183,6 +1267,10 @@ class Application {
 
 	}
 
+	/**
+	 * Redirects the current user to their default landing page. If no user is logged in,
+	 * redirects to the login page instead.
+	 */
 	public function redirectToUserDefault(): void {
 
 		if ($this->currentUser) {
@@ -1193,6 +1281,11 @@ class Application {
 
 	}
 
+	/**
+	 * Restores persistent modal and toast notifications from cookies. Valid SweetAlert and
+	 * IziToast instances are re-queued and removed from the persistent state so they are shown
+	 * only once.
+	 */
 	private function retrievePersistentNotifications(): void {
 
 		$persistentModal = $this->getPersistentState('Modal');
@@ -1244,7 +1337,7 @@ class Application {
 	}
 
 	/**
-	 * Run the MVC pattern to handle the request and render the page.
+	 * Runs the MVC pattern to handle the current request and render the appropriate view.
 	 */
 	private function runMvc(): void {
 
@@ -1348,6 +1441,11 @@ class Application {
 
 	}
 
+	/**
+	 * Sets the list of module names that should be treated as API endpoints.
+	 *
+	 * @param	string[]|string	$modules	One or more module names.
+	 */
 	public function setApiModules(array|string $modules): void {
 
 		$this->apiModules = (array)$modules;
@@ -1357,7 +1455,7 @@ class Application {
 	/**
 	 * Sets current user, default template and translation locale.
 	 *
-	 * @param	User	User object or inherited class object.
+	 * @param	User	$user	User object or inherited class object.
 	 */
 	public function setCurrentUser(User $user): void {
 
@@ -1370,8 +1468,13 @@ class Application {
 	}
 
 	/**
-	 * Store variables of any type in a cookie for next retrievement. Existent variables with
-	 * same name will be overwritten.
+	 * Stores a persistent state value in a cookie for later retrieval. Existing
+	 * values with the same state name are overwritten. Cookies are set with a
+	 * lifetime of 30 days.
+	 *
+	 * @param	string		$stateName	Name of the state variable.
+	 * @param	mixed		$value		Value to store (any serializable type).
+	 * @throws	\Exception				If setting the cookie fails.
 	 */
 	public function setPersistentState(string $stateName, mixed $value): void {
 
@@ -1381,15 +1484,17 @@ class Application {
 		$params = self::getCookieParams(time() + 2592000);
 		$cookieName = $this->getCookieName($stateName);
 
-		setcookie($cookieName, serialize($value), $params);
+		if (!setcookie($cookieName, serialize($value), $params)) {
+			throw new \Exception('Error setting persistent state cookie ' . $cookieName, ErrorCodes::COOKIE_ERROR);
+		}
 
 	}
 
 	/**
-	 * Sets a session state variable.
+	 * Sets an in-memory state variable for the current request.
 	 *
-	 * @param	string	Name of the state variable.
-	 * @param	mixed	Value of any type as is, like strings, custom objects etc.
+	 * @param	string	$name	Name of the state variable.
+	 * @param	mixed	$value	Value of any type as is, like strings, custom objects etc.
 	 */
 	public function setState(string $name, mixed $value): void {
 
@@ -1409,7 +1514,7 @@ class Application {
 	/**
 	 * Appends a toast notification message to queue.
 	 *
-	 * @param	string	Toast’s title, bold.
+	 * @param	string	Toast title (bold).
 	 * @param	string	Error message.
 	 * @param	string	Type of the toast (info|success|warning|error|question|progress), default info.
 	 */
@@ -1424,7 +1529,7 @@ class Application {
 	/**
 	 * Proxy function to append an error toast notification to queue.
 	 *
-	 * @param	string	Toast’s title, bold.
+	 * @param	string	Toast title (bold).
 	 * @param	string	Error message.
 	 */
 	public function toastError(string $title, string $message = ''): IziToast {
@@ -1436,7 +1541,7 @@ class Application {
 	/**
 	 * Proxy function to append an error toast notification to queue and redirect.
 	 *
-	 * @param	string	Toast’s title, bold.
+	 * @param	string	Toast title (bold).
 	 * @param	string	Error message.
 	 * @param	string	Redirect URL, optional.
 	 */
@@ -1451,7 +1556,7 @@ class Application {
 	/**
 	 * Proxy function to append a toast notification to queue and redirect.
 	 *
-	 * @param	string	Toast’s title, bold.
+	 * @param	string	Toast title (bold).
 	 * @param	string	Message.
 	 * @param	string	Redirect URL, optional.
 	 */
