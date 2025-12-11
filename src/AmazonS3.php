@@ -6,6 +6,7 @@ use \Aws\S3\S3Client;
 use \Etime\Flysystem\Plugin\AWS_S3\PresignedUrl;
 use \League\Flysystem\AwsS3v3\AwsS3Adapter;
 use \League\Flysystem\Filesystem;
+use \League\Flysystem\FileNotFoundException;
 
 class AmazonS3 {
 	/**
@@ -14,6 +15,13 @@ class AmazonS3 {
 	 * @var League\FlySystem\Filesystem
 	 */
 	protected $filesystem;
+
+	/**
+	 * Raw S3 client for direct operations (used to avoid buffering large files in memory).
+	 *
+	 * @var S3Client
+	 */
+	protected $s3Client;
 
 	/**
 	 * List of all errors tracked.
@@ -27,7 +35,7 @@ class AmazonS3 {
 	public function __construct() {
 
 		// Creates the S3 Client
-		$client = new S3Client([
+		$this->s3Client = new S3Client([
 			'credentials' => [
 				'key'    => S3_ACCESS_KEY_ID,
 				'secret' => S3_SECRET_ACCESS_KEY,
@@ -37,7 +45,7 @@ class AmazonS3 {
 		]);
 
 		// Creates the S3 adapter to cast to the filesystem object
-		$adapter = new AwsS3Adapter($client, S3_BUCKET_NAME);
+		$adapter = new AwsS3Adapter($this->s3Client, S3_BUCKET_NAME);
 
 		// Creates the filesystem object
 		$this->filesystem = new Filesystem($adapter);
@@ -48,28 +56,29 @@ class AmazonS3 {
 
 
 	/**
-	 * Loads local file on S3 bucket.
-	 * $filePath is the local file path
-	 * $destination is the remote file path (including file name)
+	 * Loads local file on S3 bucket at specified destination path.
 	 *
-	 * @param string $filePath
-	 * @param string $destination
-	 * @return bool
+	 * @param	string	$filePath		Local file path.
+	 * @param	string	$destination	Remote file path (including file name).
+	 * @return	bool					Success status.
+	 * @throws	FileNotFoundException	If local file does not exist.
 	 */
 	public function put(string $filePath, string $destination): bool {
 
 		if (!file_exists($filePath)) return FALSE;
 
-		$fileContents = file_get_contents($filePath);
-
 		try {
-			$result = $this->filesystem->put($destination, $fileContents);
+			$this->s3Client->putObject([
+				'Bucket'     => S3_BUCKET_NAME,
+				'Key'        => $destination,
+				'SourceFile' => $filePath, // stream directly from disk, no large memory allocation
+			]);
 		} catch(\Exception $e) {
 			$this->addError($e->getMessage());
 			return FALSE;
 		}
 
-		return $result;
+		return TRUE;
 
 	}
 
