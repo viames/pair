@@ -161,11 +161,11 @@ class Upload {
 	}
 
 	/**
-	 * Returns text of latest error. In case of no errors, returns NULL.
+	 * Returns text of latest error. In case of no errors, returns null.
 	 */
 	public function getLastError(): ?string {
 
-		return (count($this->errors) ? end($this->errors) : NULL);
+		return (count($this->errors) ? end($this->errors) : null);
 
 	}
 
@@ -200,8 +200,8 @@ class Upload {
 		} else {
 
 			$this->setError('No extensions available for this file');
-			$info->mime = NULL;
-			$info->type = NULL;
+			$info->mime = null;
+			$info->type = null;
 			return $info;
 
 		}
@@ -231,15 +231,15 @@ class Upload {
 	 * Manages saving of an upload file with POST.
 	 *
 	 * @param	string	Absolute destination folder for the file to be saved, with or without trailing slash.
-	 * @param	string	Optional new file name, if NULL will be the same as uploaded.
-	 * @param	bool	Optional flag to save with random file name, default FALSE.
+	 * @param	string	Optional new file name, if null will be the same as uploaded.
+	 * @param	bool	Optional flag to save with random file name, default false.
 	 */
 	public function save(string $path, ?string $name = null, bool $random = false): bool {
 
 		// check upload errors
 		if (UPLOAD_ERR_OK != $this->fileError) {
 			$this->setError($this->getErrorMessage());
-			return FALSE;
+			return false;
 		}
 
 		// fixes path if not containing trailing slash
@@ -260,7 +260,7 @@ class Upload {
 		// checks that file doesn’t exists
 		if (file_exists($this->path . $this->filename)) {
 			$this->setError('A file with same name has been found at the path ' . $this->path . $this->filename);
-			return FALSE;
+			return false;
 		}
 
 		// checks that destination folder exists and is writable
@@ -268,16 +268,16 @@ class Upload {
 
 			// if not, will creates
 			$old = umask(0);
-			if (!mkdir($this->path, 0777, TRUE)) {
+			if (!mkdir($this->path, 0777, true)) {
 				$this->setError('Folder ' . $this->path . ' creation doesn’t succeded');
-				return FALSE;
+				return false;
 			}
 			umask($old);
 
 		// checks that new folder is writable
 		} else if (!is_writable($this->path)) {
 			$this->setError('New folder ' . $this->path . ' is not writable');
-			return FALSE;
+			return false;
 		}
 
 		// checks file moving
@@ -290,10 +290,10 @@ class Upload {
 
 		} else {
 			$this->setError('Error moving temporary file into the path ' . $this->path . $this->filename);
-			return FALSE;
+			return false;
 		}
 
-		return TRUE;
+		return true;
 
 	}
 

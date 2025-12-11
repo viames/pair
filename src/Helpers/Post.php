@@ -93,9 +93,9 @@ class Post {
 			case 'bool':
 			case 'boolean':
 				if ('true'==strtolower((string)$val)) {
-					$val = TRUE;
+					$val = true;
 				} else if ('false'==strtolower((string)$val)) {
-					$val = FALSE;
+					$val = false;
 				} else {
 					$val = (bool)$val;
 				}
@@ -112,9 +112,9 @@ class Post {
 					}
 					$val = \DateTime::createFromFormat('!' . $format, $val, $app->currentUser->getDateTimeZone());
 					// DateTime is not set
-					if (FALSE === $val) $val = NULL;
+					if (false === $val) $val = null;
 				} else {
-					$val = NULL;
+					$val = null;
 				}
 				break;
 
@@ -128,9 +128,9 @@ class Post {
 					}
 					$val = \DateTime::createFromFormat('!' . $format, $val, $app->currentUser->getDateTimeZone());
 					// DateTime is not set
-					if (FALSE === $val) $val = NULL;
+					if (false === $val) $val = null;
 				} else {
-					$val = NULL;
+					$val = null;
 				}
 				break;
 
@@ -145,7 +145,7 @@ class Post {
 	}
 
 	/**
-	 * Get data by POST array returning a DateTime object or NULL. In case
+	 * Get data by POST array returning a DateTime object or null. In case
 	 * of not found, return default value. Manage array inputs.
 	 *
 	 * @param	string	HTTP parameter name.
@@ -158,7 +158,7 @@ class Post {
 	}
 
 	/**
-	 * Get data by POST array returning a DateTime object or NULL. In case
+	 * Get data by POST array returning a DateTime object or null. In case
 	 * of not found, return default value. Manage array inputs.
 	 *
 	 * @param	string	HTTP parameter name.
@@ -260,7 +260,7 @@ class Post {
 	/**
 	 * Method to understand if page comes from an HTTP post submit.
 	 *
-	 * @return	bool	TRUE if method is post.
+	 * @return	bool	True if method is post.
 	 */
 	public static function submitted(): bool {
 
@@ -284,7 +284,7 @@ class Post {
 	/**
 	 * Check if the browser is using the native datepicker.
 	 *
-	 * @return	bool	TRUE if using the native datepicker.
+	 * @return	bool	True if using the native datepicker.
 	 */
 	public static function usingCustomDatepicker(): bool {
 
@@ -295,7 +295,7 @@ class Post {
 	/**
 	 * Check if the browser is using the native datetimepicker.
 	 *
-	 * @return	bool	TRUE if using the native datetimepicker.
+	 * @return	bool	True if using the native datetimepicker.
 	 */
 	public static function usingCustomDatetimepicker(): bool {
 

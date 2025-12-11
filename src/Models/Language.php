@@ -19,7 +19,7 @@ class Language extends ActiveRecord {
 	/**
 	 * Language native name.
 	 */
-	protected ?string $nativeName = NULL;
+	protected ?string $nativeName = null;
 
 	/**
 	 * Language name in english.

@@ -32,7 +32,7 @@ abstract class Controller {
 	/**
 	 * View object.
 	 */
-	protected ?View $view = NULL;
+	protected ?View $view = null;
 
 	/**
 	 * Translator object.
@@ -87,7 +87,7 @@ abstract class Controller {
 	}
 
 	/**
-	 * Returns property’s value or NULL.
+	 * Returns property’s value or null.
 	 *
 	 * @param	string	Property’s name.
 	 * @throws	\Exception	If property doesn’t exist.
@@ -98,7 +98,7 @@ abstract class Controller {
 			throw new \Exception('Property “'. $name .'” doesn’t exist for '. get_called_class(), ErrorCodes::PROPERTY_NOT_FOUND);
 		}
 
-		return isset($this->$name) ? $this->$name : NULL;
+		return isset($this->$name) ? $this->$name : null;
 
 	}
 

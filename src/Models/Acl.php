@@ -26,7 +26,7 @@ class Acl extends ActiveRecord {
 	/**
 	 * Property that binds db field group_id.
 	 */
-	protected ?int $groupId = NULL;
+	protected ?int $groupId = null;
 
 	/**
 	 * Property that binds db field is_default.
@@ -90,7 +90,7 @@ class Acl extends ActiveRecord {
 
 		// login and logout are always allowed
 		if ('user'==$module or $admin) {
-			return TRUE;
+			return true;
 		}
 
 		// build a single-count query to verify at least one matching acl rule exists

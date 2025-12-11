@@ -19,9 +19,9 @@ class PairException extends \Exception {
 	 *
 	 * @param string The error message.
 	 * @param int The error code.
-	 * @param Throwable|NULL Optional previous exception for exception chaining.
+	 * @param Throwable|null Optional previous exception for exception chaining.
 	 */
-	public function __construct(string $message, int $code = 0, ?\Throwable $previous = NULL) {
+	public function __construct(string $message, int $code = 0, ?\Throwable $previous = null) {
 
 		$criticalCodes = [
 			ErrorCodes::DB_CONNECTION_FAILED,

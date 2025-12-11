@@ -10,22 +10,22 @@ class IziToast {
 	/**
 	 * Applies a balloon like toast. Default is false.
 	 */
-	private ?bool $balloon = NULL;
+	private ?bool $balloon = null;
 
 	/**
 	 * The class that will be applied to the toast. It may be used as a reference.
 	 */
-	private ?string $class = NULL;
+	private ?string $class = null;
 
 	/**
 	 * Show "x" close button. Default is true.
 	 */
-	private ?bool $close = NULL;
+	private ?bool $close = null;
 
 	/**
-	 * Close the toast on escape key. Default is NULL.
+	 * Close the toast on escape key. Default is null.
 	 */
-	private ?bool $closeOnEscape = NULL;
+	private ?bool $closeOnEscape = null;
 
 	/**
 	 * Display mode.
@@ -35,17 +35,17 @@ class IziToast {
 	/**
 	 * Icon of the toast notification.
 	 */
-	private ?string $icon = NULL;
+	private ?string $icon = null;
 
 	/**
 	 * Id of the toast notification.
 	 */
-	private ?string $id = NULL;
+	private ?string $id = null;
 
 	/**
 	 * Image of the toast notification.
 	 */
-	private ?string $image = NULL;
+	private ?string $image = null;
 
 	/**
 	 * Text message of the toast notification.
@@ -55,22 +55,22 @@ class IziToast {
 	/**
 	 * Position of the toast notification.
 	 */
-	private ?string $position = NULL;
+	private ?string $position = null;
 
 	/**
 	 * Enable timeout progress bar.
 	 */
-	private ?bool $progressBar = NULL;
+	private ?bool $progressBar = null;
 
 	/**
 	 * Enables display the Overlay layer on the page. Default is false.
 	 */
-	private ?bool $overlay = NULL;
+	private ?bool $overlay = null;
 
 	/**
 	 * It can be light or dark or set another class. Create and use like this ".iziToast-theme-name".
 	 */
-	private ?string $theme = NULL;
+	private ?string $theme = null;
 
 	/**
 	 * Amount in milliseconds to close the toast or false to disable.
@@ -207,7 +207,7 @@ class IziToast {
 	}
 
 	/**
-	 * Set the id of the toast. Default NULL. Chainable method.
+	 * Set the id of the toast. Default null. Chainable method.
 	 */
 	public function id(string $id): self {
 
@@ -343,7 +343,7 @@ class IziToast {
 	 */
 	public function timeout(bool|int $timeout): self {
 
-		if (is_int($timeout) or FALSE === $timeout) {
+		if (is_int($timeout) or false === $timeout) {
 			$this->timeout = $timeout;
 		}
 

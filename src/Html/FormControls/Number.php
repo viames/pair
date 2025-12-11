@@ -11,17 +11,17 @@ class Number extends FormControl {
 	/**
 	 * Step value for number input controls.
 	 */
-	protected int|float|NULL $step = NULL;
+	protected int|float|null $step = null;
 
 	/**
 	 * Minimum allowed length for value.
 	 */
-	protected int|float|NULL $min = NULL;
+	protected int|float|null $min = null;
 
 	/**
 	 * Maximum allowed length for value.
 	 */
-	protected int|float|NULL $max = NULL;
+	protected int|float|null $max = null;
 
 	/**
 	 * Set step value for input field of number type. Chainable method.
@@ -97,40 +97,40 @@ class Number extends FormControl {
 
 	/**
 	 * Validates this control against empty values, minimum length, maximum length,
-	 * and returns TRUE if is all set checks pass.
+	 * and returns true if is all set checks pass.
 	 */
 	public function validate(): bool {
 
 		$value	= Post::get($this->name);
-		$valid	= TRUE;
+		$valid	= true;
 
 		$logger = Logger::getInstance();
 
 		if ($this->required and !is_numeric($value)) {
 			$logger->notice('Control validation on field “' . $this->name . '” has failed (number required)');
-			$valid = FALSE;
+			$valid = false;
 		}
 
 		if ($this->min and $value < $this->min) {
 			$logger->notice('Control validation on field “' . $this->name . '” has failed (min=' . $this->min . ')');
-			$valid = FALSE;
+			$valid = false;
 		}
 
 		if ($this->max and $value > $this->max) {
 			$logger->notice('Control validation on field “' . $this->name . '” has failed (max=' . $this->max . ')');
-			$valid = FALSE;
+			$valid = false;
 		}
 
 		// check validity of minlength attribute
 		if ($this->minLength and ''!=$value and strlen($value) < $this->minLength) {
 			$logger->notice('Control validation on field “' . $this->name . '” has failed (minLength=' . $this->minLength . ')');
-			$valid = FALSE;
+			$valid = false;
 		}
 
 		// check validity of maxlength attribute
 		if ($this->maxLength and strlen($value) > $this->maxLength) {
 			$logger->notice('Control validation on field “' . $this->name . '” has failed (maxLength=' . $this->maxLength . ')');
-			$valid = FALSE;
+			$valid = false;
 		}
 
 		return $valid;

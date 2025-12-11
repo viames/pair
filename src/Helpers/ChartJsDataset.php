@@ -14,7 +14,7 @@ class ChartJsDataset {
 	/**
 	 * The label of this dataset.
 	 */
-	private ?string $label = NULL;
+	private ?string $label = null;
 
 	/**
 	 * The data of this dataset.
@@ -29,17 +29,17 @@ class ChartJsDataset {
 	/**
 	 * The border color of the dataset.
 	 */
-	private ?string $borderColor = NULL;
+	private ?string $borderColor = null;
 
 	/**
 	 * The cubic interpolation mode of the dataset (default, monotone).
 	 */
-	private ?string $cubicInterpolationMode = NULL;
+	private ?string $cubicInterpolationMode = null;
 
 	/**
 	 * The tension of the dataset.
 	 */
-	private ?float $tension = NULL;
+	private ?float $tension = null;
 
 	/**
 	 * Constructor. The data property of a dataset for a line chart can be passed in two formats. The first format

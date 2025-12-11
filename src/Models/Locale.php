@@ -33,7 +33,7 @@ class Locale extends ActiveRecord {
 	/**
 	 * This property maps “default_country” column.
 	 */
-	protected ?bool $defaultCountry = NULL;
+	protected ?bool $defaultCountry = null;
 
 	/**
 	 * This property maps “app_default” column.
@@ -140,7 +140,7 @@ class Locale extends ActiveRecord {
 	}
 
 	/**
-	 * Returns TRUE if language of this locale is the application default.
+	 * Returns true if language of this locale is the application default.
 	 */
 	public function isDefault(): bool {
 
@@ -149,7 +149,7 @@ class Locale extends ActiveRecord {
 	}
 
 	/**
-	 * Returns TRUE if language of this locale is official one for its country.
+	 * Returns true if language of this locale is official one for its country.
 	 */
 	public function isOfficialLanguage(): bool {
 
@@ -158,7 +158,7 @@ class Locale extends ActiveRecord {
 	}
 
 	/**
-	 * Returns TRUE if the country of this locale is the default for its language.
+	 * Returns true if the country of this locale is the default for its language.
 	 */
 	public function isDefaultCountry(): bool {
 
@@ -238,7 +238,7 @@ class Locale extends ActiveRecord {
 
 	/**
 	 * Read all translation strings from a file located into a module.
-	 * @param	Module|NULL	Module object or NULL to read the common translation file.
+	 * @param	Module|null	Module object or null to read the common translation file.
 	 * @return	string[]
 	 */
 	public function readTranslation(?Module $module): array {
@@ -262,7 +262,7 @@ class Locale extends ActiveRecord {
 	}
 
 	/**
-	 * Returns TRUE if translation file of passed module is writable.
+	 * Returns true if translation file of passed module is writable.
 	 * @param	string	Module name.
 	 */
 	public function isFileWritable(string $moduleName): bool {
@@ -271,9 +271,9 @@ class Locale extends ActiveRecord {
 		$file = $folder . '/' . $this->getRepresentation() . '.ini';
 
 		if ((file_exists($file) and is_writable($file)) or (!file_exists($file) and is_dir($folder) and is_writable($folder))) {
-			return TRUE;
+			return true;
 		} else {
-			return FALSE;
+			return false;
 		}
 
 	}
@@ -281,7 +281,7 @@ class Locale extends ActiveRecord {
 	/**
 	 * Write all translation strings into a file located into a module.
 	 * @param	string[]	List of translation strings.
-	 * @param	Module|NULL		Module object or NULL to read the common translation file.
+	 * @param	Module|null		Module object or null to read the common translation file.
 	 */
 	public function writeTranslation(array $strings, ?Module $module): bool {
 
@@ -353,11 +353,11 @@ class Locale extends ActiveRecord {
 	/**
 	 * List all locales that have the common translation file in this application.
 	 *
-	 * @param	bool	Flag TRUE to get native language (country) names.
+	 * @param	bool	Flag true to get native language (country) names.
 	 *
 	 * @return	Locale[]
 	 */
-	public static function getExistentTranslations(?bool $nativeNames = TRUE): array {
+	public static function getExistentTranslations(?bool $nativeNames = true): array {
 
 		$columnName = $nativeNames ? 'native_name' : 'english_name';
 

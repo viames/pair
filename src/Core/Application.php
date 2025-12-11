@@ -605,20 +605,23 @@ class Application {
 
 	/**
 	 * Returns the time zone of the logged in user, otherwise the default for the application.
+	 *
+	 * @return	\DateTimeZone	The time zone object.
 	 */
 	public static final function getTimeZone(): \DateTimeZone {
 
 		$app = Application::getInstance();
 
-		if ($app->session) {
-
-			return new \DateTimeZone($app->session->timezoneName);
-
-		} else {
-
-			return new \DateTimeZone(BASE_TIMEZONE);
-
+		if ($app->session and $app->session->timezoneName) {
+			// assert valid timezone name
+			try {
+				return new \DateTimeZone((string)$app->session->timezoneName);
+			} catch (\Exception $e) {
+				// fall back to BASE_TIMEZONE
+			}
 		}
+
+		return new \DateTimeZone(BASE_TIMEZONE);
 
 	}
 

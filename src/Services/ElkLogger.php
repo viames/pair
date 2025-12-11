@@ -28,21 +28,21 @@ class ElkLogger {
 	/**
 	 * Username (if authentication is active).
 	 */
-    private ?string $elkUser = NULL;
+    private ?string $elkUser = null;
 
 	/**
 	 * Password (if authentication is active).
 	 */
-    private ?string $elkPassword = NULL;
+    private ?string $elkPassword = null;
 
     /**
      * Constructor.
      *
      * @param string		Elasticsearch URL (for example http://localhost:9200).
-     * @param string|NULL	Username (if authentication is active).
-     * @param string|NULL	Password (if authentication is active).
+     * @param string|null	Username (if authentication is active).
+     * @param string|null	Password (if authentication is active).
      */
-    public function __construct(string $elkUrl, ?string $elkUser = NULL, ?string $elkPassword = NULL) {
+    public function __construct(string $elkUrl, ?string $elkUser = null, ?string $elkPassword = null) {
 
 		$env = Env::get('ENVIRONMENT');
 		$shortEnv = 'production' == $env ? 'prod' : ('staging' == $env ? 'stag' : 'dev');
@@ -103,7 +103,7 @@ class ElkLogger {
         }
 
         curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => TRUE,
+            CURLOPT_RETURNTRANSFER => true,
             CURLOPT_CUSTOMREQUEST  => 'POST',
             CURLOPT_POSTFIELDS     => $payload,
             CURLOPT_HTTPHEADER     => $headers

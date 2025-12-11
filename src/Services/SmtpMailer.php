@@ -18,32 +18,32 @@ class SmtpMailer extends Mailer {
 	/**
 	 * The SMTP authentication flag.
 	 */
-	protected bool $smtpAuth = TRUE;
+	protected bool $smtpAuth = true;
 
 	/**
 	 * The SMTP host.
 	 */
-	protected ?string $smtpHost = NULL;
+	protected ?string $smtpHost = null;
 
 	/**
 	 * The SMTP port.
 	 */
-	protected ?int $smtpPort = NULL;
+	protected ?int $smtpPort = null;
 
 	/**
-	 * The SMTP secure protocol (NULL|ssl|tls)
+	 * The SMTP secure protocol (null|ssl|tls)
 	 */
-	protected ?string $smtpSecure = NULL;
+	protected ?string $smtpSecure = null;
 
 	/**
 	 * The SMTP username.
 	 */
-	protected ?string $smtpUsername = NULL;
+	protected ?string $smtpUsername = null;
 
 	/**
 	 * The SMTP password.
 	 */
-	protected ?string $smtpPassword = NULL;
+	protected ?string $smtpPassword = null;
 
 	/**
 	 * The SMTP debug level.
@@ -168,11 +168,11 @@ class SmtpMailer extends Mailer {
 		}
 
 		// int options
-		$this->smtpPort	 = (isset($config['smtpPort'])) ? (int)$config['smtpPort'] : NULL;
+		$this->smtpPort	 = (isset($config['smtpPort'])) ? (int)$config['smtpPort'] : null;
 		$this->smtpDebug = (isset($config['smtpDebug'])) ? (int)$config['smtpDebug'] : 0;
 
-		// bool options with default TRUE
-		$this->smtpAuth	 = (isset($config['smtpAuth']) and FALSE===$config['smtpAuth']) ? FALSE : TRUE;
+		// bool options with default true
+		$this->smtpAuth	 = (isset($config['smtpAuth']) and false === $config['smtpAuth']) ? false : true;
 
 	}
 

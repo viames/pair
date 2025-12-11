@@ -19,17 +19,17 @@ class AmazonSes extends Mailer {
 	/**
 	 * The Amazon SES access key ID.
 	 */
-	protected ?string $sesAccessKeyId = NULL;
+	protected ?string $sesAccessKeyId = null;
 
 	/**
 	 * The Amazon SES secret access key.
 	 */
-	protected ?string $sesSecretAccessKey = NULL;
+	protected ?string $sesSecretAccessKey = null;
 
 	/**
 	 * The Amazon SES region.
 	 */
-	protected ?string $sesRegion = NULL;
+	protected ?string $sesRegion = null;
 
 	/**
 	 * Check if the required configuration is set. Throw an exception if not.
@@ -96,7 +96,7 @@ class AmazonSes extends Mailer {
 			$message->addAttachmentFromFile($att->name, $att->filePath);
 		}
 
-		if (FALSE === $ses->sendEmail($message)) {
+		if (false === $ses->sendEmail($message)) {
 			throw new PairException('Error sending email with Amazon SES');
 		}
 

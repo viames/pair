@@ -11,7 +11,7 @@ use Pair\Exceptions\PairException;
  */
 class Widget {
 
-	private ?string $name = NULL;
+	private ?string $name = null;
 
 	/**
 	 * Path to the file with a trailing slash.
@@ -28,7 +28,7 @@ class Widget {
 
 		return match ($name) {
 			'name' => $this->name,
-			default => NULL
+			default => null
 		};
 
 	}

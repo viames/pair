@@ -26,21 +26,21 @@ class StripeGateway {
 	/**
 	 * Webhook signing secret, optional if webhooks are not used.
 	 */
-	private ?string $webhookSecret = NULL;
+	private ?string $webhookSecret = null;
 
 	/**
 	 * Build a new instance reading secrets from Env.
 	 *
 	 * Required Env keys: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_API_VERSION
 	 */
-	public function __construct(?StripeClient $client = NULL) {
+	public function __construct(?StripeClient $client = null) {
 
 		$this->client = $client ?? new StripeClient([
 			'api_key'     => Env::get('STRIPE_SECRET_KEY'),
 			'api_version' => Env::get('STRIPE_API_VERSION'),
 		]);
 
-		$this->webhookSecret = Env::get('STRIPE_WEBHOOK_SECRET') ?: NULL;
+		$this->webhookSecret = Env::get('STRIPE_WEBHOOK_SECRET') ?: null;
 	
 	}
 
@@ -91,10 +91,10 @@ class StripeGateway {
 			'line_items'            => $lineItems,
 			'success_url'           => $successUrl,
 			'cancel_url'            => $cancelUrl,
-			'customer'              => $options['customer'] ?? NULL,
-			'customer_email'        => $options['customer_email'] ?? NULL,
-			'allow_promotion_codes' => (bool)($options['allow_promotion_codes'] ?? TRUE),
-			'automatic_tax'         => ['enabled' => (bool)($options['automatic_tax'] ?? FALSE)],
+			'customer'              => $options['customer'] ?? null,
+			'customer_email'        => $options['customer_email'] ?? null,
+			'allow_promotion_codes' => (bool)($options['allow_promotion_codes'] ?? true),
+			'automatic_tax'         => ['enabled' => (bool)($options['automatic_tax'] ?? false)],
 			'metadata'              => $options['metadata'] ?? [],
 		];
 
@@ -124,11 +124,11 @@ class StripeGateway {
 			'amount'                    => $amountInMinorUnits,
 			'currency'                  => strtolower($currency),
 			'automatic_payment_methods' => ['enabled' => ! isset($options['payment_method_types'])],
-			'payment_method_types'      => $options['payment_method_types'] ?? NULL,
+			'payment_method_types'      => $options['payment_method_types'] ?? null,
 			'capture_method'            => $options['capture_method'] ?? 'automatic', // 'manual' for authorizations
-			'customer'                  => $options['customer'] ?? NULL,
+			'customer'                  => $options['customer'] ?? null,
 			'metadata'                  => $options['metadata'] ?? [],
-			'setup_future_usage'        => $options['setup_future_usage'] ?? NULL, // e.g. 'off_session'
+			'setup_future_usage'        => $options['setup_future_usage'] ?? null, // e.g. 'off_session'
 		];
 
 		try {
@@ -159,7 +159,7 @@ class StripeGateway {
 	/**
 	 * Refund a payment (full or partial if $amountInMinorUnits is provided).
 	 */
-	public function refund(string $paymentIntentId, ?int $amountInMinorUnits = NULL): array {
+	public function refund(string $paymentIntentId, ?int $amountInMinorUnits = null): array {
 
 		$params = [
 			'payment_intent' => $paymentIntentId,

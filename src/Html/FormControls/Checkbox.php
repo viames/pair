@@ -24,11 +24,11 @@ class Checkbox extends FormControl {
 	}
 
 	/**
-	 * Checkbox's validation is always TRUE.
+	 * Checkbox's validation is always true.
 	 */
 	public function validate(): bool {
 
-		return TRUE;
+		return true;
 
 	}
 

@@ -38,47 +38,47 @@ abstract class FormControl {
 	/**
 	 * DOM object unique ID.
 	 */
-	protected ?string $id = NULL;
+	protected ?string $id = null;
 
 	/**
 	 * Current value for this control object.
 	 */
-	protected mixed $value = NULL;
+	protected mixed $value = null;
 
 	/**
 	 * Flag for set this field as required.
 	 */
-	protected bool $required = FALSE;
+	protected bool $required = false;
 
 	/**
 	 * Flag for set this field as disabled.
 	 */
-	protected bool $disabled = FALSE;
+	protected bool $disabled = false;
 
 	/**
 	 * Flag for set this field as readonly.
 	 */
-	protected bool $readonly = FALSE;
+	protected bool $readonly = false;
 
 	/**
 	 * Flag for set this control name as array.
 	 */
-	protected bool $arrayName = FALSE;
+	protected bool $arrayName = false;
 
 	/**
 	 * Control placeholder text.
 	 */
-	protected ?string $placeholder = NULL;
+	protected ?string $placeholder = null;
 
 	/**
 	 * Minimum allowed length for value.
 	 */
-	protected ?int $minLength = NULL;
+	protected ?int $minLength = null;
 
 	/**
 	 * Maximum allowed length for value.
 	 */
-	protected ?int $maxLength = NULL;
+	protected ?int $maxLength = null;
 
 	/**
 	 * List of optional attributes as associative array.
@@ -95,27 +95,27 @@ abstract class FormControl {
 	/**
 	 * Optional label for this control.
 	 */
-	protected ?string $label = NULL;
+	protected ?string $label = null;
 
 	/**
 	 * Optional description for this control.
 	 */
-	protected ?string $description = NULL;
+	protected ?string $description = null;
 
 	/**
 	 * CSS class for label.
 	 */
-	protected ?string $labelClass = NULL;
+	protected ?string $labelClass = null;
 
 	/**
 	 * Pattern for string input.
 	 */
-	protected ?string $pattern = NULL;
+	protected ?string $pattern = null;
 
 	/**
 	 * The caption text for this control, used by some subclasses.
 	 */
-	protected ?string $caption = NULL;
+	protected ?string $caption = null;
 
 	/**
 	 * Build control with HTML name tag and optional attributes.
@@ -125,7 +125,7 @@ abstract class FormControl {
 	 */
 	public function __construct(string $name, array $attributes = []) {
 
-		// remove [] from array and set TRUE to arrayName property
+		// remove [] from array and set true to arrayName property
 		if (substr($name, -2) == '[]') {
 			$name = substr($name, 0, -2);
 			$this->arrayName();
@@ -137,7 +137,7 @@ abstract class FormControl {
 	}
 
 	/**
-	 * Returns property’s value or NULL.
+	 * Returns property’s value or null.
 	 *
 	 * @param	string	Property’s name.
 	 * @throws	AppException	If property doesn’t exist.
@@ -148,7 +148,7 @@ abstract class FormControl {
 			throw new AppException('Property “'. $name .'” doesn’t exist for '. get_called_class(), ErrorCodes::PROPERTY_NOT_FOUND);
 		}
 
-		return isset($this->$name) ? $this->$name : NULL;
+		return isset($this->$name) ? $this->$name : null;
 
 	}
 
@@ -201,7 +201,7 @@ abstract class FormControl {
 	 */
 	public function arrayName(): static {
 
-		$this->arrayName = TRUE;
+		$this->arrayName = true;
 		return $this;
 
 	}
@@ -209,7 +209,7 @@ abstract class FormControl {
 	/**
 	 * Sets or unsets the autofocus attribute for this control. Chainable method.
 	 */
-	public function autofocus(bool $autofocus = TRUE): static {
+	public function autofocus(bool $autofocus = true): static {
 
 		if ($autofocus) {
 			$this->attributes['autofocus'] = 'autofocus';
@@ -302,7 +302,7 @@ abstract class FormControl {
 	/**
 	 * Sets this field as disabled only. Chainable method.
 	 */
-	public function disabled(bool $disabled = TRUE): static {
+	public function disabled(bool $disabled = true): static {
 
 		$this->disabled = $disabled;
 		return $this;
@@ -584,7 +584,7 @@ abstract class FormControl {
 	/**
 	 * Sets this field as read only. Chainable method.
 	 */
-	public function readonly(bool $readonly = TRUE): static {
+	public function readonly(bool $readonly = true): static {
 
 		$this->readonly = $readonly;
 		return $this;
@@ -627,7 +627,7 @@ abstract class FormControl {
 	 */
 	public function required(): static {
 
-		$this->required = TRUE;
+		$this->required = true;
 		return $this;
 
 	}
@@ -647,30 +647,30 @@ abstract class FormControl {
 
 	/**
 	 * This is the FormControl’s default validation method. Validates this control against empty values,
-	 * minimum length, maximum length, and returns TRUE if these checks pass.
+	 * minimum length, maximum length, and returns true if these checks pass.
 	 */
 	public function validate(): bool {
 
 		$value	= Post::get($this->name);
-		$valid	= TRUE;
+		$valid	= true;
 		
 		$logger = Logger::getInstance();
 		
 		if ($this->required and ''==$value) {
 			$logger->notice('Control validation on field “' . $this->name . '” has failed (required)');
-			$valid = FALSE;
+			$valid = false;
 		}
 
 		// check validity of minlength attribute
 		if ($this->minLength and ''!=$value and strlen($value) < $this->minLength) {
 			$logger->notice('Control validation on field “' . $this->name . '” has failed (minLength=' . $this->minLength . ')');
-			$valid = FALSE;
+			$valid = false;
 		}
 
 		// check validity of minlength attribute
 		if ($this->maxLength and strlen($value) > $this->maxLength) {
 			$logger->notice('Control validation on field “' . $this->name . '” has failed (maxLength=' . $this->maxLength . ')');
-			$valid = FALSE;
+			$valid = false;
 		}
 
 		return $valid;
@@ -680,7 +680,7 @@ abstract class FormControl {
 	/**
 	 * Set value for this control subclass. Chainable method.
 	 */
-	public function value(string|int|float|\DateTime|NULL $value): static {
+	public function value(string|int|float|\DateTime|null $value): static {
 
 		$this->value = (string)$value;
 		return $this;

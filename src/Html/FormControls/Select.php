@@ -20,7 +20,7 @@ class Select extends FormControl {
 	/**
 	 * Flag to enable this control to multiple values.
 	 */
-	private bool $multiple = FALSE;
+	private bool $multiple = false;
 
 	/**
 	 * If populated with text, add an empty option before the list of values.
@@ -90,7 +90,7 @@ class Select extends FormControl {
 			}
 
 			// check wheter the propertyText is a function call
-			if (FALSE !== strpos($propertyText,'()') and strpos($propertyText,'()')+2 == strlen($propertyText)) {
+			if (false !== strpos($propertyText,'()') and strpos($propertyText,'()')+2 == strlen($propertyText)) {
 				$functionName = substr($propertyText, 0, strrpos($propertyText,'()'));
 				$option->text = $opt->$functionName();
 			} else {
@@ -122,7 +122,7 @@ class Select extends FormControl {
 	/**
 	 * Adds a null value as first item. Chainable method.
 	 * 
-	 * @param	string|NULL	Option text for first null value.
+	 * @param	string|null	Option text for first null value.
 	 */
 	public function empty(?string $text = null): self {
 
@@ -137,7 +137,7 @@ class Select extends FormControl {
 	 */
 	public function multiple(): self {
 
-		$this->multiple = TRUE;
+		$this->multiple = true;
 		return $this;
 
 	}
@@ -220,7 +220,7 @@ class Select extends FormControl {
 	}
 
 	/**
-	 * Validates this control and returns TRUE if is valid.
+	 * Validates this control and returns true if is valid.
 	 */
 	public function validate(): bool {
 
@@ -231,7 +231,7 @@ class Select extends FormControl {
 
 			$logger = Logger::getInstance();
 			$logger->notice('Control validation on field “' . $this->name . '” has failed (required)');
-			$valid = FALSE;
+			$valid = false;
 
 		// check if the value is in the allowed list
 		} else if (count($this->list)) {
@@ -239,15 +239,15 @@ class Select extends FormControl {
 			// this Select contains an empty option as the first element
 			if (isset($this->emptyOption) and !is_null($this->emptyOption) and !$this->required and (''==$value or is_null($value))) {
 
-				$valid = TRUE;
+				$valid = true;
 
 			} else {
 
-				$valid = FALSE;
+				$valid = false;
 
 				// check if the value corresponds to one of the options
 				foreach ($this->list as $item) {
-					if ($item->value == $value) $valid = TRUE;
+					if ($item->value == $value) $valid = true;
 				}
 
 				if (!$valid) {
@@ -260,7 +260,7 @@ class Select extends FormControl {
 		// empty list and value not required
 		} else {
 
-			$valid = TRUE;
+			$valid = true;
 
 		}
 
@@ -271,7 +271,7 @@ class Select extends FormControl {
 	/**
 	 * Set value or multiple values.
 	 */
-	public function value(string|int|float|\DateTime|array|NULL $value): static {
+	public function value(string|int|float|\DateTime|array|null $value): static {
 
 		if (is_array($value)) {
 

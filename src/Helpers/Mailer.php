@@ -23,7 +23,7 @@ abstract class Mailer {
 	/**
 	 * The URL of the application logo.
 	 */
-	protected ?string $applicationLogo = NULL;
+	protected ?string $applicationLogo = null;
 
 	/**
 	 * The charset of the email.
@@ -33,12 +33,12 @@ abstract class Mailer {
 	/**
 	 * The email address of the sender.
 	 */
-	protected ?string $fromAddress = NULL;
+	protected ?string $fromAddress = null;
 
 	/**
 	 * The name of the sender.
 	 */
-	protected ?string $fromName = NULL;
+	protected ?string $fromName = null;
 
 	/**
 	 * Default application logo.

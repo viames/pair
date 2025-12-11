@@ -16,7 +16,7 @@ class Email extends FormControl {
 
 	/**
 	 * Validates this control against empty values, minimum length, maximum length,
-	 * and returns TRUE if is all set checks pass.
+	 * and returns true if is all set checks pass.
 	 */
 	public function validate(): bool {
 
@@ -25,7 +25,7 @@ class Email extends FormControl {
 		if ($this->required and !filter_var($value, FILTER_VALIDATE_EMAIL)) {
 			$logger = Logger::getInstance();
 			$logger->notice('Control validation on field “' . $this->name . '” has failed (email required)');
-			return FALSE;
+			return false;
 		}
 
 		return parent::validate();

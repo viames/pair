@@ -20,7 +20,7 @@ class ErrorLog extends ActiveRecord {
 	/**
 	 * This property maps “user_id” column.
 	 */
-	protected ?int $userId = NULL;
+	protected ?int $userId = null;
 
 	/**
 	 * This property maps “path” column.
@@ -40,7 +40,7 @@ class ErrorLog extends ActiveRecord {
 	/**
 	 * Converted from array to string automatically.
 	 */
-	protected array|string|NULL $filesData = NULL;
+	protected array|string|null $filesData = null;
 
 	/**
 	 * Converted from array to string automatically.

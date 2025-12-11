@@ -50,7 +50,7 @@ class Token extends ActiveRecord {
 
 	/**
 	 * This property maps “last_use” column.
-	 * @var DateTime|NULL
+	 * @var DateTime|null
 	 */
 	protected $lastUse;
 
@@ -103,7 +103,7 @@ class Token extends ActiveRecord {
 	 * Load a Token object from DB by its code and return it.
 	 *
 	 * @param	string	Token identifier code.
-	 * @return	Token|NULL
+	 * @return	Token|null
 	 */
 	public static function getByValue(string $tokenValue): ?self {
 

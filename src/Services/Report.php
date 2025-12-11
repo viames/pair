@@ -39,7 +39,7 @@ abstract class Report {
 	/**
 	 * Contains a SQL query to execute.
 	 */
-	private ?string $query = NULL;
+	private ?string $query = null;
 
 	/**
 	 * Column definitions (header, format).
@@ -70,7 +70,7 @@ abstract class Report {
 	 * Adds to a property of the class, the specification of a column to be created, numbering it
 	 * with a zero-based index.
 	 */
-	protected function addColumn(string $head, ?string $format = NULL): self {
+	protected function addColumn(string $head, ?string $format = null): self {
 
 		$column = new \stdClass;
 
@@ -144,8 +144,8 @@ abstract class Report {
 
 		return (
 			$value
-			? Translator::do('WORD_TRUE', NULL, FALSE, 'True')
-			: Translator::do('WORD_FALSE', NULL, FALSE, 'False')
+			? Translator::do('WORD_TRUE', null, FALSE, 'True')
+			: Translator::do('WORD_FALSE', null, FALSE, 'False')
 		);
 
 	}
@@ -153,7 +153,7 @@ abstract class Report {
 	/**
 	 * Set the format and value of a cell in the Excel sheet.
 	 */
-	private function formatCell(Cell &$cell, mixed $value, NULL|string|Callable $format = null): void {
+	private function formatCell(Cell &$cell, mixed $value, null|string|Callable $format = null): void {
 
 		// default is auto format
 		if (is_null($format)) {
@@ -225,16 +225,16 @@ abstract class Report {
 				break;
 
 			case 'Date':
-				return is_a($value,'DateTime') ? $value->format('d/m/Y') : NULL;
+				return is_a($value,'DateTime') ? $value->format('d/m/Y') : null;
 				break;
 
 			case 'DateTime':
-				return is_a($value,'DateTime') ? $value->format('d/m/Y H:i:s') : NULL;
+				return is_a($value,'DateTime') ? $value->format('d/m/Y H:i:s') : null;
 				break;
 
 		}
 
-		return NULL;
+		return null;
 
 	}
 
@@ -262,7 +262,7 @@ abstract class Report {
 
 		// set column names (header)
 		foreach ($this->columns as $col => $def) {
-			$activeSheet->getCell([$col+1, 1])->setValue($def->head)->getStyle()->getFont()->setBold(TRUE);
+			$activeSheet->getCell([$col+1, 1])->setValue($def->head)->getStyle()->getFont()->setBold(true);
 		}
 
 		// start values from second row
@@ -279,7 +279,7 @@ abstract class Report {
 				// Cell object to write to
 				$cell = $activeSheet->getCell([$col+1, $row]);
 
-				$this->formatCell($cell, $value, $def->format ?? NULL);
+				$this->formatCell($cell, $value, $def->format ?? null);
 
 			}
 
@@ -340,7 +340,7 @@ abstract class Report {
 	/**
 	 * Defines a particular column by its index zero-based.
 	 */
-	protected function setColumn(int $index, string $head, NULL|string|Callable $format = NULL): self {
+	protected function setColumn(int $index, string $head, null|string|Callable $format = null): self {
 
 		$column = new \stdClass;
 		$column->head = $head;
@@ -476,7 +476,7 @@ abstract class Report {
 
 			foreach ($row as $key => $value) {
 
-				$format = $this->columns[$key]->format ?? NULL;
+				$format = $this->columns[$key]->format ?? null;
 
 				if (in_array($format, $dateFormats)) {
 					$row[$key] = $this->formatDateCell($value, $format);

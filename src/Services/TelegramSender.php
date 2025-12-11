@@ -14,14 +14,14 @@ class TelegramSender {
 	/**
 	 * Telegram bot token.
 	 */
-	private ?string $botToken = NULL;
+	private ?string $botToken = null;
 
 	/**
 	 * Constructor sets the bot token by parameter or by configuration.
 	 *
 	 * @throws PairException
 	 */
-	public function __construct(?string $botToken = NULL) {
+	public function __construct(?string $botToken = null) {
 
 		if (!$botToken and !Env::get('TELEGRAM_BOT_TOKEN')) {
 			throw new PairException('Telegram bot token not set in class constructor nor in configuration (TELEGRAM_BOT_TOKEN)');
@@ -58,7 +58,7 @@ class TelegramSender {
 
 		// no updates found
 		if (!isset($updates['result']) or !is_array($updates['result'])) {
-			return NULL;
+			return null;
 		}
 
 		foreach ($updates['result'] as $update) {
@@ -68,7 +68,7 @@ class TelegramSender {
 		}
 
 		// username not found
-		return NULL;
+		return null;
 
 	}
 
@@ -183,13 +183,13 @@ class TelegramSender {
 
 		$ch = curl_init();
 		curl_setopt($ch, CURLOPT_URL, $url);
-		curl_setopt($ch, CURLOPT_POST, TRUE);
+		curl_setopt($ch, CURLOPT_POST, true);
 		curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 
 		$response = curl_exec($ch);
 
-		if (FALSE === $response) {
+		if (false === $response) {
 			throw new PairException('Telegram API response error', ErrorCodes::TELEGRAM_FAILURE);
 		}
 
@@ -225,30 +225,30 @@ class TelegramSender {
 
 	/**
 	 * Get the username of a Telegram user by their chat ID.
-	 * Returns NULL if the user does not have a username or if the chat ID is invalid.
+	 * Returns null if the user does not have a username or if the chat ID is invalid.
 	 */
 	public function username(int $chatId): ?string {
 
 		if ($chatId < 1) {
-			return NULL;
+			return null;
 		}
 
 		$url = $this->getBaseUrl() . '/getChat?chat_id=' . $chatId;
 
 		$ch = curl_init();
 		curl_setopt($ch, CURLOPT_URL, $url);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 
 		$response = curl_exec($ch);
 		curl_close($ch);
 
-		$data = json_decode($response, TRUE);
+		$data = json_decode($response, true);
 
 		if (isset($data['ok']) and $data['ok'] and isset($data['result']['username'])) {
 			return '@' . $data['result']['username'];
 		}
 
-		return NULL;
+		return null;
 
 	}
 

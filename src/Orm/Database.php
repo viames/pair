@@ -633,7 +633,7 @@ class Database {
 			} else if (is_null($value)) {
 				$value = 'NULL';
 			} else if (is_bool($value)) {
-				$value = $value ? 'TRUE' : 'FALSE';
+				$value = $value ? 'true' : 'false';
 			} else if (is_array($value)) {
 				$value = 'Array';
 			} else if (is_object($value)) {

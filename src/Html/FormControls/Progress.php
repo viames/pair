@@ -9,7 +9,7 @@ class Progress extends FormControl {
 	/**
 	 * Maximum allowed length for value.
 	 */
-	protected int|float|NULL $max = NULL;
+	protected int|float|null $max = null;
 
 	/**
 	 * Set the maximum value for this control. It’s a chainable method.

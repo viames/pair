@@ -9,27 +9,27 @@ class Meter extends FormControl {
 	/**
 	 * Minimum allowed length for value.
 	 */
-	protected int|float|NULL $min = NULL;
+	protected int|float|null $min = null;
 
 	/**
 	 * Maximum allowed length for value.
 	 */
-	protected int|float|NULL $max = NULL;
+	protected int|float|null $max = null;
 
 	/**
 	 * Range that is considered to be low within the meter’s scale.
 	 */
-	protected int|float|NULL $low = NULL;
+	protected int|float|null $low = null;
 
 	/**
 	 * Range that is considered to be high within the meter’s scale.
 	 */
-	protected int|float|NULL $high = NULL;
+	protected int|float|null $high = null;
 
 	/**
 	 * Range that is considered to be optimal within the meter’s scale.
 	 */
-	protected int|float|NULL $optimum = NULL;
+	protected int|float|null $optimum = null;
 
 	/**
 	 * Set the minimum value for this control. Chainable method.

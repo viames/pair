@@ -47,7 +47,7 @@ class Textarea extends FormControl {
 	/**
 	 * Useful to set the caption on textarea by ActiveRecord automated methods.
 	 */
-	public function value(string|int|float|\DateTime|NULL $value): static {
+	public function value(string|int|float|\DateTime|null $value): static {
 
 		$this->caption((string)$value);
 		return $this;
