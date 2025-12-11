@@ -18,17 +18,17 @@ final class MenuEntry {
 	/**
 	 * Menu entry URL.
 	 */
-    public ?string $url   = NULL;
+    public ?string $url   = null;
 
 	/**
 	 * Font Awesome icon class.
 	 */
-    public ?string $icon  = NULL;
+    public ?string $icon  = null;
 
 	/**
 	 * Menu entry badge.
 	 */
-    public ?string $badge = NULL;
+    public ?string $badge = null;
 
 	/**
 	 * Menu entry badge type, as Bootstrap's contextual classes.
@@ -38,12 +38,12 @@ final class MenuEntry {
 	/**
 	 * Target attribute (eg. _blank).
 	 */
-    public ?string $target = NULL;
+    public ?string $target = null;
 
 	/**
-	 * Active state is flagged TRUE if the menu entry is currently active.
+	 * Active state is flagged true if the menu entry is currently active.
 	 */
-    public bool $active = FALSE;
+    public bool $active = false;
 
     /**
 	 * List of submenu entries in case of a group menu entry.

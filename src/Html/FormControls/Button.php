@@ -61,7 +61,7 @@ class Button extends FormControl {
 	 * Specifies that the form-data should not be validated on submission. Only for type="submit".
 	 * Chainable method.
 	 */
-	public function formnovalidate(bool $novalidate = TRUE): static {
+	public function formnovalidate(bool $novalidate = true): static {
 
 		if ($novalidate) {
 			$this->attributes['formnovalidate'] = 'formnovalidate';
@@ -157,11 +157,11 @@ class Button extends FormControl {
 	}
 
 	/**
-	 * Button’s validation is always TRUE.
+	 * Button’s validation is always true.
 	 */
 	public function validate(): bool {
 
-		return TRUE;
+		return true;
 
 	}
 

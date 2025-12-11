@@ -19,12 +19,12 @@ class Pagination {
 	/**
 	 * Number of items to paginate.
 	 */
-	private ?int $count = NULL;
+	private ?int $count = null;
 
 	/**
 	 * Flag to hide bar if one page only.
 	 */
-	private bool $hideEmpty = TRUE;
+	private bool $hideEmpty = true;
 
 	/**
 	 * Return start or limit values for SQL queries.

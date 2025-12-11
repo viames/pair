@@ -17,12 +17,12 @@ class Datetime extends FormControl {
 	/**
 	 * Minimum allowed length for value.
 	 */
-	protected string|DateTime|NULL $min = NULL;
+	protected string|DateTime|null $min = null;
 
 	/**
 	 * Maximum allowed length for value.
 	 */
-	protected string|DateTime|NULL $max = NULL;
+	protected string|DateTime|null $max = null;
 
 	/**
 	 * Extends parent constructor in order to sets default type to text.
@@ -110,9 +110,9 @@ class Datetime extends FormControl {
 	/**
 	 * Sets the value for this control. Chainable method.
 	 *
-	 * @param	string|int|float|\DateTime|NULL Value to set.
+	 * @param	string|int|float|\DateTime|null Value to set.
 	 */
-	public function value(string|int|float|\DateTime|NULL $value): static {
+	public function value(string|int|float|\DateTime|null $value): static {
 
 		if (is_a($value, '\DateTime')) {
 

@@ -15,12 +15,12 @@ class Breadcrumb {
 	/**
 	 * Flag to remove last URL in getPath().
 	 */
-	protected bool $lastUrlDisabled = FALSE;
+	protected bool $lastUrlDisabled = false;
 
 	/**
 	 * Singleton object.
 	 */
-	protected static ?Breadcrumb $instance = NULL;
+	protected static ?Breadcrumb $instance = null;
 
 	/**
 	 * Initializes breadcrumb with Home path.
@@ -38,19 +38,19 @@ class Breadcrumb {
 	 */
 	public function disableLastUrl(): void {
 
-		$this->lastUrlDisabled = TRUE;
+		$this->lastUrlDisabled = true;
 
 	}
 
 	/**
-	 * Returns the path before the last one, or NULL if not available.
+	 * Returns the path before the last one, or null if not available.
 	 */
 	public function getBackPath(): ?\stdClass {
 
 		if (count($this->segments) > 2) {
 			return $this->segments[count($this->segments)-2];
 		} else {
-			return NULL;
+			return null;
 		}
 
 	}
@@ -77,7 +77,7 @@ class Breadcrumb {
 
 		if ($this->lastUrlDisabled) {
 			$newPaths = $this->segments;
-			end($newPaths)->url = NULL;
+			end($newPaths)->url = null;
 			return $newPaths;
 		} else {
 			return $this->segments;
@@ -93,7 +93,7 @@ class Breadcrumb {
 		$path			= new \stdClass();
 		$path->title	= $title;
 		$path->url		= $url;
-		$path->active	= count($this->segments) > 1 ? FALSE : TRUE;
+		$path->active	= count($this->segments) > 1 ? false : true;
 
 		$this->segments[0] = $path;
 
@@ -138,11 +138,11 @@ class Breadcrumb {
 		$path			= new \stdClass();
 		$path->title	= $title;
 		$path->url		= $url;
-		$path->active	= TRUE;
+		$path->active	= true;
 
 		// just last active path will remains active
 		foreach ($this->segments as $p) {
-			$p->active = FALSE;
+			$p->active = false;
 		}
 
 		$this->segments[] = $path;

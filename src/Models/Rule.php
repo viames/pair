@@ -15,7 +15,7 @@ class Rule extends ActiveRecord {
 	/**
 	 * Optional value to set permission on just one action. If null, it means all actions.
 	 */
-	protected ?string $action = NULL;
+	protected ?string $action = null;
 
 	/**
 	 * Flag to set access granted on administrators only

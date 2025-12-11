@@ -19,12 +19,12 @@ class Audit extends ActiveRecord {
 	/**
 	 * This property maps “user_id” column.
 	 */
-	protected ?int $userId = NULL;
+	protected ?int $userId = null;
 
 	/**
 	 * This property maps “event” column.
 	 */
-	protected ?string $event = NULL;
+	protected ?string $event = null;
 
 	/**
 	 * This property maps “created_at” column.
@@ -34,7 +34,7 @@ class Audit extends ActiveRecord {
 	/**
 	 * This property maps “details” column.
 	 */
-	protected ?\stdClass $details = NULL;
+	protected ?\stdClass $details = null;
 	
 	/**
 	 * Name of related db table.
@@ -171,7 +171,7 @@ class Audit extends ActiveRecord {
 	public static function impersonate(User $impersonated): bool {
 
 		if (!Env::get('PAIR_AUDIT_IMPERSONATE') or !Env::get('PAIR_AUDIT_ALL')) {
-			return FALSE;
+			return false;
 		}
 
 		$audit = new Audit();
@@ -190,7 +190,7 @@ class Audit extends ActiveRecord {
 	public static function impersonateStop(User $impersonatedBy): bool {
 
 		if (!Env::get('PAIR_AUDIT_IMPERSONATE_STOP') or !Env::get('PAIR_AUDIT_ALL')) {
-			return FALSE;
+			return false;
 		}
 
 		$wantedProperties = ['id','username','name','surname'];
@@ -206,7 +206,7 @@ class Audit extends ActiveRecord {
 	public static function loginFailed(string $username, ?string $ipAddress, ?string $userAgent): bool {
 
 		if (!Env::get('PAIR_AUDIT_LOGIN_FAILED') or !Env::get('PAIR_AUDIT_ALL')) {
-			return FALSE;
+			return false;
 		}
 
 		$obj = new \stdClass();
@@ -244,13 +244,13 @@ class Audit extends ActiveRecord {
 	public static function logout(User $user): bool {
 
 		if (!Env::get('PAIR_AUDIT_LOGOUT') or !Env::get('PAIR_AUDIT_ALL')) {
-			return FALSE;
+			return false;
 		}
 
 		$audit = new Audit();
 		$audit->userId = $user->id;
 		$audit->event = 'logout';
-		$audit->details = NULL;
+		$audit->details = null;
 
 		return $audit->store();
 
@@ -262,7 +262,7 @@ class Audit extends ActiveRecord {
 	public static function passwordChanged(User $subject): bool {
 
 		if (!Env::get('PAIR_AUDIT_PASSWORD_CHANGED') or !Env::get('PAIR_AUDIT_ALL')) {
-			return FALSE;
+			return false;
 		}
 
 		$wantedProperties = ['id','username','name','surname'];
@@ -278,7 +278,7 @@ class Audit extends ActiveRecord {
 	private static function permissionsChanged(\stdClass $detail): bool {
 
 		if (!Env::get('PAIR_AUDIT_PERMISSIONS_CHANGED') or !Env::get('PAIR_AUDIT_ALL')) {
-			return FALSE;
+			return false;
 		}
 
 		$audit = new Audit();
@@ -313,7 +313,7 @@ class Audit extends ActiveRecord {
 	public static function sessionExpired(Session $session): bool {
 
 		if (!Env::get('PAIR_AUDIT_SESSION_EXPIRED') or !Env::get('PAIR_AUDIT_ALL')) {
-			return FALSE;
+			return false;
 		}
 
 		$user = $session->getUser();
@@ -321,7 +321,7 @@ class Audit extends ActiveRecord {
 		$audit = new Audit();
 		$audit->userId = $user->id;
 		$audit->event = 'session_expired';
-		$audit->details = NULL;
+		$audit->details = null;
 
 		return $audit->store();
 
@@ -336,7 +336,7 @@ class Audit extends ActiveRecord {
 	public static function userChanged(User $oldUser, User $newUser): bool {
 
 		if (!Env::get('PAIR_AUDIT_USER_CHANGED') or !Env::get('PAIR_AUDIT_ALL')) {
-			return FALSE;
+			return false;
 		}
 
 		$details = new \stdClass();
@@ -359,7 +359,7 @@ class Audit extends ActiveRecord {
 
 		// if nothing has changed, avoid storing the record
 		if (!count($details->changes)) {
-			return FALSE;
+			return false;
 		}
 
 		$audit = new Audit();
@@ -373,7 +373,7 @@ class Audit extends ActiveRecord {
 	public static function userCreated(User $subject): bool {
 
 		if (!Env::get('PAIR_AUDIT_USER_CREATED') or !Env::get('PAIR_AUDIT_ALL')) {
-			return FALSE;
+			return false;
 		}
 
 		$wantedProperties = ['id','groupId','localeId','username','name','surname','email','admin','enabled'];
@@ -389,7 +389,7 @@ class Audit extends ActiveRecord {
 	public static function userDeleted(User $subject): bool {
 
 		if (!Env::get('PAIR_AUDIT_USER_DELETED') or !Env::get('PAIR_AUDIT_ALL')) {
-			return FALSE;
+			return false;
 		}
 
 		$wantedProperties = ['id','groupId','username','name','surname'];

@@ -16,7 +16,7 @@ class LogBar {
 	/**
 	 * Singleton instance.
 	 */
-	private static ?self $instance = NULL;
+	private static ?self $instance = null;
 
 	/**
 	 * Start time.
@@ -37,7 +37,7 @@ class LogBar {
 	/**
 	 * Flag force log disabled.
 	 */
-	private bool $disabled = FALSE;
+	private bool $disabled = false;
 
 	/**
 	 * Disabled constructor.
@@ -55,7 +55,7 @@ class LogBar {
 	 */
 	final public static function getInstance(): self {
 
-		if (NULL == self::$instance) {
+		if (null == self::$instance) {
 			self::$instance = new self();
 			self::$instance->startChrono();
 		}
@@ -69,7 +69,7 @@ class LogBar {
 	 */
 	final public function disable(): void {
 
-		$this->disabled = TRUE;
+		$this->disabled = true;
 
 	}
 
@@ -83,10 +83,10 @@ class LogBar {
 
 		if ($this->disabled or 'cli' == php_sapi_name() or 'api' == $router->module
 				or ('user' == $router->module and 'login' == $router->action)) {
-			return FALSE;
+			return false;
 		}
 
-		return TRUE;
+		return true;
 
 	}
 
@@ -104,14 +104,14 @@ class LogBar {
 			// if impersonating, use the former user attribs
 			if ($session->hasFormerUser()) {
 				$formerUser = $session->getFormerUser();
-				return ($formerUser ? $formerUser->admin : FALSE);
+				return ($formerUser ? $formerUser->admin : false);
 			}
 
 			return (bool)User::current()->admin;
 
 		} else {
 
-			return FALSE;
+			return false;
 
 		}
 
@@ -142,7 +142,7 @@ class LogBar {
 	 *
 	 * @param	string	Event description.
 	 * @param	string	Event type notice, query, api, warning or error (default is notice).
-	 * @param	NULL|string	Optional additional text.
+	 * @param	null|string	Optional additional text.
 	 */
 	final public static function event(string $description, string $type = 'notice', ?string $subtext = null): void {
 
@@ -186,12 +186,12 @@ class LogBar {
 		$warningCount	= 0;
 		$errorCount		= 0;
 
-		$firstError		= FALSE;
-		$firstWarning	= FALSE;
+		$firstError		= false;
+		$firstWarning	= false;
 
 		// cookie infos
-		$showQueries	= isset($_COOKIE['LogBarShowQueries']) ? (bool)$_COOKIE['LogBarShowQueries'] : FALSE;
-		$showEvents		= isset($_COOKIE['LogBarShowEvents'])  ? (bool)$_COOKIE['LogBarShowEvents']  : FALSE;
+		$showQueries	= isset($_COOKIE['LogBarShowQueries']) ? (bool)$_COOKIE['LogBarShowQueries'] : false;
+		$showEvents		= isset($_COOKIE['LogBarShowEvents'])  ? (bool)$_COOKIE['LogBarShowEvents']  : false;
 
 		// create a date in timezone of connected user
 		$timeStart = new \DateTime('@' . (int)$this->timeStart, new \DateTimeZone(BASE_TIMEZONE));
@@ -251,7 +251,7 @@ class LogBar {
 					$warningCount++;
 					if (!$firstWarning) {
 						$eventDomId = 'id="logFirstWarning" ';
-						$firstWarning = TRUE;
+						$firstWarning = true;
 					}
 					break;
 
@@ -260,7 +260,7 @@ class LogBar {
 					$errorCount++;
 					if (!$firstError) {
 						$eventDomId = 'id="logFirstError" ';
-						$firstError = TRUE;
+						$firstError = true;
 					}
 					break;
 

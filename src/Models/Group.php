@@ -62,7 +62,7 @@ class Group extends ActiveRecord {
 	}
 
 	/**
-	 * If default is TRUE, will set other groups to zero. Insert default Module as
+	 * If default is true, will set other groups to zero. Insert default Module as
 	 * ACL default module when create a Group.
 	 */
 	protected function afterCreate(): void {
@@ -79,7 +79,7 @@ class Group extends ActiveRecord {
 			$acl			= new Acl();
 			$acl->ruleId	= $defaultRuleId;
 			$acl->groupId   = $this->id;
-			$acl->default	= TRUE;
+			$acl->default	= true;
 
 			$acl->create();
 
@@ -88,7 +88,7 @@ class Group extends ActiveRecord {
 	}
 
 	/**
-	 * If isDefault is 1 or TRUE, will set other groups to zero.
+	 * If isDefault is 1 or true, will set other groups to zero.
 	 */
 	protected function beforeUpdate(): void {
 
@@ -153,7 +153,7 @@ class Group extends ActiveRecord {
 	}
 
 	/**
-	 * Returns the default Group object, NULL otherwise.
+	 * Returns the default Group object, null otherwise.
 	 */
 	public static function getDefault(): ?Group {
 
@@ -162,7 +162,7 @@ class Group extends ActiveRecord {
 	}
 
 	/**
-	 * Get default Acl object of this group, if any, NULL otherwise.
+	 * Get default Acl object of this group, if any, null otherwise.
 	 */
 	public function getDefaultAcl(): ?Acl {
 
@@ -213,7 +213,7 @@ class Group extends ActiveRecord {
 	}
 
 	/**
-	 * If default property is TRUE, will set is_default=0 on all other groups.
+	 * If default property is true, will set is_default=0 on all other groups.
 	 */
 	protected function unsetSiblingsDefaults() {
 

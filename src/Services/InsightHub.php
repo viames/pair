@@ -72,7 +72,7 @@ class InsightHub {
 	private static function getClient(): ?Client {
 
 		if (!Env::get('INSIGHT_HUB_API_KEY')) {
-			return NULL;
+			return null;
 		}
 
 		$client = Client::make(Env::get('INSIGHT_HUB_API_KEY'));

@@ -53,7 +53,7 @@ class UserRemember extends ActiveRecord {
 	}
 
 	/**
-	 * Return an user that matches remember_me string if created less than 1 month ago. NULL if not found.
+	 * Return an user that matches remember_me string if created less than 1 month ago. Null if not found.
 	 *
 	 * @param	string	RememberMe value.
 	 */

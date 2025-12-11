@@ -387,6 +387,7 @@ class Logger implements LoggerInterface {
 
 		// render the message with context values
 		$rendered = $this->interpolate((string)$message, $context);
+		$errorCode = $context['errorCode'] ?? null;
 
 		// log the message in LogBar
 		if (in_array($level, [self::DEBUG, self::INFO, self::NOTICE], true)) {
@@ -399,7 +400,7 @@ class Logger implements LoggerInterface {
 
 		// process the message (store in DB, send notifications) if level is WARNING or worse
 		if ($level <= self::WARNING) {
-			$this->process($level, $rendered, $context);
+			$this->process($level, $rendered, $context, $errorCode);
 		}
 
 	}
@@ -424,6 +425,9 @@ class Logger implements LoggerInterface {
 	 * @param int|null	Optional error code to avoid logging certain errors.
 	 */
 	private function process(int $level, string $description, array $context = [], ?int $errorCode = null): void {
+
+		// prefer explicit parameter, but allow fallback to context entry
+		$errorCode ??= $context['errorCode'] ?? null;
 
 		// register error in database only if not a DB connection error
 		$dbErrorCodes = [
@@ -459,7 +463,7 @@ class Logger implements LoggerInterface {
 		}
 
 		// send Telegram notification, if level is below threshold and recipients are set
-		if ($this->telegramThreshold >= $level and $this->telegramBotToken and count($this->telegramChatIds)) {
+		if ($errorCode !== ErrorCodes::TELEGRAM_FAILURE and $this->telegramThreshold >= $level and $this->telegramBotToken and count($this->telegramChatIds)) {
 
 			$sender = new TelegramSender($this->telegramBotToken);
 

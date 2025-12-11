@@ -118,7 +118,7 @@ class File extends FormControl {
 	/**
 	 * Accepted file type file_extension, audio/*, video/*, image/* or media_type.
 	 */
-	protected ?string $accept = NULL;
+	protected ?string $accept = null;
 
 	/**
 	 * Sets accepted file type by input field. Chainable method.
@@ -187,7 +187,7 @@ class File extends FormControl {
 	}
 
 	/**
-	 * Returns the non-standard MIME category of the specified MIME type string. NULL if not found.
+	 * Returns the non-standard MIME category of the specified MIME type string. null if not found.
 	 */
 	public static function mimeCategory(string $mimeType): ?string {
 
@@ -197,7 +197,7 @@ class File extends FormControl {
 			}
 		}
 
-		return NULL;
+		return null;
 
 	}
 

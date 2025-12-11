@@ -16,7 +16,7 @@ class Session extends ActiveRecord {
 	/**
 	 * Property that binds db field user_id.
 	 */
-	protected ?int $userId = NULL;
+	protected ?int $userId = null;
 
 	/**
 	 * Property that binds db field start_time.
@@ -26,17 +26,17 @@ class Session extends ActiveRecord {
 	/**
 	 * Property that binds db field timezone_offset.
 	 */
-	protected ?float $timezoneOffset = NULL;
+	protected ?float $timezoneOffset = null;
 
 	/**
 	 * Property that binds db field timezone_name.
 	 */
-	protected ?string $timezoneName = NULL;
+	protected ?string $timezoneName = null;
 
 	/**
 	 * Property that binds db field former_user_id.
 	 */
-	protected ?int $formerUserId = NULL;
+	protected ?int $formerUserId = null;
 
 	/**
 	 * Name of related db table.
@@ -161,13 +161,13 @@ class Session extends ActiveRecord {
 	public function getFormerUser(): ?User {
 
 		if (!isset($this->formerUserId) or is_null($this->formerUserId)) {
-			return NULL;
+			return null;
 		}
 
 		if (!$this->issetCache('formerUser')) {
 			$userClass = Application::getInstance()->userClass;
 			$formerUser = new $userClass($this->formerUserId);
-			$this->setCache('formerUser', $formerUser->isLoaded() ? $formerUser : NULL);
+			$this->setCache('formerUser', $formerUser->isLoaded() ? $formerUser : null);
 		}
 
 		return $this->getCache('formerUser');
@@ -180,13 +180,13 @@ class Session extends ActiveRecord {
 	public function getUser(): ?User {
 
 		if (!isset($this->userId) or is_null($this->userId)) {
-			return NULL;
+			return null;
 		}
 
 		if (!$this->issetCache('user')) {
 			$userClass = Application::getInstance()->userClass;
 			$user = new $userClass($this->userId);
-			$this->setCache('user', $user->isLoaded() ? $user : NULL);
+			$this->setCache('user', $user->isLoaded() ? $user : null);
 		}
 
 		return $this->getCache('user');
@@ -207,7 +207,7 @@ class Session extends ActiveRecord {
 	 */
 	public function hasFormerUser(): bool {
 
-		return !in_array($this->__get('formerUserId'),  [NULL, '']);
+		return !in_array($this->__get('formerUserId'),  [null, '']);
 
 	}
 
@@ -219,7 +219,7 @@ class Session extends ActiveRecord {
 	public function isExpired(int $sessionTime): bool {
 
 		if (!isset($this->startTime) or is_null($this->startTime)) {
-			return TRUE;
+			return true;
 		}
 
 		// creates expiring date subtracting sessionTime interval

@@ -74,7 +74,7 @@ class Plugin {
 	}
 
 	/**
-	 * Will returns property’s value if set. Throw an exception and returns NULL if not set.
+	 * Will returns property’s value if set. Throw an exception and returns null if not set.
 	 *
 	 * @param	string	Property’s name.
 	 */
@@ -103,14 +103,14 @@ class Plugin {
 	 */
 	public function installPackage(string $package): bool {
 
-		$ret = TRUE;
+		$ret = true;
 
 		$zip		= new \ZipArchive;
 		$zipOpened	= $zip->open($package);
 
 		// TODO managing all ZIP errors (ZipArchive::ER_EXISTS, ZipArchive::ER_INCONS, etc.)
 
-		if (TRUE !== $zipOpened) {
+		if (true !== $zipOpened) {
 			throw new PairException('Error opening ZIP file ' . $package);
 		}
 
@@ -138,7 +138,7 @@ class Plugin {
 		if (is_null($plugin)) {
 			$zip->close();
 			Utilities::deleteFolder($package);
-			return FALSE;
+			return false;
 		}
 
 		// set the plugin-type common folder
@@ -149,7 +149,7 @@ class Plugin {
 
 		// creates final plugin folder
 		$old = umask(0);
-		if (!mkdir($pluginFolder, 0777, TRUE)) {
+		if (!mkdir($pluginFolder, 0777, true)) {
 			throw new PairException('Directory creation on ' . $pluginFolder . ' failed');
 		}
 		umask($old);
@@ -419,7 +419,7 @@ class Plugin {
 				'name' => $this->name,
 				'type' => $this->type
 			]);
-			return FALSE;
+			return false;
 		}
 
 		$manifest = new \SimpleXMLElement('<!DOCTYPE xml><manifest></manifest>');

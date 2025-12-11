@@ -19,7 +19,7 @@ class Country extends ActiveRecord {
 	/**
 	 * This property maps “native_name” column.
 	 */
-	protected ?string $nativeName = NULL;
+	protected ?string $nativeName = null;
 
 	/**
 	 * This property maps “english_name” column.

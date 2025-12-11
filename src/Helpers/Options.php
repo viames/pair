@@ -8,6 +8,9 @@ use Pair\Exceptions\ErrorCodes;
 use Pair\Exceptions\PairException;
 use Pair\Orm\Database;
 
+/**
+ * Options helper class. Manages application options stored into DB.
+ */
 class Options {
 
 	/**
@@ -35,28 +38,54 @@ class Options {
 	}
 
 	/**
-	 * Returns this object’s singleton.
+	 * Private utility for casting to proper type.
+	 *
+	 * @param	mixed	The variable value.
+	 * @param	string	the variable type (text, int, bool, custom, list).
 	 */
-	public static function getInstance(): self {
+	private function castTo(mixed $value, string $type): mixed {
 
-		if (null == self::$instance) {
-			self::$instance = new self();
+		switch ($type) {
+
+			default:
+				$value = (string)$value;
+				break;
+
+			case 'int':
+				$value = (int)$value;
+				break;
+
+			case 'bool':
+				$value = (bool)$value;
+				break;
+
+			case 'password':
+				if ($this->isCryptAvailable()) {
+					$method = 'AES-128-CBC';
+					$ivLength = openssl_cipher_iv_length($method);
+					$decoded = base64_decode((string)$value, true);
+
+					if (false === $decoded or strlen($decoded) <= $ivLength) {
+						return (string)$value;
+					}
+
+					$iv = substr($decoded, 0, $ivLength);
+					$cipherText = substr($decoded, $ivLength);
+
+					$plain = openssl_decrypt($cipherText, $method, Env::get('OPTIONS_CRYPT_KEY'), OPENSSL_RAW_DATA, $iv);
+					$value = (false === $plain) ? (string)$value : $plain;
+				} else {
+					$logger = Logger::getInstance();
+					$logger->warning('OPTIONS_CRYPT_KEY value must be defined into .env configuration file.');
+				}
+				break;
+
+			case 'list':
+				break;
+
 		}
 
-		return self::$instance;
-
-	}
-
-	/**
-	 * Returns all options as associative array.
-	 *
-	 * @return array
-	 */
-	public function getAll(): array {
-
-		$this->populate();
-
-		return $this->list;
+		return $value;
 
 	}
 
@@ -82,59 +111,51 @@ class Options {
 	}
 
 	/**
-	 * Proxy method to return an option’s value.
+	 * Returns all options as associative array.
 	 *
-	 * @param	string	The option’s name.
-	 * @param	string	The option’s value.
-	 * @throws	PairException
+	 * @return array
 	 */
-	public static function set(string $name, mixed $value): bool {
+	public function getAll(): array {
 
-		$ret = false;
+		$this->populate();
 
-		// instance of the singleton
-		$self = static::getInstance();
-
-		// populate all the options by reading db once
-		$self->populate();
-
-		// check if named option exists
-		if (!array_key_exists($name, $self->list)) {
-			throw new PairException('Option “'. $name .'” doesn’t exist', ErrorCodes::MISSING_CONFIGURATION);
-		}
-
-		switch ($self->list[$name]->type) {
-
-			case 'bool';
-				$value = $value ? 1 : 0;
-				break;
-
-			case 'password':
-				if ($self->isCryptAvailable()) {
-					$value = openssl_encrypt($value, 'AES128', Env::get('OPTIONS_CRYPT_KEY'));
-				} else {
-					throw new PairException('OPTIONS_CRYPT_KEY value must be set into .env configuration file', ErrorCodes::MISSING_CONFIGURATION);
-				}
-				break;
-
-		}
-
-		// update the value into db
-		$ret = (bool)Database::run('UPDATE `options` SET `value` = ? WHERE `name` = ?', [$value, $name]);
-
-		// update value into the singleton object
-		$self->list[$name]->value = $value;
-
-		return $ret;
+		return $this->list;
 
 	}
 
 	/**
-	 * Refresh the option values by loading from DB.
+	 * Returns this object’s singleton.
 	 */
-	public function refresh(): void {
+	public static function getInstance(): self {
 
-		$this->populate();
+		if (null == self::$instance) {
+			self::$instance = new self();
+		}
+
+		return self::$instance;
+
+	}
+
+	/**
+	 * Check if an option’s exists.
+	 *
+	 * @param	string	The option’s name.
+	 */
+	public static function exists(string $name): bool {
+
+		$self = static::getInstance();
+		$self->populate();
+
+		return array_key_exists($name, $self->list);
+
+	}
+
+	/**
+	 * Check wheter options crypt key has been defined into .env file.
+	 */
+	public function isCryptAvailable(): bool {
+
+		return (strlen((string)Env::get('OPTIONS_CRYPT_KEY')) > 0);
 
 	}
 
@@ -183,65 +204,63 @@ class Options {
 	}
 
 	/**
-	 * Private utility for casting to proper type.
-	 *
-	 * @param	mixed	The variable value.
-	 * @param	string	the variable type (text, int, bool, custom, list).
+	 * Refresh the option values by loading from DB.
 	 */
-	private function castTo(mixed $value, string $type): mixed {
+	public function refresh(): void {
 
-		switch ($type) {
+		$this->populate();
 
-			default:
-				$value = (string)$value;
-				break;
+	}
 
-			case 'int':
-				$value = (int)$value;
-				break;
+	/**
+	 * Proxy method to return an option’s value.
+	 *
+	 * @param	string	The option’s name.
+	 * @param	string	The option’s value.
+	 * @throws	PairException
+	 */
+	public static function set(string $name, mixed $value): bool {
 
-			case 'bool':
-				$value = (bool)$value;
+		$ret = false;
+
+		// instance of the singleton
+		$self = static::getInstance();
+
+		// populate all the options by reading db once
+		$self->populate();
+
+		// check if named option exists
+		if (!array_key_exists($name, $self->list)) {
+			throw new PairException('Option “'. $name .'” doesn’t exist', ErrorCodes::MISSING_CONFIGURATION);
+		}
+
+		switch ($self->list[$name]->type) {
+
+			case 'bool';
+				$value = $value ? 1 : 0;
 				break;
 
 			case 'password':
-				if ($this->isCryptAvailable()) {
-					$value = openssl_decrypt($value, 'AES128', Env::get('OPTIONS_CRYPT_KEY'));
+				if ($self->isCryptAvailable()) {
+					$method = 'AES-128-CBC';
+					$ivLength = openssl_cipher_iv_length($method);
+					$iv = openssl_random_pseudo_bytes($ivLength); // generate secure random IV
+					$cipherText = openssl_encrypt($value, $method, Env::get('OPTIONS_CRYPT_KEY'), OPENSSL_RAW_DATA, $iv);
+					$value = base64_encode($iv . $cipherText);
 				} else {
-					$logger = Logger::getInstance();
-					$logger->warning('OPTIONS_CRYPT_KEY value must be defined into .env configuration file.');
+					throw new PairException('OPTIONS_CRYPT_KEY value must be set into .env configuration file', ErrorCodes::MISSING_CONFIGURATION);
 				}
-				break;
-
-			case 'list':
 				break;
 
 		}
 
-		return $value;
+		// update the value into db
+		$ret = (bool)Database::run('UPDATE `options` SET `value` = ? WHERE `name` = ?', [$value, $name]);
 
-	}
+		// update value into the singleton object
+		$self->list[$name]->value = $value;
 
-	/**
-	 * Check wheter options crypt key has been defined into .env file.
-	 */
-	public function isCryptAvailable(): bool {
-
-		return (strlen((string)Env::get('OPTIONS_CRYPT_KEY')) > 0);
-
-	}
-
-	/**
-	 * Check if an option’s exists.
-	 *
-	 * @param	string	The option’s name.
-	 */
-	public static function exists(string $name): bool {
-
-		$self = static::getInstance();
-		$self->populate();
-
-		return array_key_exists($name, $self->list);
+		return $ret;
 
 	}
 

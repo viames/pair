@@ -119,7 +119,7 @@ class Translator {
 		$currentLocale = $self->getCurrentLocale();
 		$currentLanguage = $currentLocale->getLanguage();
 
-		return $currentLanguage ? $currentLanguage->code : NULL;
+		return $currentLanguage ? $currentLanguage->code : null;
 
 	}
 
@@ -155,7 +155,7 @@ class Translator {
 		$defaultLocale = Locale::getDefault();
 		$self->currentLocale = $defaultLocale;
 
-		$self->strings = NULL;
+		$self->strings = null;
 		$self->loadStrings();
 
 		// set default locale to all categories
@@ -179,12 +179,12 @@ class Translator {
 			if ($this->defaultLocale and $newLocale->id == $this->defaultLocale->id and isset($this->defaultStrings)) {
 
 				$this->strings = $this->defaultStrings;
-				$this->defaultStrings = NULL;
+				$this->defaultStrings = null;
 
 			// otherwise reload current strings
 			} else {
 
-				$this->strings = NULL;
+				$this->strings = null;
 				$this->loadStrings();
 
 			}
@@ -212,11 +212,11 @@ class Translator {
 	 * from default, else return the key string.
 	 *
 	 * @param	string	The language key.
-	 * @param	string|array|NULL	Parameter or list of parameters to bind on string (optional).
-	 * @param	bool|NULL	Show a warning if string is not found (optional).
+	 * @param	string|array|null	Parameter or list of parameters to bind on string (optional).
+	 * @param	bool|null	Show a warning if string is not found (optional).
 	 * @param	string|Callable	What to return if string is not found (optional).
 	 */
-	public static function do(string $key, string|array|NULL $vars = null, bool $warning = true, string|Callable|NULL $default = null): string {
+	public static function do(string $key, string|array|null $vars = null, bool $warning = true, string|Callable|null $default = null): string {
 
 		$self = static::getInstance();
 
@@ -299,7 +299,7 @@ class Translator {
 	}
 
 	/**
-	 * Return TRUE if passed language is available for translation.
+	 * Return true if passed language is available for translation.
 	 *
 	 * @param	string	Language key.
 	 */
@@ -309,9 +309,9 @@ class Translator {
 		$this->loadStrings();
 
 		if (array_key_exists($key, $this->strings) or array_key_exists($key, $this->defaultStrings)) {
-			return TRUE;
+			return true;
 		} else {
-			return FALSE;
+			return false;
 		}
 
 	}

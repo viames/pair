@@ -28,9 +28,9 @@ abstract class ActiveRecord implements \JsonSerializable {
 	protected array $keyProperties = [];
 
 	/**
-	 * TRUE if object has been loaded from database.
+	 * True if object has been loaded from database.
 	 */
-	private bool $loadedFromDb = FALSE;
+	private bool $loadedFromDb = false;
 
 	/**
 	 * List of special properties that will be cast (name => type).
@@ -140,7 +140,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 				// populate this object with passed key properties
 				foreach((array)$this->keyProperties as $index => $prop) {
-					$this->__set($prop, isset($initParam[$index]) ? $initParam[$index] : NULL);
+					$this->__set($prop, isset($initParam[$index]) ? $initParam[$index] : null);
 				}
 
 			}
@@ -156,7 +156,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 *
 	 * @param	string	$name		Called method name.
 	 * @param	array	$arguments	Arguments.
-	 * @return	mixed				Related ActiveRecord object(s) or NULL.
+	 * @return	mixed				Related ActiveRecord object(s) or null.
 	 * @throws	\Exception			If method doesn’t exist.
 	 */
 	public function __call(string $name, array $arguments): mixed {
@@ -192,7 +192,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 			}
 
-			return NULL;
+			return null;
 
 		};
 
@@ -239,11 +239,11 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		// reset primary key
 		foreach((array)$this->keyProperties as $keyProperty) {
-			$this->$keyProperty = ('int' == $this->getPropertyType($keyProperty) ? 0 : NULL);
+			$this->$keyProperty = ('int' == $this->getPropertyType($keyProperty) ? 0 : null);
 		}
 
 		// reset updated properties
-		$this->loadedFromDb = FALSE;
+		$this->loadedFromDb = false;
 		$this->cache = [];
 
 		$this->resetErrors();
@@ -272,7 +272,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 
 	/**
-	 * Return property’s value if set. Throw an exception and return NULL if not set.
+	 * Return property’s value if set. Throw an exception and return null if not set.
 	 *
 	 * @param	string	Property’s name.
 	 * @throws	PairException
@@ -281,7 +281,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		if (array_key_exists($name, static::getBinds()) or in_array($name, ['keyProperties', 'db', 'loadedFromDb', 'typeList', 'cache', 'errors', 'updatedProperties', 'dynamicProperties'])) {
 
-			return isset($this->$name) ? $this->$name : NULL;
+			return isset($this->$name) ? $this->$name : null;
 
 		// it’s a dynamic property
 		} else if (array_key_exists($name, $this->dynamicProperties)) {
@@ -402,7 +402,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// builds each object
 		foreach ($records as $row) {
 			$object = new $class($row);
-			$object->loadedFromDb = TRUE;
+			$object->loadedFromDb = true;
 			$collection->push($object);
 		}
 
@@ -416,11 +416,11 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 
 	/**
-	 * Return TRUE if each key property has a value.
+	 * Return true if each key property has a value.
 	 */
 	public function areKeysPopulated(): bool {
 
-		$populated = TRUE;
+		$populated = true;
 
 		$keys = (array)$this->getId();
 
@@ -429,7 +429,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 
 		foreach ($keys as $k) {
-			if (!$k) $populated = FALSE;
+			if (!$k) $populated = false;
 		}
 
 		return $populated;
@@ -561,12 +561,12 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		if (is_null($value)) {
 
-			// CSV NULL becomes empty array
-			$castedValue = $type == 'csv' ? [] : NULL;
+			// CSV null becomes empty array
+			$castedValue = $type == 'csv' ? [] : null;
 
 		} else if ('' === $value and $this->isNullable((string)static::getMappedField($name))) {
 
-			$castedValue = NULL;
+			$castedValue = null;
 
 		} else {
 
@@ -627,7 +627,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	private function checkRecordExists(string $table, string $column, $value): bool {
 
 		if (!$value) {
-			return FALSE;
+			return false;
 		}
 
 		// build the query
@@ -649,7 +649,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$binds = static::getBinds();
 
 		if (is_array($wantedProperties) and !count($wantedProperties)) {
-			$wantedProperties = NULL;
+			$wantedProperties = null;
 		}
 
 		foreach (array_keys($binds) as $property) {
@@ -721,7 +721,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	/**
 	 * Create this object as new database record and will assign its primary key
 	 * as $id property. Null properties won’t be written in the new row.
-	 * Return TRUE if success.
+	 * Return true if success.
 	 */
 	final public function create(): bool {
 
@@ -798,7 +798,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// hook for tasks to be executed after creation
 		$this->afterCreate();
 
-		return TRUE;
+		return true;
 
 	}
 
@@ -807,7 +807,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	final public function delete(): bool {
 
-		if (!$this->getId()) return FALSE;
+		if (!$this->getId()) return false;
 
 		// trigger a custom function before deletion
 		$this->beforeDelete();
@@ -833,7 +833,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 			}
 		}
 
-		$this->loadedFromDb = FALSE;
+		$this->loadedFromDb = false;
 		$this->errors = [];
 
 		return (bool)$res;
@@ -841,7 +841,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 
 	/**
-	 * Return TRUE if db record with passed primary or compound key exists. Faster method.
+	 * Return true if db record with passed primary or compound key exists. Faster method.
 	 *
 	 * @param	mixed	Primary or compound key for this object table.
 	 */
@@ -863,7 +863,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 
 	/**
-	 * Check if this object still exists in DB as record. Return TRUE if exists.
+	 * Check if this object still exists in DB as record. Return true if exists.
 	 */
 	final public function existsInDb(): bool {
 
@@ -879,7 +879,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 	/**
 	 * Search an object in the database with the primary key equivalent to the value passed in the parameter
-	 * and returns it as an ActiveRecord of this class, if found. NULL if not found.
+	 * and returns it as an ActiveRecord of this class, if found. Null if not found.
 	 */
 	public static function find(int|string|array $primaryKey): ?static {
 
@@ -891,11 +891,11 @@ abstract class ActiveRecord implements \JsonSerializable {
 			// try to load the object from db
 			$obj = new static();
 			$obj->loadFromDb($primaryKey);
-			return $obj->loadedFromDb ? $obj : NULL;
+			return $obj->loadedFromDb ? $obj : null;
 
 		}
 
-		return NULL;
+		return null;
 
 	}
 
@@ -917,7 +917,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 				if (is_null($value)) {
 
 					$conds[] = '`' . $binds[$property] . '` IS NULL';
-					$params[] = NULL;
+					$params[] = null;
 
 				} else {
 
@@ -966,15 +966,15 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 
 	/**
-	 * Securely formats and returns the value of a DateTime field with the date only if valid, otherwise NULL.
+	 * Securely formats and returns the value of a DateTime field with the date only if valid, otherwise null.
 	 * @param	string	Property name of DateTime object.
 	 * @param	string	Optional pattern in the format provided by the DateTime object.
-	 * @return	string|NULL
+	 * @return	string|null
 	 */
 	final public function formatDate(string $prop, ?string $format = null): ?string {
 
 		if (!is_a($this->$prop, '\DateTime')) {
-			return NULL;
+			return null;
 		}
 
 		// for guests, use default TimeZone
@@ -992,15 +992,15 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 
 	/**
-	 * Securely formats and returns the value of a DateTime field with the time if valid, otherwise NULL.
+	 * Securely formats and returns the value of a DateTime field with the time if valid, otherwise null.
 	 * @param	string	Property name of DateTime object.
 	 * @param	string	Optional pattern in the format provided by the DateTime object.
-	 * @return	string|NULL
+	 * @return	string|null
 	 */
 	final public function formatDateTime(string $prop, ?string $format = null): ?string {
 
 		if (!is_a($this->$prop, '\DateTime')) {
-			return NULL;
+			return null;
 		}
 
 		// for guests, use default TimeZone
@@ -1118,7 +1118,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 			// builds each object
 			foreach ($list as $row) {
 				$object = new $class($row);
-				$object->loadedFromDb = TRUE;
+				$object->loadedFromDb = true;
 				$objects[] = $object;
 			}
 
@@ -1181,18 +1181,18 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 
 	/**
-	 * Returns a variable, NULL in case of variable not found.
+	 * Returns a variable, null in case of variable not found.
 	 *
 	 * @param	string	Name of the cached variable.
 	 */
 	final public function getCache($name): mixed {
 
-		return ((is_array($this->cache) and array_key_exists($name, $this->cache)) ? $this->cache[$name] : NULL);
+		return ((is_array($this->cache) and array_key_exists($name, $this->cache)) ? $this->cache[$name] : null);
 
 	}
 
 	/**
-	 * Create an object for a table column configuration within an object or NULL if column
+	 * Create an object for a table column configuration within an object or null if column
 	 * doesn’t exist.
 	 *
 	 * @param	string	Field name.
@@ -1203,7 +1203,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$column = $db->describeColumn(static::TABLE_NAME, $fieldName);
 
 		if (is_null($column)) {
-			return NULL;
+			return null;
 		}
 
 		// split the column Type to recognize field type and length
@@ -1214,7 +1214,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$field->name	= $fieldName;
 		$field->type	= $matches[1];
 		$field->unsigned= (isset($matches[3]));
-		$field->nullable= 'YES' == $column->Null ? TRUE : FALSE;
+		$field->nullable= 'YES' == $column->Null ? true : false;
 		$field->key		= $column->Key;
 		$field->default	= $column->Default;
 		$field->extra	= $column->Extra;
@@ -1226,7 +1226,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 				$field->length = explode(",", substr($matches[2], 1, -1));
 			}
 		} else {
-			$field->length = NULL;
+			$field->length = null;
 		}
 
 		return $field;
@@ -1257,7 +1257,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	/**
 	 * Return the SELECT query code for columns mapped to encrypted properties. Empty string in case of no encrypted properties.
 	 *
-	 * @param	string|NULL	Table alias.
+	 * @param	string|null	Table alias.
 	 */
 	public static function getEncryptedColumnsQuery(?string $tableAlias = null): string {
 
@@ -1439,7 +1439,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	/**
 	 * Returns unique ID of inherited object or in case of compound key, an indexed array.
 	 */
-	final public function getId(): int|string|array|NULL {
+	final public function getId(): int|string|array|null {
 
 		$ids = [];
 
@@ -1451,7 +1451,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 			}
 		}
 
-		return (static::hasCompoundKey() ? $ids : ($ids[0] ?? NULL));
+		return (static::hasCompoundKey() ? $ids : ($ids[0] ?? null));
 
 	}
 
@@ -1459,14 +1459,14 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * Return a list of ActiveRecord objects related to this object. Can be filtered by a
 	 * specific class. If no related objects are found, an empty Collection is returned.
 	 * 
-	 * @param	string|null	$refClass	Referring class name to filter related objects. NULL to get all related objects.
+	 * @param	string|null	$refClass	Referring class name to filter related objects. Null to get all related objects.
 	 * @return	Collection				Collection of related ActiveRecord objects.
 	 * @throws	\Exception				When no useful foreign key is found.
 	 */
 	final public function getRelateds(?string $refClass = null): Collection {
 
 		// foreign keys flag
-		$foreignKeyFound = FALSE;
+		$foreignKeyFound = false;
 
 		$relateds = new Collection();
 
@@ -1484,7 +1484,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 					throw new \Exception('Class not found for table ' . $ifk->TABLE_NAME, ErrorCodes::CLASS_NOT_FOUND);
 				}
 
-				$foreignKeyFound = TRUE;
+				$foreignKeyFound = true;
 
 				$selfProperty = (string)static::getMappedProperty($ifk->REFERENCED_COLUMN_NAME);
 				$refProperty = (string)$refClass::getMappedProperty($ifk->COLUMN_NAME);
@@ -1508,7 +1508,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 				// when found, return the related object
 				if (static::TABLE_NAME == $fk->REFERENCED_TABLE_NAME) {
 
-					$foreignKeyFound = TRUE;
+					$foreignKeyFound = true;
 
 					$selfProperty = (string)static::getMappedProperty($fk->REFERENCED_COLUMN_NAME);
 					$refProperty = (string)$refClass::getMappedProperty($fk->COLUMN_NAME);
@@ -1545,7 +1545,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		// check about single primary key
 		if ($class::hasCompoundKey()) {
-			return NULL;
+			return null;
 		}
 
 		// check if auto-increment key
@@ -1554,7 +1554,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 			if (property_exists($class, 'createdAt')) {
 				return static::getObjectByQuery('SELECT * FROM `' . $class::TABLE_NAME . '` ORDER BY `created_at` DESC LIMIT 1');
 			} else {
-				return NULL;
+				return null;
 			}
 		}
 
@@ -1566,35 +1566,35 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 
 	/**
-	 * Return text of latest error. In case of no errors, return FALSE.
+	 * Return text of latest error. In case of no errors, return false.
 	 */
-	final public function getLastError(): FALSE|string {
+	final public function getLastError(): false|string {
 
 		return end($this->errors);
 
 	}
 
 	/**
-	 * Get the name of db field mapped by a class property. NULL if not found.
+	 * Get the name of db field mapped by a class property. Null if not found.
 	 *
 	 * @param	string	Property name.
 	 */
 	final static public function getMappedField(string $propertyName): ?string {
 
 		$binds = static::getBinds();
-		return isset($binds[$propertyName]) ? $binds[$propertyName] : NULL;
+		return isset($binds[$propertyName]) ? $binds[$propertyName] : null;
 
 	}
 
 	/**
-	 * Get the name of class property mapped by db field. NULL if not found.
+	 * Get the name of class property mapped by db field. null if not found.
 	 *
 	 * @param	string	Field name.
 	 */
 	final static public function getMappedProperty(string $fieldName): ?string {
 
 		$binds = static::getBinds();
-		return in_array($fieldName, $binds) ? array_search($fieldName, $binds) : NULL;
+		return in_array($fieldName, $binds) ? array_search($fieldName, $binds) : null;
 
 	}
 
@@ -1622,7 +1622,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 			}
 		}
 
-		return NULL;
+		return null;
 
 	}
 
@@ -1641,7 +1641,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$dynamicBinds = [];
 
 		if (!is_a($row, '\stdClass')) {
-			return NULL;
+			return null;
 		}
 
 		$class = get_called_class();
@@ -1665,7 +1665,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 
 		// turn on loaded-from-db flag
-		$object->loadedFromDb = TRUE;
+		$object->loadedFromDb = true;
 
 		$className =
 		$logger = Logger::getInstance();
@@ -1723,7 +1723,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 				}
 
 				// turn on loaded-from-db flag
-				$object->loadedFromDb = TRUE;
+				$object->loadedFromDb = true;
 
 				$objects[] = $object;
 
@@ -1745,7 +1745,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	public function getPrevious(): ?self {
 
 		if (!$this->db->isAutoIncrement(static::TABLE_NAME) or (is_array(static::TABLE_KEY) and count((array)static::TABLE_KEY)>1)) {
-			return NULL;
+			return null;
 		}
 
 		$tableKey = is_array(static::TABLE_KEY) ? static::TABLE_KEY[0] : static::TABLE_KEY;
@@ -1762,7 +1762,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	final public function getPropertyType(string $name): ?string {
 
 		if (in_array($name, ['db', 'loadedFromDb', 'typeList', 'errors', 'updatedProperties'])) {
-			$type = NULL;
+			$type = null;
 		} else if (array_key_exists($name, $this->typeList)) {
 			$type = $this->typeList[$name];
 		} else {
@@ -1827,7 +1827,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$parentField = (string)static::getMappedField($parentProperty);
 
 		// the table referenced by fk
-		$referencedTable = NULL;
+		$referencedTable = null;
 
 		// search the fk-table
 		foreach ($foreignKeys as $fk) {
@@ -1840,11 +1840,11 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// if not table is referenced, raise an error
 		if (!$referencedTable) {
 			$this->addError('Property ' . $parentProperty . ' has not a foreign-key mapped into DB');
-			return NULL;
+			return null;
 		}
 
 		// class that maps the parent table
-		$parentClass = NULL;
+		$parentClass = null;
 
 		// if the class name is specified, it quickly searches the array
 		if (!is_null($className) and is_subclass_of($className, 'Pair\Orm\ActiveRecord') and defined($className . '::TABLE_NAME') and $className::TABLE_NAME == $referencedTable) {
@@ -1909,8 +1909,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// no common cache, so proceed to load the new wanted Pair object
 		$obj = new $parentClass($parentValue);
 
-		// if loaded, return it otherwise NULL
-		$ret = ($obj->isLoaded() ? $obj : NULL);
+		// if loaded, return it otherwise null
+		$ret = ($obj->isLoaded() ? $obj : null);
 
 		// parent object is being registered in cache of this object
 		$this->setCache($cacheName, $ret);
@@ -1933,7 +1933,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		if ($obj) {
 			return $obj->$wantedProperty;
 		} else {
-			return NULL;
+			return null;
 		}
 
 	}
@@ -1989,15 +1989,15 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// create a new similar object that populates properly
 		$newObj = new $class($this->{$this->keyProperties});
 
-		if (!$newObj) return TRUE;
+		if (!$newObj) return true;
 
 		foreach (array_keys($binds) as $property) {
 			if ($this->$property != $newObj->$property) {
-				return TRUE;
+				return true;
 			}
 		}
 
-		return FALSE;
+		return false;
 
 	}
 
@@ -2030,10 +2030,10 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		$class = get_called_class();
 
-		if (is_array($class::TABLE_KEY) and count($class::TABLE_KEY) > 1) return FALSE;
+		if (is_array($class::TABLE_KEY) and count($class::TABLE_KEY) > 1) return false;
 
 		$key = (is_array($class::TABLE_KEY) and isset($class::TABLE_KEY[0]))
-		? $class::TABLE_KEY[0] ?? NULL
+		? $class::TABLE_KEY[0] ?? null
 		: $class::TABLE_KEY;
 
 		return ($key and (is_int($key) or is_string($key)));
@@ -2065,7 +2065,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 
 	/**
-	 * Returns TRUE if inherited object has been loaded from db.
+	 * Returns true if inherited object has been loaded from db.
 	 */
 	final public function isLoaded(): bool {
 
@@ -2074,13 +2074,13 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 
 	/**
-	 * Returns TRUE if object’s cache variable has been previously set.
+	 * Returns true if object’s cache variable has been previously set.
 	 *
 	 * @param	string	Name of the cached variable.
 	 */
 	final public function issetCache(string $name): bool {
 
-		return ((is_array($this->cache) and array_key_exists($name, $this->cache)) ? TRUE : FALSE);
+		return ((is_array($this->cache) and array_key_exists($name, $this->cache)) ? true : false);
 
 	}
 
@@ -2111,13 +2111,13 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 			// if a record that’s constraining exists, this is not deletable
 			if ($this->checkRecordExists($r->TABLE_NAME, $r->COLUMN_NAME, $this->$propertyName)) {
-				return FALSE;
+				return false;
 			}
 
 		}
 
 		// nothing found, is deletable
-		return TRUE;
+		return true;
 
 	}
 
@@ -2131,15 +2131,15 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$column = static::getColumnType($columnName);
 
 		if (is_null($column)) {
-			return NULL;
+			return null;
 		}
 
 		$emptiables = ['char','varchar','tinytext','text','mediumtext','bigtext'];
 
 		if (in_array($column->type, $emptiables) or ('ENUM' == $column->type and in_array('', $column->length))) {
-			return TRUE;
+			return true;
 		} else {
-			return FALSE;
+			return false;
 		}
 
 
@@ -2156,21 +2156,21 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$column = $db->describeColumn(static::TABLE_NAME, $columnName);
 
 		if (is_null($column)) {
-			return NULL;
+			return null;
 		}
 
-		return ('YES'==$column->Null ? TRUE : FALSE);
+		return ('YES'==$column->Null ? true : false);
 
 	}
 
 	/**
-	 * Check if this object has foreign keys that constraint it. Return TRUE in case of
+	 * Check if this object has foreign keys that constraint it. Return true in case of
 	 * existing constraints.
 	 */
 	public function isReferenced(): bool {
 
 		// return flag
-		$exists = FALSE;
+		$exists = false;
 
 		// get list of references to check
 		$references = $this->db->getInverseForeignKeys(static::TABLE_NAME);
@@ -2185,7 +2185,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 			$count = Database::load($query, [$this->$property], Database::COUNT);
 
 			// set flag as true
-			if ($count) $exists = TRUE;
+			if ($count) $exists = true;
 
 		}
 
@@ -2234,11 +2234,11 @@ abstract class ActiveRecord implements \JsonSerializable {
 		if (is_object($obj)) {
 
 			$this->populate($obj);
-			$this->loadedFromDb = TRUE;
+			$this->loadedFromDb = true;
 
 		} else {
 
-			$this->loadedFromDb = FALSE;
+			$this->loadedFromDb = false;
 
 		}
 
@@ -2301,13 +2301,13 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		}
 
-		return TRUE;
+		return true;
 
 	}
 
 	/**
 	 * Creates an object with all instance properties for an easy next SQL query for
-	 * save data. Datetime properties will be converted to Y-m-d H:i:s or NULL.
+	 * save data. Datetime properties will be converted to Y-m-d H:i:s or null.
 	 *
 	 * @param	array	List of property name to prepare.
 	 */
@@ -2322,7 +2322,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 			$field = (string)static::getMappedField($prop);
 
 			if (is_null($this->__get($prop)) and static::isNullable($field)) {
-				return NULL;
+				return null;
 			}
 
 			switch ($this->getPropertyType($prop)) {
@@ -2340,7 +2340,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 						$dt->setTimezone(Application::getTimeZone());
 						$ret = $dt->format('Y-m-d H:i:s');
 					} else if (static::isNullable($field)) {
-						$ret = NULL;
+						$ret = null;
 					} else {
 						$field = static::getColumnType($field);
 						$ret = 'date' == $field->type ? '0000-00-00' :'0000-00-00 00:00:00';
@@ -2432,7 +2432,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 					break;
 
 				case 'json':
-					print '<pre>' . Utilities::varToText($this->__get($name), FALSE) . '</pre>';
+					print '<pre>' . Utilities::varToText($this->__get($name), false) . '</pre>';
 					break;
 
 				default:
@@ -2473,7 +2473,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 					htmlspecialchars(implode(', ', $result));
 					break;
 
-				// integer, double, string, object, resource, NULL, unknown type
+				// integer, double, string, object, resource, null, unknown type
 				default:
 					print htmlspecialchars((string)$result);
 					break;
@@ -2564,7 +2564,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 			if (in_array($value, ['0000-00-00 00:00:00','0000-00-00',''])) {
 
-				$castedValue = NULL;
+				$castedValue = null;
 
 			}  else {
 
@@ -2583,7 +2583,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// no recognized type/format
 		} else {
 
-			$castedValue = NULL;
+			$castedValue = null;
 
 		}
 
@@ -2593,7 +2593,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 	/**
 	 * Create into database the current object values or update it if exists based on table’s
-	 * keys and auto-increment property. Return TRUE if write is completed succesfully.
+	 * keys and auto-increment property. Return true if write is completed succesfully.
 	 */
 	final public function store(): bool {
 
@@ -2610,7 +2610,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// hook for tasks to be executed after store
 		$this->afterStore();
 
-		return TRUE;
+		return true;
 
 	}
 
@@ -2671,7 +2671,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 	/**
 	 * Store into db the current object properties with option to write only a subset of
-	 * declared properties. Return TRUE if success.
+	 * declared properties. Return true if success.
 	 *
 	 * @param	mixed	Optional array of subject properties or single property to update.
 	 */
@@ -2754,7 +2754,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// hook for tasks to be executed after creation
 		$this->afterUpdate();
 
-		return TRUE;
+		return true;
 
 	}
 

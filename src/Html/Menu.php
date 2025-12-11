@@ -12,7 +12,7 @@ class Menu {
 	/**
 	 * URL of the active menu item.
 	*/
-	protected ?string $activeItem = NULL;
+	protected ?string $activeItem = null;
 
 	/**
 	 * Menu item object list.
@@ -180,10 +180,10 @@ class Menu {
      *
 	 * @param string      	URL of the menu item.
 	 * @param string      	Displayed title of the menu item.
-	 * @param string|NULL	Optional FontAwesome icon class (e.g. "fa-user", "fal-cog").
-	 * @param string|NULL	Optional text used as a badge or subtitle.
-	 * @param string|NULL	Optional badge type, usually mapped to Bootstrap classes (e.g. "primary", "info", "danger"). Default: "primary".
-	 * @param string|NULL	Optional link target attribute (e.g. "_blank").
+	 * @param string|null	Optional FontAwesome icon class (e.g. "fa-user", "fal-cog").
+	 * @param string|null	Optional text used as a badge or subtitle.
+	 * @param string|null	Optional badge type, usually mapped to Bootstrap classes (e.g. "primary", "info", "danger"). Default: "primary".
+	 * @param string|null	Optional link target attribute (e.g. "_blank").
 	 */
 	public function item(string $url, string $title, ?string $icon = null, ?string $badge = null, ?string $badgeType = null, ?string $target = null): void {
 
@@ -231,10 +231,10 @@ class Menu {
             return [
                 (string)$a['url'],
                 (string)$a['title'],
-                $a['icon']       ?? NULL,
-                $a['badge']      ?? NULL,
+                $a['icon']       ?? null,
+                $a['badge']      ?? null,
                 $a['badge_type'] ?? 'primary',
-                $a['target']     ?? NULL,
+                $a['target']     ?? null,
             ];
         }
 
@@ -242,7 +242,7 @@ class Menu {
         if (isset($a[0], $a[1])) {
 
             // pad to 6 items: url, title, icon, badge, badgeType, target
-            $b = $a + [0=>NULL, 1=>NULL, 2=>NULL, 3=>NULL, 4=>'primary', 5=>NULL];
+            $b = $a + [0=>null, 1=>null, 2=>null, 3=>null, 4=>'primary', 5=>null];
             return [
                 (string)$b[0],
                 (string)$b[1],
@@ -424,7 +424,7 @@ class Menu {
 
 		if (strtoupper($title) === $title) {
 			$translator = Translator::getInstance();
-			return $translator->do($title, [], FALSE);
+			return $translator->do($title, [], false);
 		} else {
 			return $title;
 		}

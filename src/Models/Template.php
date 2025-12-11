@@ -63,7 +63,7 @@ class Template extends PluginBase {
 	protected array $palette;
 
 	/**
-	 * Template from which it derives. It’s NULL if standard Template.
+	 * Template from which it derives. It’s null if standard Template.
 	 */
 	protected ?Template $base;
 

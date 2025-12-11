@@ -198,7 +198,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 * value. Use the containsStrict method to filter using "strict" comparisons.
 	 * For he inverse of contains, see the doesntContain method.
 	 */
-	public function contains($key, $value = NULL): bool {
+	public function contains($key, $value = null): bool {
 
 		if ($key instanceof \Pair\Orm\ActiveRecord) {
 
@@ -207,7 +207,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 				if ($item instanceof \Pair\Orm\ActiveRecord) {
 
 					if ($item->id == $key->id) {
-						return TRUE;
+						return true;
 					}
 
 				}
@@ -219,14 +219,14 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 			foreach ($this->items as $item) {
 
 				if ($item[$key] == $value) {
-					return TRUE;
+					return true;
 				}
 
 			}
 
 		}
 
-		return FALSE;
+		return false;
 
 	}
 
@@ -241,7 +241,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	/**
 	 * Same signature as the contains method but values are compared using "strict" comparisons.
 	 */
-	public function containsStrict($key, $value = NULL): bool {
+	public function containsStrict($key, $value = null): bool {
 
 		if ($key instanceof \Pair\Orm\ActiveRecord) {
 
@@ -252,14 +252,14 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 			foreach ($this->items as $item) {
 
 				if ($item[$key] === $value) {
-					return TRUE;
+					return true;
 				}
 
 			}
 
 		}
 
-		return FALSE;
+		return false;
 
 	}
 
@@ -267,14 +267,14 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 * Return a copy of the collection.
 	 *
 	 * By default this is a shallow copy (the internal array is duplicated but
-	 * nested objects remain the same instances). If $deep is TRUE, the copy is
+	 * nested objects remain the same instances). If $deep is true, the copy is
 	 * performed recursively: arrays are duplicated and objects are cloned. If an
 	 * item cannot be cloned (e.g. closures, resources), the original reference
 	 * is preserved.
 	 *
 	 * Examples:
 	 *   $copy = $collection->copy();       // shallow copy
-	 *   $clone = $collection->copy(TRUE);  // deep copy (clone inner objects)
+	 *   $clone = $collection->copy(true);  // deep copy (clone inner objects)
 	 */
 	public function copy(bool $deep = false): static {
 
@@ -394,7 +394,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 * The doesntContain method uses "loose" comparisons when checking item values, meaning a
 	 * string with an integer value will be considered equal to an integer of the same value.
 	 */
-	public function doesntContain($key, $value = NULL): bool {
+	public function doesntContain($key, $value = null): bool {
 
 		return !$this->contains($key, $value);
 
@@ -507,12 +507,12 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 		foreach ($this->items as $key => $item) {
 
 			if (!$callback($item, $key)) {
-				return FALSE;
+				return false;
 			}
 
 		}
 
-		return TRUE;
+		return true;
 
 	}
 
@@ -530,7 +530,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 */
 	public function first(): mixed {
 
-		return $this->items[0] ?? NULL;
+		return $this->items[0] ?? null;
 
 	}
 
@@ -573,7 +573,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 
 		}
 
-		return NULL;
+		return null;
 
 	}
 
@@ -630,7 +630,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 * truth test. If no callback is supplied, all entries of the collection that are equivalent to
 	 * false will be removed. For the inverse of filter, see the reject method.
 	 */
-	public function filter(?callable $callback = NULL): Collection {
+	public function filter(?callable $callback = null): Collection {
 
 		if (is_null($callback)) {
 			return new Collection(array_values(array_filter($this->items)));
@@ -671,7 +671,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 * method's default value. The result of the callback will be returned if the specified key does
 	 * not exist.
 	 */
-	public function get($key, $default = NULL): mixed {
+	public function get($key, $default = null): mixed {
 
 		return $this->items[$key] ?? $default;
 
@@ -736,11 +736,11 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 
 		foreach ($keys as $value) {
 			if (!array_key_exists($value, $this->items)) {
-				return FALSE;
+				return false;
 			}
 		}
 
-		return TRUE;
+		return true;
 
 	}
 
@@ -757,11 +757,11 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 
 		foreach ($keys as $value) {
 			if ($this->has($value)) {
-				return TRUE;
+				return true;
 			}
 		}
 
-		return FALSE;
+		return false;
 
 	}
 
@@ -773,7 +773,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 * the method. You may pass a closure to the implode method if you would like to format the
 	 * values being imploded.
 	 */
-	public function implode(string $glue, ?string $key = NULL): string {
+	public function implode(string $glue, ?string $key = null): string {
 
 		if (is_null($key)) {
 			return implode($glue, $this->items);
@@ -1076,7 +1076,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 * collection to be keyed. If duplicate keys exist, the last matching element will be inserted
 	 * into the plucked collection.
 	 */
-	public function pluck(string $value, ?string $key = NULL): Collection {
+	public function pluck(string $value, ?string $key = null): Collection {
 
 		$items = [];
 
@@ -1133,7 +1133,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	/**
 	 * Adds an item to the beginning of the collection.
 	 */
-	public function prepend($value, $key = NULL): static {
+	public function prepend($value, $key = null): static {
 
 		if (is_null($key)) {
 
@@ -1223,7 +1223,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 * specify its initial value by passing a second argument to reduce. The reduce method also
 	 * passes array keys in associative collections to the given callback.
 	 */
-	public function reduce(callable $callback, $initial = NULL): mixed {
+	public function reduce(callable $callback, $initial = null): mixed {
 
 		return array_reduce($this->items, $callback, $initial);
 
@@ -1281,7 +1281,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
      */
     public function reverse(): static {
 
-        return new static(array_reverse($this->items, TRUE));
+        return new static(array_reverse($this->items, true));
 
 	}
 
@@ -1301,7 +1301,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 * true as the second argument to the method. Alternatively, you may pass in your own callback to
 	 * search for the first item that passes your truth test.
 	 */
-	public function search($value, bool $strict = FALSE): mixed {
+	public function search($value, bool $strict = false): mixed {
 
 		foreach ($this->items as $key => $item) {
 
@@ -1313,7 +1313,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 
 		}
 
-		return FALSE;
+		return false;
 
 	}
 
@@ -1322,7 +1322,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
      */
     public function shift(): ?ActiveRecord {
 
-        return array_shift($this->items) ?: NULL;
+        return array_shift($this->items) ?: null;
 
     }
 
@@ -1338,9 +1338,9 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
     /**
      * Slice the underlying collection array.
      */
-    public function slice(int $offset, ?int $length = NULL): static {
+    public function slice(int $offset, ?int $length = null): static {
 
-        return new static(array_slice($this->items, $offset, $length, TRUE));
+        return new static(array_slice($this->items, $offset, $length, true));
 
     }
 
@@ -1349,7 +1349,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 * so in the following example we will use the values method to reset the
 	 * keys to consecutively numbered indexes.
 	 */
-	public function sort($callback = NULL) {
+	public function sort($callback = null) {
 
 		$items = $this->items;
 
@@ -1427,7 +1427,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	/**
 	 * Sort the collection by a single attribute.
 	 */
-	protected function sortBySingle(string $key, int $options, mixed $a = NULL, mixed $b = NULL): int|array {
+	protected function sortBySingle(string $key, int $options, mixed $a = null, mixed $b = null): int|array {
 
 		$items = $this->items;
 
@@ -1615,7 +1615,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 * will be considered equal to an integer of the same value. Use the uniqueStrict method to
 	 * filter using "strict" comparisons.
 	 */
-	public function unique(?string $key = NULL): Collection {
+	public function unique(?string $key = null): Collection {
 
 		if (is_null($key)) {
 			return new Collection(array_unique($this->items));
@@ -1676,7 +1676,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 
 	}
 
-	public function unshift($value, $key = NULL): Collection {
+	public function unshift($value, $key = null): Collection {
 
 		if (is_null($key)) {
 			array_unshift($this->items, $value);
@@ -1779,7 +1779,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 * "strict" comparisons. Optionally, you may pass a comparison operator as the second parameter.
 	 * Supported operators are: '===', '!==', '!=', '==', '=', '<>', '>', '<', '>=', and '<='.
 	 */
-	public function where(string $key, $operator, $value = NULL): Collection {
+	public function where(string $key, $operator, $value = null): Collection {
 
 		return $this->filter(function ($item) use ($key, $operator, $value) {
 
@@ -1834,7 +1834,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 * with an integer value will be considered equal to an integer of the same value. Use the
 	 * whereInStrict method to filter using "strict" comparisons.
 	 */
-	public function whereIn(string $key, array $values, bool $strict = FALSE): Collection {
+	public function whereIn(string $key, array $values, bool $strict = false): Collection {
 
 		return $this->filter(function ($item) use ($key, $values, $strict) {
 
@@ -1843,16 +1843,16 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 			foreach ($values as $value) {
 
 				if ($strict and $actual === $value) {
-					return TRUE;
+					return true;
 				}
 
 				if (!$strict and $actual == $value) {
-					return TRUE;
+					return true;
 				}
 
 			}
 
-			return FALSE;
+			return false;
 
 		});
 
@@ -1877,7 +1877,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 */
 	public function whereInStrict(string $key, array $values): Collection {
 
-		return $this->whereIn($key, $values, TRUE);
+		return $this->whereIn($key, $values, true);
 
 	}
 
@@ -1902,7 +1902,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 * integer value will be considered equal to an integer of the same value. Use the whereNotInStrict
 	 * method to filter using "strict" comparisons.
 	 */
-	public function whereNotIn(string $key, array $values, bool $strict = FALSE): Collection {
+	public function whereNotIn(string $key, array $values, bool $strict = false): Collection {
 
 		return $this->reject(function ($item) use ($key, $values, $strict) {
 
@@ -1911,16 +1911,16 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 			foreach ($values as $value) {
 
 				if ($strict and $actual === $value) {
-					return TRUE;
+					return true;
 				}
 
 				if (!$strict and $actual == $value) {
-					return TRUE;
+					return true;
 				}
 
 			}
 
-			return FALSE;
+			return false;
 
 		});
 
@@ -1932,7 +1932,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 */
 	public function whereNotInStrict(string $key, array $values): Collection {
 
-		return $this->whereNotIn($key, $values, TRUE);
+		return $this->whereNotIn($key, $values, true);
 
 	}
 
@@ -1941,7 +1941,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 */
 	public function whereNotNull(string $key): Collection {
 
-		return $this->where($key, '!=', NULL);
+		return $this->where($key, '!=', null);
 
 	}
 
@@ -1950,7 +1950,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 */
 	public function whereNull(string $key): Collection {
 
-		return $this->where($key, NULL);
+		return $this->where($key, null);
 
 	}
 
@@ -1958,7 +1958,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 * This method has the same signature as the where method; however, all values are compared using
 	 * "strict" comparisons.
 	 */
-	public function whereStrict(string $key, $operator, $value = NULL): Collection {
+	public function whereStrict(string $key, $operator, $value = null): Collection {
 
 		return $this->filter(function ($item) use ($key, $operator, $value) {
 

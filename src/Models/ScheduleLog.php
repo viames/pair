@@ -63,7 +63,7 @@ class ScheduleLog extends ActiveRecord {
 
 		$log->job = substr($job, 0, 30);
 		$log->result = $result;
-		$log->info = $info ? substr($info, 0, 200) : NULL;
+		$log->info = $info ? substr($info, 0, 200) : null;
 
 		return $log->store();
 

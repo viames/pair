@@ -20,86 +20,86 @@ class SweetAlert {
 	/**
 	 * Icon of the alert.
 	 */
-	private ?string $icon = NULL;
+	private ?string $icon = null;
 
 	/**
 	 * Cancel button color.
 	 */
-	private ?string $cancelButtonColor = NULL;
+	private ?string $cancelButtonColor = null;
 
 	/**
 	 * Cancel button text.
 	 */
-	private ?string $cancelButtonText = NULL;
+	private ?string $cancelButtonText = null;
 
 	/**
 	 * Cancel button callback.
 	 */
-	private ?string $cancelCallback = NULL;
+	private ?string $cancelCallback = null;
 
 	/**
 	 * Confirm button color.
 	 */
-	private ?string $confirmButtonColor = NULL;
+	private ?string $confirmButtonColor = null;
 
 	/**
 	 * Confirm button text.
 	 */
-	private ?string $confirmButtonText = NULL;
+	private ?string $confirmButtonText = null;
 
 	/**
 	 * Confirm button callback.
 	 */
-	private ?string $confirmCallback = NULL;
+	private ?string $confirmCallback = null;
 
 	/**
 	 * Deny button color.
 	 */
-	private ?string $denyButtonColor = NULL;
+	private ?string $denyButtonColor = null;
 
 	/**
 	 * Deny button text.
 	 */
-	private ?string $denyButtonText = NULL;
+	private ?string $denyButtonText = null;
 
 	/**
 	 * Deny button callback.
 	 */
-	private ?string $denyCallback = NULL;
+	private ?string $denyCallback = null;
 
 	/**
 	 * Input type.
 	 */
-	private ?string $input = NULL;
+	private ?string $input = null;
 
 	/**
 	 * Callback function to call on pre-confirm.
 	 */
-	private ?string $preConfirm = NULL;
+	private ?string $preConfirm = null;
 
 	/**
 	 * Callback function to call on render.
 	 */
-	private ?string $didRender = NULL;
+	private ?string $didRender = null;
 
 	/**
 	 * Flag to allow outside click.
 	 */
-	private bool $outsideClick = TRUE;
+	private bool $outsideClick = true;
 
 	/**
 	 * Loader flag.
 	 */
-	private bool $loader = FALSE;
+	private bool $loader = false;
 
-	public function __construct(string $title, string $text, ?string $icon = NULL) {
+	public function __construct(string $title, string $text, ?string $icon = null) {
 
 		$this->title = $title;
 		$this->text	 = $text;
 
 		$validIcons = ['info', 'success', 'error', 'warning', 'question'];
 
-		$this->icon = in_array($icon, $validIcons) ? $icon : NULL;
+		$this->icon = in_array($icon, $validIcons) ? $icon : null;
 
 	}
 

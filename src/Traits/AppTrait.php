@@ -24,7 +24,7 @@ trait AppTrait {
 	 * Sets the application to headless mode (no view rendering).
 	 * Proxy to Application::headless().
 	 */
-	public function headless(bool $headless = TRUE): void {
+	public function headless(bool $headless = true): void {
 
 		Application::getInstance()->headless($headless);
 
@@ -64,7 +64,7 @@ trait AppTrait {
 	 * @param bool   $async   Whether to add the "async" attribute (default false).
 	 * @param array  $attribs Optional attributes (type, integrity, crossorigin, charset).
 	 */
-	public function loadScript(string $src, bool $defer = FALSE, bool $async = FALSE, array $attribs = []): void {
+	public function loadScript(string $src, bool $defer = false, bool $async = false, array $attribs = []): void {
 
 		Application::getInstance()->loadScript($src, $defer, $async, $attribs);
 
