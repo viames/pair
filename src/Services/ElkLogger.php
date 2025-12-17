@@ -111,7 +111,6 @@ class ElkLogger {
 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
 
         if (!in_array($httpCode, [200, 201])) {
             throw new PairException($response, ErrorCodes::LOGGER_FAILURE);

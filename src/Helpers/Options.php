@@ -236,7 +236,7 @@ class Options {
 
 		switch ($self->list[$name]->type) {
 
-			case 'bool';
+			case 'bool':
 				$value = $value ? 1 : 0;
 				break;
 

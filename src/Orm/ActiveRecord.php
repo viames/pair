@@ -18,12 +18,12 @@ use Pair\Html\Form;
 abstract class ActiveRecord implements \JsonSerializable {
 
 	/**
-	 * Db handler object.
+	 * Database instance.
 	 */
 	protected Database $db;
 
 	/**
-	 * List of properties that maps db primary keys.
+	 * List of key properties names.
 	 */
 	protected array $keyProperties = [];
 
@@ -88,10 +88,9 @@ abstract class ActiveRecord implements \JsonSerializable {
 	const SHARED_CACHE_PROPERTIES = [];
 
 	/**
-	 * Constructor, if param is db-row, will bind it on this object, if it’s id,
-	 * with load the object data from db, otherwise the object will be empty.
+	 * Constructor, initializes the object and populate it if parameter is given.
 	 *
-	 * @param	mixed	Record object from db table or just table key value (int, string or array, optional).
+	 * @param	mixed	$initParam	Db row as stdClass or primary key value(s).
 	 */
 	final public function __construct($initParam = null) {
 
@@ -233,7 +232,10 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 	}
 
-	public function __clone() {
+	/**
+	 * Clone the object, resetting its primary key(s) and updated properties.
+	 */
+	public function __clone(): void {
 
 		$class = get_called_class();
 
@@ -274,8 +276,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 	/**
 	 * Return property’s value if set. Throw an exception and return null if not set.
 	 *
-	 * @param	string	Property’s name.
-	 * @throws	PairException
+	 * @param	string	$name 	Property’s name.
+	 * @throws	PairException If property doesn’t exist.
 	 */
 	public function __get(string $name): mixed {
 
@@ -1169,7 +1171,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 			// if property doesn’t exist in the class, it will be handled as dynamic property
 			if (!property_exists(static::class, $property)) {
-				throw new PairException('Property “' . $property . '” not found for class ' . static::class, ErrorCodes::PROPERTY_NOT_FOUND);
+				throw new PairException('Property “' . $property . '” mapped to DB column “' . $col->Field .
+					'” does not exist in class ' . static::class, ErrorCodes::PROPERTY_NOT_FOUND);
 			} else {
 				$maps[$property] = $col->Field;
 			}

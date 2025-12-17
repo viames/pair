@@ -97,6 +97,17 @@ class AmazonS3 {
 	}
 
 	/**
+	 * Returns the bucket name.
+	 * 
+	 * @return string The bucket name.
+	 */
+	public function bucket(): string {
+
+		return $this->bucket;
+	
+	}
+
+	/**
 	 * Deletes the remote file at the specified path.
 	 *
 	 * @param	string	$remoteFile	Path of the remote file.
@@ -310,6 +321,17 @@ class AmazonS3 {
 	}
 
 	/**
+	 * Returns the raw S3Client instance for advanced operations.
+	 *
+	 * @return S3Client The underlying S3Client instance.
+	 */
+	public function rawClient(): S3Client {
+
+		return $this->client;
+	
+	}
+
+	/**
 	 * Reads the remote file and returns the content.
 	 *
 	 * @param string Path of the remote file.
@@ -387,7 +409,6 @@ class AmazonS3 {
 		curl_exec($ch);
 		$err  = curl_errno($ch);
 		$code = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-		curl_close($ch);
 
 		// network/transport error
 		if (0 !== $err) {

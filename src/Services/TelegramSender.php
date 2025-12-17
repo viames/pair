@@ -52,7 +52,6 @@ class TelegramSender {
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 
 		$response = curl_exec($ch);
-		curl_close($ch);
 
 		$updates = json_decode($response, true);
 
@@ -219,8 +218,6 @@ class TelegramSender {
 			throw new PairException('Telegram API not reachable: HTTP ' . $httpCode, ErrorCodes::TELEGRAM_FAILURE);
 		}
 
-		curl_close($ch);
-
 	}
 
 	/**
@@ -240,7 +237,6 @@ class TelegramSender {
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 
 		$response = curl_exec($ch);
-		curl_close($ch);
 
 		$data = json_decode($response, true);
 

@@ -684,9 +684,9 @@ class Database {
 
 		$dsn = 'mysql:host=' . Env::get('DB_HOST') . ';dbname=' . Env::get('DB_NAME');
 		$options = [
-			\PDO::ATTR_PERSISTENT			=> $persistent,
-			\PDO::MYSQL_ATTR_INIT_COMMAND	=> "SET NAMES utf8",
-			\PDO::MYSQL_ATTR_FOUND_ROWS		=> true
+			\Pdo\Mysql::ATTR_PERSISTENT		=> $persistent,
+			\Pdo\Mysql::ATTR_INIT_COMMAND	=> "SET NAMES utf8",
+			\Pdo\Mysql::ATTR_FOUND_ROWS		=> true
 		];
 
 		try {

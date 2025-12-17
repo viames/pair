@@ -618,6 +618,8 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 
 	/**
 	 * Swaps the collection's keys with their corresponding values.
+	 *
+	 * @return Collection	A new collection instance with the keys and values swapped.
 	 */
 	public function flip(): Collection {
 
@@ -629,6 +631,10 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 * Filters the collection using the given callback, keeping only those items that pass a given
 	 * truth test. If no callback is supplied, all entries of the collection that are equivalent to
 	 * false will be removed. For the inverse of filter, see the reject method.
+	 *
+	 * @param callable|null $callback	A callback that accepts the item and its key as arguments and
+	 * 									returns true to keep the item, or false to remove it.
+	 * @return Collection				A new collection instance containing the filtered items.
 	 */
 	public function filter(?callable $callback = null): Collection {
 
@@ -642,6 +648,9 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 
 	/**
 	 * Removes an item from the collection by its key.
+	 *
+	 * @param int $position	The key of the item to remove.
+	 * @return static		The current collection instance.
 	 */
 	public function forget(int $position): static {
 

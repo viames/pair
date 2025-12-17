@@ -136,7 +136,7 @@ abstract class Controller {
 		$itemId = Router::get(0);
 
 		if (!$itemId) {
-			throw new \Exception(Translator::do('ID_OF_ITEM_TO_EDIT_IS_NOT_VALID', $class));
+			throw new \Exception(Translator::do('NO_ID_OF_ITEM_TO_EDIT_WAS_PROVIDED', $class));
 		}
 
 		$object = new $class($itemId);
