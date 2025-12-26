@@ -882,27 +882,58 @@ class Utilities {
 	}
 
 	/**
-	 * Determines whether the brightness of the color code passed as a parameter is less
-	 * than 128, so it is a dark color. Useful for dynamically choosing a foreground or
-	 * background color that contrasts with the color passed.
+	 * Determines whether a hex background color should be considered "dark". Supports 3-digit (#FFF)
+	 * and 6-digit (#FFFFFF) formats (with or without #). The decision is based on WCAG relative luminance
+	 * and contrast vs white/black text.
+	 *
+	 * @param  string $hexColor Hex color code (with or without #).
+	 * @return bool   True if the color is dark (white text has higher contrast), false otherwise.
+	 * @throws \InvalidArgumentException If the hex color format is invalid.
 	 */
 	public static function isDarkColor(string $hexColor): bool {
 
-		// removes the # symbol, if present
-		$hexColor = ltrim($hexColor, '#');
+		$hexColor = trim($hexColor);
 
-		// converts HEX color to RGB components
-		$r = hexdec(substr($hexColor, 0, 2));
-		$g = hexdec(substr($hexColor, 2, 2));
-		$b = hexdec(substr($hexColor, 4, 2));
+		// validate hex color format
+		if (!preg_match('/^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/', $hexColor, $m)) {
+			throw new \InvalidArgumentException('Invalid hex color format: ' . $hexColor);
+		}
 
-		// calculate brightness using the perceived formula
-		$brightness = ($r * 299 + $g * 587 + $b * 114) / 1000;
+		// extract hex digits
+		$hex = $m[1];
 
-		// if the brightness is less than 128, the color is dark
-		return $brightness < 128;
+		// expand 3-digit hex to 6-digit hex
+		if (strlen($hex) === 3) {
+			$hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
+		}
 
-	}
+		// convert hex to RGB
+		$rgb = hexdec($hex);
+		$r = ($rgb >> 16) & 0xFF;
+		$g = ($rgb >> 8) & 0xFF;
+		$b = $rgb & 0xFF;
+
+		// sRGB to linear conversion
+		$toLinear = static function (int $c): float {
+			$v = $c / 255;
+			return ($v <= 0.03928) ? ($v / 12.92) : (($v + 0.055) / 1.055) ** 2.4;
+		};
+
+		$rl = $toLinear($r);
+		$gl = $toLinear($g);
+		$bl = $toLinear($b);
+
+		// WCAG relative luminance
+		$lBg = 0.2126 * $rl + 0.7152 * $gl + 0.0722 * $bl;
+
+		// contrast ratios vs white (L=1) and black (L=0)
+		$contrastWhite = (1.0 + 0.05) / ($lBg + 0.05);
+		$contrastBlack = ($lBg + 0.05) / 0.05;
+
+		// "dark" if white text contrasts better than black text
+		return $contrastWhite >= $contrastBlack;
+
+    }
 
 	/**
 	 * Check if passed file is an image.

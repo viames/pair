@@ -181,6 +181,32 @@ class User extends ActiveRecord {
 	protected function afterLogout() {}
 
 	/**
+	 * Returns the HTML code for the user avatar (initials with colored background).
+	 * 
+	 * @return string HTML code for the user avatar.
+	 */
+	public function avatar(): string {
+
+		// verify name and surname
+		if (!isset($this->name) or !isset($this->surname) or $this->name === '' or $this->surname === '') {
+			return '';
+		}
+
+		// initials of the name
+		$initials = strtoupper(substr($this->name, 0, 1) . substr($this->surname, 0, 1));
+
+		// color based on user id (to keep consistency across sessions)
+		$colorInt = crc32((string)$this->id) & 0xFFFFFF;
+		$bgColor = sprintf('#%06X', $colorInt);
+
+		// white or black text based on background color brightness
+		$textColor = Utilities::isDarkColor($bgColor) ? '#FFF' : '#000';
+
+		return '<div class="avatar-circle" style="background-color:' . $bgColor . ';color:' . $textColor . '">' . $initials . '</div>';
+
+	}
+
+	/**
 	 * Cleans up related records before deleting the user. Deletes all sessions and error logs
 	 * associated with this user and, when the user is deletable, writes an audit log entry.
 	 */
