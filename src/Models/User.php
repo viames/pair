@@ -202,7 +202,7 @@ class User extends ActiveRecord {
 		// white or black text based on background color brightness
 		$textColor = Utilities::isDarkColor($bgColor) ? '#FFF' : '#000';
 
-		return '<div class="avatar-circle" style="background-color:' . $bgColor . ';color:' . $textColor . '">' . $initials . '</div>';
+		return '<span class="avatar-circle" style="background-color:' . $bgColor . ';color:' . $textColor . '">' . $initials . '</span>';
 
 	}
 
