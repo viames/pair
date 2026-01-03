@@ -868,10 +868,12 @@ class Utilities {
 
 	/**
 	 * Return a date in the local language using the IntlDateFormatter::format() method.
-	 * @param	string		Formatting pattern, for example “dd MMMM Y hh:mm”.
-	 * @param	\DateTime	The date object to be formatted, it will be the current date if null.
+	 * 
+	 * @param	string					$format 	Formatting pattern, for example “dd MMMM Y hh:mm”.
+	 * @param	\DateTimeInterface|null $dateTime	The date object to be formatted, it will be the current date if null.
+	 * @return	string								Formatted date string.
 	 */
-	public static function intlFormat(?string $format = null, \DateTime|null $dateTime = null): string {
+	public static function intlFormat(?string $format = null, \DateTimeInterface|null $dateTime = null): string {
 
 		$formatter = new \IntlDateFormatter(null, \IntlDateFormatter::MEDIUM, \IntlDateFormatter::SHORT);
 		if ($format) {

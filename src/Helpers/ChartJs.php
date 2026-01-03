@@ -547,9 +547,13 @@ class ChartJs {
 	 * Build a label range for the chart, based on the start date, end date of the period
 	 * and interval. The interval can be one of the following values: day, week, month, year.
 	 *
-	 * @throws AppException If the interval is not valid or if the user or session is not available.
+	 * @param	\DateTimeInterface	$start		Start date of the range.
+	 * @param	\DateTimeInterface	$end		End date of the range.
+	 * @param	string				$interval	Interval for the labels: day, week, month, year.
+	 * @return	self
+	 * @throws	AppException					If the interval is not valid or if the user or session is not available.
 	 */
-	public function rangeLabels(\DateTime $start, \DateTime $end, string $interval): self {
+	public function rangeLabels(\DateTimeInterface $start, \DateTimeInterface $end, string $interval): self {
 
 		// check the interval
 		if (!in_array($interval, ['day', 'week', 'month', 'year'])) {
