@@ -1341,6 +1341,8 @@ class Application {
 
 	/**
 	 * Runs the MVC pattern to handle the current request and render the appropriate view.
+	 * 
+	 * @throws	AppException		If an application-level error occurs.
 	 */
 	private function runMvc(): void {
 
@@ -1354,7 +1356,7 @@ class Application {
 		// check controller file existence
 		if (!file_exists($controllerFile) or '404' == $router->url) {
 
-			$this->toastError(Translator::do('ERROR'), Translator::do('RESOURCE_NOT_FOUND', $router->url));
+			$this->modal(Translator::do('ERROR'), Translator::do('RESOURCE_NOT_FOUND', $router->url));
 			$this->style = '404';
 			$this->pageTitle('HTTP 404 error');
 			http_response_code(404);
@@ -1393,15 +1395,16 @@ class Application {
 
 			try {
 				$controller = new $controllerName();
-			} catch (\Exception $e) {
-				throw new CriticalException('Error instantiating controller ' . $controllerName, ErrorCodes::CONTROLLER_NOT_FOUND, $e);
+			} catch (\Throwable $e) {
+				throw new CriticalException('Error instantiating controller ' . $controllerName . ': '
+					. $e->getMessage(), ErrorCodes::CONTROLLER_INIT_FAILED, $e);
 			}
 
 			if (method_exists($controller, $action)) {
 				try {
 					$controller->$action();
-				} catch (\Exception $e) {
-					// nothing to do
+				} catch (\Throwable $e) {
+					PairException::frontEnd($e->getMessage());
 				}
 			} else {
 				$logger = Logger::getInstance();
@@ -1413,17 +1416,11 @@ class Application {
 				return;
 			}
 
-			// invoke the view and render the page
+			// invoke view rendering
 			try {
 				$controller->renderView();
-			} catch (AppException $e) {
-				// front end modal is already set
-			} catch (PairException $e) {
-				// add modal with error message
+			} catch (\Throwable $e) {
 				PairException::frontEnd($e->getMessage());
-			} catch (\Exception $e) {
-				// store errorLog and add modal with error message
-				throw new AppException($e->getMessage(), $e->getCode(), $e);
 			}
 
 			$this->logBar = LogBar::getInstance();

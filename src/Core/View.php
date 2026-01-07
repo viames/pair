@@ -174,10 +174,12 @@ abstract class View {
 	}
 
 	/**
-	 * Formats page layout including variables and returns.
+	 * Renders the layout file after executing the render() method.
 	 *
-	 * @param	string	Layout file name without extension (.php).
-	 * @throws	\Exception	If layout file doesn’t exist.
+	 * @param	string		$name 	Layout file name without extension (.php).
+	 * @return	void
+	 * @throws	\Throwable			If an error occurs during render().
+	 * @throws	CriticalException	If layout file doesn’t exist.
 	 */
 	final public function display(?string $name = null): void {
 
@@ -185,7 +187,9 @@ abstract class View {
 
 			$this->render();
 
-		} catch (\Exception $e) {
+		} catch (\Throwable $e) {
+
+			$this->modal(Translator::do('ERROR'), $e->getMessage(), 'error')->confirm('OK');
 
 			if ('default' != $this->layout) {
 				$this->redirect();
