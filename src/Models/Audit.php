@@ -10,37 +10,37 @@ use Pair\Models\User;
 use Pair\Orm\ActiveRecord;
 
 class Audit extends ActiveRecord {
-	
+
 	/**
-	 * This property maps “id” column.
+	 * The primary key “id” column.
 	 */
 	protected int $id;
 
 	/**
-	 * This property maps “user_id” column.
+	 * The user ID this audit is related to.
 	 */
 	protected ?int $userId = null;
 
 	/**
-	 * This property maps “event” column.
+	 * The event type.
 	 */
 	protected ?string $event = null;
 
 	/**
-	 * This property maps “created_at” column.
+	 * The created at timestamp.
 	 */
 	protected \DateTime $createdAt;
 
 	/**
-	 * This property maps “details” column.
+	 * The details of the audit event.
 	 */
 	protected ?\stdClass $details = null;
-	
+
 	/**
 	 * Name of related db table.
 	 */
 	const TABLE_NAME = 'audit';
-	
+
 	/**
 	 * Name of primary key db field.
 	 */
@@ -67,9 +67,9 @@ class Audit extends ActiveRecord {
 	/**
 	 * Add a new ACL into an existent Audit record or create a new one.
 	 *
-	 * @param  Acl	Object to set as removed.
+	 * @param  Acl	$acl	Object to set as added.
 	 */
-	public static function aclAdded(Acl $acl): bool {
+	public static function aclAdded(Acl $acl): void {
 
 		// create a new detail item
 		$detail = new \stdClass();
@@ -78,16 +78,16 @@ class Audit extends ActiveRecord {
 		$detail->action  = 'added';
 
 		// save it
-		return Audit::permissionsChanged($detail);
+		Audit::permissionsChanged($detail);
 
 	}
 
 	/**
 	 * Remove an ACL from an existent Audit record or create a new one.
 	 *
-	 * @param  Acl	Object to set as removed.
+	 * @param  Acl	$acl	Object to set as removed.
 	 */
-	public static function aclRemoved(Acl $acl): bool {
+	public static function aclRemoved(Acl $acl): void {
 
 		// create a new detail item
 		$detail = new \stdClass();
@@ -96,7 +96,7 @@ class Audit extends ActiveRecord {
 		$detail->action  = 'removed';
 
 		// save it
-		return Audit::permissionsChanged($detail);
+		Audit::permissionsChanged($detail);
 
 	}
 
@@ -115,6 +115,8 @@ class Audit extends ActiveRecord {
 
 	/**
 	 * Return a current list and state of all audit items with readable “name”, coded “type” and “enabled”.
+	 * 
+	 * @return array	List of audit items.
 	 */
 	public static function getAuditList(): array {
 
@@ -149,6 +151,8 @@ class Audit extends ActiveRecord {
 
 	/**
 	 * Get last audit item by the same user and date.
+	 * 
+	 * @return Audit|null	The last audit item or null if not found.
 	 */
 	private static function getMyLatestPermissionsChanged(): ?Audit {
 
@@ -166,31 +170,31 @@ class Audit extends ActiveRecord {
 	/**
 	 * Track the impersonation action.
 	 *
-	 * @param	User	The user that is being impersonated.
+	 * @param	User	$impersonated	The user that is being impersonated.
 	 */
-	public static function impersonate(User $impersonated): bool {
+	public static function impersonate(User $impersonated): void {
 
-		if (!Env::get('PAIR_AUDIT_IMPERSONATE') or !Env::get('PAIR_AUDIT_ALL')) {
-			return false;
+		if (!Env::get('PAIR_AUDIT_IMPERSONATE') and !Env::get('PAIR_AUDIT_ALL')) {
+			return;
 		}
 
 		$audit = new Audit();
 		$audit->event = 'impersonate';
 		$audit->details = (object)['impersonated' => $impersonated->id];
 
-		return $audit->store();
+		$audit->store();
 
 	}
 
 	/**
 	 * Track the end of an impersonation action.
 	 *
-	 * @param	User	The user that was being impersonated.
+	 * @param	User	$impersonatedBy	The user that has been impersonating.
 	 */
-	public static function impersonateStop(User $impersonatedBy): bool {
+	public static function impersonateStop(User $impersonatedBy): void {
 
-		if (!Env::get('PAIR_AUDIT_IMPERSONATE_STOP') or !Env::get('PAIR_AUDIT_ALL')) {
-			return false;
+		if (!Env::get('PAIR_AUDIT_IMPERSONATE_STOP') and !Env::get('PAIR_AUDIT_ALL')) {
+			return;
 		}
 
 		$wantedProperties = ['id','username','name','surname'];
@@ -199,14 +203,21 @@ class Audit extends ActiveRecord {
 		$audit->event = 'impersonate_stop';
 		$audit->details = (object)['impersonatedBy' => $impersonatedBy->id];
 
-		return $audit->store();
+		$audit->store();
 
 	}
-	
-	public static function loginFailed(string $username, ?string $ipAddress, ?string $userAgent): bool {
 
-		if (!Env::get('PAIR_AUDIT_LOGIN_FAILED') or !Env::get('PAIR_AUDIT_ALL')) {
-			return false;
+	/**
+	 * Track the failed login action.
+	 *
+	 * @param	string		$username	The username used to attempt login.
+	 * @param	string|null $ipAddress	The IP address of the user.
+	 * @param	string|null $userAgent	The user agent of the user.
+	 */
+	public static function loginFailed(string $username, ?string $ipAddress, ?string $userAgent): void {
+
+		if (!Env::get('PAIR_AUDIT_LOGIN_FAILED') and !Env::get('PAIR_AUDIT_ALL')) {
+			return;
 		}
 
 		$obj = new \stdClass();
@@ -218,13 +229,20 @@ class Audit extends ActiveRecord {
 		$audit->event = 'login_failed';
 		$audit->details = $obj;
 
-		return $audit->store();
+		$audit->store();
 
 	}
 
+	/**
+	 * Track the successful login action.
+	 *
+	 * @param	User		$user 		The user that has logged in.
+	 * @param	string|null $ipAddress	The IP address of the user.
+	 * @param	string|null $userAgent	The user agent of the user.
+	 */
 	public static function loginSuccessful(User $user, ?string $ipAddress, ?string $userAgent): void {
 
-		if (!Env::get('PAIR_AUDIT_LOGIN_SUCCESSFUL') or !Env::get('PAIR_AUDIT_ALL')) {
+		if (!Env::get('PAIR_AUDIT_LOGIN_SUCCESSFUL') and !Env::get('PAIR_AUDIT_ALL')) {
 			return;
 		}
 
@@ -241,10 +259,15 @@ class Audit extends ActiveRecord {
 
 	}
 
-	public static function logout(User $user): bool {
+	/**
+	 * Tracks the logout action.
+	 *
+	 * @param	User	$user	The user that is logging out.
+	 */
+	public static function logout(User $user): void {
 
-		if (!Env::get('PAIR_AUDIT_LOGOUT') or !Env::get('PAIR_AUDIT_ALL')) {
-			return false;
+		if (!Env::get('PAIR_AUDIT_LOGOUT') and !Env::get('PAIR_AUDIT_ALL')) {
+			return;
 		}
 
 		$audit = new Audit();
@@ -252,17 +275,19 @@ class Audit extends ActiveRecord {
 		$audit->event = 'logout';
 		$audit->details = null;
 
-		return $audit->store();
+		$audit->store();
 
 	}
 
 	/**
 	 * Track the user’s password change.
+	 * 
+	 * @param	User	$subject	The user that changed the password.
 	 */
-	public static function passwordChanged(User $subject): bool {
+	public static function passwordChanged(User $subject): void {
 
-		if (!Env::get('PAIR_AUDIT_PASSWORD_CHANGED') or !Env::get('PAIR_AUDIT_ALL')) {
-			return false;
+		if (!Env::get('PAIR_AUDIT_PASSWORD_CHANGED') and !Env::get('PAIR_AUDIT_ALL')) {
+			return;
 		}
 
 		$wantedProperties = ['id','username','name','surname'];
@@ -271,34 +296,42 @@ class Audit extends ActiveRecord {
 		$audit->event = 'password_changed';
 		$audit->details = $subject->convertToStdclass($wantedProperties);
 
-		return $audit->store();
-		
+		$audit->store();
+
 	}
 
-	private static function permissionsChanged(\stdClass $detail): bool {
+	/**
+	 * Add or update an audit record for changed permissions.
+	 *
+	 * @param	stdClass	$detail	Detail object with groupId, ruleId and action properties.
+	 */
+	private static function permissionsChanged(\stdClass $detail): void {
 
-		if (!Env::get('PAIR_AUDIT_PERMISSIONS_CHANGED') or !Env::get('PAIR_AUDIT_ALL')) {
-			return false;
+		if (!Env::get('PAIR_AUDIT_PERMISSIONS_CHANGED') and !Env::get('PAIR_AUDIT_ALL')) {
+			return;
 		}
 
 		$audit = new Audit();
 		$audit->event = 'permissions_changed';
 		$audit->details = $detail;
-		
+
 		// get last audit item by the same user and date
 		$lastAudit = Audit::getMyLatestPermissionsChanged();
-		
+
 		// if exists, merge the details with old ones, save and exit
 		if ($lastAudit) {
 			$lastAudit->details = (object)array_merge((array)$lastAudit->details, (array)$audit->details);
-			return $lastAudit->store();
+			$lastAudit->store();
 		}
 
 		// otherwise save a new one
-		return $audit->store();
+		$audit->store();
 
 	}
 
+	/**
+	 * Track the remember-me login action.
+	 */
 	public static function rememberMeLogin(): void {
 
 		if (Env::get('PAIR_AUDIT_REMEMBER_ME_LOGIN') and Env::get('PAIR_AUDIT_ALL')) {
@@ -310,10 +343,15 @@ class Audit extends ActiveRecord {
 
 	}
 
-	public static function sessionExpired(Session $session): bool {
+	/**
+	 * Track the session expiration.
+	 * 
+	 * @param	Session	$session	The session that has expired.
+	 */
+	public static function sessionExpired(Session $session): void {
 
-		if (!Env::get('PAIR_AUDIT_SESSION_EXPIRED') or !Env::get('PAIR_AUDIT_ALL')) {
-			return false;
+		if (!Env::get('PAIR_AUDIT_SESSION_EXPIRED') and !Env::get('PAIR_AUDIT_ALL')) {
+			return;
 		}
 
 		$user = $session->getUser();
@@ -323,20 +361,20 @@ class Audit extends ActiveRecord {
 		$audit->event = 'session_expired';
 		$audit->details = null;
 
-		return $audit->store();
+		$audit->store();
 
 	}
 
 	/**
 	 * Keep track of changed property in user edit.
-	 * 
+	 *
 	 * @param	User	The old user object.
 	 * @param	User	The new user object.
 	 */
-	public static function userChanged(User $oldUser, User $newUser): bool {
+	public static function userChanged(User $oldUser, User $newUser): void {
 
-		if (!Env::get('PAIR_AUDIT_USER_CHANGED') or !Env::get('PAIR_AUDIT_ALL')) {
-			return false;
+		if (!Env::get('PAIR_AUDIT_USER_CHANGED') and !Env::get('PAIR_AUDIT_ALL')) {
+			return;
 		}
 
 		$details = new \stdClass();
@@ -344,7 +382,7 @@ class Audit extends ActiveRecord {
 		$details->fullName = $newUser->fullName;
 		$details->username = $newUser->username;
 		$details->changes = [];
-		
+
 		$wantedProperties = ['id','groupId','localeId','username','name','surname','email','admin','enabled'];
 
 		foreach ($wantedProperties as $wp) {
@@ -359,21 +397,26 @@ class Audit extends ActiveRecord {
 
 		// if nothing has changed, avoid storing the record
 		if (!count($details->changes)) {
-			return false;
+			return;
 		}
 
 		$audit = new Audit();
 		$audit->event = 'user_changed';
 		$audit->details = $details;
 
-		return $audit->store();
+		$audit->store();
 
 	}
 
-	public static function userCreated(User $subject): bool {
+	/**
+	 * Track the user creation.
+	 * 
+	 * @param	User	$subject	The user that has been created.
+	 */
+	public static function userCreated(User $subject): void {
 
-		if (!Env::get('PAIR_AUDIT_USER_CREATED') or !Env::get('PAIR_AUDIT_ALL')) {
-			return false;
+		if (!Env::get('PAIR_AUDIT_USER_CREATED') and !Env::get('PAIR_AUDIT_ALL')) {
+			return;
 		}
 
 		$wantedProperties = ['id','groupId','localeId','username','name','surname','email','admin','enabled'];
@@ -382,14 +425,19 @@ class Audit extends ActiveRecord {
 		$audit->event = 'user_created';
 		$audit->details = $subject->convertToStdclass($wantedProperties);
 
-		return $audit->store();
+		$audit->store();
 
 	}
 
-	public static function userDeleted(User $subject): bool {
+	/**
+	 * Track the user deletion.
+	 * 
+	 * @param	User	$subject	The user that has been deleted.
+	 */
+	public static function userDeleted(User $subject): void {
 
-		if (!Env::get('PAIR_AUDIT_USER_DELETED') or !Env::get('PAIR_AUDIT_ALL')) {
-			return false;
+		if (!Env::get('PAIR_AUDIT_USER_DELETED') and !Env::get('PAIR_AUDIT_ALL')) {
+			return;
 		}
 
 		$wantedProperties = ['id','groupId','username','name','surname'];
@@ -398,7 +446,7 @@ class Audit extends ActiveRecord {
 		$audit->event = 'user_deleted';
 		$audit->details = $subject->convertToStdclass($wantedProperties);
 
-		return $audit->store();
+		$audit->store();
 
 	}
 

@@ -23,18 +23,6 @@ class Env {
 		'OAUTH2_TOKEN_LIFETIME' => OAuth2Token::LIFETIME,
 		'PAIR_SINGLE_SESSION' => true,
 		'PAIR_AUDIT_ALL' => true,
-		'PAIR_AUDIT_IMPERSONATE' => true,
-		'PAIR_AUDIT_IMPERSONATE_STOP' => true,
-		'PAIR_AUDIT_LOGIN_FAILED' => true,
-		'PAIR_AUDIT_LOGIN_SUCCESSFUL' => true,
-		'PAIR_AUDIT_LOGOUT' => true,
-		'PAIR_AUDIT_PASSWORD_CHANGED' => true,
-		'PAIR_AUDIT_PERMISSIONS_CHANGED' => true,
-		'PAIR_AUDIT_REMEMBER_ME_LOGIN' => true,
-		'PAIR_AUDIT_SESSION_EXPIRED' => true,
-		'PAIR_AUDIT_USER_CHANGED' => true,
-		'PAIR_AUDIT_USER_CREATED' => true,
-		'PAIR_AUDIT_USER_DELETED' => true,
 		'PAIR_AUTH_BY_EMAIL' => true,
 		'UTC_DATE' => true
 	];
@@ -66,7 +54,7 @@ class Env {
 	 */
 	public static function get(string $key): mixed {
 
-		return $_ENV[$key] ?? self::default($key);
+		return $_ENV[$key] ?? self::default($key) ?? null;
 
 	}
 
