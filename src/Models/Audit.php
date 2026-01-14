@@ -78,7 +78,7 @@ class Audit extends ActiveRecord {
 		$detail->action  = 'added';
 
 		// save it
-		Audit::permissionsChanged($detail);
+		self::permissionsChanged($detail);
 
 	}
 
@@ -96,7 +96,7 @@ class Audit extends ActiveRecord {
 		$detail->action  = 'removed';
 
 		// save it
-		Audit::permissionsChanged($detail);
+		self::permissionsChanged($detail);
 
 	}
 
@@ -154,7 +154,7 @@ class Audit extends ActiveRecord {
 	 * 
 	 * @return Audit|null	The last audit item or null if not found.
 	 */
-	private static function getMyLatestPermissionsChanged(): ?Audit {
+	private static function getMyLatestPermissionsChanged(): ?self {
 
 		$app = Application::getInstance();
 
@@ -163,7 +163,7 @@ class Audit extends ActiveRecord {
 		$now = new \DateTime();
 		$createdAt = $now->format('Y-m-d H:i:s');
 
-		return Audit::getObjectByQuery($query, [$app->currentUser->id, $createdAt]);
+		return self::getObjectByQuery($query, [$app->currentUser->id, $createdAt]);
 
 	}
 
@@ -178,7 +178,8 @@ class Audit extends ActiveRecord {
 			return;
 		}
 
-		$audit = new Audit();
+		// current user is set as userId automatically in beforeCreate()
+		$audit = new self();
 		$audit->event = 'impersonate';
 		$audit->details = (object)['impersonated' => $impersonated->id];
 
@@ -191,7 +192,7 @@ class Audit extends ActiveRecord {
 	 *
 	 * @param	User	$impersonatedBy	The user that has been impersonating.
 	 */
-	public static function impersonateStop(User $impersonatedBy): void {
+	public static function impersonateStop(User $impersonated, User $impersonatedBy): void {
 
 		if (!Env::get('PAIR_AUDIT_IMPERSONATE_STOP') and !Env::get('PAIR_AUDIT_ALL')) {
 			return;
@@ -199,9 +200,10 @@ class Audit extends ActiveRecord {
 
 		$wantedProperties = ['id','username','name','surname'];
 
-		$audit = new Audit();
+		$audit = new self();
+		$audit->userId = $impersonatedBy->id;
 		$audit->event = 'impersonate_stop';
-		$audit->details = (object)['impersonatedBy' => $impersonatedBy->id];
+		$audit->details = (object)['impersonated' => $impersonated->id];
 
 		$audit->store();
 
@@ -225,7 +227,7 @@ class Audit extends ActiveRecord {
 		$obj->ipAddress = $ipAddress;
 		$obj->userAgent = $userAgent;
 
-		$audit = new Audit();
+		$audit = new self();
 		$audit->event = 'login_failed';
 		$audit->details = $obj;
 
@@ -250,7 +252,7 @@ class Audit extends ActiveRecord {
 		$obj->ipAddress = $ipAddress;
 		$obj->userAgent = $userAgent;
 
-		$audit = new Audit();
+		$audit = new self();
 		$audit->userId = $user->id;
 		$audit->event = 'login_successful';
 		$audit->details = $obj;
@@ -270,7 +272,7 @@ class Audit extends ActiveRecord {
 			return;
 		}
 
-		$audit = new Audit();
+		$audit = new self();
 		$audit->userId = $user->id;
 		$audit->event = 'logout';
 		$audit->details = null;
@@ -292,7 +294,7 @@ class Audit extends ActiveRecord {
 
 		$wantedProperties = ['id','username','name','surname'];
 
-		$audit = new Audit();
+		$audit = new self();
 		$audit->event = 'password_changed';
 		$audit->details = $subject->convertToStdclass($wantedProperties);
 
@@ -311,12 +313,12 @@ class Audit extends ActiveRecord {
 			return;
 		}
 
-		$audit = new Audit();
+		$audit = new self();
 		$audit->event = 'permissions_changed';
 		$audit->details = $detail;
 
 		// get last audit item by the same user and date
-		$lastAudit = Audit::getMyLatestPermissionsChanged();
+		$lastAudit = self::getMyLatestPermissionsChanged();
 
 		// if exists, merge the details with old ones, save and exit
 		if ($lastAudit) {
@@ -336,7 +338,7 @@ class Audit extends ActiveRecord {
 
 		if (Env::get('PAIR_AUDIT_REMEMBER_ME_LOGIN') and Env::get('PAIR_AUDIT_ALL')) {
 
-			$audit = new Audit();
+			$audit = new self();
 			$audit->event = 'remember_me_login';
 			$audit->store();
 		}
@@ -356,7 +358,7 @@ class Audit extends ActiveRecord {
 
 		$user = $session->getUser();
 
-		$audit = new Audit();
+		$audit = new self();
 		$audit->userId = $user->id;
 		$audit->event = 'session_expired';
 		$audit->details = null;
@@ -383,7 +385,7 @@ class Audit extends ActiveRecord {
 		$details->username = $newUser->username;
 		$details->changes = [];
 
-		$wantedProperties = ['id','groupId','localeId','username','name','surname','email','admin','enabled'];
+		$wantedProperties = ['id','groupId','localeId','username','name','surname','email','super','enabled'];
 
 		foreach ($wantedProperties as $wp) {
 			if ($oldUser->$wp != $newUser->$wp) {
@@ -400,7 +402,7 @@ class Audit extends ActiveRecord {
 			return;
 		}
 
-		$audit = new Audit();
+		$audit = new self();
 		$audit->event = 'user_changed';
 		$audit->details = $details;
 
@@ -419,9 +421,9 @@ class Audit extends ActiveRecord {
 			return;
 		}
 
-		$wantedProperties = ['id','groupId','localeId','username','name','surname','email','admin','enabled'];
+		$wantedProperties = ['id','groupId','localeId','username','name','surname','email','super','enabled'];
 
-		$audit = new Audit();
+		$audit = new self();
 		$audit->event = 'user_created';
 		$audit->details = $subject->convertToStdclass($wantedProperties);
 
@@ -442,7 +444,7 @@ class Audit extends ActiveRecord {
 
 		$wantedProperties = ['id','groupId','username','name','surname'];
 
-		$audit = new Audit();
+		$audit = new self();
 		$audit->event = 'user_deleted';
 		$audit->details = $subject->convertToStdclass($wantedProperties);
 

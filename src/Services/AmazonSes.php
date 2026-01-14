@@ -54,7 +54,7 @@ class AmazonSes extends Mailer {
 
 	/**
 	 * Configure a SimpleEmailServiceMessage object. If is development environment, the recipient becomes the list
-	 * of admin specified in the options.
+	 * of super users specified in the options.
 	 *
 	 * @param	array		List of recipients as stdClass objects with email and name properties.
 	 * @param	string		Email subject.

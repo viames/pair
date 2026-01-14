@@ -81,7 +81,7 @@ class SmtpMailer extends Mailer {
 
 	/**
 	 * Configure a PhpMailer object preconfigured with charset, auth type, etc.
-	 * If the Development option is active, the recipient becomes the list of admin in
+	 * If the Development option is active, the recipient becomes the list of super users in
 	 * the options.
 	 *
 	 * @param	array		List of recipients as stdClass objects with email and name properties.

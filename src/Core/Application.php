@@ -12,6 +12,7 @@ use Pair\Helpers\Translator;
 use Pair\Helpers\Utilities;
 use Pair\Html\IziToast;
 use Pair\Html\SweetAlert;
+use Pair\Html\TemplateRenderer;
 use Pair\Html\Widget;
 use Pair\Models\Audit;
 use Pair\Models\OAuth2Token;
@@ -641,6 +642,15 @@ class Application {
 	}
 
 	/**
+	 * Returns layout variables assigned to the template.
+	 */
+	public function getVars(): array {
+
+		return $this->vars;
+
+	}
+
+	/**
 	 * Add the name of a module to the list of guest modules, for which authorization is not required.
 	 * The optional allowedActions array can contain the list of actions that are allowed without
 	 * authentication, otherwise all actions are allowed.
@@ -1097,85 +1107,6 @@ class Application {
 	}
 
 	/**
-	 * Prints the page scripts before the closing body tag.
-	 */
-	final public function printScripts(): void {
-
-		$pageScripts = '';
-
-		// collect script files
-		foreach ($this->scriptFiles as $file) {
-
-			// initialize attributes render
-			$attribsRender = '';
-
-			// render each attribute based on its variable type (string or boolean)
-			foreach ($file as $tag => $value) {
-				$attribsRender .= ' ' . (is_bool($value) ? $tag : $tag . '="' . htmlspecialchars((string)$value) . '"');
-			}
-
-			// add each script
-			$pageScripts .= '<script' . $attribsRender . '></script>' . "\n";
-
-		}
-
-		// add Insight Hub script for error tracking and performance monitoring
-		if (Env::get('INSIGHT_HUB_API_KEY') and Env::get('INSIGHT_HUB_PERFORMANCE')) {
-			$pageScripts .= '<script src="https://cdn.jsdelivr.net/npm/bugsnag-js" crossorigin="anonymous"></script>' . "\n";
-			$pageScripts .= '<script type="module">import BugsnagPerformance from "//d2wy8f7a9ursnm.cloudfront.net/v1/bugsnag-performance.min.js";BugsnagPerformance.start({apiKey:"' . Env::get('INSIGHT_HUB_API_KEY') .'"})</script>' . "\n";
-		}
-
-		// collect plain text scripts
-		if (count($this->scriptContent) or $this->modal or count($this->toasts)) {
-
-			$pageScripts .= "<script defer>\n";
-
-			foreach ($this->scriptContent as $s) {
-				$pageScripts .= $s ."\n";
-			}
-
-			// add modal and toasts
-			if ($this->modal or count($this->toasts)) {
-				$pageScripts .= "document.addEventListener('DOMContentLoaded', function() {\n";
-				$pageScripts .= $this->getModalScript();
-				$pageScripts .= $this->getToastsScript();
-				$pageScripts .= "});\n";
-			}
-
-			$pageScripts .= "</script>";
-
-		}
-
-		print $pageScripts;
-
-	}
-
-	/**
-	 * Prints the page CSS stylesheets and manifest files.
-	 */
-	final public function printStyles(): void {
-
-		$pageStyles = '';
-
-		// collect stylesheets
-		foreach ($this->cssFiles as $href) {
-
-			$pageStyles .= '<link rel="stylesheet" href="' . $href . '">' . "\n";
-
-		}
-
-		// collect manifest
-		foreach ($this->manifestFiles as $href) {
-
-			$pageStyles .= '<link rel="manifest" href="' . $href . '">' . "\n";
-
-		}
-
-		print $pageStyles;
-
-	}
-
-	/**
 	 * Print a widget by name.
 	 *
 	 * @param	string	$name	Name of the widget to render.
@@ -1320,36 +1251,74 @@ class Application {
 	 * handles API requests if applicable, and runs the MVC pattern to render the page.
 	 */
 	final public function run(): void {
+		$this->initializeController();
+		$this->renderTemplate();
+
+	}
+
+	/**
+	 * Initialize controller and run its action.
+	 *
+	 * This method initializes the session (if needed) and runs the MVC controller
+	 * flow without rendering the template, allowing template rendering to be invoked separately.
+	 */
+	final public function initializeController(): void {
 
 		$router = Router::getInstance();
 
 		if (in_array($router->module, $this->apiModules)) {
-
 			$this->handleApiRequest();
-
-		} else {
-
-			if (!static::isCli()) {
-				$this->initializeSession();
-			}
-
-			$this->runMvc();
-
+			return;
 		}
+
+		if (!static::isCli()) {
+			$this->initializeSession();
+		}
+
+		$this->runController();
+
+	}
+
+	/**
+	 * Render the selected template with the captured page content.
+	 */
+	final public function renderTemplate(): void {
+
+		$router = Router::getInstance();
+		if (in_array($router->module, $this->apiModules) || $this->headless) {
+			return;
+		}
+
+		$template = $this->template;
+		if (!$template || !$template->areKeysPopulated()) {
+			$template = $this->getTemplate();
+		}
+
+		// populate the placeholder for the content
+		if (in_array($this->style, ['404','500'])) {
+			ob_clean();
+		} else {
+			$this->pageContent = ob_get_clean();
+		}
+
+		$styleFile = $template->getStyleFile($this->style);
+
+		// parse the template
+		TemplateRenderer::parse($styleFile);
 
 	}
 
 	/**
 	 * Runs the MVC pattern to handle the current request and render the appropriate view.
 	 * 
-	 * @throws	AppException		If an application-level error occurs.
+	 * @throws	AppException	If an application-level error occurs.
 	 */
-	private function runMvc(): void {
+	private function runController(): void {
 
 		$router	= Router::getInstance();
 
 		// make sure to have a template set
-		$template = $this->getTemplate();
+		$this->getTemplate();
 
 		$controllerFile = APPLICATION_PATH . '/modules/' . $router->module . '/controller.php';
 
@@ -1427,18 +1396,6 @@ class Application {
 
 		}
 
-		// populate the placeholder for the content
-		if (in_array($this->style, ['404','500'])) {
-			ob_clean();
-		} else {
-			$this->pageContent = ob_get_clean();
-		}
-
-		$styleFile = $template->getStyleFile($this->style);
-
-		// parse the template
-		Template::parse($styleFile);
-
 	}
 
 	/**
@@ -1508,6 +1465,85 @@ class Application {
 	public function setUserClass(string $class): void {
 
 		$this->userClass = $class;
+
+	}
+
+	/**
+	 * Returns the page scripts to be included before the closing body tag.
+	 */
+	final public function scripts(): string {
+
+		$pageScripts = '';
+
+		// collect script files
+		foreach ($this->scriptFiles as $file) {
+
+			// initialize attributes render
+			$attribsRender = '';
+
+			// render each attribute based on its variable type (string or boolean)
+			foreach ($file as $tag => $value) {
+				$attribsRender .= ' ' . (is_bool($value) ? $tag : $tag . '="' . htmlspecialchars((string)$value) . '"');
+			}
+
+			// add each script
+			$pageScripts .= '<script' . $attribsRender . '></script>' . "\n";
+
+		}
+
+		// add Insight Hub script for error tracking and performance monitoring
+		if (Env::get('INSIGHT_HUB_API_KEY') and Env::get('INSIGHT_HUB_PERFORMANCE')) {
+			$pageScripts .= '<script src="https://cdn.jsdelivr.net/npm/bugsnag-js" crossorigin="anonymous"></script>' . "\n";
+			$pageScripts .= '<script type="module">import BugsnagPerformance from "//d2wy8f7a9ursnm.cloudfront.net/v1/bugsnag-performance.min.js";BugsnagPerformance.start({apiKey:"' . Env::get('INSIGHT_HUB_API_KEY') .'"})</script>' . "\n";
+		}
+
+		// collect plain text scripts
+		if (count($this->scriptContent) or $this->modal or count($this->toasts)) {
+
+			$pageScripts .= "<script defer>\n";
+
+			foreach ($this->scriptContent as $s) {
+				$pageScripts .= $s ."\n";
+			}
+
+			// add modal and toasts
+			if ($this->modal or count($this->toasts)) {
+				$pageScripts .= "document.addEventListener('DOMContentLoaded', function() {\n";
+				$pageScripts .= $this->getModalScript();
+				$pageScripts .= $this->getToastsScript();
+				$pageScripts .= "});\n";
+			}
+
+			$pageScripts .= "</script>";
+
+		}
+
+		return $pageScripts;
+
+	}
+
+	/**
+	 * Returns the page stylesheets and manifest links to be included in the page head.
+	 */
+	final public function styles(): string {
+
+		$pageStyles = '';
+
+		// collect stylesheets
+		foreach ($this->cssFiles as $href) {
+
+			$pageStyles .= '<link rel="stylesheet" href="' . $href . '">' . "\n";
+
+		}
+
+		// collect manifest
+		foreach ($this->manifestFiles as $href) {
+
+			$pageStyles .= '<link rel="manifest" href="' . $href . '">' . "\n";
+
+		}
+
+		return $pageStyles;
 
 	}
 
@@ -1607,6 +1643,25 @@ class Application {
 	public function unsetState(string $name): void {
 
 		unset($this->state[$name]);
+
+	}
+
+	/**
+	 * Assigns variables to the template placeholder list.
+	 *
+	 * @param	string|array	$name	Name or array of name/value pairs.
+	 * @param	mixed			$value	Value when $name is a string.
+	 */
+	public function var(string|array $name, mixed $value = null): void {
+
+		if (is_array($name)) {
+			foreach ($name as $key => $val) {
+				$this->vars[$key] = $val;
+			}
+			return;
+		}
+
+		$this->vars[$name] = $value;
 
 	}
 

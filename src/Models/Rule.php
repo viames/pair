@@ -18,9 +18,9 @@ class Rule extends ActiveRecord {
 	protected ?string $action = null;
 
 	/**
-	 * Flag to set access granted on administrators only
+	 * Flag to set access granted on super users only.
 	 */
-	protected bool $adminOnly;
+	protected bool $superOnly;
 
 	/**
 	 * Module ID.
@@ -43,7 +43,7 @@ class Rule extends ActiveRecord {
 	const TABLE_DESCRIPTION = [
 		'id'			=> ['int unsigned', 'NO', 'PRI', NULL, 'auto_increment'],
 		'action'		=> ['varchar(30)', 'YES', '', NULL, ''],
-		'admin_only'	=> ['tinyint(1)', 'NO', '', '0', ''],
+		'super_only'	=> ['tinyint(1)', 'NO', '', '0', ''],
 		'module_id'		=> ['int unsigned', 'NO', 'MUL', NULL, '']
 	];
 	
@@ -54,7 +54,7 @@ class Rule extends ActiveRecord {
 	
 		$this->bindAsInteger('id');
 	
-		$this->bindAsBoolean('adminOnly');
+		$this->bindAsBoolean('superOnly');
 	
 	}
 
@@ -68,7 +68,7 @@ class Rule extends ActiveRecord {
 		$varFields = [
 			'id'		=> 'id',
 			'action'	=> 'action',
-			'adminOnly'	=> 'admin_only',
+			'superOnly'	=> 'super_only',
 			'moduleId'	=> 'module_id'
 		];
 
@@ -93,17 +93,17 @@ class Rule extends ActiveRecord {
 	 * 
 	 * @param	int		Module ID.
 	 * @param	string	Action name.
-	 * @param	bool	Optional flag to get admin-only rules.
+	 * @param	bool	Optional flag to get super-only rules.
 	 */
-	public static function getRuleModuleName(int $module_id, string $action, bool $adminOnly = false): ?\stdClass {
+	public static function getRuleModuleName(int $module_id, string $action, bool $superOnly = false): ?\stdClass {
 
 		$query =
-			'SELECT m.`name` AS `moduleName`, r.`action` AS `ruleAction`, r.`admin_only`
+			'SELECT m.`name` AS `moduleName`, r.`action` AS `ruleAction`, r.`super_only`
 			FROM `rules` AS r
 			INNER JOIN `modules` AS m ON m.`id` = r.`module_id`
-			WHERE m.`id` = ? AND r.`action` = ? AND r.`admin_only` = ?';
+			WHERE m.`id` = ? AND r.`action` = ? AND r.`super_only` = ?';
 
-		return Database::load($query, [$module_id, $action, $adminOnly], Database::OBJECT);
+		return Database::load($query, [$module_id, $action, $superOnly], Database::OBJECT);
 
 	}
 

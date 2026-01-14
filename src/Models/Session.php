@@ -89,9 +89,9 @@ class Session extends ActiveRecord {
 	}
 
 	/**
-	 * Return the current Session object.
+	 * Return the current Session object or null if not found.
 	 */
-	public static function current(): self {
+	public static function current(): ?self {
 
 		return Session::find(session_id());
 

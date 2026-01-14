@@ -46,14 +46,14 @@ class Group extends ActiveRecord {
 	}
 
 	/**
-	 * Adds all rules that don’t exist in ACL table for this group but admins rules.
+	 * Adds all rules that don’t exist in ACL table for this group but super users do have.
 	 */
 	public function addAllAcl(): void {
 
 		$query =
 			'INSERT INTO `acl` (`rule_id`, `group_id`, `is_default`)
 			SELECT `id`, ?, 0 FROM `rules`
-			WHERE `admin_only` = 0 AND `id` NOT IN(
+			WHERE `super_only` = 0 AND `id` NOT IN(
 			  SELECT `rule_id` FROM `acl` WHERE `group_id` = ?
 			)';
 
@@ -132,7 +132,7 @@ class Group extends ActiveRecord {
 			'SELECT r.*, m.`name` AS `module_name`
 			FROM `rules` AS r
 			INNER JOIN `modules` AS m ON m.`id` = r.`module_id`
-			WHERE `admin_only` = 0
+			WHERE `super_only` = 0
 			AND r.`id` NOT IN(SELECT a.`rule_id` FROM `acl` AS a WHERE a.`group_id` = ?)';
 
 		return Rule::getObjectsByQuery($query, [$this->id]);

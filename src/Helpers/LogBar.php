@@ -95,7 +95,7 @@ class LogBar {
 	 */
 	public function canBeShown(): bool {
 
-		// user is defined, could be admin
+		// user is defined, could be super
 		if (User::current() and Options::get('show_log')) {
 
 			// get current session
@@ -104,10 +104,10 @@ class LogBar {
 			// if impersonating, use the former user attribs
 			if ($session->hasFormerUser()) {
 				$formerUser = $session->getFormerUser();
-				return ($formerUser ? $formerUser->admin : false);
+				return ($formerUser ? $formerUser->super : false);
 			}
 
-			return (bool)User::current()->admin;
+			return (bool)User::current()->super;
 
 		} else {
 
@@ -344,7 +344,7 @@ class LogBar {
 		$log = '';
 
 		// shows the log
-		if (Options::get('show_log') and $app->currentUser->admin) {
+		if (Options::get('show_log') and $app->currentUser->super) {
 
 			$showQueries = isset($_COOKIE['LogShowQueries']) ? $_COOKIE['LogShowQueries'] : 0;
 

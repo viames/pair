@@ -590,7 +590,7 @@ class ChartJs {
 		}
 
 		$localeRepr = User::current()->getLocale()->getRepresentation('_');
-		$timezoneName = Session::current()->timezoneName;
+		$timezoneName = Session::current()?->timezoneName ?? BASE_TIMEZONE;
 
 		$formatter = new \IntlDateFormatter(
 			$localeRepr,

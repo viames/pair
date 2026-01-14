@@ -75,21 +75,21 @@ class Acl extends ActiveRecord {
 	/**
 	 * Determines whether a user group can access a given module/action with a single SQL COUNT query.
 	 * Behavior:
-	 * - Bypasses ACL checks when $admin is true or when $module === 'user'.
-	 * - Otherwise, validates the presence of a non-admin-only rule that either:
+	 * - Bypasses ACL checks when $super is true or when $module === 'user'.
+	 * - Otherwise, validates the presence of a non-super-only rule that either:
 	 *   a) matches the module with a null/empty action (wildcard), or
 	 *   b) matches the exact module + action pair.
 	 *
-	 * @param bool			Whether the current user is an administrator
-	 * @param int			The ID of the user's group
-	 * @param string		The target module name
-	 * @param string|null	The target action name, or null to allow any action
-	 * @return bool			True if access is granted by at least one matching rule, false otherwise
+	 * @param bool			$super		Whether the current user is a super-user.
+	 * @param int			$groupId	The ID of the user's group.
+	 * @param string		$module		The target module name.
+	 * @param string|null	$action		The target action name, or null to allow any action.
+	 * @return bool						True if access is granted by at least one matching rule, false otherwise.
 	 */
-	public static function checkPermission($admin, $groupId, $module, $action = null): bool {
+	public static function checkPermission($super, $groupId, $module, $action = null): bool {
 
 		// login and logout are always allowed
-		if ('user'==$module or $admin) {
+		if ('user'==$module or $super) {
 			return true;
 		}
 
@@ -99,7 +99,7 @@ class Acl extends ActiveRecord {
 			FROM `rules` AS r
 			INNER JOIN `acl` AS a ON a.`rule_id` = r.`id`
 			WHERE a.`group_id` = ?
-			AND r.`admin_only` = 0
+			AND r.`super_only` = 0
 			AND (
 				(r.`module` = ? AND (r.`action` IS NULL OR r.`action`=""))
 				OR (r.`module` = ? AND r.`action` = ?)

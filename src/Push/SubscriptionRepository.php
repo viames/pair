@@ -2,9 +2,9 @@
 
 namespace Pair\Push;
 
-use Pair\Orm\Database;
-use Pair\Orm\Collection;
 use Pair\Models\PushSubscription;
+use Pair\Orm\Collection;
+use Pair\Orm\Database;
 
 /**
  * Database repository for push subscriptions.

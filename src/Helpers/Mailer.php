@@ -631,6 +631,10 @@ abstract class Mailer {
 
 	/**
 	 * Send a test email.
+	 * 
+	 * @param	string|null	$testToSend		Custom text to send in the email body.
+	 * @param	string|null	$recipientName	Name of the recipient.
+	 * @param	string|null	$recipientEmail	Email address of the recipient. If null, the email is sent to all administratos.
 	 */
 	public function test(?string $textToSend = null, ?string $recipientName = null, $recipientEmail = null): void {
 

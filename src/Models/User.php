@@ -64,9 +64,9 @@ class User extends ActiveRecord {
 	protected ?string $email = null;
 
 	/**
-	 * If true, this user is admin.
+	 * If true, this user is super user.
 	 */
-	protected bool $admin;
+	protected bool $super;
 
 	/**
 	 * Flag for user enabled.
@@ -143,7 +143,7 @@ class User extends ActiveRecord {
 	 */
 	protected function _init(): void {
 
-		$this->bindAsBoolean('admin', 'enabled');
+		$this->bindAsBoolean('super', 'enabled');
 
 		$this->bindAsDatetime('lastLogin');
 
@@ -237,7 +237,7 @@ class User extends ActiveRecord {
 	/**
 	 * Checks whether this user has permission to access a module/action.
 	 *
-	 * Admin users can access everything. The ACL is loaded once from the
+	 * Super users can access everything. The ACL is loaded once from the
 	 * database and cached. The $module parameter can be either:
 	 * - "module"           (with $action provided separately), or
 	 * - "module/action"    (in which case $action can be omitted).
@@ -284,8 +284,8 @@ class User extends ActiveRecord {
 
 		foreach ($rules as $rule) {
 
-			// adminOnly rule
-			if ($rule->adminOnly and $this->admin) {
+			// superOnly rule
+			if ($rule->superOnly and $this->super) {
 				return true;
 			}
 
@@ -583,7 +583,7 @@ class User extends ActiveRecord {
 			'name'		=> 'name',
 			'surname'	=> 'surname',
 			'email'		=> 'email',
-			'admin'		=> 'admin',
+			'super'		=> 'super',
 			'enabled'	=> 'enabled',
 			'lastLogin'	=> 'last_login',
 			'faults'	=> 'faults',
@@ -624,7 +624,7 @@ class User extends ActiveRecord {
 	 */
 	public function getGroup(): Group {
 
-		return new Group($this->groupId);
+		return new Group($this->__get('groupId'));
 
 	}
 
@@ -743,13 +743,8 @@ class User extends ActiveRecord {
 	 * that impersonation can be stopped later.
 	 * 
 	 * @param User $newUser User to impersonate.
-	 * @throws \Exception If the current user is not admin.
 	 */
 	public function impersonate(User $newUser): void {
-
-		if (!$this->isAdmin()) {
-			throw new \Exception('Only admin users can impersonate other users.');
-		}
 
 		$session = Session::current();
 		$session->formerUserId = $this->id;
@@ -762,10 +757,16 @@ class User extends ActiveRecord {
 
 	/**
 	 * Stops impersonation and restores the former user session.
+	 * 
+	 * @throws \Exception If no active session or no former user is found.
 	 */
 	public function impersonateStop(): void {
 
 		$session = Session::current();
+		if (is_null($session)) {
+			throw new \Exception('No active session found.');
+		}
+
 		$impersonatedUser = $session->getUser();
 		$formerUser = $session->getFormerUser();
 
@@ -775,23 +776,28 @@ class User extends ActiveRecord {
 
 		Database::run('UPDATE `sessions` SET `user_id` = `former_user_id`, `former_user_id` = NULL WHERE `id` = ?', [session_id()]);
 
-		Audit::impersonateStop($formerUser);
+		Audit::impersonateStop($impersonatedUser, $formerUser);
 
 	}
 
 	/**
-	 * Returns true if this user, or the former user (when impersonating), is admin.
+	 * Returns true if this user, or the former user (when impersonating), is super user.
 	 */
-	public function isAdmin(): bool {
+	public function isSuper(): bool {
 
-		if ($this->admin) {
+		if ($this->super) {
 			return true;
 		}
 
+		// check former user when impersonating
 		$session = Session::current();
-		$formerUser = $session->getFormerUser();
+		if (is_null($session)) {
+			return false;
+		}
 
-		if ($formerUser?->admin) {
+		// get former user
+		$formerUser = $session->getFormerUser();
+		if ($formerUser?->super) {
 			return true;
 		}
 

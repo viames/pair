@@ -4,6 +4,7 @@ namespace Pair\Exceptions;
 
 use Pair\Core\Application;
 use Pair\Core\Logger;
+use Pair\Html\TemplateRenderer;
 
 /**
  * Custom exception for handling critical errors. In production mode, the application will be
@@ -34,6 +35,9 @@ class CriticalException extends PairException {
 	/**
 	 * Performs appropriate operations to terminate the application following a critical error,
 	 * paginating the cause of the error in the first available template.
+	 * 
+	 * @param string $message The error message to display.
+	 * @param int $code The error code.
 	 */
 	public static function terminate(string $message, int $code = 0): void {
 
@@ -42,31 +46,19 @@ class CriticalException extends PairException {
 			$logger->disable();
 		}
 
-		// get the style file to load
-		$styleFile = self::getFallbackStyleFile();
+		$app = Application::getInstance();
+		
+		http_response_code(500);
 
-		// load the style page file content
-		$templateHtml = file_get_contents($styleFile);
-
-		// replace minimal placeholders in the template
-		$placeholders = [
-			'content'	=> 'production' == Application::getEnvironment() ? 'Application is not available' : $message,
-			'title'		=> 'Critical error'
-		];
-
-		foreach ($placeholders as $placeholder => $replacement) {
-
-			// regex for both {{placeholder}} and {{ placeholder }}
-			$pattern = '/\{\{\s*' . preg_quote($placeholder, '/') . '\s*\}\}/';
-
-			// replace in template
-			$templateHtml = preg_replace($pattern, $replacement, $templateHtml);
-
+		if ($app->headless) {
+			return;
 		}
 
-		eval('?>' . $templateHtml);
+		// clear any previous output
+		ob_clean();
 
-		http_response_code(500);
+		$styleFile = self::getFallbackStyleFile();
+		TemplateRenderer::parse($styleFile);
 
 		exit;
 
@@ -74,6 +66,8 @@ class CriticalException extends PairException {
 
     /**
 	 * Manage the template to load. In this case, the template is a simple PHP file that contains the HTML code to display the error message.
+	 * 
+	 * @return string The path to the template file.
 	 */
     private static function getFallbackStyleFile(): string {
 
@@ -103,6 +97,28 @@ class CriticalException extends PairException {
 		}
 
 		die ('Critical error: no template file found.');
+
+	}
+
+	/**
+	 * Renders a simple fallback template with the given error message.
+	 * 
+	 * @param string $message The error message to display.
+	 */
+	private static function renderFallbackTemplate(string $message): void {
+
+		$styleFile = self::getFallbackStyleFile();
+
+		// load the template file
+		ob_start();
+		include $styleFile;
+		$templateHtml = ob_get_clean();
+
+		// replace the {{content}} placeholder with the error message
+		$templateHtml = str_replace('{{content}}', htmlspecialchars($message, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'), $templateHtml);
+
+		// output the final HTML
+		print $templateHtml;
 
 	}
 
