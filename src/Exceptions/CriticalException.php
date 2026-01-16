@@ -35,7 +35,7 @@ class CriticalException extends PairException {
 	/**
 	 * Performs appropriate operations to terminate the application following a critical error,
 	 * paginating the cause of the error in the first available template.
-	 * 
+	 *
 	 * @param string $message The error message to display.
 	 * @param int $code The error code.
 	 */
@@ -47,7 +47,7 @@ class CriticalException extends PairException {
 		}
 
 		$app = Application::getInstance();
-		
+
 		http_response_code(500);
 
 		if ($app->headless) {
@@ -66,7 +66,7 @@ class CriticalException extends PairException {
 
     /**
 	 * Manage the template to load. In this case, the template is a simple PHP file that contains the HTML code to display the error message.
-	 * 
+	 *
 	 * @return string The path to the template file.
 	 */
     private static function getFallbackStyleFile(): string {
@@ -102,7 +102,7 @@ class CriticalException extends PairException {
 
 	/**
 	 * Renders a simple fallback template with the given error message.
-	 * 
+	 *
 	 * @param string $message The error message to display.
 	 */
 	private static function renderFallbackTemplate(string $message): void {

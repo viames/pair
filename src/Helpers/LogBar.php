@@ -8,10 +8,30 @@ use Pair\Models\Session;
 use Pair\Models\User;
 
 /**
- * Singleton class that allows to trace query, API calls and custom events with partial
- * and total execution times.
+ * Singleton helper class to collect and render application logs. It allows to trace query,
+ * API calls and custom events with partial and total execution times.
  */
 class LogBar {
+
+	/**
+	 * Memory usage ratio percent above which only warnings and errors are logged.
+	 */
+	private const MEMORY_ALERT_RATIO = 60.0;
+
+	/**
+	 * Cookie names for log visibility.
+	 */
+	private const COOKIE_SHOW_QUERIES = 'LogBarShowQueries';
+
+	/**
+	 * Legacy cookie name for log visibility.
+	 */
+	private const COOKIE_SHOW_EVENTS = 'LogBarShowEvents';
+
+	/**
+	 * Legacy cookie name for show queries.
+	 */
+	private const LEGACY_COOKIE_SHOW_QUERIES = 'LogShowQueries';
 
 	/**
 	 * Singleton instance.
@@ -29,13 +49,13 @@ class LogBar {
 	private float $lastChrono;
 
 	/**
-	 * Full event list.
+	 * Logged events.
 	 * @var \stdClass[]
 	 */
 	private array $events = [];
 
 	/**
-	 * Flag force log disabled.
+	 * Disabled flag.
 	 */
 	private bool $disabled = false;
 
@@ -51,47 +71,104 @@ class LogBar {
 	}
 
 	/**
-	 * Singleton instance method.
+	 * Build HTML for a single event.
+	 *
+	 * @param	\stdClass	$event		Event object.
+	 * @param	string		$eventDomId	Event DOM id attribute.
+	 * @return	string		HTML code of event.
 	 */
-	final public static function getInstance(): self {
+	private function buildEventHtml(\stdClass $event, string $eventDomId): string {
 
-		if (null == self::$instance) {
-			self::$instance = new self();
-			self::$instance->startChrono();
-		}
-
-		return self::$instance;
+		return
+			'<div ' . $eventDomId . 'class="' . $event->type . '">' .
+			'<span class="time' . ($event->chrono>1 ? ' slow' : '') . '">' . $this->formatChrono($event->chrono) . '</span> ' .
+			htmlspecialchars((string)$event->description) .
+			($event->subtext ? ' <span>| ' . htmlspecialchars((string)$event->subtext) . '</span>' : '') . '</div>';
 
 	}
 
 	/**
-	 * Shutdown the log.
+	 * Build HTML for the full log card.
+	 *
+	 * @param	float	$sum			Total time.
+	 * @param	float	$apiChrono		Total API time.
+	 * @param	int		$queryCount		Number of queries.
+	 * @param	float	$queryChrono	Total query time.
+	 * @param	int		$warningCount	Number of warnings.
+	 * @param	int		$errorCount		Number of errors.
+	 * @param	bool	$showQueries	Flag to show queries.
+	 * @param	bool	$showEvents		Flag to show events.
+	 * @param	string	$log			HTML code of log events.
+	 * @return	string	HTML code of full log card.
 	 */
-	final public function disable(): void {
+	private function buildLogHtml(
+		float $sum,
+		float $apiChrono,
+		int $queryCount,
+		float $queryChrono,
+		int $warningCount,
+		int $errorCount,
+		bool $showQueries,
+		bool $showEvents,
+		string $log
+	): string {
 
-		$this->disabled = true;
+		// card open and header
+		$ret = '<div class="card mt-5" id="logbar">
+			<div class="card-header">
+				<div class="float-end">';
 
-	}
+		// show queries toggle
+		$ret .= $showEvents
+			? '<div id="toggle-events" class="item expanded">Hide</div>'
+			: '<div id="toggle-events" class="item">Show</div>';
 
-	/**
-	 * Check that logBar can be collected by checking "disabled" flag, cli,
-	 * API, router module and Options.
-	 */
-	final public function isEnabled(): bool {
+		// card header close
+		$ret .= '</div>
+				<h4>LogBar</h4>
+			</div>
+			<div class="card-body">
+			<div class="head">';
 
-		$router = Router::getInstance();
+		// total time
+		$ret .= '<div class="item"><span class="icon fa fa-tachometer-alt"></span><span class="emph">' . $this->formatChrono($sum) .'</span> total</div>';
 
-		if ($this->disabled or 'cli' == php_sapi_name() or 'api' == $router->module
-				or ('user' == $router->module and 'login' == $router->action)) {
-			return false;
+		// external api
+		$ret .= $apiChrono ? '<div class="item"><span class="icon fa fa-exchange"></span><span class="emph">API ' . $this->formatChrono($apiChrono) . '</span></div>' : '';
+
+		// database
+		$ret .= '<div class="item database multi"><div class="icon fa fa-database"></div><div class="desc"><span class="emph">' . $queryCount .'</span> queries <div class="sub">(' . $this->formatChrono($queryChrono) .')</div></div></div>';
+
+		// memory peak
+		$ret .= '<div class="item"><span class="icon fa fa-heartbeat"></span><span class="emph">' . floor(memory_get_peak_usage()/1024/1024) . ' MB</span> memory</div>';
+
+		// warnings
+		if ($warningCount) {
+			$ret .= '<a href="javascript:;" onclick="document.location.hash=\'logFirstWarning\';" class="item warning"><span class="icon fa fa-exclamation-triangle"></span><span class="emph">' . $warningCount . '</span> ' . ($warningCount>1 ? 'warnings' : 'warning') . '</a>';
 		}
 
-		return true;
+		// errors
+		if ($errorCount) {
+			$ret .= '<a href="javascript:;" onclick="document.location.hash=\'logFirstError\';" class="item error"><span class="icon fa fa-times-circle"></span><span class="emph">' . $errorCount . '</span> ' . ($errorCount>1 ? 'errors' : 'error') . '</a>';
+		}
+
+		// head and header close
+		$ret .= '</div>';
+
+		// log content
+		$ret .= '<div class="events' . ($showQueries ? ' show-queries' : '') . ($showEvents ? '' : ' hidden') . '">' . $log . '</div>';
+
+		// card-body and card close
+		$ret .= '</div></div>';
+
+		return $ret;
 
 	}
 
 	/**
 	 * Check if the log can appear in the current session.
+	 *
+	 * @return	bool	True if can be shown.
 	 */
 	public function canBeShown(): bool {
 
@@ -102,7 +179,7 @@ class LogBar {
 			$session = Session::current();
 
 			// if impersonating, use the former user attribs
-			if ($session->hasFormerUser()) {
+			if ($session and $session->hasFormerUser()) {
 				$formerUser = $session->getFormerUser();
 				return ($formerUser ? $formerUser->super : false);
 			}
@@ -118,22 +195,27 @@ class LogBar {
 	}
 
 	/**
-	 * Starts the time chrono.
+	 * Shutdown the log.
 	 */
-	private function startChrono(): void {
+	final public function disable(): void {
 
-		$this->timeStart = $this->lastChrono = $this->getMicrotime();
+		$this->disabled = true;
 
 	}
 
 	/**
-	 * Returns current time as float value.
+	 * Singleton instance method.
+	 *
+	 * @return	self	Instance of LogBar.
 	 */
-	private function getMicrotime(): float {
+	final public static function getInstance(): self {
 
-		list ($msec, $sec) = explode(' ', microtime());
-		$time = ((float)$msec + (float)$sec);
-		return $time;
+		if (null == self::$instance) {
+			self::$instance = new self();
+			self::$instance->startChrono();
+		}
+
+		return self::$instance;
 
 	}
 
@@ -165,45 +247,89 @@ class LogBar {
 	}
 
 	/**
-	 * Returns a formatted event list of all chrono steps.
+	 * Choose if use sec or millisec based on amount of time to show (for instance 1.23 s or 345 ms).
 	 *
-	 * @return	string	HTML code of log list.
+	 * @param	float	$chrono	Time in seconds.
+	 * @return	string	Formatted time string.
 	 */
-	final public function render(): string {
+	private function formatChrono(float $chrono): string {
 
-		if (!$this->isEnabled() or !$this->canBeShown()) {
-			return '';
+		return ($chrono >= 1) ? round($chrono, 2).' s' : round($chrono*1000) .' ms';
+
+	}
+
+	/**
+	 * Returns count of registered error.
+	 *
+	 * @return	int	Number of errors.
+	 */
+	final public function getErrorCount(): int {
+
+		$count = 0;
+
+		foreach ($this->events as $e) {
+			if ('error' == $e->type) $count++;
 		}
 
-		$app = Application::getInstance();
+		return $count;
 
-		$sum			= 0;
-		$log			= '';
+	}
 
-		$apiChrono		= 0;
-		$queryChrono	= 0;
-		$queryCount		= 0;
-		$warningCount	= 0;
-		$errorCount		= 0;
+	/**
+	 * Returns [showQueries, showEvents] cookie settings.
+	 *
+	 * @return	array{0: bool, 1: bool}
+	 */
+	private function getLogVisibility(): array {
 
-		$firstError		= false;
-		$firstWarning	= false;
+		$showQueries = $this->getCookieBool(self::COOKIE_SHOW_QUERIES);
+		$showEvents = $this->getCookieBool(self::COOKIE_SHOW_EVENTS);
 
-		// cookie infos
-		$showQueries	= isset($_COOKIE['LogBarShowQueries']) ? (bool)$_COOKIE['LogBarShowQueries'] : false;
-		$showEvents		= isset($_COOKIE['LogBarShowEvents'])  ? (bool)$_COOKIE['LogBarShowEvents']  : false;
+		return [$showQueries, $showEvents];
 
-		// create a date in timezone of connected user
-		$timeStart = new \DateTime('@' . (int)$this->timeStart, new \DateTimeZone(BASE_TIMEZONE));
-		if ($app->currentUser and $app->currentUser->areKeysPopulated()) {
-			$timeStart->setTimezone($app->currentUser->getDateTimeZone());
+	}
+
+	/**
+	 * Returns a cookie value as bool.
+	 *
+	 * @param	string	$name	Cookie name.
+	 * @return	bool	Cookie value or false.
+	 */
+	private function getCookieBool(string $name): bool {
+
+		return isset($_COOKIE[$name]) ? (bool)$_COOKIE[$name] : false;
+
+	}
+
+	/**
+	 * Returns showQueries cookie, with legacy fallback.
+	 *
+	 * @return	bool	True if queries should be shown.
+	 */
+	private function getShowQueriesForAjax(): bool {
+
+		if (isset($_COOKIE[self::COOKIE_SHOW_QUERIES])) {
+			return (bool)$_COOKIE[self::COOKIE_SHOW_QUERIES];
 		}
 
-		// get memory limit
+		return isset($_COOKIE[self::LEGACY_COOKIE_SHOW_QUERIES]) ? (bool)$_COOKIE[self::LEGACY_COOKIE_SHOW_QUERIES] : false;
+
+	}
+
+	/**
+	 * Returns memory limit in bytes.
+	 *
+	 * @return	int	Memory limit in bytes.
+	 */
+	private function getMemoryLimitBytes(): int {
+
 		$limit = ini_get('memory_limit');
+		if ('-1' === $limit) {
+			return 0;
+		}
 
 		// get number multiplier
-		switch (substr($limit,-1)) {
+		switch (substr($limit, -1)) {
 			case 'G': case 'g': $multiplier = 1073741824;	break;
 			case 'M': case 'm': $multiplier = 1048576;		break;
 			case 'K': case 'k': $multiplier = 1024;			break;
@@ -211,23 +337,103 @@ class LogBar {
 		}
 
 		// convert string memory limit to integer
-		$limit = (int)$limit * $multiplier;
+		return (int)$limit * $multiplier;
 
-		// get current usage and percentual ratio
-		$ratio = memory_get_usage() / $limit * 100;
+	}
+
+	/**
+	 * Returns current memory usage ratio in percent.
+	 *
+	 * @param	int	$limit	Memory limit in bytes.
+	 * @return	float	Memory usage ratio in percent.
+	 */
+	private function getMemoryUsageRatio(int $limit): float {
+
+		if ($limit <= 0) {
+			return 0.0;
+		}
+
+		return memory_get_usage() / $limit * 100;
+
+	}
+
+	/**
+	 * Returns current time as float value.
+	 *
+	 * @return	float	Current time in seconds with microseconds.
+	 */
+	private function getMicrotime(): float {
+
+		return microtime(true);
+
+	}
+
+	/**
+	 * Check that logBar can be collected by checking "disabled" flag, cli,
+	 * API, router module and Options.
+	 *
+	 * @return	bool	True if enabled.
+	 */
+	final public function isEnabled(): bool {
+
+		$router = Router::getInstance();
+
+		if ($this->disabled or 'cli' == php_sapi_name() or 'api' == $router->module
+				or ('user' == $router->module and 'login' == $router->action)) {
+			return false;
+		}
+
+		return true;
+
+	}
+
+	/**
+	 * Returns a formatted event list of all chrono steps.
+	 *
+	 * @return	string	HTML code of log list.
+	 */
+	final public function render(): string {
+
+		// check if log can be shown 
+		if (!$this->isEnabled() or !$this->canBeShown()) {
+			return '';
+		}
+
+		$sum = 0;
+		$log = '';
+
+		$apiChrono = 0;
+		$queryChrono = 0;
+		$queryCount = 0;
+		$warningCount = 0;
+		$errorCount = 0;
+
+		// flags to mark first warning/error
+		$firstError = false;
+		$firstWarning = false;
+
+		// get log visibility settings
+		[$showQueries, $showEvents] = $this->getLogVisibility();
+
+		// memory limit and usage ratio
+		$limit = $this->getMemoryLimitBytes();
+		$checkMemory = ($limit > 0);
+		$ratio = $checkMemory ? $this->getMemoryUsageRatio($limit) : 0.0;
 
 		// alert about risk of “out of memory”
-		if (($ratio) > 60) {
+		if ($checkMemory and $ratio > self::MEMORY_ALERT_RATIO) {
 			self::event('Memory usage is ' . round($ratio,0) . '% of limit, will reduce logs');
 		}
 
 		foreach ($this->events as $e) {
 
 			// update ratio with current memory usage
-			$ratio = memory_get_usage() / $limit * 100;
+			if ($checkMemory) {
+				$ratio = $this->getMemoryUsageRatio($limit);
+			}
 
 			// prevent out memory errors by adding just warnings and errors
-			if ($ratio > 60 and !in_array($e->type, ['warning','error'])) {
+			if ($checkMemory and $ratio > self::MEMORY_ALERT_RATIO and !in_array($e->type, ['warning','error'])) {
 				continue;
 			}
 
@@ -266,64 +472,25 @@ class LogBar {
 
 			}
 
-			$log .=
-				'<div ' . $eventDomId . 'class="' . $e->type . '">' .
-				'<span class="time' . ($e->chrono>1 ? ' slow' : '') . '">' . $this->formatChrono($e->chrono) . '</span> ' .
-				htmlspecialchars((string)$e->description) .
-				($e->subtext ? ' <span>| ' . htmlspecialchars((string)$e->subtext) . '</span>' : '') . '</div>';
+			// build event HTML
+			$log .= $this->buildEventHtml($e, $eventDomId);
 
 			$sum += $e->chrono;
 
 		}
 
 		// log header
-		$ret = '<div class="card mt-5" id="logbar">
-			<div class="card-header">
-				<div class="float-end">';
-
-		if ($showEvents) {
-			$ret.= '<div id="toggle-events" class="item expanded">Hide</div>';
-		} else {
-			$ret.= '<div id="toggle-events" class="item">Show</div>';
-		}
-		//<a class="p-4 btn btn-sm btn-outline-primary mt-1 float-right" href="compositerewards/new"><i class="fal fa-plus-large fa-fw"></i></a>
-		$ret.= '</div>
-				<h4>LogBar</h4>
-			</div>
-			<div class="card-body">
-			<div class="head">';
-
-		// total time
-		$ret.= '<div class="item"><span class="icon fa fa-tachometer-alt"></span><span class="emph">' . $this->formatChrono($sum) .'</span> total</div>';
-
-		// external api
-		$ret.= $apiChrono ? '<div class="item"><span class="icon fa fa-exchange"></span><span class="emph">API ' . $this->formatChrono($apiChrono) . '</span></div>' : '';
-
-		// database
-		$ret.= '<div class="item database multi"><div class="icon fa fa-database"></div><div class="desc"><span class="emph">' . $queryCount .'</span> queries <div class="sub">(' . $this->formatChrono($queryChrono) .')</div></div></div>';
-
-		// memory peak
-		$ret.= '<div class="item"><span class="icon fa fa-heartbeat"></span><span class="emph">' . floor(memory_get_peak_usage()/1024/1024) . ' MB</span> memory</div>';
-
-		// warnings
-		if ($warningCount) {
-			$ret.= '<a href="javascript:;" onclick="document.location.hash=\'logFirstWarning\';" class="item warning"><span class="icon fa fa-exclamation-triangle"></span><span class="emph">' . $warningCount . '</span> ' . ($warningCount>1 ? 'warnings' : 'warning') . '</a>';
-		}
-
-		// errors
-		if ($errorCount) {
-			$ret.= '<a href="javascript:;" onclick="document.location.hash=\'logFirstError\';" class="item error"><span class="icon fa fa-times-circle"></span><span class="emph">' . $errorCount . '</span> ' . ($errorCount>1 ? 'errors' : 'error') . '</a>';
-		}
-
-		$ret.= '</div>';
-
-		// log content
-		$ret.= '<div class="events' . ($showQueries ? ' show-queries' : '') . ($showEvents ? '' : ' hidden') . '">' . $log . '</div>';
-
-		// card-body and card close
-		$ret.= '</div></div>';
-
-		return $ret;
+		return $this->buildLogHtml(
+			$sum,
+			$apiChrono,
+			$queryCount,
+			$queryChrono,
+			$warningCount,
+			$errorCount,
+			$showQueries,
+			$showEvents,
+			$log
+		);
 
 	}
 
@@ -346,7 +513,7 @@ class LogBar {
 		// shows the log
 		if (Options::get('show_log') and $app->currentUser->super) {
 
-			$showQueries = isset($_COOKIE['LogShowQueries']) ? $_COOKIE['LogShowQueries'] : 0;
+			$showQueries = $this->getShowQueriesForAjax();
 
 			foreach ($this->events as $e) {
 
@@ -367,38 +534,21 @@ class LogBar {
 	}
 
 	/**
-	 * Choose if use sec or millisec based on amount of time to show (for instance 1.23 s or 345 ms).
-	 *
-	 * @param	float	Time value to show (in seconds).
-	 */
-	private function formatChrono(float $chrono): string {
-
-		return ($chrono >= 1) ? round($chrono, 2).' s' : round($chrono*1000) .' ms';
-
-	}
-
-	/**
-	 * Returns count of registered error.
-	 */
-	final public function getErrorCount(): int {
-
-		$count = 0;
-
-		foreach ($this->events as $e) {
-			if ('error' == $e->type) $count++;
-		}
-
-		return $count;
-
-	}
-
-	/**
 	 * Reset events and start chrono again.
 	 */
-	final public function reset() {
+	final public function reset(): void {
 
 		$this->events = [];
 		$this->startChrono();
+
+	}
+
+	/**
+	 * Starts the time chrono.
+	 */
+	private function startChrono(): void {
+
+		$this->timeStart = $this->lastChrono = $this->getMicrotime();
 
 	}
 
