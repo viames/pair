@@ -148,8 +148,14 @@ class Utilities {
 			throw new PairException('CSV2XLSX command line utility is not available on this server');
 		}
 
-		// check if the file is a CSV
 		$fileMime = mime_content_type($csvPath);
+
+		// check if the CSV file is empty
+		if (filesize($csvPath) === 0 or in_array($fileMime, ['application/octet-stream', false])) {
+			throw new PairException('The CSV file is empty');
+		}
+
+		// check if the file is a CSV
 		if ('csv' != File::mimeCategory($fileMime)) {
 			throw new PairException('The file mime “' . $fileMime . '” is not CSV type');
 		}
