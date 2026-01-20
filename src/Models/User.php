@@ -182,7 +182,7 @@ class User extends ActiveRecord {
 
 	/**
 	 * Returns the HTML code for the user avatar (initials with colored background).
-	 * 
+	 *
 	 * @return string HTML code for the user avatar.
 	 */
 	public function avatar(): string {
@@ -253,8 +253,13 @@ class User extends ActiveRecord {
 			return true;
 		}
 
+		// super users bypass ACL
+		if ($this->__get('super')) {
+			return true;
+		}
+
 		// reveal module/action type
-		if (is_null($action) and false !== strpos($module, '/')) {
+		if ((is_null($action) or '' === $action) and false !== strpos($module, '/')) {
 			list($module,$action) = explode('/', $module);
 		}
 
@@ -277,20 +282,25 @@ class User extends ActiveRecord {
 		// acl is a cached Collection of Rule objects
 		$acl = $this->getAcl();
 
-		// select only rules of the given module
-		$rules = $acl->filter(function($rule) use ($module) {
-			return $rule->moduleName == $module;
-		});
+		$actionIsEmpty = (is_null($action) or $action === '');
 
-		foreach ($rules as $rule) {
-
-			// superOnly rule
-			if ($rule->superOnly and $this->super) {
-				return true;
+		// loop through rules in order to find a match
+		foreach ($acl as $rule) {
+			if ($rule->moduleName != $module) {
+				continue;
 			}
 
-			// check action match
-			if (is_null($rule->action) or $rule->action == $action or (is_null($action) and 'default' == $rule->action)) {
+			if ($rule->superOnly) {
+				continue;
+			}
+
+			$ruleAction = $rule->action;
+			if (
+				is_null($ruleAction) or
+				$ruleAction === '' or
+				$ruleAction === $action or
+				($ruleAction == 'default' and $actionIsEmpty)
+			) {
 				return true;
 			}
 
@@ -741,7 +751,7 @@ class User extends ActiveRecord {
 	 *
 	 * Creates a new session for $newUser, storing the current user as the "former" user so
 	 * that impersonation can be stopped later.
-	 * 
+	 *
 	 * @param User $newUser User to impersonate.
 	 */
 	public function impersonate(User $newUser): void {
@@ -757,7 +767,7 @@ class User extends ActiveRecord {
 
 	/**
 	 * Stops impersonation and restores the former user session.
-	 * 
+	 *
 	 * @throws \Exception If no active session or no former user is found.
 	 */
 	public function impersonateStop(): void {
@@ -785,7 +795,7 @@ class User extends ActiveRecord {
 	 */
 	public function isSuper(): bool {
 
-		if ($this->super) {
+		if ($this->__get('super')) {
 			return true;
 		}
 

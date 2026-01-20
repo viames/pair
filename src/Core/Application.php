@@ -914,19 +914,24 @@ class Application {
 			$this->redirect($landing->module . '/' . $landing->action);
 		}
 
-		$resource = $router->module . '/' . $router->action;
+		// aggiunge l’action solo se definita (non vuota e non null)
+		$resource = $router->module . ($router->action ? '/' . $router->action : '');
 
 		// access denied
 		if (!$this->currentUser->canAccess((string)$router->module, $router->action)) {
-			$landing = $user->landing();
+
 			$this->toastError(Translator::do('ERROR'), 'Access denied to ' . $resource);
+
+			$landing = $user->landing();
+
 			// avoid infinite loop
 			if ($resource != $landing->module . '/' . $landing->action) {
 				$this->redirect($landing->module . '/' . $landing->action);
 			} else {
 				$this->redirect('user/logout');
 			}
-		}
+
+			}
 
 	}
 
@@ -1310,7 +1315,7 @@ class Application {
 
 	/**
 	 * Runs the MVC pattern to handle the current request and render the appropriate view.
-	 * 
+	 *
 	 * @throws	AppException	If an application-level error occurs.
 	 */
 	private function runController(): void {

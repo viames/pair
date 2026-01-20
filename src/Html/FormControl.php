@@ -553,7 +553,7 @@ abstract class FormControl {
 			$ret .= ' readonly';
 		}
 
-		if (!is_null($this->placeholder) and '' != $this->placeholder) {
+		if (!is_null($this->placeholder)) {
 			$ret .= ' placeholder="' . $this->placeholder . '"';
 		}
 
