@@ -550,15 +550,11 @@ class ChartJs {
 	 * @param	\DateTimeInterface	$start		Start date of the range.
 	 * @param	\DateTimeInterface	$end		End date of the range.
 	 * @param	string				$interval	Interval for the labels: day, week, month, year.
-	 * @return	self
+	 * @param	string|null			$pattern	Optional pattern for the date format. If not provided, a default pattern will be used.
+	 * @return	self							Instance of the ChartJs class for method chaining.
 	 * @throws	AppException					If the interval is not valid or if the user or session is not available.
 	 */
-	public function rangeLabels(\DateTimeInterface $start, \DateTimeInterface $end, string $interval): self {
-
-		// check the interval
-		if (!in_array($interval, ['day', 'week', 'month', 'year'])) {
-			throw new AppException('Label interval (day|week|month|year) is not valid: ' . $interval);
-		}
+	public function rangeLabels(\DateTimeInterface $start, \DateTimeInterface $end, string $interval, ?string $pattern = null): self {
 
 		if (!User::current() or !Session::current()) {
 			throw new AppException('User or session not available');
@@ -569,22 +565,26 @@ class ChartJs {
 
 			case 'day':
 				$duration = 'P1D';
-				$pattern = 'd MMMM';
+				$pattern = $pattern ?? 'd MMMM';
 				break;
 
 			case 'week':
 				$duration = 'P1W';
-				$pattern = 'd MMMM';
+				$pattern = $pattern ?? 'd MMMM';
 				break;
 
 			case 'month':
 				$duration = 'P1M';
-				$pattern = 'MMMM yyyy';
+				$pattern = $pattern ?? 'MMMM y';
 				break;
 
 			case 'year':
 				$duration = 'P1Y';
-				$pattern = 'yyyy';
+				$pattern = $pattern ?? 'y';
+				break;
+
+			default:
+				throw new AppException('Label interval (day|week|month|year) is not valid: ' . $interval);
 				break;
 
 		}
