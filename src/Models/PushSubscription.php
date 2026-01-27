@@ -2,8 +2,12 @@
 
 namespace Pair\Models;
 
+use DateTime;
 use Pair\Orm\ActiveRecord;
 
+/**
+ * Represents a push notification subscription.
+ */
 class PushSubscription extends ActiveRecord {
 
 	/**

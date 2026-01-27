@@ -4,6 +4,9 @@ namespace Pair\Core;
 
 use Pair\Models\OAuth2Token;
 
+/**
+ * Manages environment variables from .env file and default values.
+ */
 class Env {
 
 	/**
@@ -92,15 +95,28 @@ class Env {
 			$key = trim($key);
 			$value = trim($value);
 
+			// strip surrounding quotes but preserve quoted values as strings
+			$wasQuoted = false;
+			if (strlen($value) >= 2) {
+				$firstChar = $value[0];
+				$lastChar = $value[strlen($value) - 1];
+				if (($firstChar === '"' && $lastChar === '"') || ($firstChar === "'" && $lastChar === "'")) {
+					$wasQuoted = true;
+					$value = substr($value, 1, -1);
+				}
+			}
+
 			// cast to the correct type
-			if ('true' == strtolower($value)) {
-				$value = true;
-			} else if ('false' == strtolower($value)) {
-				$value = false;
-			} else if (is_numeric($value) and (int)$value == $value) {
-				$value = (int)$value;
-			} else if (is_numeric($value)) {
-				$value = (float)$value;
+			if (!$wasQuoted) {
+				if ('true' == strtolower($value)) {
+					$value = true;
+				} else if ('false' == strtolower($value)) {
+					$value = false;
+				} else if (is_numeric($value) and (int)$value == $value) {
+					$value = (int)$value;
+				} else if (is_numeric($value)) {
+					$value = (float)$value;
+				}
 			}
 
 			$_ENV[$key] = $value ?? null;
