@@ -5,6 +5,8 @@ namespace Pair\Push;
 use Minishlink\WebPush\Subscription;
 use Minishlink\WebPush\WebPush;
 
+use Pair\Models\PushSubscription;
+
 /**
  * Sends Web Push notifications using the VAPID authentication and Minishlink library.
  * Requires "minishlink/web-push" package.
@@ -17,7 +19,7 @@ class WebPushSender {
 
 	/**
 	 * Constructor.
-	 * 
+	 *
 	 * @param VapidConfig|null $config The VAPID configuration. If null, a default configuration is used.
 	 * @throws \RuntimeException If the WebPush library is not installed.
 	 */
@@ -34,7 +36,7 @@ class WebPushSender {
 
 	/**
 	 * Sends a notification to a single subscription. This method does not handle subscription deletion.
-	 * 
+	 *
 	 * @param Notification $notification The notification to send.
 	 * @param PushSubscription $subscription The subscription data.
 	 * @return DeliveryResult The result of the delivery.
@@ -56,10 +58,12 @@ class WebPushSender {
 
 			$webPush = new WebPush($authConfig);
 
+			$contentEncoding = $this->resolveContentEncoding($endpoint);
 			$sub = Subscription::create([
 				'endpoint' => $subscription->endpoint,
 				'publicKey' => $subscription->p256dh,
 				'authToken' => $subscription->auth,
+				'contentEncoding' => $contentEncoding,
 			]);
 
 			$payload = json_encode($notification->toPayload());
@@ -104,6 +108,20 @@ class WebPushSender {
 		}
 
 		return $result;
+
+	}
+
+	/**
+	 * Resolve the content encoding for a subscription endpoint.
+	 */
+	private function resolveContentEncoding(string $endpoint): string {
+
+		$host = parse_url($endpoint, PHP_URL_HOST);
+		if ($host and strtolower($host) === 'web.push.apple.com') {
+			return 'aes128gcm';
+		}
+
+		return 'aesgcm';
 
 	}
 

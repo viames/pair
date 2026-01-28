@@ -359,34 +359,34 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 
 	/**
-	 * Trigger function called after create() method execution.
+	 * Hook called after create() method execution.
 	 */
 	protected function afterCreate() {}
 
 	/**
-	 * Trigger function called after the mapped DB record’s deletion.
+	 * Hook called after the mapped DB record’s deletion.
 	 */
 	protected function afterDelete(): void {}
 
 	/**
-	 * Trigger function called after populate() method execution.
+	 * Hook called after populate() method execution.
 	 */
 	protected function afterPopulate() {}
 
 	/**
-	 * Trigger function called after prepareData() method execution.
+	 * Hook called after prepareData() method execution.
 	 *
 	 * @param	\stdClass	PrepareData() returned variable (passed here by reference).
 	 */
 	protected function afterPrepareData(\stdClass &$dbObj) {}
 
 	/**
-	 * Trigger function called after store() method execution.
+	 * Hook called after store() method execution.
 	 */
 	protected function afterStore() {}
 
 	/**
-	 * Trigger function called after update() or updateNotNull() method execution.
+	 * Hook called after update() or updateNotNull() method execution.
 	 */
 	protected function afterUpdate() {}
 
@@ -439,34 +439,34 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 
 	/**
-	 * Trigger function called before populate() method execution.
+	 * Hook called before populate() method execution.
 	 *
 	 * @param	\stdClass	Object with which populate(), here passed by reference.
 	 */
 	protected function beforePopulate(\stdClass &$dbRow) {}
 
 	/**
-	 * Trigger function called before prepareData() method execution.
+	 * Hook called before prepareData() method execution.
 	 */
 	protected function beforePrepareData() {}
 
 	/**
-	 * Trigger function called before store() method execution.
+	 * Hook called before store() method execution.
 	 */
 	protected function beforeStore() {}
 
 	/**
-	 * Trigger function called before create() method execution.
+	 * Hook called before create() method execution.
 	 */
 	protected function beforeCreate() {}
 
 	/**
-	 * Trigger function called before update() or updateNotNull() method execution.
+	 * Hook called before update() or updateNotNull() method execution.
 	 */
 	protected function beforeUpdate() {}
 
 	/**
-	 * Trigger function called before delete() method execution.
+	 * Hook called before delete() method execution.
 	 */
 	protected function beforeDelete(): void {}
 
@@ -811,7 +811,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		if (!$this->getId()) return false;
 
-		// trigger a custom function before deletion
+		// hook a custom function before deletion
 		$this->beforeDelete();
 
 		$class = get_called_class();
@@ -822,7 +822,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$query = 'DELETE FROM `' . $class::TABLE_NAME . '`' . $where . ' LIMIT 1';
 		$res = Database::run($query, $this->getSqlKeyValues());
 
-		// trigger a custom function after DB record’s deletion
+		// hook a custom function after DB record’s deletion
 		$this->afterDelete();
 
 		// list properties to not remove
@@ -2316,7 +2316,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	private function prepareData(array $properties): \stdClass {
 
-		// trigger before preparing data
+		// hook before preparing data
 		$this->beforePrepareData();
 
 		// properly cast a property of this object and return it
@@ -2389,7 +2389,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 			}
 		}
 
-		// trigger after prepared data
+		// hook after prepared data
 		$this->afterPrepareData($dbObj);
 
 		return $dbObj;

@@ -147,7 +147,7 @@ class User extends ActiveRecord {
 
 		$this->bindAsDatetime('lastLogin');
 
-		$this->bindAsInteger('id', 'groupId', 'languageId', 'faults');
+		$this->bindAsInteger('id', 'groupId', 'localeId', 'faults');
 
 	}
 
@@ -171,14 +171,65 @@ class User extends ActiveRecord {
 	}
 
 	/**
-	 * Trigger function called after login().
+	 * Hook called after login().
 	 */
 	protected function afterLogin() {}
 
 	/**
-	 * Trigger function called after logout().
+	 * Hook called after logout().
 	 */
 	protected function afterLogout() {}
+
+	/**
+	 * Regenerates the session ID if the session is active and headers are not sent.
+	 */
+	private function regenerateSessionId(): void {
+
+		if (session_status() === PHP_SESSION_ACTIVE and !headers_sent()) {
+			session_regenerate_id(true);
+		}
+
+	}
+
+	/**
+	 * Hook called after remember-me token creation.
+	 */
+	protected function afterRememberMeCreate() {}
+
+	/**
+	 * Hook called after remember-me login.
+	 */
+	protected function afterRememberMeLogin() {}
+
+	/**
+	 * Hook called after remember-me token renewal.
+	 */
+	protected function afterRememberMeRenew() {}
+
+	/**
+	 * Hook called after remember-me token revocation.
+	 */
+	protected function afterRememberMeUnset() {}
+
+	/**
+	 * Hook called before remember-me token creation.
+	 */
+	protected function beforeRememberMeCreate() {}
+
+	/**
+	 * Hook called before remember-me login.
+	 */
+	protected function beforeRememberMeLogin() {}
+
+	/**
+	 * Hook called before remember-me token renewal.
+	 */
+	protected function beforeRememberMeRenew() {}
+
+	/**
+	 * Hook called before remember-me token revocation.
+	 */
+	protected function beforeRememberMeUnset() {}
 
 	/**
 	 * Returns the HTML code for the user avatar (initials with colored background).
@@ -225,12 +276,12 @@ class User extends ActiveRecord {
 	}
 
 	/**
-	 * Trigger function called before login().
+	 * Hook called before login().
 	 */
 	protected function beforeLogin() {}
 
 	/**
-	 * Trigger function called before logout().
+	 * Hook called before logout().
 	 */
 	protected function beforeLogout() {}
 
@@ -318,6 +369,12 @@ class User extends ActiveRecord {
 	 */
 	public static function checkPassword(string $password, string $hash): bool {
 
+		$info = password_get_info($hash);
+
+		if (!empty($info['algo'])) {
+			return password_verify($password, $hash);
+		}
+
 		return ($hash == crypt($password, $hash));
 
 	}
@@ -329,12 +386,15 @@ class User extends ActiveRecord {
 	 */
 	public function createRememberMe(string $timezone): bool {
 
+		// hook for tasks to be executed before remember-me token creation
+		$this->beforeRememberMeCreate();
+
 		$dateTimeZone = User::getValidTimeZone($timezone);
 
 		// set a random string
 		$ur = new UserRemember();
 		$ur->userId = $this->id;
-		$ur->rememberMe = Utilities::getRandomString(32);
+		$ur->rememberMe = self::getSecureRandomString(32);
 		$ur->createdAt = new \DateTime('now', $dateTimeZone);
 
 		if (!$ur->store()) {
@@ -348,7 +408,12 @@ class User extends ActiveRecord {
 		$expires = time() + 2592000;
 
 		// set cookie and return the result
-		return setcookie(self::getRememberMeCookieName(), $content, Application::getCookieParams($expires));
+		$result = setcookie(self::getRememberMeCookieName(), $content, Application::getCookieParams($expires));
+
+		// hook for tasks to be executed after remember-me token creation
+		$this->afterRememberMeCreate();
+
+		return $result;
 
 	}
 
@@ -362,6 +427,9 @@ class User extends ActiveRecord {
 	 * @param int|null $formerUserId Optional ID of the user before impersonation.
 	 */
 	private function createSession(string $timezone, ?int $formerUserId = null): void {
+
+		// prevent session fixation on auth flows
+		$this->regenerateSessionId();
 
 		// gets a valid DateTimeZone object
 		$dateTimeZone = User::getValidTimeZone($timezone);
@@ -405,9 +473,10 @@ class User extends ActiveRecord {
 	 * Does the login action and returns an object with error, message, userId and sessionId
 	 * properties.
 	 *
-	 * @param	string	$username	Username.
-	 * @param	string	$password	Plain text password.
-	 * @param	string	$timezone	IANA time zone identifier.
+	 * @param	string		$username	Username.
+	 * @param	string		$password	Plain text password.
+	 * @param	string		$timezone	IANA time zone identifier.
+	 * @return	\stdClass				Object with error, message, userId and sessionId properties.
 	 */
 	public static function doLogin(string $username, string $password, string $timezone): \stdClass {
 
@@ -417,6 +486,8 @@ class User extends ActiveRecord {
 		$ret->message	= null;
 		$ret->userId	= null;
 		$ret->sessionId	= null;
+
+		$genericMessage = Translator::do('AUTHENTICATION_FAILED');
 
 		$query = 'SELECT * FROM `users` WHERE `' . (Env::get('PAIR_AUTH_BY_EMAIL') ? 'email' : 'username') . '` = ?';
 
@@ -436,7 +507,7 @@ class User extends ActiveRecord {
 			if ($user->faults > 9) {
 
 				$ret->error = true;
-				$ret->message = Translator::do('TOO_MANY_LOGIN_ATTEMPTS');
+				$ret->message = $genericMessage;
 				$user->addFault();
 
 				Audit::loginFailed($username, $ipAddress, $userAgent);
@@ -445,7 +516,7 @@ class User extends ActiveRecord {
 			} else if ('0' == $user->enabled) {
 
 				$ret->error = true;
-				$ret->message = Translator::do('USER_IS_DISABLED');
+				$ret->message = $genericMessage;
 				$user->addFault();
 
 				Audit::loginFailed($username, $ipAddress, $userAgent);
@@ -454,7 +525,7 @@ class User extends ActiveRecord {
 			} else if (!User::checkPassword($password, $user->hash)) {
 
 				$ret->error = true;
-				$ret->message = Translator::do('PASSWORD_IS_NOT_VALID');
+				$ret->message = $genericMessage;
 				$user->addFault();
 
 				Audit::loginFailed($username, $ipAddress, $userAgent);
@@ -492,7 +563,7 @@ class User extends ActiveRecord {
 			Audit::loginFailed($username, $ipAddress, $userAgent);
 
 			$ret->error = true;
-			$ret->message = Translator::do('USERNAME_NOT_VALID');
+			$ret->message = $genericMessage;
 
 		}
 
@@ -639,22 +710,49 @@ class User extends ActiveRecord {
 	}
 
 	/**
-	 * Creates and returns an Hash for user password adding salt.
+	 * Creates and returns a bcrypt password hash.
 	 *
 	 * @param	string	The user password.
-	 * @return	string	Hashed password
-	 *
-	 * @see		http://php.net/crypt
+	 * @return	string	Hashed password.
 	 */
 	public static function getHashedPasswordWithSalt(string $password): string {
 
-		// salt for bcrypt needs to be 22 base64 characters (only [./0-9A-Za-z])
-		$salt = substr(str_replace('+', '.', base64_encode(sha1(microtime(true), true))), 0, 22);
+		$hash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
 
-		// 2a = bcrypt algorithm selector, 12 = the workload factor
-		$hash = crypt($password, '$2a$12$' . $salt);
+		if ($hash === false) {
+			try {
+				$salt = substr(str_replace('+', '.', base64_encode(random_bytes(16))), 0, 22);
+			} catch (\Throwable $e) {
+				$salt = substr(str_replace('+', '.', base64_encode(sha1(microtime(true), true))), 0, 22);
+			}
+
+			$hash = crypt($password, '$2y$12$' . $salt);
+		}
 
 		return $hash;
+
+	}
+
+	/**
+	 * Returns a cryptographically secure random string using the allowed charset.
+	 *
+	 * @param int $length Desired string length.
+	 */
+	private static function getSecureRandomString(int $length): string {
+
+		$chars = Utilities::RANDOM_STRING_CHARS;
+		$maxIndex = strlen($chars) - 1;
+		$value = '';
+
+		try {
+			for ($i = 0; $i < $length; $i++) {
+				$value .= $chars[random_int(0, $maxIndex)];
+			}
+		} catch (\Throwable $e) {
+			return Utilities::getRandomString($length);
+		}
+
+		return $value;
 
 	}
 
@@ -895,6 +993,15 @@ class User extends ActiveRecord {
 		// if user exists, return it
 		if (is_a($user, 'Pair\Models\User')) {
 
+			// prevent remember-me login for disabled/locked users
+			if (!$user->enabled or $user->faults > 9) {
+				$user->unsetRememberMe();
+				return false;
+			}
+
+			// hook for tasks to be executed before remember-me login
+			$user->beforeRememberMeLogin();
+
 			$user->createSession($cookieContent->timezone);
 			$user->renewRememberMe();
 
@@ -902,6 +1009,9 @@ class User extends ActiveRecord {
 			$app->setCurrentUser($user);
 
 			Audit::rememberMeLogin();
+
+			// hook for tasks to be executed after remember-me login
+			$user->afterRememberMeLogin();
 
 			return true;
 
@@ -960,6 +1070,9 @@ class User extends ActiveRecord {
 
 		$cookieContent = self::getRememberMeCookie();
 
+		// hook for tasks to be executed before remember-me token renewal
+		$this->beforeRememberMeRenew();
+
 		// update created_at date and delete older remember-me records
 		Database::run('UPDATE `users_remembers` SET `created_at` = NOW() WHERE `user_id` = ? AND `remember_me` = ?', [$this->id, $cookieContent->rememberMe]);
 		Database::run('DELETE FROM `users_remembers` WHERE `user_id` = ? AND `remember_me` != ?', [$this->id, $cookieContent->rememberMe]);
@@ -968,7 +1081,12 @@ class User extends ActiveRecord {
 		$expires = time() + 2592000;
 
 		// set cookie and return the result
-		return setcookie($cookieName, $_COOKIE[$cookieName], Application::getCookieParams($expires));
+		$result = setcookie($cookieName, $_COOKIE[$cookieName], Application::getCookieParams($expires));
+
+		// hook for tasks to be executed after remember-me token renewal
+		$this->afterRememberMeRenew();
+
+		return $result;
 
 	}
 
@@ -1015,11 +1133,19 @@ class User extends ActiveRecord {
 			return false;
 		}
 
+		// hook for tasks to be executed before remember-me token revocation
+		$this->beforeRememberMeUnset();
+
 		// delete the current remember-me DB record
 		Database::run('DELETE FROM `users_remembers` WHERE `user_id` = ? AND `remember_me` = ?', [$this->id, $cookieContent->rememberMe]);
 
 		// delete the current remember-me Cookie
-		return setcookie(self::getRememberMeCookieName(), '', Application::getCookieParams(-1));
+		$result = setcookie(self::getRememberMeCookieName(), '', Application::getCookieParams(-1));
+
+		// hook for tasks to be executed after remember-me token revocation
+		$this->afterRememberMeUnset();
+
+		return $result;
 
 	}
 
