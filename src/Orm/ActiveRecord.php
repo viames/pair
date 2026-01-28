@@ -399,7 +399,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$class = get_called_class();
 
 		// runs query
-		$records = Database::load('SELECT * FROM `' . $class::TABLE_NAME . '`');
+		$query = Query::table($class::TABLE_NAME);
+		$records = Database::load($query->toSql(), $query->getBindings());
 
 		// builds each object
 		foreach ($records as $row) {
@@ -633,10 +634,12 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 
 		// build the query
-		$query = 'SELECT COUNT(1) FROM `' . $table . '` WHERE ' . $column . ' = ?';
+		$query = Query::table($table)
+			->select('COUNT(1)')
+			->where($column, $value);
 
 		// search the record into the db
-		return (bool)Database::load($query, (array) $value, Database::COUNT);
+		return (bool)Database::load($query->toSql(), $query->getBindings(), Database::COUNT);
 
 	}
 
@@ -671,11 +674,13 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	final public static function countAllObjects($filters = []): int {
 
-		$db			= Database::getInstance();
-		$class		= get_called_class();
-		$binds		= $class::getBinds();
+		$db	= Database::getInstance();
+		$class = get_called_class();
+		$binds = $class::getBinds();
 
-		$where		= '';
+		$queryBuilder = Query::table($class::TABLE_NAME)
+			->select('COUNT(1)');
+
 		$conds		= [];
 		$whereLog	= '';
 
@@ -691,7 +696,13 @@ abstract class ActiveRecord implements \JsonSerializable {
 					$field = $binds[$property];
 
 					// creates where condition
-					$conds[] = '`' . $field . '`' . (is_null($value) ? ' IS NULL' : ' = ' . $db->quote($value));
+					if (is_null($value)) {
+						$queryBuilder->whereNull($field);
+						$conds[] = '`' . $field . '` IS NULL';
+					} else {
+						$queryBuilder->where($field, $value);
+						$conds[] = '`' . $field . '` = ' . $db->quote($value);
+					}
 
 				} else {
 
@@ -704,14 +715,10 @@ abstract class ActiveRecord implements \JsonSerializable {
 			// log message
 			$whereLog .= count($conds) ? ' under condition ' . implode(' AND ', $conds) : '';
 
-			// builds where
-			$where = count($conds) ? ' WHERE ' . implode(' AND ', $conds) : '';
-
 		}
 
 		// runs query
-		$query = 'SELECT COUNT(1) FROM `' . $class::TABLE_NAME . '`' . $where;
-		$count = Database::load($query, [], Database::COUNT);
+		$count = Database::load($queryBuilder->toSql(), $queryBuilder->getBindings(), Database::COUNT);
 
 		$logger = Logger::getInstance();
 		$logger->debug('Counted ' . $count . ' ' . $class . ' objects' . $whereLog);
@@ -850,17 +857,18 @@ abstract class ActiveRecord implements \JsonSerializable {
 	final public static function exists(mixed $keys): bool {
 
 		// initialize some vars
-		$tableKey	= (array)static::TABLE_KEY;
-		$conds		= [];
+		$tableKey = (array)static::TABLE_KEY;
+		$keyValues = array_values((array)$keys);
 
-		foreach ($tableKey as $field) {
-			$conds[] = $field . ' = ?';
+		$query = Query::table(static::TABLE_NAME)
+			->select('COUNT(1)');
+
+		foreach ($tableKey as $index => $field) {
+			$query->where($field, $keyValues[$index] ?? null);
 		}
 
-		$query = 'SELECT COUNT(1) FROM `' . static::TABLE_NAME . '` WHERE ' . implode(' AND ', $conds);
-
 		// execute and return value
-		return (bool)Database::load($query, (array)$keys, Database::COUNT);
+		return (bool)Database::load($query->toSql(), $query->getBindings(), Database::COUNT);
 
 	}
 
@@ -869,13 +877,17 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	final public function existsInDb(): bool {
 
-		$conds = implode(' AND ', $this->getSqlKeyConditions());
+		$tableKey = (array)static::TABLE_KEY;
+		$keyValues = $this->getSqlKeyValues();
 
-		return (bool)Database::load(
-			'SELECT COUNT(1) FROM `' . static::TABLE_NAME . '` WHERE ' . $conds,
-			$this->getSqlKeyValues(),
-			Database::COUNT
-		);
+		$query = Query::table(static::TABLE_NAME)
+			->select('COUNT(1)');
+
+		foreach ($tableKey as $index => $field) {
+			$query->where($field, $keyValues[$index] ?? null);
+		}
+
+		return (bool)Database::load($query->toSql(), $query->getBindings(), Database::COUNT);
 
 	}
 
@@ -906,33 +918,23 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	public static function findByAttributes(\stdClass $attributes): ?static {
 
-		$query = 'SELECT * FROM `' . static::TABLE_NAME . '` WHERE ';
-
-		$params = [];
-		$conds  = [];
+		$query = Query::table(static::TABLE_NAME);
 		$binds  = static::getBinds();
 
 		foreach ($attributes as $property => $value) {
 
 			if (isset($binds[$property])) {
 
+				if ($value instanceof \DateTime) {
+					$value = $value->format('Y-m-d H:i:s');
+				} else if (is_bool($value)) {
+					$value = (int)$value;
+				}
+
 				if (is_null($value)) {
-
-					$conds[] = '`' . $binds[$property] . '` IS NULL';
-					$params[] = null;
-
+					$query->whereNull($binds[$property]);
 				} else {
-
-					$conds[] = '`' . $binds[$property] . '` = ?';
-
-					if ($value instanceof \DateTime) {
-						$params[] = $value->format('Y-m-d H:i:s');
-					} else if (is_bool($value)) {
-						$params[] = (int)$value;
-					} else {
-						$params[] = $value;
-					}
-
+					$query->where($binds[$property], $value);
 				}
 
 			} else {
@@ -943,9 +945,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		}
 
-		$query .= implode(' AND ', $conds);
-
-		return static::getObjectByQuery($query, $params);
+		return static::getObjectByQuery($query->toSql(), $query->getBindings());
 
 	}
 
@@ -1027,17 +1027,18 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	final public static function getAllObjects(?array $filters = [], string|array $orderBy = []): Collection {
 
-		$db			= Database::getInstance();
-		$class		= get_called_class();
-		$binds		= $class::getBinds();
+		$db = Database::getInstance();
+		$class = get_called_class();
+		$binds = $class::getBinds();
 
-		$where		= '';
-		$conds		= [];
-		$whereLog	= '';
+		$queryBuilder = Query::table($class::TABLE_NAME)
+			->select(static::getQueryColumns());
 
-		$order		= '';
-		$orderClause= [];
-		$orderBy	= (array)$orderBy;
+		$conds = [];
+		$whereLog = '';
+
+		$orderClause = [];
+		$orderBy = (array)$orderBy;
 
 		if (is_array($filters)) {
 
@@ -1056,7 +1057,13 @@ abstract class ActiveRecord implements \JsonSerializable {
 					$field = $binds[$property];
 
 					// creates where condition
-					$conds[] = '`' . $field . '`' . (is_null($value) ? ' IS NULL' : ' = ' . (is_int($value) ? $value : $db->quote($value)));
+					if (is_null($value)) {
+						$queryBuilder->whereNull($field);
+						$conds[] = '`' . $field . '` IS NULL';
+					} else {
+						$queryBuilder->where($field, $value);
+						$conds[] = '`' . $field . '` = ' . (is_int($value) ? $value : $db->quote($value));
+					}
 
 				} else {
 
@@ -1068,9 +1075,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 			// log message
 			$whereLog .= count($conds) ? ' under condition WHERE ' . implode(' AND ', $conds) : '';
-
-			// builds where
-			$where = count($conds) ? ' WHERE ' . implode(' AND ', $conds) : '';
 
 		}
 
@@ -1092,10 +1096,11 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 					// validates direction
 					if (!$direction or !in_array(strtolower($direction), ['asc','desc'])) {
-						$direction = '';
+						$direction = 'ASC';
 					}
 
 					$orderClause[] = '`' . $field . '` ' . strtoupper($direction);
+					$queryBuilder->orderBy($field, $direction);
 
 				} else {
 
@@ -1105,13 +1110,10 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 			}
 
-			// builds order by
-			$order = count($orderClause) ? ' ORDER BY ' . implode(', ', $orderClause) : '';
-
 		}
 
 		// runs query
-		$list = Database::load('SELECT ' . static::getQueryColumns() . ' FROM `' . $class::TABLE_NAME . '`' . $where . $order);
+		$list = Database::load($queryBuilder->toSql(), $queryBuilder->getBindings());
 
 		$objects = [];
 
@@ -1753,9 +1755,12 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		$tableKey = is_array(static::TABLE_KEY) ? static::TABLE_KEY[0] : static::TABLE_KEY;
 
-		$query = 'SELECT * FROM `' . static::TABLE_NAME . '` WHERE `' . $tableKey . '` < ? ORDER BY `' . $tableKey . '` DESC';
+		$query = Query::table(static::TABLE_NAME)
+			->where($tableKey, '<', $this->$tableKey)
+			->orderBy($tableKey, 'desc')
+			->limit(1);
 
-		return static::getObjectByQuery($query, [$this->$tableKey]);
+		return static::getObjectByQuery($query->toSql(), $query->getBindings());
 
 	}
 
@@ -2182,10 +2187,17 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 			// get object property name
 			$property = array_search($r->REFERENCED_COLUMN_NAME, static::getBinds());
+			$value = $this->$property;
+
+			if (is_null($value)) {
+				continue;
+			}
 
 			// count for existing records that references
-			$query = 'SELECT COUNT(*) FROM `' . $r->TABLE_NAME . '` WHERE `' . $r->COLUMN_NAME . '` = ?';
-			$count = Database::load($query, [$this->$property], Database::COUNT);
+			$query = Query::table($r->TABLE_NAME)
+				->select('COUNT(*)')
+				->where($r->COLUMN_NAME, $value);
+			$count = Database::load($query->toSql(), $query->getBindings(), Database::COUNT);
 
 			// set flag as true
 			if ($count) $exists = true;
@@ -2226,12 +2238,19 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// inherited class
 		$class = get_called_class();
 
-		// build the SQL where line
-		$where = ' WHERE ' . implode(' AND ', $this->getSqlKeyConditions());
+		$tableKey = (array)$class::TABLE_KEY;
+		$keyValues = array_values((array)$key);
 
 		// load the requested record
-		$query = 'SELECT ' . static::getQueryColumns() . ' FROM `' . $class::TABLE_NAME . '`' . $where . ' LIMIT 1';
-		$obj = Database::load($query, (array)$key, Database::OBJECT);
+		$query = Query::table($class::TABLE_NAME)
+			->select(static::getQueryColumns())
+			->limit(1);
+
+		foreach ($tableKey as $index => $field) {
+			$query->where($field, $keyValues[$index] ?? null);
+		}
+
+		$obj = Database::load($query->toSql(), $query->getBindings(), Database::OBJECT);
 
 		// if db record exists, will populate the object properties
 		if (is_object($obj)) {

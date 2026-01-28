@@ -197,9 +197,20 @@ abstract class Model {
 			return new Collection();
 		}
 
-		$query = $optionalQuery ?? $this->getQuery($class) . $this->getOrderLimitSql();
+		$query = $optionalQuery ?? $this->getQuery($class);
+		$params = [];
 
-		return $class::getObjectsByQuery($query, []);
+		if ($query instanceof Query) {
+			$params = $query->getBindings();
+			$query = $query->toSql();
+		} else {
+			$query = (string)$query;
+			if (is_null($optionalQuery)) {
+				$query .= $this->getOrderLimitSql();
+			}
+		}
+
+		return $class::getObjectsByQuery($query, $params);
 
 	}
 
@@ -211,22 +222,22 @@ abstract class Model {
 	 */
 	public function countItems(string $class, Query|string|null $optionalQuery = null): int {
 
-		$type = gettype($optionalQuery);
+		$params = [];
 
-		switch ($type) {
-			case 'object':
-				$query = $optionalQuery->toSql();
-				break;
-
-			case 'string':
-				$query = $optionalQuery;
-				break;
-
-			default:
-				$query = $this->getQuery($class);
+		if ($optionalQuery instanceof Query) {
+			$query = $optionalQuery->toSql();
+			$params = $optionalQuery->getBindings();
+		} else if (is_string($optionalQuery)) {
+			$query = $optionalQuery;
+		} else {
+			$query = $this->getQuery($class);
+			if ($query instanceof Query) {
+				$params = $query->getBindings();
+				$query = $query->toSql();
+			}
 		}
 
-		return Database::load('SELECT COUNT(1) FROM (' . $query . ') AS `result`', [], Database::COUNT);
+		return Database::load('SELECT COUNT(1) FROM (' . $query . ') AS `result`', $params, Database::COUNT);
 
 	}
 

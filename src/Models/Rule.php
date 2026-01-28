@@ -46,16 +46,16 @@ class Rule extends ActiveRecord {
 		'super_only'	=> ['tinyint(1)', 'NO', '', '0', ''],
 		'module_id'		=> ['int unsigned', 'NO', 'MUL', NULL, '']
 	];
-	
+
 	/**
 	 * Set for converts from string to Datetime, integer or boolean object in two ways.
 	 */
 	protected function _init(): void {
-	
+
 		$this->bindAsInteger('id');
-	
+
 		$this->bindAsBoolean('superOnly');
-	
+
 	}
 
 	/**
@@ -75,22 +75,22 @@ class Rule extends ActiveRecord {
 		return $varFields;
 
 	}
-	
+
 	/**
 	 * Deletes all Acl of this Rule.
 	 */
 	protected function beforeDelete(): void {
-	
+
 		$acls = Acl::getAllObjects(['ruleId' => $this->id]);
 		foreach ($acls as $acl) {
 			$acl->delete();
 		}
-	
+
 	}
-	
+
 	/**
 	 * Returns the db-record of the current Rule object, NULL otherwise.
-	 * 
+	 *
 	 * @param	int		Module ID.
 	 * @param	string	Action name.
 	 * @param	bool	Optional flag to get super-only rules.

@@ -71,6 +71,9 @@ Primary goals: provide a solid foundation for MVC architecture, database abstrac
 - Interfaces: suffix `Interface`.
 - Constants: `UPPER_SNAKE_CASE`.
 
+### Ordering
+- Methods in classes should be ordered alphabetically (case-insensitive) when possible.
+
 ### Comments
 - Single-line `//` in lowercase.
 - Docblock `/** ... */` as complete sentences with punctuation.

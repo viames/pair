@@ -46,6 +46,23 @@ class Group extends ActiveRecord {
 	}
 
 	/**
+	 * Adds a new Acl object for this group by rule ID.
+	 *
+	 * @param int $ruleId ID of the rule to add.
+	 * @throws \Exception If any error occurs during the creation of Acl objects.
+	 */
+	public function addAcl(int $ruleId): void {
+
+		$acl			= new Acl();
+		$acl->ruleId	= $ruleId;
+		$acl->groupId   = $this->id;
+		$acl->default	= false;
+
+		$acl->create();
+
+	}
+
+	/**
 	 * Adds all rules that don’t exist in ACL table for this group but super users do have.
 	 */
 	public function addAllAcl(): void {
@@ -133,7 +150,8 @@ class Group extends ActiveRecord {
 			FROM `rules` AS r
 			INNER JOIN `modules` AS m ON m.`id` = r.`module_id`
 			WHERE `super_only` = 0
-			AND r.`id` NOT IN(SELECT a.`rule_id` FROM `acl` AS a WHERE a.`group_id` = ?)';
+			AND r.`id` NOT IN(SELECT a.`rule_id` FROM `acl` AS a WHERE a.`group_id` = ?)
+			ORDER BY m.`name` ASC, r.`action` ASC';
 
 		return Rule::getObjectsByQuery($query, [$this->id]);
 

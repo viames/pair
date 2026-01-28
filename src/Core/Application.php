@@ -545,11 +545,15 @@ class Application {
 				? [self::RESERVED_COOKIE_NAMES[$stateName]]
 				: [];
 
-			// as of PHP 8.4.0 throws an Exception
+			// as of PHP 8.4.0 supports throw_on_error
 			if (PHP_VERSION >= '8.4.0') {
 				try {
-					return unserialize($_COOKIE[$cookieName], ['allowed_classes' => $allowedClasses]);
-				} catch (\Exception $e) {
+					return unserialize($_COOKIE[$cookieName], [
+						'allowed_classes' => $allowedClasses,
+						'throw_on_error' => true
+					]);
+				} catch (\Throwable $e) {
+					$this->unsetPersistentState($stateName);
 					throw new AppException('Error unserializing cookie ' . $cookieName, ErrorCodes::UNSERIALIZE_ERROR, $e);
 				}
 			} else if (Utilities::isSerialized($_COOKIE[$cookieName], $allowedClasses)) {

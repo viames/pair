@@ -176,6 +176,11 @@ class User extends ActiveRecord {
 	protected function afterLogin() {}
 
 	/**
+	 * Hook called after a failed login attempt.
+	 */
+	protected function afterLoginFailed() {}
+
+	/**
 	 * Hook called after logout().
 	 */
 	protected function afterLogout() {}
@@ -512,6 +517,9 @@ class User extends ActiveRecord {
 
 				Audit::loginFailed($username, $ipAddress, $userAgent);
 
+				// hook for tasks to be executed after failed login
+				$user->afterLoginFailed();
+
 			// user disabled
 			} else if ('0' == $user->enabled) {
 
@@ -521,6 +529,9 @@ class User extends ActiveRecord {
 
 				Audit::loginFailed($username, $ipAddress, $userAgent);
 
+				// hook for tasks to be executed after failed login
+				$user->afterLoginFailed();
+
 			// user password doesn’t match
 			} else if (!User::checkPassword($password, $user->hash)) {
 
@@ -529,6 +540,9 @@ class User extends ActiveRecord {
 				$user->addFault();
 
 				Audit::loginFailed($username, $ipAddress, $userAgent);
+
+				// hook for tasks to be executed after failed login
+				$user->afterLoginFailed();
 
 			// login ok
 			} else {
