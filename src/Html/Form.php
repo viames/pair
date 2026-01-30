@@ -15,15 +15,18 @@ use Pair\Html\FormControls\Email;
 use Pair\Html\FormControls\File;
 use Pair\Html\FormControls\Hidden;
 use Pair\Html\FormControls\Image;
+use Pair\Html\FormControls\Meter;
 use Pair\Html\FormControls\Month;
 use Pair\Html\FormControls\Number;
 use Pair\Html\FormControls\Password;
+use Pair\Html\FormControls\Progress;
 use Pair\Html\FormControls\Search;
 use Pair\Html\FormControls\Select;
 use Pair\Html\FormControls\Tel;
 use Pair\Html\FormControls\Text;
 use Pair\Html\FormControls\Textarea;
 use Pair\Html\FormControls\Time;
+use Pair\Html\FormControls\Toggle;
 use Pair\Html\FormControls\Url;
 use Pair\Helpers\Post;
 use Pair\Orm\ActiveRecord;
@@ -124,12 +127,11 @@ class Form {
 	 * @param	string	Type (submit -default-, button, reset).
 	 * @param	string	HTML name for this control (optional).
 	 * @param	string	More parameters as associative array tag=>value (optional).
-	 * @param	string	Name of Font Awesome icon class (optional).
 	 */
-	public static function buildButton(string $value, string $type = 'submit', ?string $name = null, $attributes = [], $faIcon = null): string {
+	public static function buildButton(string $value, string $type = 'submit', ?string $name = null, $attributes = []): string {
 
 		$control = new Button($name, $attributes);
-		$control->type($type)->faIcon($faIcon)->value($value);
+		$control->type($type)->value($value);
 
 		return $control->render();
 
@@ -678,6 +680,14 @@ class Form {
 
 	}
 
+	public function toggle(string $name, array $attributes = []): Toggle {
+
+		$control = new Toggle($name, $attributes);
+		$this->add($control);
+		return $control;
+
+	}
+
 	/**
 	 * Adds an URL input object to this Form object. Chainable method.
 	 *
@@ -739,6 +749,9 @@ class Form {
 
 	/**
 	 * Assigns all attributes of passed ActiveRecord children to controls with same name.
+	 * This must be used after all controls have been defined.
+	 * Note: only properties with matching control names will be assigned.
+	 * 
 	 * @param	ActiveRecord	An object inherited by ActiveRecord.
 	 */
 	public function values(ActiveRecord $object): void {
