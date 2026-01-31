@@ -54,6 +54,12 @@ Primary goals: provide a solid foundation for MVC architecture, database abstrac
 - Core classes reside under the `Pair\` namespace and follow the PSR-4 standard for autoloading.
 - One class per file; **filename matches class name**.
 
+### Routing and URL mapping (Pair apps)
+- After the base path, URLs follow `/<module>/<action>/<params...>`.
+- The module maps to `/modules/<module>` in the host app and its `controller.php` (extending `Pair\Core\Controller`).
+- The action typically maps to an `<action>Action()` method if present.
+- Pair auto-loads the module `model.php`, the view `view<Action>.php` (e.g. `UserViewLogin`), and the layout `/modules/<module>/layouts/<action>.php` by default.
+
 ---
 
 ## Coding standards (framework-specific)

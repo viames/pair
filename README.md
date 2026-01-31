@@ -57,6 +57,21 @@ Main directives:
 
 Also included: a tiny plugin system, `PairUI.http` helpers, and `PairUI.createApp()` for quick setup.
 
+### Routing basics (Pair apps)
+
+In Pair applications, the default routing format (after the base path) is:
+
+`/<module>/<action>/<params...>`
+
+Example: `example.com/user/login`
+
+- module: `/modules/user`
+- controller: `/modules/user/controller.php` (extends `Pair/Core/Controller.php`)
+- action: `loginAction()` when present
+- auto-loaded: `model.php`, view `viewLogin.php` (class `UserViewLogin`), and layout `/modules/user/layouts/login.php`
+
+The remaining segments are treated as parameters (e.g. resource IDs).
+
 ## Installation
 
 ### Composer
