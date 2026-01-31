@@ -7,8 +7,14 @@ namespace Pair\Push;
  */
 class PushDispatcher {
 
+	/**
+	 * The subscription repository, used to retrieve and manage subscriptions.
+	 */
 	private SubscriptionRepository $repository;
 
+	/**
+	 * The Web Push sender, used to send notifications.
+	 */
 	private WebPushSender $sender;
 
 	/**
@@ -34,12 +40,16 @@ class PushDispatcher {
 	public function sendToUser(int $userId, Notification $notification): array {
 
 		$results = [];
+
+		// each User can have multiple subscriptions
 		$subscriptions = $this->repository->listByUser($userId);
 
+		// send notification to each subscription of the user
 		foreach ($subscriptions as $subscription) {
 			$result = $this->sender->send($notification, $subscription);
 			$results[] = $result;
 
+			// if the subscription is no longer valid, delete it
 			if ($result->shouldDeleteSubscription) {
 				$this->repository->deleteByEndpoint($result->endpoint);
 			}

@@ -7,14 +7,29 @@ namespace Pair\Push;
  */
 class DeliveryResult {
 
+	/**
+	 * Whether the delivery was successful.
+	 */
 	public bool $success = false;
 
+	/**
+	 * The HTTP status code, if available.
+	 */
 	public ?int $statusCode = null;
 
+	/**
+	 * The error message, if any.
+	 */
 	public ?string $error = null;
 
+	/**
+	 * The subscription endpoint.
+	 */
 	public string $endpoint;
 
+	/**
+	 * Whether the subscription should be deleted.
+	 */
 	public bool $shouldDeleteSubscription = false;
 
 	/**

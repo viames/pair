@@ -35,6 +35,20 @@ class WebPushSender {
 	}
 
 	/**
+	 * Resolve the content encoding for a subscription endpoint.
+	 */
+	private function resolveContentEncoding(string $endpoint): string {
+
+		$host = parse_url($endpoint, PHP_URL_HOST);
+		if ($host and strtolower($host) === 'web.push.apple.com') {
+			return 'aes128gcm';
+		}
+
+		return 'aesgcm';
+
+	}
+
+	/**
 	 * Sends a notification to a single subscription. This method does not handle subscription deletion.
 	 *
 	 * @param Notification $notification The notification to send.
@@ -58,6 +72,7 @@ class WebPushSender {
 
 			$webPush = new WebPush($authConfig);
 
+			// prepare subscription
 			$contentEncoding = $this->resolveContentEncoding($endpoint);
 			$sub = Subscription::create([
 				'endpoint' => $subscription->endpoint,
@@ -66,6 +81,7 @@ class WebPushSender {
 				'contentEncoding' => $contentEncoding,
 			]);
 
+			// prepare payload
 			$payload = json_encode($notification->toPayload());
 
 			$report = null;
@@ -79,11 +95,13 @@ class WebPushSender {
 				}
 			}
 
+			// analyze report
 			if ($report and method_exists($report, 'isSuccess') and $report->isSuccess()) {
 				$result->success = true;
 				return $result;
 			}
 
+			// extract status code and error message
 			if ($report and method_exists($report, 'getResponse')) {
 				$response = $report->getResponse();
 				if ($response and method_exists($response, 'getStatusCode')) {
@@ -91,12 +109,14 @@ class WebPushSender {
 				}
 			}
 
+			// extract error message
 			if ($report and method_exists($report, 'getReason')) {
 				$result->error = $report->getReason();
 			} else if (!$report) {
 				$result->error = 'Push report not available.';
 			}
 
+			// determine if subscription should be deleted
 			if (in_array($result->statusCode, [404, 410], true)) {
 				$result->shouldDeleteSubscription = true;
 			}
@@ -108,20 +128,6 @@ class WebPushSender {
 		}
 
 		return $result;
-
-	}
-
-	/**
-	 * Resolve the content encoding for a subscription endpoint.
-	 */
-	private function resolveContentEncoding(string $endpoint): string {
-
-		$host = parse_url($endpoint, PHP_URL_HOST);
-		if ($host and strtolower($host) === 'web.push.apple.com') {
-			return 'aes128gcm';
-		}
-
-		return 'aesgcm';
 
 	}
 
