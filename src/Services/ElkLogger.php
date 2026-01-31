@@ -59,13 +59,15 @@ class ElkLogger {
      *
      * @param	string	Log message.
      * @param	string	Log level info|warning|error, default info.
+     * @param	array	Optional context data.
      */
-    public function log(string $message, string $level = 'info'): void {
+    public function log(string $message, string $level = 'info', array $context = []): void {
 
         $logData = [
             '@timestamp'  => date('c'), // ISO 8601 timestamp
             'level'       => $level,
             'message'     => $message,
+            'context'     => $context,
             'application' => Env::get('APP_NAME') . ' ' . Env::get('APP_VERSION'),
             'server'      => $_SERVER['SERVER_NAME'] ?? 'localhost',
             'ip'          => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
@@ -106,7 +108,9 @@ class ElkLogger {
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_CUSTOMREQUEST  => 'POST',
             CURLOPT_POSTFIELDS     => $payload,
-            CURLOPT_HTTPHEADER     => $headers
+            CURLOPT_HTTPHEADER     => $headers,
+            CURLOPT_CONNECTTIMEOUT => 2,
+            CURLOPT_TIMEOUT        => 5
         ]);
 
         $response = curl_exec($ch);
