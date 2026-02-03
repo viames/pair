@@ -12,86 +12,86 @@ class Query {
 	 *
 	 * @var	string[]
 	 */
-	protected array $columns = ['*'];
+	public array $columns = ['*'];
 
 	/**
 	 * Table to query.
 	 */
-	protected ?string $from = null;
+	public ?string $from = null;
 
 	/**
 	 * Join clauses.
 	 *
 	 * @var	array<int, array<string, mixed>>
 	 */
-	protected array $joins = [];
+	public array $joins = [];
 
 	/**
 	 * Where clauses.
 	 *
 	 * @var	array<int, array<string, mixed>>
 	 */
-	protected array $wheres = [];
+	public array $wheres = [];
 
 	/**
 	 * Group by columns.
 	 *
 	 * @var	string[]
 	 */
-	protected array $groups = [];
+	public array $groups = [];
 
 	/**
 	 * Having clauses.
 	 *
 	 * @var	array<int, array<string, mixed>>
 	 */
-	protected array $havings = [];
+	public array $havings = [];
 
 	/**
 	 * Order by clauses.
 	 *
 	 * @var	array<int, array{column: string, direction: string}>
 	 */
-	protected array $orders = [];
+	public array $orders = [];
 
 	/**
 	 * Union queries.
 	 *
 	 * @var	array<int, array{sql: string, all: bool, bindings: array<int, mixed>}>
 	 */
-	protected array $unions = [];
+	public array $unions = [];
 
 	/**
 	 * Query limit.
 	 */
-	protected ?int $limit = null;
+	public ?int $limit = null;
 
 	/**
 	 * Query offset.
 	 */
-	protected ?int $offset = null;
+	public ?int $offset = null;
 
 	/**
 	 * Distinct flag.
 	 */
-	protected bool $distinct = false;
+	public bool $distinct = false;
 
 	/**
 	 * Row lock clause.
 	 */
-	protected ?string $lock = null;
+	public ?string $lock = null;
 
 	/**
 	 * Whether to wrap identifiers with backticks when safe.
 	 */
-	protected bool $wrapIdentifiers = true;
+	public bool $wrapIdentifiers = true;
 
 	/**
 	 * Bindings grouped by clause type.
 	 *
 	 * @var	array<string, array<int, mixed>>
 	 */
-	protected array $bindings = [
+	public array $bindings = [
 		'select' => [],
 		'from' => [],
 		'join' => [],
@@ -102,6 +102,8 @@ class Query {
 		'order' => []
 	];
 
+	protected QueryGrammar $grammar;
+
 	/**
 	 * Create a new query instance.
 	 *
@@ -109,9 +111,48 @@ class Query {
 	 */
 	public function __construct(?string $table = null) {
 
+		$this->grammar = new QueryGrammar();
+
 		if ($table) {
 			$this->from($table);
 		}
+
+	}
+
+	/**
+	 * Execute an aggregate function on the query.
+	 *
+	 * @param	string	$function	Aggregate function.
+	 * @param	string	$column		Column name or expression.
+	 */
+	public function aggregate(string $function, string $column = '*'): mixed {
+
+		$query = clone $this;
+		$query->columns = [];
+		$query->bindings['select'] = [];
+		$query->orders = [];
+		$query->bindings['order'] = [];
+		$query->limit = null;
+		$query->offset = null;
+
+		$column = $column === '*' ? '*' : $this->wrapIdentifier($column);
+
+		$query->selectRaw(strtoupper($function) . '(' . $column . ') AS aggregate');
+
+		$result = Database::load($query->toSql(), $query->getBindings(), Database::RESULT_LIST);
+
+		return $result[0] ?? null;
+
+	}
+
+	/**
+	 * Get the average of the given column.
+	 *
+	 * @param	string	$column	Column name or expression.
+	 */
+	public function avg(string $column): mixed {
+
+		return $this->aggregate('AVG', $column);
 
 	}
 
@@ -121,6 +162,17 @@ class Query {
 	public function __toString(): string {
 
 		return $this->toSql();
+
+	}
+
+	/**
+	 * Get the count of the results.
+	 *
+	 * @param	string	$column	Column name or expression.
+	 */
+	public function count(string $column = '*'): int {
+
+		return (int)$this->aggregate('COUNT', $column);
 
 	}
 
@@ -138,46 +190,7 @@ class Query {
 		$this->columns = array_merge($this->columns, $columns);
 
 		return $this;
-
-	}
-
-	/**
-	 * Add a raw select expression.
-	 *
-	 * @param	string	$sql		Raw SQL.
-	 * @param	array<int, mixed>	$bindings	Bindings for the raw expression.
-	 */
-	public function selectRaw(string $sql, array $bindings = []): static {
-
-		$this->addSelect($sql);
-
-		if (count($bindings)) {
-			$this->bindings['select'] = array_merge($this->bindings['select'], $bindings);
-		}
-
-		return $this;
-
-	}
-
-	/**
-	 * Add a subquery select expression.
-	 *
-	 * @param	Query|callable|string	$query	Subquery builder, callback or SQL.
-	 * @param	string					$as		Alias for the subquery.
-	 */
-	public function selectSub(Query|callable|string $query, string $as): static {
-
-		$subquery = $this->createSubquery($query);
-		$alias = $this->wrapIdentifier($as);
-
-		$this->addSelect('(' . $subquery['sql'] . ') AS ' . $alias);
-
-		if (count($subquery['bindings'])) {
-			$this->bindings['select'] = array_merge($this->bindings['select'], $subquery['bindings']);
-		}
-
-		return $this;
-
+	
 	}
 
 	/**
@@ -214,180 +227,19 @@ class Query {
 	}
 
 	/**
-	 * Compile the column list.
-	 */
-	protected function compileColumns(): string {
-
-		$columns = [];
-
-		foreach ($this->columns as $column) {
-			$columns[] = $this->wrapAliasedIdentifier($column);
-		}
-
-		return implode(', ', $columns);
-
-	}
-
-	/**
-	 * Compile the join clauses.
-	 */
-	protected function compileJoins(): string {
-
-		$joins = [];
-
-		foreach ($this->joins as $join) {
-			if (isset($join['sql'])) {
-				$joins[] = $join['sql'];
-				continue;
-			}
-
-			$table = $this->wrapTable($join['table']);
-
-			if (isset($join['clauses'])) {
-				$clauses = $this->compileJoinClauses($join['clauses']);
-				$joins[] = $join['type'] . ' JOIN ' . $table . (strlen($clauses) ? ' ON ' . $clauses : '');
-				continue;
-			}
-
-			$first = $this->wrapIdentifier($join['first']);
-			$second = $this->wrapIdentifier($join['second']);
-			$joins[] = $join['type'] . ' JOIN ' . $table . ' ON ' . $first . ' ' . $join['operator'] . ' ' . $second;
-		}
-
-		return implode(' ', $joins);
-
-	}
-
-	/**
-	 * Compile join clauses.
+	 * Add a cross join clause.
 	 *
-	 * @param	array<int, array<string, mixed>>	$clauses	Clauses to compile.
+	 * @param	string	$table	Join table.
 	 */
-	protected function compileJoinClauses(array $clauses): string {
+	public function crossJoin(string $table): static {
 
-		$parts = [];
+		$this->joins[] = [
+			'type' => 'CROSS',
+			'table' => $table,
+			'clauses' => []
+		];
 
-		foreach ($clauses as $index => $clause) {
-
-			$prefix = $index === 0 ? '' : strtoupper($clause['boolean']) . ' ';
-
-			switch ($clause['type']) {
-
-				case 'raw':
-					$sql = $clause['sql'];
-					break;
-
-				case 'null':
-					$sql = $this->wrapIdentifier($clause['column']) . ($clause['not'] ? ' IS NOT NULL' : ' IS NULL');
-					break;
-
-				case 'in':
-					if (!count($clause['values'])) {
-						$sql = $clause['not'] ? '1 = 1' : '0 = 1';
-					} else {
-						$placeholders = implode(', ', array_fill(0, count($clause['values']), '?'));
-						$sql = $this->wrapIdentifier($clause['column']) . ($clause['not'] ? ' NOT IN ' : ' IN ') . '(' . $placeholders . ')';
-					}
-					break;
-
-				case 'where':
-					$sql = $this->wrapIdentifier($clause['column']) . ' ' . $clause['operator'] . ' ?';
-					break;
-
-				case 'on':
-				default:
-					$sql = $this->wrapIdentifier($clause['first']) . ' ' . $clause['operator'] . ' ' . $this->wrapIdentifier($clause['second']);
-					break;
-
-			}
-
-			$parts[] = $prefix . $sql;
-
-		}
-
-		return implode(' ', $parts);
-
-	}
-
-	/**
-	 * Compile order by clauses.
-	 */
-	protected function compileOrders(): string {
-
-		$orders = [];
-
-		foreach ($this->orders as $order) {
-			$column = $this->wrapIdentifier($order['column']);
-			$orders[] = $order['direction'] ? $column . ' ' . $order['direction'] : $column;
-		}
-
-		return implode(', ', $orders);
-
-	}
-
-	/**
-	 * Compile a single where clause.
-	 *
-	 * @param	array<string, mixed>	$where	Clause data.
-	 */
-	protected function compileWhere(array $where): string {
-
-		switch ($where['type']) {
-
-			case 'raw':
-				return $where['sql'];
-
-			case 'nested':
-				$clauses = $where['clauses'] ?? $where['query']->wheres;
-				return '(' . $this->compileWheres($clauses) . ')';
-
-			case 'column':
-				return $this->wrapIdentifier($where['first']) . ' ' . $where['operator'] . ' ' . $this->wrapIdentifier($where['second']);
-
-			case 'exists':
-				return ($where['not'] ? 'NOT ' : '') . 'EXISTS (' . $where['sql'] . ')';
-
-			case 'null':
-				return $this->wrapIdentifier($where['column']) . ($where['not'] ? ' IS NOT NULL' : ' IS NULL');
-
-			case 'in':
-				if (!count($where['values'])) {
-					return $where['not'] ? '1 = 1' : '0 = 1';
-				}
-				$placeholders = implode(', ', array_fill(0, count($where['values']), '?'));
-				return $this->wrapIdentifier($where['column']) . ($where['not'] ? ' NOT IN ' : ' IN ') . '(' . $placeholders . ')';
-
-			case 'inSub':
-				return $this->wrapIdentifier($where['column']) . ($where['not'] ? ' NOT IN ' : ' IN ') . '(' . $where['sql'] . ')';
-
-			case 'between':
-				return $this->wrapIdentifier($where['column']) . ($where['not'] ? ' NOT BETWEEN ' : ' BETWEEN ') . '? AND ?';
-
-			case 'basic':
-			default:
-				return $this->wrapIdentifier($where['column']) . ' ' . $where['operator'] . ' ?';
-
-		}
-
-	}
-
-	/**
-	 * Compile where or having clauses.
-	 *
-	 * @param	array<int, array<string, mixed>>	$clauses	Clauses to compile.
-	 */
-	protected function compileWheres(array $clauses): string {
-
-		$parts = [];
-
-		foreach ($clauses as $index => $where) {
-
-			$prefix = $index === 0 ? '' : strtoupper($where['boolean']) . ' ';
-			$parts[] = $prefix . $this->compileWhere($where);
-
-		}
-
-		return implode(' ', $parts);
+		return $this;
 
 	}
 
@@ -401,6 +253,28 @@ class Query {
 		$this->distinct = $value;
 
 		return $this;
+
+	}
+
+	/**
+	 * Determine if no rows exist for the current query.
+	 */
+	public function doesntExist(): bool {
+
+		return !$this->exists();
+
+	}
+
+	/**
+	 * Determine if any rows exist for the current query.
+	 */
+	public function exists(): bool {
+
+		$query = clone $this;
+		$query->selectRaw('1');
+		$query->limit(1);
+
+		return !is_null(Database::load($query->toSql(), $query->getBindings(), Database::OBJECT));
 
 	}
 
@@ -449,6 +323,20 @@ class Query {
 		$query->limit(1);
 
 		return Database::load($query->toSql(), $query->getBindings(), Database::OBJECT);
+
+	}
+
+	/**
+	 * Set the current page and limit for pagination.
+	 *
+	 * @param	int	$page		Page number (1-based).
+	 * @param	int	$perPage	Items per page.
+	 */
+	public function forPage(int $page, int $perPage): static {
+
+		$page = max(1, $page);
+
+		return $this->skip(($page - 1) * $perPage)->take($perPage);
 
 	}
 
@@ -516,41 +404,22 @@ class Query {
 	}
 
 	/**
-	 * Determine if any rows exist for the current query.
-	 */
-	public function exists(): bool {
-
-		$query = clone $this;
-		$query->selectRaw('1');
-		$query->limit(1);
-
-		return !is_null(Database::load($query->toSql(), $query->getBindings(), Database::OBJECT));
-
-	}
-
-	/**
-	 * Determine if no rows exist for the current query.
-	 */
-	public function doesntExist(): bool {
-
-		return !$this->exists();
-
-	}
-
-	/**
-	 * Get a single column's value from the first result.
+	 * Get the bindings for the query.
 	 *
-	 * @param	string	$column	Column name or expression.
+	 * @return	array<int, mixed>
 	 */
-	public function value(string $column): mixed {
+	public function getBindings(): array {
 
-		$query = clone $this;
-		$query->select($column);
-		$query->limit(1);
-
-		$result = Database::load($query->toSql(), $query->getBindings(), Database::RESULT_LIST);
-
-		return $result[0] ?? null;
+		return array_merge(
+			$this->bindings['select'],
+			$this->bindings['from'],
+			$this->bindings['join'],
+			$this->bindings['where'],
+			$this->bindings['group'],
+			$this->bindings['having'],
+			$this->bindings['union'],
+			$this->bindings['order']
+		);
 
 	}
 
@@ -583,107 +452,6 @@ class Query {
 		}
 
 		return $result;
-
-	}
-
-	/**
-	 * Execute an aggregate function on the query.
-	 *
-	 * @param	string	$function	Aggregate function.
-	 * @param	string	$column		Column name or expression.
-	 */
-	public function aggregate(string $function, string $column = '*'): mixed {
-
-		$query = clone $this;
-		$query->columns = [];
-		$query->bindings['select'] = [];
-		$query->orders = [];
-		$query->bindings['order'] = [];
-		$query->limit = null;
-		$query->offset = null;
-
-		$column = $column === '*' ? '*' : $this->wrapIdentifier($column);
-
-		$query->selectRaw(strtoupper($function) . '(' . $column . ') AS aggregate');
-
-		$result = Database::load($query->toSql(), $query->getBindings(), Database::RESULT_LIST);
-
-		return $result[0] ?? null;
-
-	}
-
-	/**
-	 * Get the count of the results.
-	 *
-	 * @param	string	$column	Column name or expression.
-	 */
-	public function count(string $column = '*'): int {
-
-		return (int)$this->aggregate('COUNT', $column);
-
-	}
-
-	/**
-	 * Get the maximum value of a given column.
-	 *
-	 * @param	string	$column	Column name or expression.
-	 */
-	public function max(string $column): mixed {
-
-		return $this->aggregate('MAX', $column);
-
-	}
-
-	/**
-	 * Get the minimum value of a given column.
-	 *
-	 * @param	string	$column	Column name or expression.
-	 */
-	public function min(string $column): mixed {
-
-		return $this->aggregate('MIN', $column);
-
-	}
-
-	/**
-	 * Get the sum of the given column.
-	 *
-	 * @param	string	$column	Column name or expression.
-	 */
-	public function sum(string $column): mixed {
-
-		return $this->aggregate('SUM', $column);
-
-	}
-
-	/**
-	 * Get the average of the given column.
-	 *
-	 * @param	string	$column	Column name or expression.
-	 */
-	public function avg(string $column): mixed {
-
-		return $this->aggregate('AVG', $column);
-
-	}
-
-	/**
-	 * Get the bindings for the query.
-	 *
-	 * @return	array<int, mixed>
-	 */
-	public function getBindings(): array {
-
-		return array_merge(
-			$this->bindings['select'],
-			$this->bindings['from'],
-			$this->bindings['join'],
-			$this->bindings['where'],
-			$this->bindings['group'],
-			$this->bindings['having'],
-			$this->bindings['union'],
-			$this->bindings['order']
-		);
 
 	}
 
@@ -803,6 +571,32 @@ class Query {
 	}
 
 	/**
+	 * Add an "order by created_at desc" clause.
+	 *
+	 * @param	string	$column	Column name.
+	 */
+	public function latest(string $column = 'created_at'): static {
+
+		return $this->orderBy($column, 'desc');
+
+	}
+
+	/**
+	 * Add a left join clause.
+	 *
+	 * @param	string			$table	Join table.
+	 * @param	string|callable	$first	First column or callback.
+	 * @param	string|null		$operator	Comparison operator.
+	 * @param	string|null		$second	Second column.
+	 * @param	bool			$where	Whether to use bindings in the join.
+	 */
+	public function leftJoin(string $table, string|callable $first, ?string $operator = null, ?string $second = null, bool $where = false): static {
+
+		return $this->joinWithType('left', $table, $first, $operator, $second, $where);
+
+	}
+
+	/**
 	 * Add an inner join clause.
 	 *
 	 * @param	string			$table	Join table.
@@ -829,58 +623,84 @@ class Query {
 	 */
 	protected function joinWithType(string $type, string $table, string|callable $first, ?string $operator = null, mixed $second = null, bool $where = false): static {
 
+		$join = new JoinClause($type, $table);
+
 		if (is_callable($first)) {
 
-			$join = new JoinClause();
 			$first($join);
 
-			$this->joins[] = [
-				'type' => strtoupper($type),
-				'table' => $table,
-				'clauses' => $join->getClauses()
-			];
+		} else {
 
-			if (count($join->getBindings())) {
-				$this->bindings['join'] = array_merge($this->bindings['join'], $join->getBindings());
+			if (is_null($second)) {
+				$second = $operator;
+				$operator = '=';
 			}
 
-			return $this;
+			$operator = $operator ?? '=';
 
+			if ($where) {
+				$join->where($first, $operator, $second);
+			} else {
+				$join->on($first, $operator, $second);
+			}
 		}
 
-		if (is_null($second)) {
-			$second = $operator;
-			$operator = '=';
-		}
+		$this->joins[] = $join;
 
-		$operator = $operator ?? '=';
-
-		if ($where) {
-
-			$join = new JoinClause();
-			$join->where($first, $operator, $second);
-
-			$this->joins[] = [
-				'type' => strtoupper($type),
-				'table' => $table,
-				'clauses' => $join->getClauses()
-			];
-
+		if (count($join->getBindings())) {
 			$this->bindings['join'] = array_merge($this->bindings['join'], $join->getBindings());
-
-			return $this;
-
 		}
-
-		$this->joins[] = [
-			'type' => strtoupper($type),
-			'table' => $table,
-			'first' => $first,
-			'operator' => $operator,
-			'second' => $second
-		];
 
 		return $this;
+
+	}
+
+	/**
+	 * Add a left join clause with bindings.
+	 *
+	 * @param	string	$table	Join table.
+	 * @param	string	$first	First column.
+	 * @param	string	$operator	Comparison operator.
+	 * @param	mixed	$second	Value to compare.
+	 */
+	public function leftJoinWhere(string $table, string $first, string $operator, mixed $second): static {
+
+		return $this->leftJoin($table, $first, $operator, $second, true);
+
+	}
+
+	/**
+	 * Set the query limit.
+	 *
+	 * @param	int	$limit	Maximum rows.
+	 */
+	public function limit(int $limit): static {
+
+		$this->limit = $limit;
+
+		return $this;
+
+	}
+
+	/**
+	 * Get the maximum value of a given column.
+	 *
+	 * @param	string	$column	Column name or expression.
+	 */
+	public function max(string $column): mixed {
+
+		return $this->aggregate('MAX', $column);
+
+	}
+
+	/**
+	 * Get the minimum value of a given column.
+	 *
+	 * @param	string	$column	Column name or expression.
+	 */
+	public function min(string $column): mixed {
+
+		return $this->aggregate('MIN', $column);
 
 	}
 
@@ -937,7 +757,7 @@ class Query {
 
 		if (is_callable($first)) {
 
-			$join = new JoinClause();
+			$join = new JoinClause($type, $table);
 			$first($join);
 
 			$this->joins[] = [
@@ -961,7 +781,7 @@ class Query {
 
 		if ($where) {
 
-			$join = new JoinClause();
+			$join = new JoinClause($type, $table);
 			$join->where($first, $operator, $second);
 
 			$this->joins[] = [
@@ -1007,108 +827,6 @@ class Query {
 	}
 
 	/**
-	 * Add a right join subquery clause.
-	 *
-	 * @param	Query|callable|string	$query	Subquery builder, callback or SQL.
-	 * @param	string					$as		Alias for the subquery.
-	 * @param	string|callable			$first	First column or callback.
-	 * @param	string|null				$operator	Comparison operator.
-	 * @param	string|null				$second	Second column.
-	 * @param	bool					$where	Whether to use bindings in the join.
-	 */
-	public function rightJoinSub(Query|callable|string $query, string $as, string|callable $first, ?string $operator = null, ?string $second = null, bool $where = false): static {
-
-		return $this->joinSub($query, $as, $first, $operator, $second, 'right', $where);
-
-	}
-
-	/**
-	 * Add a cross join clause.
-	 *
-	 * @param	string	$table	Join table.
-	 */
-	public function crossJoin(string $table): static {
-
-		$this->joins[] = [
-			'type' => 'CROSS',
-			'table' => $table,
-			'clauses' => []
-		];
-
-		return $this;
-
-	}
-
-	/**
-	 * Add a left join clause.
-	 *
-	 * @param	string			$table	Join table.
-	 * @param	string|callable	$first	First column or callback.
-	 * @param	string|null		$operator	Comparison operator.
-	 * @param	string|null		$second	Second column.
-	 * @param	bool			$where	Whether to use bindings in the join.
-	 */
-	public function leftJoin(string $table, string|callable $first, ?string $operator = null, ?string $second = null, bool $where = false): static {
-
-		return $this->joinWithType('left', $table, $first, $operator, $second, $where);
-
-	}
-
-	/**
-	 * Add a left join clause with bindings.
-	 *
-	 * @param	string	$table	Join table.
-	 * @param	string	$first	First column.
-	 * @param	string	$operator	Comparison operator.
-	 * @param	mixed	$second	Value to compare.
-	 */
-	public function leftJoinWhere(string $table, string $first, string $operator, mixed $second): static {
-
-		return $this->leftJoin($table, $first, $operator, $second, true);
-
-	}
-
-	/**
-	 * Set the query limit.
-	 *
-	 * @param	int	$limit	Maximum rows.
-	 */
-	public function limit(int $limit): static {
-
-		$this->limit = $limit;
-
-		return $this;
-
-	}
-
-	/**
-	 * Set the query offset.
-	 *
-	 * @param	int	$offset	Offset rows.
-	 */
-	public function offset(int $offset): static {
-
-		$this->offset = $offset;
-
-		return $this;
-
-	}
-
-	/**
-	 * Set the current page and limit for pagination.
-	 *
-	 * @param	int	$page		Page number (1-based).
-	 * @param	int	$perPage	Items per page.
-	 */
-	public function forPage(int $page, int $perPage): static {
-
-		$page = max(1, $page);
-
-		return $this->skip(($page - 1) * $perPage)->take($perPage);
-
-	}
-
-	/**
 	 * Paginate the given query.
 	 *
 	 * @param	int				$perPage	Items per page.
@@ -1143,6 +861,17 @@ class Query {
 			'from' => $total ? (($page - 1) * $perPage + 1) : null,
 			'to' => $total ? min($page * $perPage, $total) : null
 		];
+
+	}
+
+	/**
+	 * Add an "order by created_at asc" clause.
+	 *
+	 * @param	string	$column	Column name.
+	 */
+	public function oldest(string $column = 'created_at'): static {
+
+		return $this->orderBy($column, 'asc');
 
 	}
 
@@ -1198,28 +927,6 @@ class Query {
 	}
 
 	/**
-	 * Add an "order by created_at desc" clause.
-	 *
-	 * @param	string	$column	Column name.
-	 */
-	public function latest(string $column = 'created_at'): static {
-
-		return $this->orderBy($column, 'desc');
-
-	}
-
-	/**
-	 * Add an "order by created_at asc" clause.
-	 *
-	 * @param	string	$column	Column name.
-	 */
-	public function oldest(string $column = 'created_at'): static {
-
-		return $this->orderBy($column, 'asc');
-
-	}
-
-	/**
 	 * Add an "or having" clause.
 	 *
 	 * @param	string	$column	Column name.
@@ -1256,38 +963,14 @@ class Query {
 	}
 
 	/**
-	 * Add an "or where" clause.
+	 * Add an "or where between" clause.
 	 *
-	 * @param	string|callable	$column	Column name or callback.
-	 * @param	mixed	$operator	Comparison operator or value.
-	 * @param	mixed	$value		Value when operator is provided.
+	 * @param	string	$column	Column name.
+	 * @param	array<int, mixed>	$values	Two values for BETWEEN.
 	 */
-	public function orWhere(string|callable $column, mixed $operator = null, mixed $value = null): static {
+	public function orWhereBetween(string $column, array $values): static {
 
-		return $this->where($column, $operator, $value, 'or');
-
-	}
-
-	/**
-	 * Add an "or where raw" clause.
-	 *
-	 * @param	string	$sql	Raw SQL for where.
-	 * @param	array<int, mixed>	$bindings	Bindings for the raw clause.
-	 */
-	public function orWhereRaw(string $sql, array $bindings = []): static {
-
-		return $this->whereRaw($sql, $bindings, 'or');
-
-	}
-
-	/**
-	 * Add a nested "or where" clause.
-	 *
-	 * @param	callable	$callback	Callback to build nested clauses.
-	 */
-	public function orWhereNested(callable $callback): static {
-
-		return $this->whereNested($callback, 'or');
+		return $this->whereBetween($column, $values, 'or');
 
 	}
 
@@ -1305,6 +988,19 @@ class Query {
 	}
 
 	/**
+	 * Add an "or where" clause.
+	 *
+	 * @param	string|callable	$column	Column name or callback.
+	 * @param	mixed	$operator	Comparison operator or value.
+	 * @param	mixed	$value		Value when operator is provided.
+	 */
+	public function orWhere(string|callable $column, mixed $operator = null, mixed $value = null): static {
+
+		return $this->where($column, $operator, $value, 'or');
+
+	}
+
+	/**
 	 * Add an "or where exists" clause.
 	 *
 	 * @param	Query|callable|string	$query	Subquery builder, callback or SQL.
@@ -1316,14 +1012,49 @@ class Query {
 	}
 
 	/**
-	 * Add a "where not exists" clause.
+	 * Add an "or where in" clause.
 	 *
-	 * @param	Query|callable|string	$query	Subquery builder, callback or SQL.
-	 * @param	string					$boolean	Boolean glue (and/or).
+	 * @param	string	$column	Column name.
+	 * @param	array<int, mixed>|Query|callable|string	$values	Values or subquery for the IN clause.
 	 */
-	public function whereNotExists(Query|callable|string $query, string $boolean = 'and'): static {
+	public function orWhereIn(string $column, array|Query|callable|string $values): static {
 
-		return $this->whereExists($query, $boolean, true);
+		return $this->whereIn($column, $values, 'or');
+
+	}
+
+	/**
+	 * Add a nested "or where" clause.
+	 *
+	 * @param	callable	$callback	Callback to build nested clauses.
+	 */
+	public function orWhereNested(callable $callback): static {
+
+		return $this->whereNested($callback, 'or');
+
+	}
+
+	/**
+	 * Add an "or where not between" clause.
+	 *
+	 * @param	string	$column	Column name.
+	 * @param	array<int, mixed>	$values	Two values for BETWEEN.
+	 */
+	public function orWhereNotBetween(string $column, array $values): static {
+
+		return $this->whereBetween($column, $values, 'or', true);
+
+	}
+
+	/**
+	 * Add an "or where raw" clause.
+	 *
+	 * @param	string	$sql	Raw SQL for where.
+	 * @param	array<int, mixed>	$bindings	Bindings for the raw clause.
+	 */
+	public function orWhereRaw(string $sql, array $bindings = []): static {
+
+		return $this->whereRaw($sql, $bindings, 'or');
 
 	}
 
@@ -1334,7 +1065,41 @@ class Query {
 	 */
 	public function orWhereNotExists(Query|callable|string $query): static {
 
-		return $this->whereExists($query, 'or', true);
+		return $this->whereNotExists($query, 'or');
+
+	}
+
+	/**
+	 * Add an "or where not in" clause.
+	 *
+	 * @param	string	$column	Column name.
+	 * @param	array<int, mixed>|Query|callable|string	$values	Values or subquery for the IN clause.
+	 */
+	public function orWhereNotIn(string $column, array|Query|callable|string $values): static {
+
+		return $this->whereIn($column, $values, 'or', true);
+
+	}
+
+	/**
+	 * Add an "or where not null" clause.
+	 *
+	 * @param	string	$column	Column name.
+	 */
+	public function orWhereNotNull(string $column): static {
+
+		return $this->whereNotNull($column, 'or');
+
+	}
+
+	/**
+	 * Add an "or where null" clause.
+	 *
+	 * @param	string	$column	Column name.
+	 */
+	public function orWhereNull(string $column): static {
+
+		return $this->whereNull($column, 'or');
 
 	}
 
@@ -1368,6 +1133,22 @@ class Query {
 	}
 
 	/**
+	 * Add a right join subquery clause.
+	 *
+	 * @param	Query|callable|string	$query	Subquery builder, callback or SQL.
+	 * @param	string					$as		Alias for the subquery.
+	 * @param	string|callable			$first	First column or callback.
+	 * @param	string|null				$operator	Comparison operator.
+	 * @param	string|null				$second	Second column.
+	 * @param	bool					$where	Whether to use bindings in the join.
+	 */
+	public function rightJoinSub(Query|callable|string $query, string $as, string|callable $first, ?string $operator = null, ?string $second = null, bool $where = false): static {
+
+		return $this->joinSub($query, $as, $first, $operator, $second, 'right', $where);
+
+	}
+
+	/**
 	 * Set the columns to select.
 	 *
 	 * @param	string|array<int, string>	...$columns	Column names.
@@ -1385,6 +1166,58 @@ class Query {
 	}
 
 	/**
+	 * Add a raw select expression.
+	 *
+	 * @param	string	$sql		Raw SQL.
+	 * @param	array<int, mixed>	$bindings	Bindings for the raw expression.
+	 */
+	public function selectRaw(string $sql, array $bindings = []): static {
+
+		$this->addSelect($sql);
+
+		if (count($bindings)) {
+			$this->bindings['select'] = array_merge($this->bindings['select'], $bindings);
+		}
+
+		return $this;
+
+	}
+
+	/**
+	 * Add a subquery select expression.
+	 *
+	 * @param	Query|callable|string	$query	Subquery builder, callback or SQL.
+	 * @param	string					$as		Alias for the subquery.
+	 */
+	public function selectSub(Query|callable|string $query, string $as): static {
+
+		$subquery = $this->createSubquery($query);
+		$alias = $this->wrapIdentifier($as);
+
+		$this->addSelect('(' . $subquery['sql'] . ') AS ' . $alias);
+
+		if (count($subquery['bindings'])) {
+			$this->bindings['select'] = array_merge($this->bindings['select'], $subquery['bindings']);
+		}
+
+		return $this;
+
+	}
+
+	/**
+	 * Set the query offset.
+	 *
+	 * @param	int	$offset	Offset rows.
+	 */
+	public function offset(int $offset): static {
+
+		$this->offset = $offset;
+
+		return $this;
+
+	}
+
+	/**
 	 * Alias for offset().
 	 *
 	 * @param	int	$offset	Offset rows.
@@ -1392,6 +1225,17 @@ class Query {
 	public function skip(int $offset): static {
 
 		return $this->offset($offset);
+
+	}
+
+	/**
+	 * Get the sum of the given column.
+	 *
+	 * @param	string	$column	Column name or expression.
+	 */
+	public function sum(string $column): mixed {
+
+		return $this->aggregate('SUM', $column);
 
 	}
 
@@ -1453,85 +1297,11 @@ class Query {
 	}
 
 	/**
-	 * Compile the base select query.
-	 *
-	 * @param	bool	$includeOrders	Whether to include order/limit/offset.
-	 */
-	protected function compileSelect(bool $includeOrders = true): string {
-
-		$sql = 'SELECT ';
-
-		if ($this->distinct) {
-			$sql .= 'DISTINCT ';
-		}
-
-		$sql .= $this->compileColumns();
-
-		if ($this->from) {
-			$sql .= ' FROM ' . $this->wrapTable($this->from);
-		}
-
-		if (count($this->joins)) {
-			$sql .= ' ' . $this->compileJoins();
-		}
-
-		if (count($this->wheres)) {
-			$sql .= ' WHERE ' . $this->compileWheres($this->wheres);
-		}
-
-		if (count($this->groups)) {
-			$groups = [];
-			foreach ($this->groups as $group) {
-				$groups[] = $this->wrapIdentifier($group);
-			}
-			$sql .= ' GROUP BY ' . implode(', ', $groups);
-		}
-
-		if (count($this->havings)) {
-			$sql .= ' HAVING ' . $this->compileWheres($this->havings);
-		}
-
-		if ($includeOrders) {
-
-			if (count($this->orders)) {
-				$sql .= ' ORDER BY ' . $this->compileOrders();
-			}
-
-			$sql .= $this->compileLimitOffset();
-
-		}
-
-		return $sql;
-
-	}
-
-	/**
-	 * Compile limit and offset clauses.
-	 */
-	protected function compileLimitOffset(): string {
-
-		$sql = '';
-
-		if (is_null($this->limit) and !is_null($this->offset)) {
-			$sql .= ' LIMIT 18446744073709551615';
-		} else if (!is_null($this->limit)) {
-			$sql .= ' LIMIT ' . (int)$this->limit;
-		}
-
-		if (!is_null($this->offset)) {
-			$sql .= ' OFFSET ' . (int)$this->offset;
-		}
-
-		return $sql;
-
-	}
-
-	/**
 	 * Get the raw SQL string for the query.
 	 */
 	public function toSql(): string {
 
-		$sql = $this->compileSelect(count($this->unions) === 0);
+		$sql = $this->grammar->compileSelect($this);
 
 		if (count($this->unions)) {
 
@@ -1541,11 +1311,11 @@ class Query {
 				$sql .= ($union['all'] ? ' UNION ALL ' : ' UNION ') . '(' . $union['sql'] . ')';
 			}
 
-			if (count($this->orders)) {
-				$sql .= ' ORDER BY ' . $this->compileOrders();
-			}
+			// if (count($this->orders)) {
+			// 	$sql .= ' ORDER BY ' . $this->compileOrders();
+			// }
 
-			$sql .= $this->compileLimitOffset();
+			// $sql .= $this->compileLimitOffset();
 
 		}
 
@@ -1554,6 +1324,23 @@ class Query {
 		}
 
 		return $sql;
+
+	}
+
+	/**
+	 * Get a single column's value from the first result.
+	 *
+	 * @param	string	$column	Column name or expression.
+	 */
+	public function value(string $column): mixed {
+
+		$query = clone $this;
+		$query->select($column);
+		$query->limit(1);
+
+		$result = Database::load($query->toSql(), $query->getBindings(), Database::RESULT_LIST);
+
+		return $result[0] ?? null;
 
 	}
 
@@ -1593,6 +1380,34 @@ class Query {
 		];
 
 		$this->bindings['where'][] = $value;
+
+		return $this;
+
+	}
+
+	/**
+	 * Add a "where between" clause.
+	 *
+	 * @param	string	$column	Column name.
+	 * @param	array<int, mixed>	$values	Two values for BETWEEN.
+	 * @param	string	$boolean	Boolean glue (and/or).
+	 * @param	bool	$not		Whether to use NOT BETWEEN.
+	 */
+	public function whereBetween(string $column, array $values, string $boolean = 'and', bool $not = false): static {
+
+		$values = array_values($values);
+		$values = array_pad($values, 2, null);
+
+		$this->wheres[] = [
+			'type' => 'between',
+			'column' => $column,
+			'values' => $values,
+			'boolean' => $boolean,
+			'not' => $not
+		];
+
+		$this->bindings['where'][] = $values[0];
+		$this->bindings['where'][] = $values[1];
 
 		return $this;
 
@@ -1741,95 +1556,6 @@ class Query {
 	}
 
 	/**
-	 * Add an "or where in" clause.
-	 *
-	 * @param	string	$column	Column name.
-	 * @param	array<int, mixed>|Query|callable|string	$values	Values or subquery for the IN clause.
-	 */
-	public function orWhereIn(string $column, array|Query|callable|string $values): static {
-
-		return $this->whereIn($column, $values, 'or');
-
-	}
-
-	/**
-	 * Add an "or where not in" clause.
-	 *
-	 * @param	string	$column	Column name.
-	 * @param	array<int, mixed>|Query|callable|string	$values	Values or subquery for the IN clause.
-	 */
-	public function orWhereNotIn(string $column, array|Query|callable|string $values): static {
-
-		return $this->whereIn($column, $values, 'or', true);
-
-	}
-
-	/**
-	 * Add a "where between" clause.
-	 *
-	 * @param	string	$column	Column name.
-	 * @param	array<int, mixed>	$values	Two values for BETWEEN.
-	 * @param	string	$boolean	Boolean glue (and/or).
-	 * @param	bool	$not		Whether to use NOT BETWEEN.
-	 */
-	public function whereBetween(string $column, array $values, string $boolean = 'and', bool $not = false): static {
-
-		$values = array_values($values);
-		$values = array_pad($values, 2, null);
-
-		$this->wheres[] = [
-			'type' => 'between',
-			'column' => $column,
-			'values' => $values,
-			'boolean' => $boolean,
-			'not' => $not
-		];
-
-		$this->bindings['where'][] = $values[0];
-		$this->bindings['where'][] = $values[1];
-
-		return $this;
-
-	}
-
-	/**
-	 * Add a "where not between" clause.
-	 *
-	 * @param	string	$column	Column name.
-	 * @param	array<int, mixed>	$values	Two values for BETWEEN.
-	 * @param	string	$boolean	Boolean glue (and/or).
-	 */
-	public function whereNotBetween(string $column, array $values, string $boolean = 'and'): static {
-
-		return $this->whereBetween($column, $values, $boolean, true);
-
-	}
-
-	/**
-	 * Add an "or where between" clause.
-	 *
-	 * @param	string	$column	Column name.
-	 * @param	array<int, mixed>	$values	Two values for BETWEEN.
-	 */
-	public function orWhereBetween(string $column, array $values): static {
-
-		return $this->whereBetween($column, $values, 'or');
-
-	}
-
-	/**
-	 * Add an "or where not between" clause.
-	 *
-	 * @param	string	$column	Column name.
-	 * @param	array<int, mixed>	$values	Two values for BETWEEN.
-	 */
-	public function orWhereNotBetween(string $column, array $values): static {
-
-		return $this->whereBetween($column, $values, 'or', true);
-
-	}
-
-	/**
 	 * Add a "where null" clause.
 	 *
 	 * @param	string	$column	Column name.
@@ -1849,6 +1575,31 @@ class Query {
 	}
 
 	/**
+	 * Add a "where not between" clause.
+	 *
+	 * @param	string	$column	Column name.
+	 * @param	array<int, mixed>	$values	Two values for BETWEEN.
+	 * @param	string	$boolean	Boolean glue (and/or).
+	 */
+	public function whereNotBetween(string $column, array $values, string $boolean = 'and'): static {
+
+		return $this->whereBetween($column, $values, $boolean, true);
+
+	}
+
+	/**
+	 * Add a "where not exists" clause.
+	 *
+	 * @param	Query|callable|string	$query	Subquery builder, callback or SQL.
+	 * @param	string					$boolean	Boolean glue (and/or).
+	 */
+	public function whereNotExists(Query|callable|string $query, string $boolean = 'and'): static {
+
+		return $this->whereExists($query, $boolean, true);
+
+	}
+
+	/**
 	 * Add a "where not null" clause.
 	 *
 	 * @param	string	$column	Column name.
@@ -1864,28 +1615,6 @@ class Query {
 		];
 
 		return $this;
-
-	}
-
-	/**
-	 * Add an "or where null" clause.
-	 *
-	 * @param	string	$column	Column name.
-	 */
-	public function orWhereNull(string $column): static {
-
-		return $this->whereNull($column, 'or');
-
-	}
-
-	/**
-	 * Add an "or where not null" clause.
-	 *
-	 * @param	string	$column	Column name.
-	 */
-	public function orWhereNotNull(string $column): static {
-
-		return $this->whereNotNull($column, 'or');
 
 	}
 
@@ -1917,42 +1646,7 @@ class Query {
 	 */
 	protected function wrapAliasedIdentifier(string $value): string {
 
-		if (!$this->wrapIdentifiers) {
-			return $value;
-		}
-
-		if (preg_match('/^(.+)\\s+as\\s+(.+)$/i', $value, $matches)) {
-			return $this->wrapIdentifier(trim($matches[1])) . ' AS ' . $this->wrapIdentifier(trim($matches[2]));
-		}
-
-		return $this->wrapIdentifier($value);
-
-	}
-
-	/**
-	 * Wraps an identifier with backticks when it is a simple name.
-	 */
-	protected function wrapIdentifier(string $value): string {
-
-		if (!$this->wrapIdentifiers) {
-			return $value;
-		}
-
-		if ($value === '*' or str_contains($value, '`')) {
-			return $value;
-		}
-
-		if (preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $value)) {
-			return '`' . $value . '`';
-		}
-
-		if (preg_match('/^[A-Za-z_][A-Za-z0-9_]*\\.[A-Za-z_][A-Za-z0-9_]*$/', $value)) {
-			[$table, $column] = explode('.', $value, 2);
-			return '`' . $table . '`.`' . $column . '`';
-		}
-
-		return $value;
-
+		return $this->grammar->wrapAliasedIdentifier($value, $this->wrapIdentifiers);
 	}
 
 	/**
@@ -1973,7 +1667,16 @@ class Query {
 	 */
 	protected function wrapTable(string $table): string {
 
-		return $this->wrapIdentifier($table);
+		return $this->grammar->wrapTable($table, $this->wrapIdentifiers);
+
+	}
+
+	/**
+	 * Wraps an identifier with backticks when it is a simple name.
+	 */
+	protected function wrapIdentifier(string $value): string {
+
+		return $this->grammar->wrapIdentifier($value, $this->wrapIdentifiers);
 
 	}
 

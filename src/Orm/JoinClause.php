@@ -3,32 +3,42 @@
 namespace Pair\Orm;
 
 /**
- * Builder for join clauses.
+ * Builder for join clauses, allowing for complex join conditions.
+ * This class is used by the Query builder to construct JOIN statements.
  */
 class JoinClause {
+
+	/**
+	 * The type of join.
+	 */
+	public string $type;
+
+	/**
+	 * The table the join clause is joining to.
+	 */
+	public string $table;
 
 	/**
 	 * Join clauses.
 	 *
 	 * @var	array<int, array<string, mixed>>
 	 */
-	protected array $clauses = [];
+	public array $clauses = [];
 
 	/**
 	 * Join bindings.
 	 *
 	 * @var	array<int, mixed>
 	 */
-	protected array $bindings = [];
+	public array $bindings = [];
 
 	/**
-	 * Get join bindings.
-	 *
-	 * @return	array<int, mixed>
+	 * Create a new join clause instance.
 	 */
-	public function getBindings(): array {
+	public function __construct(string $type, string $table) {
 
-		return $this->bindings;
+		$this->type = $type;
+		$this->table = $table;
 
 	}
 
@@ -40,6 +50,17 @@ class JoinClause {
 	public function getClauses(): array {
 
 		return $this->clauses;
+
+	}
+
+	/**
+	 * Get join bindings.
+	 *
+	 * @return	array<int, mixed>
+	 */
+	public function getBindings(): array {
+
+		return $this->bindings;
 
 	}
 
