@@ -795,7 +795,16 @@ class Application {
 		}
 
 		try {
-			$apiCtl->$action();
+
+			// run middleware pipeline for ApiController subclasses
+			if ($apiCtl instanceof \Pair\Api\ApiController) {
+				$apiCtl->runMiddleware(function () use ($apiCtl, $action) {
+					$apiCtl->$action();
+				});
+			} else {
+				$apiCtl->$action();
+			}
+
 		} catch (\Throwable $e) {
 			Utilities::jsonError('INTERNAL_SERVER_ERROR',$e->getMessage(),500);
 		}
@@ -832,7 +841,7 @@ class Application {
 			}
 
 			// check if the request is for user module/action
-			$userRequest = ('user' == $router->module and in_array($router->action, ['login','reset','confirm','sendResetEmail','newPassword','setNewPassword']));
+			$userRequest = ('user' == $router->module and in_array($router->action, ['login','reset','confirm','passwordReset','sendResetEmail','newPassword','setNewPassword']));
 
 			// check if the request is for guest module/action
 			$guestRequest = (in_array($router->module, array_keys($this->guestModules)) and in_array($router->action, $this->guestModules[$router->module]));

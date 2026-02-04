@@ -271,6 +271,8 @@ class Query {
 	public function exists(): bool {
 
 		$query = clone $this;
+		$query->columns = [];
+		$query->bindings['select'] = [];
 		$query->selectRaw('1');
 		$query->limit(1);
 

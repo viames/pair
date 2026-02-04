@@ -43,6 +43,8 @@
 			"Pair\\Html\\": "src/Html",
 			"Pair\\Models\\": "src/Models",
 			"Pair\\Orm\\": "src/Orm",
+			"Pair\\Api\\": "src/Api",
+			"Pair\\Api\\OpenApi\\": "src/Api/OpenApi",
 			"Pair\\Services\\": "src/Services",
 			"Pair\\Helpers\\": "src/Helpers"
 		}

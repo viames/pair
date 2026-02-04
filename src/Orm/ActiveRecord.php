@@ -860,15 +860,14 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$tableKey = (array)static::TABLE_KEY;
 		$keyValues = array_values((array)$keys);
 
-		$query = Query::table(static::TABLE_NAME)
-			->select('COUNT(1)');
+		$query = Query::table(static::TABLE_NAME);
 
 		foreach ($tableKey as $index => $field) {
 			$query->where($field, $keyValues[$index] ?? null);
 		}
 
 		// execute and return value
-		return (bool)Database::load($query->toSql(), $query->getBindings(), Database::COUNT);
+		return $query->exists();
 
 	}
 

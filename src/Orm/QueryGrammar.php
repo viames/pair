@@ -308,9 +308,15 @@ class QueryGrammar {
 	 */
 	public function wrapAliasedIdentifier(string $value, bool $wrap = true): string {
 
-		// simplified
+		if (!$wrap || $value === '*') return $value;
+
+		// don't wrap raw SQL expressions or numeric literals
+		if (is_numeric($value) or preg_match('/[\s\(\)\,]/', $value)) {
+			return $value;
+		}
+
 		return $this->wrapIdentifier($value, $wrap);
-	
+
 	}
 
 	/**

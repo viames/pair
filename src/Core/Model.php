@@ -203,6 +203,9 @@ abstract class Model {
 		if ($query instanceof Query) {
 			$params = $query->getBindings();
 			$query = $query->toSql();
+			if (is_null($optionalQuery)) {
+				$query .= $this->getOrderLimitSql();
+			}
 		} else {
 			$query = (string)$query;
 			if (is_null($optionalQuery)) {
@@ -215,30 +218,29 @@ abstract class Model {
 	}
 
 	/**
-	 * Returns count of available objects.
+	 * Returns count of available objects. This method can be overloaded by children classes.
 	 * 
-	 * @param	string		Active record class name.
-	 * @param	Query|string	Optional query.
+	 * @param	string		$class Active record class name for which count is requested.
+	 * @param	Query|string|null	$optionalQuery Optional query instead of default getQuery().
+	 * @return	int	Number of items.
 	 */
 	public function countItems(string $class, Query|string|null $optionalQuery = null): int {
-
-		$params = [];
-
-		if ($optionalQuery instanceof Query) {
-			$query = $optionalQuery->toSql();
-			$params = $optionalQuery->getBindings();
-		} else if (is_string($optionalQuery)) {
-			$query = $optionalQuery;
-		} else {
-			$query = $this->getQuery($class);
-			if ($query instanceof Query) {
-				$params = $query->getBindings();
-				$query = $query->toSql();
-			}
+	
+		$query = $optionalQuery ?? $this->getQuery($class);
+	
+		// optimized path for Query builder instances
+		if ($query instanceof Query) {
+			return $query->count();
 		}
-
-		return Database::load('SELECT COUNT(1) FROM (' . $query . ') AS `result`', $params, Database::COUNT);
-
+	
+		// fallback for raw SQL strings, maintaining previous behavior
+		if (is_string($query)) {
+			return Database::load('SELECT COUNT(1) FROM (' . $query . ') AS `result`', [], Database::COUNT);
+		}
+	
+		// should not be reached if getQuery() returns Query|string
+		return 0;
+	
 	}
 
 	/**
@@ -248,7 +250,7 @@ abstract class Model {
 	 */
 	protected function getQuery(string $class): Query|string {
 
-		return 'SELECT * FROM `' . $class::TABLE_NAME . '`';
+		return Query::table($class::TABLE_NAME);
 
 	}
 
