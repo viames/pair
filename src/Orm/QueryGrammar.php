@@ -9,41 +9,8 @@ namespace Pair\Orm;
 class QueryGrammar {
 
 	/**
-	 * Compile a select query into SQL.
-	 * 
-	 * @param Query $query The query builder instance to compile.
-	 * @return string The compiled SQL query.
-	 */
-	public function compileSelect(Query $query): string {
-
-		// If no columns are specified, select all
-		if (empty($query->columns)) {
-			$query->columns = ['*'];
-		}
-
-		$sql = trim(implode(' ', array_filter([
-			$this->compileColumns($query),
-			$this->compileFrom($query),
-			$this->compileJoins($query),
-			$this->compileWheres($query),
-			$this->compileGroups($query),
-			$this->compileHavings($query),
-			$this->compileOrders($query),
-			$this->compileLimit($query),
-			$this->compileOffset($query),
-		])));
-
-		if ($query->distinct) {
-			$sql = 'SELECT DISTINCT ' . substr($sql, 7);
-		}
-
-		return $sql;
-
-	}
-
-	/**
 	 * Compile clauses into SQL.
-	 * 
+	 *
 	 * @param array<int, array<string, mixed>> $clauses Clauses to compile.
 	 * @param bool $wrap Whether to wrap identifiers.
 	 * @return string Compiled SQL for the clauses.
@@ -62,32 +29,8 @@ class QueryGrammar {
 	}
 
 	/**
-	 * Compile the FROM clause of a query.
-	 * 
-	 * @param Query $query The query builder instance to compile.
-	 * @return string The compiled SQL for the FROM clause.
-	 */
-	protected function compileFrom(Query $query): string {
-
-		return 'FROM ' . $this->wrapTable($query->from, $query->wrapIdentifiers);
-
-	}
-
-	/**
-	 * Compile a group by clause into SQL.
-	 * 
-	 * @param Query $query The query builder instance to compile.
-	 * @return string The compiled SQL for the group by clause.
-	 */
-	protected function compileGroups(Query $query): string {
-
-		return !empty($query->groups) ? 'GROUP BY ' . implode(', ', array_map(fn($g) => $this->wrapIdentifier($g, $query->wrapIdentifiers), $query->groups)) : '';
-
-	}
-
-	/**
 	 * Compile the columns of a select query into SQL.
-	 * 
+	 *
 	 * @param Query $query The query builder instance to compile.
 	 * @return string The compiled SQL for the columns.
 	 */
@@ -100,6 +43,30 @@ class QueryGrammar {
 		}
 
 		return 'SELECT ' . implode(', ', $columns);
+
+	}
+
+	/**
+	 * Compile the FROM clause of a query.
+	 *
+	 * @param Query $query The query builder instance to compile.
+	 * @return string The compiled SQL for the FROM clause.
+	 */
+	protected function compileFrom(Query $query): string {
+
+		return 'FROM ' . $this->wrapTable($query->from, $query->wrapIdentifiers);
+
+	}
+
+	/**
+	 * Compile a group by clause into SQL.
+	 *
+	 * @param Query $query The query builder instance to compile.
+	 * @return string The compiled SQL for the group by clause.
+	 */
+	protected function compileGroups(Query $query): string {
+
+		return !empty($query->groups) ? 'GROUP BY ' . implode(', ', array_map(fn($g) => $this->wrapIdentifier($g, $query->wrapIdentifiers), $query->groups)) : '';
 
 	}
 
@@ -153,7 +120,7 @@ class QueryGrammar {
 
 	/**
 	 * Compile join clauses into SQL.
-	 * 
+	 *
 	 * @param array<int, array<string, mixed>> $clauses Join clauses to compile.
 	 * @param bool $wrap Whether to wrap identifiers.
 	 * @return string Compiled SQL for the join clauses.
@@ -193,27 +160,6 @@ class QueryGrammar {
 	}
 
 	/**
-	 * Compile the order by clauses of a query into SQL.
-	 * 
-	 * @param Query $query The query builder instance to compile.
-	 * @return string The compiled SQL for the order by clauses.
-	 */
-	protected function compileOrders(Query $query): string {
-
-		if (empty($query->orders)) {
-			return '';
-		}
-	
-		$orders = array_map(function ($order) use ($query) {
-	
-			return $this->wrapIdentifier($order['column'], $query->wrapIdentifiers) . ($order['direction'] ? ' ' . $order['direction'] : '');
-		}, $query->orders);
-
-		return 'ORDER BY ' . implode(', ', $orders);
-
-	}
-
-	/**
 	 * Compile the limit clause of a query into SQL.
 	 *
 	 * @param Query $query The query builder instance to compile.
@@ -230,7 +176,63 @@ class QueryGrammar {
 	 * @return string The compiled SQL for the offset clause.
 	 */
 	protected function compileOffset(Query $query): string {
+
 		return is_null($query->offset) ? '' : 'OFFSET ' . (int)$query->offset;
+
+	}
+
+	/**
+	 * Compile the order by clauses of a query into SQL.
+	 *
+	 * @param Query $query The query builder instance to compile.
+	 * @return string The compiled SQL for the order by clauses.
+	 */
+	protected function compileOrders(Query $query): string {
+
+		if (empty($query->orders)) {
+			return '';
+		}
+
+		$orders = array_map(function ($order) use ($query) {
+
+			return $this->wrapIdentifier($order['column'], $query->wrapIdentifiers) . ($order['direction'] ? ' ' . $order['direction'] : '');
+		}, $query->orders);
+
+		return 'ORDER BY ' . implode(', ', $orders);
+
+	}
+
+	/**
+	 * Compile a select query into SQL.
+	 *
+	 * @param Query $query The query builder instance to compile.
+	 * @return string The compiled SQL query.
+	 */
+	public function compileSelect(Query $query): string {
+
+		// If no columns are specified, select all
+		if (empty($query->columns)) {
+			$query->columns = ['*'];
+		}
+
+		$sql = trim(implode(' ', array_filter([
+			$this->compileColumns($query),
+			$this->compileFrom($query),
+			$this->compileJoins($query),
+			$this->compileWheres($query),
+			$this->compileGroups($query),
+			$this->compileHavings($query),
+			$this->compileOrders($query),
+			$this->compileLimit($query),
+			$this->compileOffset($query),
+		])));
+
+		if ($query->distinct) {
+			$sql = 'SELECT DISTINCT ' . substr($sql, 7);
+		}
+
+		return $sql;
+
 	}
 
 	/**
@@ -270,7 +272,7 @@ class QueryGrammar {
 
 	/**
 	 * Compile the wheres of a query into SQL.
-	 * 
+	 *
 	 * @param Query $query The query builder instance to compile.
 	 * @return string The compiled SQL for the where clauses.
 	 */
@@ -285,23 +287,8 @@ class QueryGrammar {
 	}
 
 	/**
-	 * Wrap an identifier in backticks.
-	 * 
-	 * @param string $value The identifier to wrap.
-	 * @param bool $wrap Whether to wrap the identifier.
-	 * @return string The wrapped identifier.
-	 */
-	public function wrapIdentifier(string $value, bool $wrap = true): string {
-
-		if (!$wrap || $value === '*') return $value;
-
-		return '`' . str_replace('.', '`.`', $value) . '`';
-
-	}
-
-	/**
 	 * Wrap an aliased identifier.
-	 * 
+	 *
 	 * @param string $value The identifier to wrap.
 	 * @param bool $wrap Whether to wrap the identifier.
 	 * @return string The wrapped aliased identifier.
@@ -320,8 +307,23 @@ class QueryGrammar {
 	}
 
 	/**
+	 * Wrap an identifier in backticks.
+	 *
+	 * @param string $value The identifier to wrap.
+	 * @param bool $wrap Whether to wrap the identifier.
+	 * @return string The wrapped identifier.
+	 */
+	public function wrapIdentifier(string $value, bool $wrap = true): string {
+
+		if (!$wrap || $value === '*') return $value;
+
+		return '`' . str_replace('.', '`.`', $value) . '`';
+
+	}
+
+	/**
 	 * Wrap a table name in backticks.
-	 * 
+	 *
 	 * @param string $table The table name to wrap.
 	 * @param bool $wrap Whether to wrap the table name.
 	 * @return string The wrapped table name.

@@ -29,7 +29,8 @@ Primary goals: provide a solid foundation for MVC architecture, database abstrac
 - UI: The framework provides a lightweight UI library, **PairUI**.
 - JavaScript:
   - Prefer **Vanilla JS** for new code.
-  - **jQuery is not part of the framework**. Do not introduce jQuery.
+  - Use PairUI directives for reactivity: `data-text`, `data-html`, `data-show`, `data-if`, `data-model` (two-way), `data-on` (events), `data-each` (lists).
+  - Avoid `eval` or unsafe inline handlers.
 - Framework: **Pair (PHP) v3-alpha**.
 
 ---
@@ -53,6 +54,15 @@ Primary goals: provide a solid foundation for MVC architecture, database abstrac
 - The framework is designed to support the **MVC** pattern in applications that use it.
 - Core classes reside under the `Pair\` namespace and follow the PSR-4 standard for autoloading.
 - One class per file; **filename matches class name**.
+
+### ORM relationship magic methods (important for AI agents)
+- Pair `ActiveRecord` automatically exposes relation helpers for mapped foreign keys.
+- **Automatic casting**: Properties are automatically cast to PHP types (int, bool, DateTime, float) based on the database schema.
+- For a parent relation (e.g. `affiliate_id`), calling `getAffiliate()` returns the related `Affiliate` object.
+- If the FK is null or not resolvable, the magic method returns `null` (it must be null-checked before use).
+- Equivalent read access is also available via parent-property helpers (e.g. `getParentProperty('affiliateId', 'name')`) when only one field is needed.
+- Reverse relations (1:N) are also supported. For example, if `User` has `group_id`, calling `$group->getUsers()` on a `Group` object returns a `Collection` of `User` objects.
+- Agents should prefer these relation methods over manual duplicate queries when a mapped relation already exists.
 
 ### Routing and URL mapping (Pair apps)
 - After the base path, URLs follow `/<module>/<action>/<params...>`.

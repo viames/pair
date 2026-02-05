@@ -2,10 +2,21 @@
 
 namespace Pair\Orm;
 
+use Pair\Core\Logger;
+use Pair\Exceptions\ErrorCodes;
+use Pair\Exceptions\PairException;
+use Pair\Helpers\Translator;
+
 /**
  * Simple query builder for SQL SELECT statements.
  */
 class Query {
+
+	/**
+	 * The model class name for hydrating results into ActiveRecord instances.
+	 * When set, get() and first() return model instances instead of stdClass.
+	 */
+	protected ?string $modelClass = null;
 
 	/**
 	 * Selected columns.
@@ -120,6 +131,32 @@ class Query {
 	}
 
 	/**
+	 * Cast the query to string.
+	 */
+	public function __toString(): string {
+
+		return $this->toSql();
+
+	}
+
+	/**
+	 * Add additional columns to the select list.
+	 *
+	 * @param	string|array<int, string>	...$columns	Column names.
+	 */
+	public function addSelect(string|array ...$columns): static {
+
+		if (count($columns) === 1 and is_array($columns[0])) {
+			$columns = $columns[0];
+		}
+
+		$this->columns = array_merge($this->columns, $columns);
+
+		return $this;
+
+	}
+
+	/**
 	 * Execute an aggregate function on the query.
 	 *
 	 * @param	string	$function	Aggregate function.
@@ -157,15 +194,6 @@ class Query {
 	}
 
 	/**
-	 * Cast the query to string.
-	 */
-	public function __toString(): string {
-
-		return $this->toSql();
-
-	}
-
-	/**
 	 * Get the count of the results.
 	 *
 	 * @param	string	$column	Column name or expression.
@@ -174,23 +202,6 @@ class Query {
 
 		return (int)$this->aggregate('COUNT', $column);
 
-	}
-
-	/**
-	 * Add additional columns to the select list.
-	 *
-	 * @param	string|array<int, string>	...$columns	Column names.
-	 */
-	public function addSelect(string|array ...$columns): static {
-
-		if (count($columns) === 1 and is_array($columns[0])) {
-			$columns = $columns[0];
-		}
-
-		$this->columns = array_merge($this->columns, $columns);
-
-		return $this;
-	
 	}
 
 	/**
@@ -281,50 +292,60 @@ class Query {
 	}
 
 	/**
-	 * Set the row lock mode.
-	 *
-	 * @param	bool|string	$value	Lock mode (true for FOR UPDATE, false for LOCK IN SHARE MODE).
+	 * Returns the first result of the query. When a model class is set,
+	 * returns a model instance; otherwise returns stdClass or null.
 	 */
-	public function lock(bool|string $value = true): static {
-
-		if (is_string($value)) {
-			$this->lock = $value;
-			return $this;
-		}
-
-		$this->lock = $value ? 'FOR UPDATE' : 'LOCK IN SHARE MODE';
-
-		return $this;
-
-	}
-
-	/**
-	 * Lock the selected rows for update.
-	 */
-	public function lockForUpdate(): static {
-
-		return $this->lock(true);
-
-	}
-
-	/**
-	 * Share lock the selected rows.
-	 */
-	public function sharedLock(): static {
-
-		return $this->lock(false);
-
-	}
-
-	/**
-	 * Returns the first result of the query.
-	 */
-	public function first(): ?\stdClass {
+	public function first(): \stdClass|ActiveRecord|null {
 
 		$query = clone $this;
 		$query->limit(1);
 
-		return Database::load($query->toSql(), $query->getBindings(), Database::OBJECT);
+		// If no model class, return stdClass
+		if (!$this->modelClass) {
+			return Database::load($query->toSql(), $query->getBindings(), Database::OBJECT);
+		}
+
+		// Return model instance
+		$class = $this->modelClass;
+
+		// Get the select columns for encrypted fields if any
+		if ($query->columns === ['*']) {
+			$query->columns = [$class::getQueryColumns()];
+		}
+
+		$row = Database::load($query->toSql(), $query->getBindings(), Database::OBJECT);
+
+		if (!$row) {
+			return null;
+		}
+
+		$object = $class::hydrateFromRow($row);
+
+		$className = basename(str_replace('\\', '/', $class));
+		$logger = Logger::getInstance();
+		$logger->debug('Loaded a ' . $className . ' object via Query::first()');
+
+		return $object;
+
+	}
+
+	/**
+	 * Get the first result or throw an exception if not found.
+	 *
+	 * @throws	PairException
+	 */
+	public function firstOrFail(): \stdClass|ActiveRecord {
+
+		$result = $this->first();
+
+		if (is_null($result)) {
+			throw new PairException(
+				Translator::do('OBJECT_NOT_FOUND'),
+				ErrorCodes::RECORD_NOT_FOUND
+			);
+		}
+
+		return $result;
 
 	}
 
@@ -395,13 +416,37 @@ class Query {
 	}
 
 	/**
-	 * Returns a Collection instance containing the results of the query where each
-	 * result is an instance of the PHP stdClass object. You may access each column's
-	 * value by accessing the column as a property of the object.
+	 * Returns a Collection instance containing the results of the query. When a model
+	 * class is set, returns model instances; otherwise returns stdClass objects.
 	 */
 	public function get(): Collection {
 
-		return Database::load($this->toSql(), $this->getBindings(), Database::COLLECTION);
+		// If no model class, return stdClass objects
+		if (!$this->modelClass) {
+			return Database::load($this->toSql(), $this->getBindings(), Database::COLLECTION);
+		}
+
+		// Return model instances
+		$collection = new Collection();
+		$class = $this->modelClass;
+
+		// Get the select columns for encrypted fields if any
+		if ($this->columns === ['*']) {
+			$this->columns = [$class::getQueryColumns()];
+		}
+
+		$records = Database::load($this->toSql(), $this->getBindings());
+
+		foreach ($records as $row) {
+			$object = $class::hydrateFromRow($row);
+			$collection->push($object);
+		}
+
+		$className = basename(str_replace('\\', '/', $class));
+		$logger = Logger::getInstance();
+		$logger->debug('Loaded ' . count($records) . ' ' . $className . ' objects');
+
+		return $collection;
 
 	}
 
@@ -426,34 +471,11 @@ class Query {
 	}
 
 	/**
-	 * Get a list of column values.
-	 *
-	 * @param	string		$column	Column name or expression.
-	 * @param	string|null	$key	Optional key column.
-	 * @return	array<int|string, mixed>
+	 * Get the model class name.
 	 */
-	public function pluck(string $column, ?string $key = null): array {
+	public function getModelClass(): ?string {
 
-		$query = clone $this;
-
-		if (is_null($key)) {
-			$query->select($column);
-			return Database::load($query->toSql(), $query->getBindings(), Database::RESULT_LIST);
-		}
-
-		$query->columns = [];
-		$query->bindings['select'] = [];
-		$query->selectRaw($column . ' AS value');
-		$query->addSelect($key . ' AS key');
-
-		$rows = Database::load($query->toSql(), $query->getBindings(), Database::DICTIONARY);
-		$result = [];
-
-		foreach ($rows as $row) {
-			$result[$row['key']] = $row['value'];
-		}
-
-		return $result;
+		return $this->modelClass;
 
 	}
 
@@ -489,6 +511,15 @@ class Query {
 		}
 
 		return $this;
+
+	}
+
+	/**
+	 * Check if this query has a model class set.
+	 */
+	public function hasModel(): bool {
+
+		return !is_null($this->modelClass);
 
 	}
 
@@ -573,32 +604,6 @@ class Query {
 	}
 
 	/**
-	 * Add an "order by created_at desc" clause.
-	 *
-	 * @param	string	$column	Column name.
-	 */
-	public function latest(string $column = 'created_at'): static {
-
-		return $this->orderBy($column, 'desc');
-
-	}
-
-	/**
-	 * Add a left join clause.
-	 *
-	 * @param	string			$table	Join table.
-	 * @param	string|callable	$first	First column or callback.
-	 * @param	string|null		$operator	Comparison operator.
-	 * @param	string|null		$second	Second column.
-	 * @param	bool			$where	Whether to use bindings in the join.
-	 */
-	public function leftJoin(string $table, string|callable $first, ?string $operator = null, ?string $second = null, bool $where = false): static {
-
-		return $this->joinWithType('left', $table, $first, $operator, $second, $where);
-
-	}
-
-	/**
 	 * Add an inner join clause.
 	 *
 	 * @param	string			$table	Join table.
@@ -610,113 +615,6 @@ class Query {
 	public function join(string $table, string|callable $first, ?string $operator = null, ?string $second = null, bool $where = false): static {
 
 		return $this->joinWithType('inner', $table, $first, $operator, $second, $where);
-
-	}
-
-	/**
-	 * Add a join clause with the given type.
-	 *
-	 * @param	string			$type	Join type.
-	 * @param	string			$table	Join table.
-	 * @param	string|callable	$first	First column or callback.
-	 * @param	string|null		$operator	Comparison operator.
-	 * @param	mixed			$second	Second column or value.
-	 * @param	bool			$where	Whether to use bindings in the join.
-	 */
-	protected function joinWithType(string $type, string $table, string|callable $first, ?string $operator = null, mixed $second = null, bool $where = false): static {
-
-		$join = new JoinClause($type, $table);
-
-		if (is_callable($first)) {
-
-			$first($join);
-
-		} else {
-
-			if (is_null($second)) {
-				$second = $operator;
-				$operator = '=';
-			}
-
-			$operator = $operator ?? '=';
-
-			if ($where) {
-				$join->where($first, $operator, $second);
-			} else {
-				$join->on($first, $operator, $second);
-			}
-		}
-
-		$this->joins[] = $join;
-
-		if (count($join->getBindings())) {
-			$this->bindings['join'] = array_merge($this->bindings['join'], $join->getBindings());
-		}
-
-		return $this;
-
-	}
-
-	/**
-	 * Add a left join clause with bindings.
-	 *
-	 * @param	string	$table	Join table.
-	 * @param	string	$first	First column.
-	 * @param	string	$operator	Comparison operator.
-	 * @param	mixed	$second	Value to compare.
-	 */
-	public function leftJoinWhere(string $table, string $first, string $operator, mixed $second): static {
-
-		return $this->leftJoin($table, $first, $operator, $second, true);
-
-	}
-
-	/**
-	 * Set the query limit.
-	 *
-	 * @param	int	$limit	Maximum rows.
-	 */
-	public function limit(int $limit): static {
-
-		$this->limit = $limit;
-
-		return $this;
-
-	}
-
-	/**
-	 * Get the maximum value of a given column.
-	 *
-	 * @param	string	$column	Column name or expression.
-	 */
-	public function max(string $column): mixed {
-
-		return $this->aggregate('MAX', $column);
-
-	}
-
-	/**
-	 * Get the minimum value of a given column.
-	 *
-	 * @param	string	$column	Column name or expression.
-	 */
-	public function min(string $column): mixed {
-
-		return $this->aggregate('MIN', $column);
-
-	}
-
-	/**
-	 * Add a join clause with bindings.
-	 *
-	 * @param	string	$table	Join table.
-	 * @param	string	$first	First column.
-	 * @param	string	$operator	Comparison operator.
-	 * @param	mixed	$second	Value to compare.
-	 */
-	public function joinWhere(string $table, string $first, string $operator, mixed $second): static {
-
-		return $this->join($table, $first, $operator, $second, true);
 
 	}
 
@@ -813,6 +711,90 @@ class Query {
 	}
 
 	/**
+	 * Add a join clause with bindings.
+	 *
+	 * @param	string	$table	Join table.
+	 * @param	string	$first	First column.
+	 * @param	string	$operator	Comparison operator.
+	 * @param	mixed	$second	Value to compare.
+	 */
+	public function joinWhere(string $table, string $first, string $operator, mixed $second): static {
+
+		return $this->join($table, $first, $operator, $second, true);
+
+	}
+
+	/**
+	 * Add a join clause with the given type.
+	 *
+	 * @param	string			$type	Join type.
+	 * @param	string			$table	Join table.
+	 * @param	string|callable	$first	First column or callback.
+	 * @param	string|null		$operator	Comparison operator.
+	 * @param	mixed			$second	Second column or value.
+	 * @param	bool			$where	Whether to use bindings in the join.
+	 */
+	protected function joinWithType(string $type, string $table, string|callable $first, ?string $operator = null, mixed $second = null, bool $where = false): static {
+
+		$join = new JoinClause($type, $table);
+
+		if (is_callable($first)) {
+
+			$first($join);
+
+		} else {
+
+			if (is_null($second)) {
+				$second = $operator;
+				$operator = '=';
+			}
+
+			$operator = $operator ?? '=';
+
+			if ($where) {
+				$join->where($first, $operator, $second);
+			} else {
+				$join->on($first, $operator, $second);
+			}
+		}
+
+		$this->joins[] = $join;
+
+		if (count($join->getBindings())) {
+			$this->bindings['join'] = array_merge($this->bindings['join'], $join->getBindings());
+		}
+
+		return $this;
+
+	}
+
+	/**
+	 * Add an "order by created_at desc" clause.
+	 *
+	 * @param	string	$column	Column name.
+	 */
+	public function latest(string $column = 'created_at'): static {
+
+		return $this->orderBy($column, 'desc');
+
+	}
+
+	/**
+	 * Add a left join clause.
+	 *
+	 * @param	string			$table	Join table.
+	 * @param	string|callable	$first	First column or callback.
+	 * @param	string|null		$operator	Comparison operator.
+	 * @param	string|null		$second	Second column.
+	 * @param	bool			$where	Whether to use bindings in the join.
+	 */
+	public function leftJoin(string $table, string|callable $first, ?string $operator = null, ?string $second = null, bool $where = false): static {
+
+		return $this->joinWithType('left', $table, $first, $operator, $second, $where);
+
+	}
+
+	/**
 	 * Add a left join subquery clause.
 	 *
 	 * @param	Query|callable|string	$query	Subquery builder, callback or SQL.
@@ -829,40 +811,91 @@ class Query {
 	}
 
 	/**
-	 * Paginate the given query.
+	 * Add a left join clause with bindings.
 	 *
-	 * @param	int				$perPage	Items per page.
-	 * @param	int				$page		Page number (1-based).
-	 * @param	string|array	$columns	Columns to select.
-	 * @return	array<string, mixed>
+	 * @param	string	$table	Join table.
+	 * @param	string	$first	First column.
+	 * @param	string	$operator	Comparison operator.
+	 * @param	mixed	$second	Value to compare.
 	 */
-	public function paginate(int $perPage = 15, int $page = 1, string|array $columns = ['*']): array {
+	public function leftJoinWhere(string $table, string $first, string $operator, mixed $second): static {
 
-		$page = max(1, $page);
+		return $this->leftJoin($table, $first, $operator, $second, true);
 
-		$dataQuery = clone $this;
-		$dataQuery->select($columns);
-		$dataQuery->forPage($page, $perPage);
+	}
 
-		$countQuery = clone $this;
-		$countQuery->orders = [];
-		$countQuery->bindings['order'] = [];
-		$countQuery->limit = null;
-		$countQuery->offset = null;
+	/**
+	 * Set the query limit.
+	 *
+	 * @param	int	$limit	Maximum rows.
+	 */
+	public function limit(int $limit): static {
 
-		$total = (int)$countQuery->count();
-		$items = $dataQuery->get();
-		$lastPage = $perPage > 0 ? (int)ceil($total / $perPage) : 0;
+		$this->limit = $limit;
 
-		return [
-			'items' => $items,
-			'total' => $total,
-			'perPage' => $perPage,
-			'currentPage' => $page,
-			'lastPage' => $lastPage,
-			'from' => $total ? (($page - 1) * $perPage + 1) : null,
-			'to' => $total ? min($page * $perPage, $total) : null
-		];
+		return $this;
+
+	}
+
+	/**
+	 * Set the row lock mode.
+	 *
+	 * @param	bool|string	$value	Lock mode (true for FOR UPDATE, false for LOCK IN SHARE MODE).
+	 */
+	public function lock(bool|string $value = true): static {
+
+		if (is_string($value)) {
+			$this->lock = $value;
+			return $this;
+		}
+
+		$this->lock = $value ? 'FOR UPDATE' : 'LOCK IN SHARE MODE';
+
+		return $this;
+
+	}
+
+	/**
+	 * Lock the selected rows for update.
+	 */
+	public function lockForUpdate(): static {
+
+		return $this->lock(true);
+
+	}
+
+	/**
+	 * Get the maximum value of a given column.
+	 *
+	 * @param	string	$column	Column name or expression.
+	 */
+	public function max(string $column): mixed {
+
+		return $this->aggregate('MAX', $column);
+
+	}
+
+	/**
+	 * Get the minimum value of a given column.
+	 *
+	 * @param	string	$column	Column name or expression.
+	 */
+	public function min(string $column): mixed {
+
+		return $this->aggregate('MIN', $column);
+
+	}
+
+	/**
+	 * Set the query offset.
+	 *
+	 * @param	int	$offset	Offset rows.
+	 */
+	public function offset(int $offset): static {
+
+		$this->offset = $offset;
+
+		return $this;
 
 	}
 
@@ -1106,6 +1139,76 @@ class Query {
 	}
 
 	/**
+	 * Paginate the given query.
+	 *
+	 * @param	int				$perPage	Items per page.
+	 * @param	int				$page		Page number (1-based).
+	 * @param	string|array	$columns	Columns to select.
+	 * @return	array<string, mixed>
+	 */
+	public function paginate(int $perPage = 15, int $page = 1, string|array $columns = ['*']): array {
+
+		$page = max(1, $page);
+
+		$dataQuery = clone $this;
+		$dataQuery->select($columns);
+		$dataQuery->forPage($page, $perPage);
+
+		$countQuery = clone $this;
+		$countQuery->orders = [];
+		$countQuery->bindings['order'] = [];
+		$countQuery->limit = null;
+		$countQuery->offset = null;
+
+		$total = (int)$countQuery->count();
+		$items = $dataQuery->get();
+		$lastPage = $perPage > 0 ? (int)ceil($total / $perPage) : 0;
+
+		return [
+			'items' => $items,
+			'total' => $total,
+			'perPage' => $perPage,
+			'currentPage' => $page,
+			'lastPage' => $lastPage,
+			'from' => $total ? (($page - 1) * $perPage + 1) : null,
+			'to' => $total ? min($page * $perPage, $total) : null
+		];
+
+	}
+
+	/**
+	 * Get a list of column values.
+	 *
+	 * @param	string		$column	Column name or expression.
+	 * @param	string|null	$key	Optional key column.
+	 * @return	array<int|string, mixed>
+	 */
+	public function pluck(string $column, ?string $key = null): array {
+
+		$query = clone $this;
+
+		if (is_null($key)) {
+			$query->select($column);
+			return Database::load($query->toSql(), $query->getBindings(), Database::RESULT_LIST);
+		}
+
+		$query->columns = [];
+		$query->bindings['select'] = [];
+		$query->selectRaw($column . ' AS value');
+		$query->addSelect($key . ' AS key');
+
+		$rows = Database::load($query->toSql(), $query->getBindings(), Database::DICTIONARY);
+		$result = [];
+
+		foreach ($rows as $row) {
+			$result[$row['key']] = $row['value'];
+		}
+
+		return $result;
+
+	}
+
+	/**
 	 * Add a right join clause.
 	 *
 	 * @param	string			$table	Join table.
@@ -1207,15 +1310,24 @@ class Query {
 	}
 
 	/**
-	 * Set the query offset.
+	 * Set the model class for hydrating results.
 	 *
-	 * @param	int	$offset	Offset rows.
+	 * @param	string	$modelClass	Fully qualified class name of an ActiveRecord subclass.
 	 */
-	public function offset(int $offset): static {
+	public function setModel(string $modelClass): static {
 
-		$this->offset = $offset;
+		$this->modelClass = $modelClass;
 
 		return $this;
+
+	}
+
+	/**
+	 * Share lock the selected rows.
+	 */
+	public function sharedLock(): static {
+
+		return $this->lock(false);
 
 	}
 

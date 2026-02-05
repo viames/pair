@@ -6,9 +6,9 @@ use Pair\Html\FormControl;
 
 class Textarea extends FormControl {
 
-	private $rows = 2;
+	private ?int $rows = null;
 
-	private $cols = 20;
+	private ?int $cols = null;
 
 	/**
 	 * Sets columns for this textarea. Chainable method.
@@ -26,7 +26,15 @@ class Textarea extends FormControl {
 	public function render(): string {
 
 		$ret  = '<textarea ' . $this->nameProperty();
-		$ret .= ' rows="' . $this->rows . '" cols="' . $this->cols . '"';
+		
+		if ($this->rows !== null) {
+			$ret .= ' rows="' . $this->rows . '"';
+		}
+		if ($this->cols !== null) {
+			$ret .= ' cols="' . $this->cols . '"';
+		}
+
+		// process all other properties (id, required, disabled, readonly, placeholder, pattern, class, style, etc) {
 		$ret .= $this->processProperties() . '>';
 		$ret .= htmlspecialchars((string)$this->caption) . '</textarea>';
 

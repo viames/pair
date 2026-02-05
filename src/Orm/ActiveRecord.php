@@ -419,6 +419,146 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 
 	/**
+	 * Create a new ActiveRecord instance from a database row and mark it as loaded.
+	 *
+	 * @param	\stdClass	$row	Database row object.
+	 */
+	final public static function hydrateFromRow(\stdClass $row): static {
+
+		$class = get_called_class();
+		$object = new $class($row);
+		$object->loadedFromDb = true;
+
+		return $object;
+
+	}
+
+	/**
+	 * Get a new query builder instance for this model.
+	 */
+	public static function query(): Query {
+
+		$class = get_called_class();
+
+		return Query::table($class::TABLE_NAME)->setModel($class);
+
+	}
+
+	/**
+	 * Begin a fluent query with a where clause.
+	 *
+	 * @param	string|callable	$column		Column name or callback for nested where.
+	 * @param	mixed			$operator	Comparison operator or value.
+	 * @param	mixed			$value		Value when operator is provided.
+	 * @return	Query
+	 */
+	public static function where(string|callable $column, mixed $operator = null, mixed $value = null): Query {
+
+		return static::query()->where($column, $operator, $value);
+
+	}
+
+	/**
+	 * Begin a fluent query with a where null clause.
+	 *
+	 * @param	string	$column	Column name.
+	 * @return	Query
+	 */
+	public static function whereNull(string $column): Query {
+
+		return static::query()->whereNull($column);
+
+	}
+
+	/**
+	 * Begin a fluent query with a where not null clause.
+	 *
+	 * @param	string	$column	Column name.
+	 * @return	Query
+	 */
+	public static function whereNotNull(string $column): Query {
+
+		return static::query()->whereNotNull($column);
+
+	}
+
+	/**
+	 * Begin a fluent query with a where in clause.
+	 *
+	 * @param	string								$column	Column name.
+	 * @param	array|Query|callable|string	$values	Values for the IN clause.
+	 * @return	Query
+	 */
+	public static function whereIn(string $column, array|Query|callable|string $values): Query {
+
+		return static::query()->whereIn($column, $values);
+
+	}
+
+	/**
+	 * Begin a fluent query with a where not in clause.
+	 *
+	 * @param	string								$column	Column name.
+	 * @param	array|Query|callable|string	$values	Values for the NOT IN clause.
+	 * @return	Query
+	 */
+	public static function whereNotIn(string $column, array|Query|callable|string $values): Query {
+
+		return static::query()->whereNotIn($column, $values);
+
+	}
+
+	/**
+	 * Begin a fluent query with a where between clause.
+	 *
+	 * @param	string	$column	Column name.
+	 * @param	array	$values	Two values for BETWEEN.
+	 * @return	Query
+	 */
+	public static function whereBetween(string $column, array $values): Query {
+
+		return static::query()->whereBetween($column, $values);
+
+	}
+
+	/**
+	 * Begin a fluent query with an order by clause.
+	 *
+	 * @param	string	$column		Column name.
+	 * @param	string	$direction	Direction (asc/desc).
+	 * @return	Query
+	 */
+	public static function orderBy(string $column, string $direction = 'asc'): Query {
+
+		return static::query()->orderBy($column, $direction);
+
+	}
+
+	/**
+	 * Begin a fluent query ordered by latest (created_at desc).
+	 *
+	 * @param	string	$column	Column name.
+	 * @return	Query
+	 */
+	public static function latest(string $column = 'created_at'): Query {
+
+		return static::query()->latest($column);
+
+	}
+
+	/**
+	 * Begin a fluent query ordered by oldest (created_at asc).
+	 *
+	 * @param	string	$column	Column name.
+	 * @return	Query
+	 */
+	public static function oldest(string $column = 'created_at'): Query {
+
+		return static::query()->oldest($column);
+
+	}
+
+	/**
 	 * Return true if each key property has a value.
 	 */
 	public function areKeysPopulated(): bool {
