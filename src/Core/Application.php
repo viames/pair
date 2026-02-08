@@ -546,9 +546,9 @@ class Application {
 				: [];
 
 			// as of PHP 8.4.0 supports throw_on_error
-			if (PHP_VERSION >= '8.4.0') {
+			if (version_compare(PHP_VERSION, '8.4.0', '>=')) {
 				try {
-					return unserialize($_COOKIE[$cookieName], [
+					return @unserialize($_COOKIE[$cookieName], [
 						'allowed_classes' => $allowedClasses,
 						'throw_on_error' => true
 					]);

@@ -1004,7 +1004,7 @@ class Utilities {
 
 		// uses @ to suppress any unserialize warnings
 		try {
-			$result = unserialize($data, ['allowed_classes' => $allowedClasses]);
+			$result = @unserialize($data, ['allowed_classes' => $allowedClasses]);
 		} catch (\Throwable $e) {
 			return false;
 		}
