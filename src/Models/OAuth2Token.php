@@ -9,36 +9,33 @@ use Pair\Orm\Database;
 /**
  * OAuth2 access token model.
  *
- * Responsibilities:
- * - Represents a row in the `oauth2_tokens` table.
- * - Parses Authorization headers for Basic and Bearer schemes.
- * - Validates token existence and freshness against configured lifetime.
- * - Sends minimal RFC 2616 JSON responses for common HTTP statuses.
+ * Represents a row in `oauth2_tokens`, parses Authorization headers and
+ * validates bearer token freshness.
  */
 class OAuth2Token extends ActiveRecord {
 
 	/**
-	 * Maps to the auto-increment `id` column.
+	 * Token unique identifier.
 	 */
 	protected int $id;
 
 	/**
-	 * Maps to the `client_id` column (foreign key to oauth2_clients.id).
+	 * ID of the OAuth2 client this token belongs to.
 	 */
 	protected string $clientId;
 
 	/**
-	 * Maps to the `token` column (bearer token string).
+	 * The bearer token string.
 	 */
 	protected string $token;
 
 	/**
-	 * Maps to the `created_at` column.
+	 * The datetime when the token was created.
 	 */
 	protected \DateTime $createdAt;
 
 	/**
-	 * Maps to the `updated_at` column.
+	 * The datetime when the token was last refreshed.
 	 */
 	protected \DateTime $updatedAt;
 
@@ -48,7 +45,7 @@ class OAuth2Token extends ActiveRecord {
 	const TABLE_NAME = 'oauth2_tokens';
 
 	/**
-	 * Legacy default lifetime in seconds (unused if `OAUTH2_TOKEN_LIFETIME` is set).
+	 * Default token lifetime in seconds.
 	 */
 	const LIFETIME = 3600;
 
@@ -59,7 +56,6 @@ class OAuth2Token extends ActiveRecord {
 
 	/**
 	 * Called by the constructor after population.
-	 * Used to define casting/binding of fields to PHP types.
 	 */
 	protected function _init(): void {
 
@@ -70,168 +66,204 @@ class OAuth2Token extends ActiveRecord {
 	}
 
 	/**
-	 * Get the raw Authorization header value, if any. Supports common server variables and Apache’s request
-	 * headers.
-	 *
-	 * @return string|null The header value (e.g., "Bearer <token>" or "Basic <base64>"), or null if missing.
+	 * Send a 400 Bad Request JSON response and terminate execution.
+	 * 
+	 * @param string $detail Detail message to include in the response.
 	 */
-	private static function getAuthorizationHeader(): ?string {
+	public static function badRequest(string $detail): void {
 
-		$header = null;
+		self::sendProblemDetailResponse('#sec10.4.1', 'Bad Request', 400, $detail);
 
-		if (isset($_SERVER['Authorization'])) {
+	}
 
-			$header = trim($_SERVER["Authorization"]);
+	/**
+	 * Extract client credentials from a Basic Authorization header.
+	 *
+	 * @return array{id: string, secret: string}|null
+	 */
+	public static function basicCredentials(): ?array {
 
-		} else if (isset($_SERVER['HTTP_AUTHORIZATION'])) { //Nginx or fast CGI
+		$header = self::getAuthorizationHeader();
 
-			$header = trim($_SERVER["HTTP_AUTHORIZATION"]);
-
-		} else if (function_exists('apache_request_headers')) {
-
-			$requestHeaders = apache_request_headers();
-
-			// normalize header names capitalization to catch "authorization" vs "Authorization"
-			$requestHeaders = array_combine(array_map('ucwords', array_keys($requestHeaders)), array_values($requestHeaders));
-
-			if (isset($requestHeaders['Authorization'])) {
-				$header = trim($requestHeaders['Authorization']);
-			}
-
+		if (!$header or !preg_match('/^\s*Basic\s+(\S+)\s*$/i', $header, $matches)) {
+			return null;
 		}
 
-		return $header;
+		$decoded = base64_decode($matches[1], true);
+
+		if (false === $decoded or !str_contains($decoded, ':')) {
+			return null;
+		}
+
+		list($clientId, $clientSecret) = explode(':', $decoded, 2);
+
+		if ('' === trim($clientId) or '' === trim($clientSecret)) {
+			return null;
+		}
+
+		return [
+			'id'		=> trim($clientId),
+			'secret'	=> trim($clientSecret)
+		];
 
 	}
 
 	/**
 	 * Extract an OAuth2 Bearer token from the Authorization header.
 	 *
-	 * @return string|null The token string, or null if header is missing or not Bearer.
+	 * @return string|null The bearer token, or null if not present.
 	 */
-	public static function readBearerToken(): ?string {
+	public static function bearerToken(): ?string {
 
-		$headers = self::getAuthorizationHeader();
+		$header = self::getAuthorizationHeader();
 
-		if (!empty($headers) and preg_match('/Bearer\s(\S+)/', $headers, $matches)) {
-			return $matches[1];
+		if (!$header or !preg_match('/^\s*Bearer\s+(\S+)\s*$/i', $header, $matches)) {
+			return null;
 		}
 
-		return null;
+		return trim($matches[1]);
 
 	}
 
 	/**
-	 * Extract client_id and client_secret from a Basic Authorization header.
-	 *
-	 * @return \stdClass|null An object with ->id and ->secret, or null if missing/invalid.
+	 * Send a 403 Forbidden JSON response and terminate execution.
+	 * 
+	 * @param string $detail Detail message to include in the response.
 	 */
-	public static function readBasicAuth(): ?\stdClass {
+	public static function forbidden(string $detail): void {
 
-		$headers = self::getAuthorizationHeader();
-
-		if (!empty($headers) and preg_match('/Basic\s(\S+)/', $headers, $matches)) {
-			$parts = base64_decode($matches[1]);
-			$client = new \stdClass();
-			list($client->id, $client->secret) = explode(':', $parts, 2);
-			return $client;
-		}
-
-		return null;
+		self::sendProblemDetailResponse('#sec10.4.4', 'Forbidden', 403, $detail);
 
 	}
 
 	/**
-	 * Validate that a given bearer token exists and is still within lifetime. Lifetime is evaluated
-	 * by checking tokens whose `updated_at` is greater than * "NOW() minus OAUTH2_TOKEN_LIFETIME seconds".
+	 * Generate a random bearer token value.
 	 *
-	 * @param	string	The token to validate.
-	 * @return	bool	True if valid and fresh, false otherwise.
+	 * @param int $bytes Number of random bytes before hex encoding.
+	 * @return string Hex-encoded random token.
 	 */
-	public static function validate(string $bearerToken): bool {
+	public static function generateToken(int $bytes = 256): string {
+
+		if ($bytes < 16) {
+			$bytes = 16;
+		}
+
+		return bin2hex(random_bytes($bytes));
+
+	}
+
+	/**
+	 * Return the effective OAuth2 token lifetime in seconds.
+	 *
+	 * @return int Lifetime in seconds.
+	 */
+	public static function getLifetimeSeconds(): int {
+
+		$lifetime = Env::get('OAUTH2_TOKEN_LIFETIME');
+
+		if (!is_numeric($lifetime) or (int)$lifetime <= 0) {
+			return self::LIFETIME;
+		}
+
+		return (int)$lifetime;
+
+	}
+
+	/**
+	 * Validate that a bearer token exists and is still within configured lifetime.
+	 *
+	 * @param string $bearerToken The token value to validate.
+	 * @return bool True if the token is valid and not expired.
+	 */
+	public static function isValid(string $bearerToken): bool {
+
+		$bearerToken = trim($bearerToken);
+
+		if ('' === $bearerToken) {
+			return false;
+		}
 
 		$query =
 			'SELECT COUNT(1)
-			FROM ' . self::TABLE_NAME . '
-			WHERE token = ?
-			AND updated_at > DATE_SUB(NOW(), INTERVAL ' . (int)Env::get('OAUTH2_TOKEN_LIFETIME') . ' SECOND)';
+			FROM `' . self::TABLE_NAME . '`
+			WHERE `token` = ?
+			AND `updated_at` > DATE_SUB(NOW(), INTERVAL ' . self::getLifetimeSeconds() . ' SECOND)';
 
 		return (bool)Database::load($query, [$bearerToken], Database::COUNT);
 
 	}
 
 	/**
-	 * Send a 200 OK JSON response with details and terminate execution.
-	 *
-	 * @param string Human-readable detail message.
-	 */
-	public static function ok(string $detail): void {
-
-		self::sendRfc2616Response('#sec10.2.1','OK','200', $detail);
-
-	}
-
-	/**
-	 * Send a 400 Bad Request JSON response and terminate execution. The request could not be
-	 * understood by the server due to malformed syntax. The client should not repeat the
-	 * request without modifications.
-	 *
-	 * @param string Human-readable detail message.
-	 */
-	public static function badRequest(string $detail): void {
-
-		self::sendRfc2616Response('#sec10.4.1','Bad Request','400',$detail);
-
-	}
-
-	/**
-	 * The request requires user authentication. The response MUST include a WWW-Authenticate
-	 * header field (section 14.47) containing a challenge applicable to the requested
-	 * resource. The client MAY repeat the request with a suitable Authorization header field
-	 * (section 14.8). If the request already included Authorization credentials, then the 401
-	 * response indicates that authorization has been refused for those credentials.
-	 *
-	 * @param string Human-readable detail message.
+	 * Send a 401 Unauthorized JSON response with a WWW-Authenticate header and terminate execution.
+	 * 
+	 * @param string $detail Detail message to include in the response.
 	 */
 	public static function unauthorized(string $detail): void {
 
-		self::sendRfc2616Response('#sec10.4.2','Unauthorized','401',$detail);
+		self::sendProblemDetailResponse('#sec10.4.2', 'Unauthorized', 401, $detail, [
+			'WWW-Authenticate: Bearer'
+		]);
 
 	}
 
 	/**
-	 * The server understood the request, but is refusing to fulfill it. Authorization will
-	 * not help and the request SHOULD NOT be repeated. If the request method was not HEAD and
-	 * the server wishes to make public why the request has not been fulfilled, it SHOULD
-	 * describe the reason for the refusal in the entity. If the server does not wish to make
-	 * this information available to the client, the status code 404 (Not Found) can be used
-	 * instead.
-	 * 
-	 * @param string Human-readable detail message.
+	 * Return the raw Authorization header value, if present.
+	 *
+	 * @return string|null The header value, or null if not found.
 	 */
-	public static function forbidden(string $detail): void {
+	private static function getAuthorizationHeader(): ?string {
 
-		self::sendRfc2616Response('#sec10.4.4','Forbidden','403', $detail);
+		if (isset($_SERVER['Authorization'])) {
+			return trim((string)$_SERVER['Authorization']);
+		}
+
+		if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
+			return trim((string)$_SERVER['HTTP_AUTHORIZATION']);
+		}
+
+		if (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
+			return trim((string)$_SERVER['REDIRECT_HTTP_AUTHORIZATION']);
+		}
+
+		if (function_exists('apache_request_headers')) {
+
+			$requestHeaders = apache_request_headers();
+
+			foreach ($requestHeaders as $name => $value) {
+				if ('authorization' == strtolower((string)$name)) {
+					return trim((string)$value);
+				}
+			}
+
+		}
+
+		return null;
 
 	}
 
 	/**
-	 * Send a JSON object in HTTP response.
-	 * 
-	 * @see https://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html
-	 * @param	string		RFC section hash suffix.
-	 * @param	string		Short status text.
-	 * @param	string		HTTP status code as string.
-	 * @param	string|null	Optional detail message.
+	 * Send an RFC 7807 Problem Details JSON response and terminate execution.
+	 *
+	 * @see https://www.rfc-editor.org/rfc/rfc7807
+	 * @param string $type RFC 2616 Section 10 hash suffix for the type URL.
+	 * @param string $title Short status text.
+	 * @param int $status HTTP status code.
+	 * @param string|null $detail Optional detail message.
+	 * @param string[] $headers Optional headers to emit before body.
 	 */
-	private static function sendRfc2616Response(string $type, string $title, string $status, ?string $detail=null): void {
+	private static function sendProblemDetailResponse(string $type, string $title, int $status, ?string $detail = null, array $headers = []): void {
 
-		header('Content-Type: application/json', true, (int)$status);
+		foreach ($headers as $headerValue) {
+			header($headerValue);
+		}
+
+		header('Content-Type: application/json', true, $status);
 		$body = [
 			'type'	=> 'http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html' . $type,
 			'title'	=> $title,
 			'status'=> $status,
-			'detail'=> $detail];
+			'detail'=> $detail
+		];
 		print json_encode($body);
 		die();
 

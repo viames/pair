@@ -35,6 +35,23 @@
   PairUI.qs = (sel, root = document) => root.querySelector(sel);
   PairUI.qsa = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
+  // nearest form root from an element
+  PairUI.formRoot = (el, fallback = document) => {
+    const safeFallback = fallback || document;
+    if (!el || typeof el.closest !== "function") return safeFallback;
+    return el.closest("form") || safeFallback;
+  };
+
+  // contextual helpers to avoid repeating root + selector boilerplate
+  PairUI.ctx = (el, fallback = document) => {
+    const root = PairUI.formRoot(el, fallback);
+    return {
+      root,
+      qs: (sel, scope = root) => PairUI.qs(sel, scope || root),
+      qsa: (sel, scope = root) => PairUI.qsa(sel, scope || root)
+    };
+  };
+
   // event helpers
   PairUI.on = (el, type, handler, opts) => el.addEventListener(type, handler, opts);
   PairUI.off = (el, type, handler, opts) => el.removeEventListener(type, handler, opts);

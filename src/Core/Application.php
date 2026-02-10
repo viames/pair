@@ -693,7 +693,7 @@ class Application {
 		$tokenValue	= Router::get('token');
 
 		// read the Bearer token via HTTP header
-		$bearerToken = OAuth2Token::readBearerToken();
+		$bearerToken = OAuth2Token::bearerToken();
 
 		// assemble the API controller name
 		$ctlName = $name . 'Controller';
@@ -727,7 +727,7 @@ class Application {
 		// or check for Oauth2 Bearer token via http header
 		} else if ($bearerToken) {
 
-			if (!OAuth2Token::validate($bearerToken)) {
+			if (!OAuth2Token::isValid($bearerToken)) {
 				sleep(3);
 				OAuth2Token::unauthorized('Authentication failed');
 			}
