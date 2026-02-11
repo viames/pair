@@ -47,7 +47,7 @@ if (preg_match($pattern, $envContent, $matches)) {
 	}
 
 	// replace the existing version
-	$envContent = preg_replace($pattern, 'APP_VERSION = ' . $version, $envContent);
+	$envContent = preg_replace($pattern, 'APP_VERSION=' . $version, $envContent);
 	$msg = 'Updated version: ' . $version . PHP_EOL;
 
 } else {

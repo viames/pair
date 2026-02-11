@@ -716,21 +716,36 @@ class Utilities {
 	 * Check if there is an executable available in the operating system for direct execution. If the path
 	 * cannot be changed in the system, the path to the executable can be specified in the Pair .env
 	 * configuration file. Return the path to the executable if it is available, otherwise null.
+	 * 
+	 * @param string $executable Name of the executable to search for.
+	 * @param string|null $envKey Optional environment variable key to check for the executable path.
+	 * @return string|null Path to the executable if available, otherwise null.
 	 */
 	public static function getExecutablePath(string $executable, ?string $envKey = null): ?string {
 
-		if ($envKey and Env::get($envKey) and is_executable(Env::get($envKey))) {
-			return Env::get($envKey);
+		// first check if the path is specified in the environment variables and if it’s valid
+		if ($envKey) {
+			$envPath = trim((string) Env::get($envKey));
+			if ($envPath !== '' and is_file($envPath) and is_executable($envPath)) {
+				return $envPath;
+			}
 		}
 
-		exec('which ' . $executable, $output, $resultCode);
+		$output = [];
+		$resultCode = 1;
 
-		if (!isset($output[0]) or !is_executable($output[0])) {
+		// use the which command to find the executable in the system path
+		exec('which ' . escapeshellarg($executable) . ' 2>/dev/null', $output, $resultCode);
+		$whichPath = trim((string) ($output[0] ?? ''));
+
+		// check if the which command found a valid executable path
+		if ($resultCode !== 0 or $whichPath === '' or !is_file($whichPath) or !is_executable($whichPath)) {
 			$logger = Logger::getInstance();
-			$logger->error('{executable} is not available on this server', ['executable' => $executable, 'resultCode' => $resultCode, 'output' => $output]);
+			$logger->error('{executable} is not available on this server', ['executable' => $executable]);
+			return null;
 		}
 
-		return ($output[0] ?? null);
+		return $whichPath;
 
 	}
 

@@ -419,146 +419,6 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 
 	/**
-	 * Create a new ActiveRecord instance from a database row and mark it as loaded.
-	 *
-	 * @param	\stdClass	$row	Database row object.
-	 */
-	final public static function hydrateFromRow(\stdClass $row): static {
-
-		$class = get_called_class();
-		$object = new $class($row);
-		$object->loadedFromDb = true;
-
-		return $object;
-
-	}
-
-	/**
-	 * Get a new query builder instance for this model.
-	 */
-	public static function query(): Query {
-
-		$class = get_called_class();
-
-		return Query::table($class::TABLE_NAME)->setModel($class);
-
-	}
-
-	/**
-	 * Begin a fluent query with a where clause.
-	 *
-	 * @param	string|callable	$column		Column name or callback for nested where.
-	 * @param	mixed			$operator	Comparison operator or value.
-	 * @param	mixed			$value		Value when operator is provided.
-	 * @return	Query
-	 */
-	public static function where(string|callable $column, mixed $operator = null, mixed $value = null): Query {
-
-		return static::query()->where($column, $operator, $value);
-
-	}
-
-	/**
-	 * Begin a fluent query with a where null clause.
-	 *
-	 * @param	string	$column	Column name.
-	 * @return	Query
-	 */
-	public static function whereNull(string $column): Query {
-
-		return static::query()->whereNull($column);
-
-	}
-
-	/**
-	 * Begin a fluent query with a where not null clause.
-	 *
-	 * @param	string	$column	Column name.
-	 * @return	Query
-	 */
-	public static function whereNotNull(string $column): Query {
-
-		return static::query()->whereNotNull($column);
-
-	}
-
-	/**
-	 * Begin a fluent query with a where in clause.
-	 *
-	 * @param	string								$column	Column name.
-	 * @param	array|Query|callable|string	$values	Values for the IN clause.
-	 * @return	Query
-	 */
-	public static function whereIn(string $column, array|Query|callable|string $values): Query {
-
-		return static::query()->whereIn($column, $values);
-
-	}
-
-	/**
-	 * Begin a fluent query with a where not in clause.
-	 *
-	 * @param	string								$column	Column name.
-	 * @param	array|Query|callable|string	$values	Values for the NOT IN clause.
-	 * @return	Query
-	 */
-	public static function whereNotIn(string $column, array|Query|callable|string $values): Query {
-
-		return static::query()->whereNotIn($column, $values);
-
-	}
-
-	/**
-	 * Begin a fluent query with a where between clause.
-	 *
-	 * @param	string	$column	Column name.
-	 * @param	array	$values	Two values for BETWEEN.
-	 * @return	Query
-	 */
-	public static function whereBetween(string $column, array $values): Query {
-
-		return static::query()->whereBetween($column, $values);
-
-	}
-
-	/**
-	 * Begin a fluent query with an order by clause.
-	 *
-	 * @param	string	$column		Column name.
-	 * @param	string	$direction	Direction (asc/desc).
-	 * @return	Query
-	 */
-	public static function orderBy(string $column, string $direction = 'asc'): Query {
-
-		return static::query()->orderBy($column, $direction);
-
-	}
-
-	/**
-	 * Begin a fluent query ordered by latest (created_at desc).
-	 *
-	 * @param	string	$column	Column name.
-	 * @return	Query
-	 */
-	public static function latest(string $column = 'created_at'): Query {
-
-		return static::query()->latest($column);
-
-	}
-
-	/**
-	 * Begin a fluent query ordered by oldest (created_at asc).
-	 *
-	 * @param	string	$column	Column name.
-	 * @return	Query
-	 */
-	public static function oldest(string $column = 'created_at'): Query {
-
-		return static::query()->oldest($column);
-
-	}
-
-	/**
 	 * Return true if each key property has a value.
 	 */
 	public function areKeysPopulated(): bool {
@@ -1092,7 +952,9 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * Search an object in the database with the primary key equivalent to the value passed in the parameter
 	 * and returns it as an ActiveRecord of this class, if found. If not found, throws an exception.
 	 *
-	 * @throws	PairException
+	 * @param int|string|array $primaryKey Primary or compound key for this object table.
+	 * @return static
+	 * @throws PairException
 	 */
 	public static function findOrFail(int|string|array $primaryKey): static {
 
@@ -1107,10 +969,31 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 
 	/**
+	 * Begin a fluent query with a where clause and return the first result.
+	 *
+	 * @param string|callable|array $column Column name, callback for nested where, or array of conditions.
+	 * @param mixed $operator Comparison operator or value.
+	 * @param mixed $value Value when operator is provided.
+	 * @return static|null
+	 */
+	public static function firstWhere(string|callable|array $column, mixed $operator = null, mixed $value = null): ?static {
+
+		$query = static::query();
+
+		if (func_num_args() === 2) {
+			return $query->firstWhere($column, $operator);
+		}
+
+		return $query->firstWhere($column, $operator, $value);
+
+	}
+
+	/**
 	 * Securely formats and returns the value of a DateTime field with the date only if valid, otherwise null.
-	 * @param	string	Property name of DateTime object.
-	 * @param	string	Optional pattern in the format provided by the DateTime object.
-	 * @return	string|null
+	 * 
+	 * @param string $prop Property name of DateTime object.
+	 * @param string|null $format Optional pattern in the format provided by the DateTime object.
+	 * @return string|null
 	 */
 	final public function formatDate(string $prop, ?string $format = null): ?string {
 
@@ -1134,9 +1017,10 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 	/**
 	 * Securely formats and returns the value of a DateTime field with the time if valid, otherwise null.
-	 * @param	string	Property name of DateTime object.
-	 * @param	string	Optional pattern in the format provided by the DateTime object.
-	 * @return	string|null
+	 * 
+	 * @param string $prop Property name of DateTime object.
+	 * @param string|null $format Optional pattern in the format provided by the DateTime object.
+	 * @return string|null
 	 */
 	final public function formatDateTime(string $prop, ?string $format = null): ?string {
 
@@ -1161,8 +1045,9 @@ abstract class ActiveRecord implements \JsonSerializable {
 	/**
 	 * Gets all objects of the inherited class with where conditions and order clause.
 	 *
-	 * @param	array	Optional array of query filters, [property_name => value].
-	 * @param	array	Optional array of order by, [property_name] or [property_name => 'DESC'].
+	 * @param array|null $filters Optional array of query filters, [property_name => value].
+	 * @param string|array $orderBy Optional array of order by, [property_name] or [property_name => 'DESC'].
+	 * @return Collection
 	 */
 	final public static function getAllObjects(?array $filters = [], string|array $orderBy = []): Collection {
 
@@ -1277,6 +1162,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 	/**
 	 * Utility that works like \get_object_vars() but restricted to bound properties.
+	 * 
+	 * @return array Array with all properties mapped to DB columns, with their current value in this object.
 	 */
 	final public function getAllProperties(): array {
 
@@ -1297,6 +1184,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 	/**
 	 * Returns array with matching object property name on mapped db columns.
+	 * 
+	 * @return array Array with object property name as key and mapped db column as value.
 	 */
 	protected static function getBinds(): array {
 
@@ -1327,7 +1216,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	/**
 	 * Returns a variable, null in case of variable not found.
 	 *
-	 * @param	string	Name of the cached variable.
+	 * @param string $name Name of the cached variable.
 	 */
 	final public function getCache($name): mixed {
 
@@ -2188,46 +2077,44 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 
 	/**
-	 * Check if a property of this inherited object is stored in common cache.
+	 * Create a new ActiveRecord instance from a database row and mark it as loaded.
 	 *
-	 * @param	string	Name of property of this object to check.
+	 * @param	\stdClass	$row	Database row object.
 	 */
-	private function isInSharedCache(string $property): bool {
+	final public static function hydrateFromRow(\stdClass $row): static {
 
-		// list shared properties
-		return (is_array(static::SHARED_CACHE_PROPERTIES) and
-				in_array($property, static::SHARED_CACHE_PROPERTIES));
+		$class = get_called_class();
+		$object = new $class($row);
+		$object->loadedFromDb = true;
+
+		return $object;
 
 	}
 
 	/**
-	 * Check if a property is mapped to a table primary or compound key field for this object.
+	 * Return the HTML-escaped value of a property of this object. It is useful to print
+	 * properties in views without worrying about escaping. It accepts an optional array
+	 * of options with the following keys:
+	 * - value: to specify a custom value instead of the property value.
+	 * - escape: to specify whether to escape the value or not, default true.
 	 *
-	 * @param	string	Single key name.
+	 * @param string $property Name of property of this object to print.
+	 * @param array $options Optional array of options.
+	 * @return string HTML-escaped value of the property.
+	 * @throws PairException If the property does not exist in the class.
 	 */
-	private function isKeyProperty(string $propertyName): bool {
+	public function html(string $property, array $options = []): string {
 
-		return (in_array($propertyName, (array)$this->keyProperties));
+		$class = get_called_class();
 
-	}
+		if (!property_exists($class, $property)) {
+			throw new PairException('Property ' . $property . ' does not exist in class ' . $class, ErrorCodes::PROPERTY_NOT_FOUND);
+		}
 
-	/**
-	 * Returns true if inherited object has been loaded from db.
-	 */
-	final public function isLoaded(): bool {
+		$value = $options['value'] ?? $this->$property;
+		$escape = $options['escape'] ?? true;
 
-		return $this->loadedFromDb;
-
-	}
-
-	/**
-	 * Returns true if object’s cache variable has been previously set.
-	 *
-	 * @param	string	Name of the cached variable.
-	 */
-	final public function issetCache(string $name): bool {
-
-		return ((is_array($this->cache) and array_key_exists($name, $this->cache)) ? true : false);
+		return ($escape ? htmlspecialchars((string)$value) : (string)$value);
 
 	}
 
@@ -2289,6 +2176,41 @@ abstract class ActiveRecord implements \JsonSerializable {
 			return false;
 		}
 
+	}
+
+	/**
+	 * Check if a property of this inherited object is stored in common cache.
+	 *
+	 * @param string $property Name of property of this object to check.
+	 */
+	private function isInSharedCache(string $property): bool {
+
+		// list shared properties
+		return (is_array(static::SHARED_CACHE_PROPERTIES) and
+				in_array($property, static::SHARED_CACHE_PROPERTIES));
+
+	}
+
+	/**
+	 * Returns true if inherited object has been loaded from db.
+	 * 
+	 * @return bool True if the object has been loaded from db, false otherwise.
+	 */
+	final public function isLoaded(): bool {
+
+		return $this->loadedFromDb;
+
+	}
+
+	/**
+	 * Check if a property is mapped to a table primary or compound key field for this object.
+	 *
+	 * @param string $propertyName Single key name.
+	 * @return bool True if the property is a key property, false otherwise.
+	 */
+	private function isKeyProperty(string $propertyName): bool {
+
+		return (in_array($propertyName, (array)$this->keyProperties));
 
 	}
 
@@ -2348,6 +2270,18 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 
 	/**
+	 * Returns true if object’s cache variable has been previously set.
+	 *
+	 * @param string $name Name of the cached variable.
+	 * @return bool True if the cached variable has been set, false otherwise.
+	 */
+	final public function issetCache(string $name): bool {
+
+		return ((is_array($this->cache) and array_key_exists($name, $this->cache)) ? true : false);
+
+	}
+
+	/**
 	 * Function for serializing the object through json response.
 	 */
 	public function jsonSerialize(): array {
@@ -2363,6 +2297,18 @@ abstract class ActiveRecord implements \JsonSerializable {
 		unset($vars['dynamicProperties']);
 
 		return $vars;
+
+	}
+
+	/**
+	 * Begin a fluent query ordered by latest (created_at desc).
+	 *
+	 * @param string $column Column name.
+	 * @return Query
+	 */
+	public static function latest(string $column = 'created_at'): Query {
+
+		return static::query()->latest($column);
 
 	}
 
@@ -2406,11 +2352,36 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 
 	/**
+	 * Begin a fluent query ordered by oldest (created_at asc).
+	 *
+	 * @param string $column Column name.
+	 * @return Query
+	 */
+	public static function oldest(string $column = 'created_at'): Query {
+
+		return static::query()->oldest($column);
+
+	}
+
+	/**
+	 * Begin a fluent query with an order by clause.
+	 *
+	 * @param string $column Column name.
+	 * @param string $direction Direction (asc/desc).
+	 * @return Query
+	 */
+	public static function orderBy(string $column, string $direction = 'asc'): Query {
+
+		return static::query()->orderBy($column, $direction);
+
+	}
+
+	/**
 	 * Bind the object properties with all columns coming from database translating the
 	 * field names into object properties names. DateTime, Boolean and Integer will be
 	 * properly managed.
 	 *
-	 * @param	\stdClass	Record object as extracted from db table.
+	 * @param \stdClass $dbRow Record object as extracted from db table.
 	 */
 	private function populate(\stdClass $dbRow): void {
 
@@ -2432,8 +2403,12 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 	/**
 	 * Populates the inherited object with input vars with same name as properties.
-	 *
-	 * @param	string	Optional list of properties to populate, comma separated. If no items, will tries to populate all columns.
+	 * If a list of property names is passed as argument, only those properties will be
+	 * populated. Otherwise, all properties will be populated if input vars with same name
+	 * are sent. DateTime, Boolean and Integer will be properly managed.
+	 * 
+	 * @param string ...$properties Optional list of property names to populate. If not defined, all properties will be populated if input vars with same name are sent.
+	 * @return bool True if the population process is completed, false otherwise.
 	 */
 	public function populateByRequest(): bool {
 
@@ -2470,7 +2445,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 * Creates an object with all instance properties for an easy next SQL query for
 	 * save data. Datetime properties will be converted to Y-m-d H:i:s or null.
 	 *
-	 * @param	array	List of property name to prepare.
+	 * @param array $properties List of property name to prepare.
+	 * @return \stdClass Object with properties named as DB fields and values properly casted for SQL query.
 	 */
 	private function prepareData(array $properties): \stdClass {
 
@@ -2557,8 +2533,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	/**
 	 * Output an object property or method properly formatted and escaped.
 	 *
-	 * @param	string	Property or method (with or without parentheses) name.
-	 * @param	array	Optional settings for use in children classes.
+	 * @param string $name Property or method (with or without parentheses) name.
 	 */
 	public function printHtml(string $name): void {
 
@@ -2642,6 +2617,19 @@ abstract class ActiveRecord implements \JsonSerializable {
 			}
 
 		}
+
+	}
+
+	/**
+	 * Get a new query builder instance for this model.
+	 * 
+	 * @return Query A new query builder instance for this model.
+	 */
+	public static function query(): Query {
+
+		$class = get_called_class();
+
+		return Query::table($class::TABLE_NAME)->setModel($class);
 
 	}
 
@@ -2939,6 +2927,160 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$ret = $this->update($properties);
 
 		return $ret;
+
+	}
+
+	/**
+	 * Begin a fluent query with a where clause.
+	 *
+	 * @param	string|callable|array	$column		Column name, callback for nested where, or array of conditions.
+	 * @param	mixed			$operator	Comparison operator or value.
+	 * @param	mixed			$value		Value when operator is provided.
+	 * @return	Query
+	 */
+	public static function where(string|callable|array $column, mixed $operator = null, mixed $value = null): Query {
+
+		$query = static::query();
+
+		// preserve original arity so Query::where() can infer implicit "=" when called with 2 args
+		if (func_num_args() === 2) {
+			return $query->where($column, $operator);
+		}
+
+		return $query->where($column, $operator, $value);
+
+	}
+
+	/**
+	 * Begin a fluent query with a where between clause.
+	 *
+	 * @param string $column Column name.
+	 * @param array $values Two values for BETWEEN.
+	 * @return Query
+	 */
+	public static function whereBetween(string $column, array $values): Query {
+
+		return static::query()->whereBetween($column, $values);
+
+	}
+
+	/**
+	 * Begin a fluent query with a where date clause.
+	 *
+	 * @param	string	$column	Column name.
+	 * @param	mixed	$operator	Comparison operator or value.
+	 * @param	mixed	$value		Value when operator is provided.
+	 * @return	Query
+	 */
+	public static function whereDate(string $column, mixed $operator = null, mixed $value = null): Query {
+
+		return static::query()->whereDate($column, $operator, $value);
+
+	}
+
+	/**
+	 * Begin a fluent query with a where day clause.
+	 *
+	 * @param	string	$column	Column name.
+	 * @param	mixed	$operator	Comparison operator or value.
+	 * @param	mixed	$value		Value when operator is provided.
+	 * @return	Query
+	 */
+	public static function whereDay(string $column, mixed $operator = null, mixed $value = null): Query {
+
+		return static::query()->whereDay($column, $operator, $value);
+
+	}
+
+	/**
+	 * Begin a fluent query with a where in clause.
+	 *
+	 * @param string $column Column name.
+	 * @param array|Query|callable|string $values Values for the IN clause.
+	 * @return Query
+	 */
+	public static function whereIn(string $column, array|Query|callable|string $values): Query {
+
+		return static::query()->whereIn($column, $values);
+
+	}
+
+	/**
+	 * Begin a fluent query with a where month clause.
+	 *
+	 * @param	string	$column	Column name.
+	 * @param	mixed	$operator	Comparison operator or value.
+	 * @param	mixed	$value		Value when operator is provided.
+	 * @return	Query
+	 */
+	public static function whereMonth(string $column, mixed $operator = null, mixed $value = null): Query {
+
+		return static::query()->whereMonth($column, $operator, $value);
+
+	}
+
+	/**
+	 * Begin a fluent query with a where not in clause.
+	 *
+	 * @param string $column Column name.
+	 * @param array|Query|callable|string $values Values for the NOT IN clause.
+	 * @return Query
+	 */
+	public static function whereNotIn(string $column, array|Query|callable|string $values): Query {
+
+		return static::query()->whereNotIn($column, $values);
+
+	}
+
+	/**
+	 * Begin a fluent query with a where not null clause.
+	 *
+	 * @param string $column Column name.
+	 * @return Query
+	 */
+	public static function whereNotNull(string $column): Query {
+
+		return static::query()->whereNotNull($column);
+
+	}
+
+	/**
+	 * Begin a fluent query with a where null clause.
+	 *
+	 * @param string $column Column name.
+	 * @return Query
+	 */
+	public static function whereNull(string $column): Query {
+
+		return static::query()->whereNull($column);
+
+	}
+
+	/**
+	 * Begin a fluent query with a where time clause.
+	 *
+	 * @param string $column Column name.
+	 * @param mixed $operator Comparison operator or value.
+	 * @param mixed $value Value when operator is provided.
+	 * @return Query
+	 */
+	public static function whereTime(string $column, mixed $operator = null, mixed $value = null): Query {
+
+		return static::query()->whereTime($column, $operator, $value);
+
+	}
+
+	/**
+	 * Begin a fluent query with a where year clause.
+	 *
+	 * @param string $column Column name.
+	 * @param mixed $operator Comparison operator or value.
+	 * @param mixed $value Value when operator is provided.
+	 * @return Query
+	 */
+	public static function whereYear(string $column, mixed $operator = null, mixed $value = null): Query {
+
+		return static::query()->whereYear($column, $operator, $value);
 
 	}
 

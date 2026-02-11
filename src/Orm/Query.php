@@ -13,6 +13,21 @@ use Pair\Helpers\Translator;
 class Query {
 
 	/**
+	 * Supported comparison operators for basic where/having clauses.
+	 *
+	 * @var string[]
+	 */
+	protected array $operators = [
+		'=', '<', '>', '<=', '>=', '<>', '!=',
+		'like', 'not like', 'ilike', 'not ilike',
+		'regexp', 'not regexp',
+		'rlike', 'not rlike',
+		'between', 'not between',
+		'in', 'not in',
+		'is', 'is not'
+	];
+
+	/**
 	 * The model class name for hydrating results into ActiveRecord instances.
 	 * When set, get() and first() return model instances instead of stdClass.
 	 */
@@ -140,9 +155,34 @@ class Query {
 	}
 
 	/**
+	 * Add a date-based where clause (DATE, DAY, MONTH, YEAR, TIME).
+	 *
+	 * @param string $function SQL date function name.
+	 * @param string $column Column name.
+	 * @param mixed $operator Comparison operator or value.
+	 * @param mixed $value Value when operator is provided.
+	 * @param string $boolean Boolean glue (and/or).
+	 * @return static
+	 */
+	protected function addDateBasedWhere(string $function, string $column, mixed $operator = null, mixed $value = null, string $boolean = 'and'): static {
+
+		if (func_num_args() === 3 or (!$this->isOperator($operator) and is_null($value))) {
+			$value = $operator;
+			$operator = '=';
+		}
+
+		$wrappedColumn = $this->grammar->wrapIdentifier($column, $this->wrapIdentifiers);
+		$sql = $function . '(' . $wrappedColumn . ') ' . $operator . ' ?';
+
+		return $this->whereRaw($sql, [$value], $boolean);
+
+	}
+
+	/**
 	 * Add additional columns to the select list.
 	 *
-	 * @param	string|array<int, string>	...$columns	Column names.
+	 * @param string|array<int, string>	...$columns	Column names.
+	 * @return static
 	 */
 	public function addSelect(string|array ...$columns): static {
 
@@ -159,8 +199,9 @@ class Query {
 	/**
 	 * Execute an aggregate function on the query.
 	 *
-	 * @param	string	$function	Aggregate function.
-	 * @param	string	$column		Column name or expression.
+	 * @param string $function Aggregate function.
+	 * @param string $column Column name or expression.
+	 * @return mixed Aggregate result.
 	 */
 	public function aggregate(string $function, string $column = '*'): mixed {
 
@@ -185,7 +226,8 @@ class Query {
 	/**
 	 * Get the average of the given column.
 	 *
-	 * @param	string	$column	Column name or expression.
+	 * @param string $column Column name or expression.
+	 * @return mixed
 	 */
 	public function avg(string $column): mixed {
 
@@ -346,6 +388,27 @@ class Query {
 		}
 
 		return $result;
+
+	}
+
+	/**
+	 * Add a where clause and return the first matching result.
+	 *
+	 * @param	string|callable|array	$column	Column name, callback, or array of conditions.
+	 * @param	mixed				$operator	Comparison operator or value.
+	 * @param	mixed				$value		Value when operator is provided.
+	 */
+	public function firstWhere(string|callable|array $column, mixed $operator = null, mixed $value = null): \stdClass|ActiveRecord|null {
+
+		$query = clone $this;
+
+		if (func_num_args() === 2) {
+			$query->where($column, $operator);
+		} else {
+			$query->where($column, $operator, $value);
+		}
+
+		return $query->first();
 
 	}
 
@@ -527,13 +590,13 @@ class Query {
 	 * Add a having clause.
 	 *
 	 * @param	string	$column	Column name.
-	 * @param	mixed	$operator	Comparison operator or value.
+	 * @param	mixed	$operator	Comparison operator or value (implicit "=" when omitted).
 	 * @param	mixed	$value		Value when operator is provided.
 	 * @param	string	$boolean	Boolean glue (and/or).
 	 */
 	public function having(string $column, mixed $operator = null, mixed $value = null, string $boolean = 'and'): static {
 
-		if (func_num_args() === 2) {
+		if (func_num_args() === 2 or (!$this->isOperator($operator) and is_null($value))) {
 			$value = $operator;
 			$operator = '=';
 		}
@@ -578,8 +641,9 @@ class Query {
 	/**
 	 * Add a nested having clause.
 	 *
-	 * @param	callable	$callback	Callback to build nested clauses.
-	 * @param	string		$boolean	Boolean glue (and/or).
+	 * @param callable $callback Callback to build nested clauses.
+	 * @param string $boolean Boolean glue (and/or).
+	 * @return static
 	 */
 	public function havingNested(callable $callback, string $boolean = 'and'): static {
 
@@ -600,6 +664,22 @@ class Query {
 		$this->bindings['having'] = array_merge($this->bindings['having'], $query->bindings['having']);
 
 		return $this;
+
+	}
+
+	/**
+	 * Check if a value is a valid SQL comparison operator.
+	 *
+	 * @param mixed $operator Candidate operator.
+	 * @return bool True when the value is a supported operator.
+	 */
+	protected function isOperator(mixed $operator): bool {
+
+		if (!is_string($operator)) {
+			return false;
+		}
+
+		return in_array(strtolower(trim($operator)), $this->operators, true);
 
 	}
 
@@ -841,6 +921,7 @@ class Query {
 	 * Set the row lock mode.
 	 *
 	 * @param	bool|string	$value	Lock mode (true for FOR UPDATE, false for LOCK IN SHARE MODE).
+	 * @return static
 	 */
 	public function lock(bool|string $value = true): static {
 
@@ -856,7 +937,10 @@ class Query {
 	}
 
 	/**
-	 * Lock the selected rows for update.
+	 * Lock the selected rows for update. This is a shortcut for lock(true) that sets the
+	 * lock mode to "FOR UPDATE".
+	 * 
+	 * @return static
 	 */
 	public function lockForUpdate(): static {
 
@@ -1025,13 +1109,39 @@ class Query {
 	/**
 	 * Add an "or where" clause.
 	 *
-	 * @param	string|callable	$column	Column name or callback.
+	 * @param	string|callable|array	$column	Column name, callback, or array of conditions.
 	 * @param	mixed	$operator	Comparison operator or value.
 	 * @param	mixed	$value		Value when operator is provided.
 	 */
-	public function orWhere(string|callable $column, mixed $operator = null, mixed $value = null): static {
+	public function orWhere(string|callable|array $column, mixed $operator = null, mixed $value = null): static {
 
 		return $this->where($column, $operator, $value, 'or');
+
+	}
+
+	/**
+	 * Add an "or where date" clause.
+	 *
+	 * @param	string	$column	Column name.
+	 * @param	mixed	$operator	Comparison operator or value.
+	 * @param	mixed	$value		Value when operator is provided.
+	 */
+	public function orWhereDate(string $column, mixed $operator = null, mixed $value = null): static {
+
+		return $this->whereDate($column, $operator, $value, 'or');
+
+	}
+
+	/**
+	 * Add an "or where day" clause.
+	 *
+	 * @param	string	$column	Column name.
+	 * @param	mixed	$operator	Comparison operator or value.
+	 * @param	mixed	$value		Value when operator is provided.
+	 */
+	public function orWhereDay(string $column, mixed $operator = null, mixed $value = null): static {
+
+		return $this->whereDay($column, $operator, $value, 'or');
 
 	}
 
@@ -1055,6 +1165,19 @@ class Query {
 	public function orWhereIn(string $column, array|Query|callable|string $values): static {
 
 		return $this->whereIn($column, $values, 'or');
+
+	}
+
+	/**
+	 * Add an "or where month" clause.
+	 *
+	 * @param	string	$column	Column name.
+	 * @param	mixed	$operator	Comparison operator or value.
+	 * @param	mixed	$value		Value when operator is provided.
+	 */
+	public function orWhereMonth(string $column, mixed $operator = null, mixed $value = null): static {
+
+		return $this->whereMonth($column, $operator, $value, 'or');
 
 	}
 
@@ -1135,6 +1258,32 @@ class Query {
 	public function orWhereNull(string $column): static {
 
 		return $this->whereNull($column, 'or');
+
+	}
+
+	/**
+	 * Add an "or where time" clause.
+	 *
+	 * @param	string	$column	Column name.
+	 * @param	mixed	$operator	Comparison operator or value.
+	 * @param	mixed	$value		Value when operator is provided.
+	 */
+	public function orWhereTime(string $column, mixed $operator = null, mixed $value = null): static {
+
+		return $this->whereTime($column, $operator, $value, 'or');
+
+	}
+
+	/**
+	 * Add an "or where year" clause.
+	 *
+	 * @param	string	$column	Column name.
+	 * @param	mixed	$operator	Comparison operator or value.
+	 * @param	mixed	$value		Value when operator is provided.
+	 */
+	public function orWhereYear(string $column, mixed $operator = null, mixed $value = null): static {
+
+		return $this->whereYear($column, $operator, $value, 'or');
 
 	}
 
@@ -1461,18 +1610,38 @@ class Query {
 	/**
 	 * Add a basic where clause.
 	 *
-	 * @param	string|callable	$column	Column name or callback.
-	 * @param	mixed	$operator	Comparison operator or value.
+	 * @param	string|callable|array	$column	Column name, callback, or array of conditions.
+	 * @param	mixed	$operator	Comparison operator or value (implicit "=" when omitted).
 	 * @param	mixed	$value		Value when operator is provided.
 	 * @param	string	$boolean	Boolean glue (and/or).
 	 */
-	public function where(string|callable $column, mixed $operator = null, mixed $value = null, string $boolean = 'and'): static {
+	public function where(string|callable|array $column, mixed $operator = null, mixed $value = null, string $boolean = 'and'): static {
 
 		if (is_callable($column)) {
 			return $this->whereNested($column, $boolean);
 		}
 
-		if (func_num_args() === 2) {
+		// Eloquent-like support:
+		// where(['status' => 'active', ['id', '>', 10]])
+		if (is_array($column)) {
+			foreach ($column as $key => $clause) {
+				if (is_array($clause)) {
+					$parts = array_values($clause);
+					if (count($parts) >= 3) {
+						$this->where((string)$parts[0], $parts[1], $parts[2], $boolean);
+					} elseif (count($parts) === 2) {
+						$this->where((string)$parts[0], $parts[1], null, $boolean);
+					}
+					continue;
+				}
+
+				$this->where((string)$key, '=', $clause, $boolean);
+			}
+
+			return $this;
+		}
+
+		if (func_num_args() === 2 or (!$this->isOperator($operator) and is_null($value))) {
 			$value = $operator;
 			$operator = '=';
 		}
@@ -1496,6 +1665,76 @@ class Query {
 		$this->bindings['where'][] = $value;
 
 		return $this;
+
+	}
+
+	/**
+	 * Add a "where date" clause.
+	 *
+	 * @param	string	$column	Column name.
+	 * @param	mixed	$operator	Comparison operator or value.
+	 * @param	mixed	$value		Value when operator is provided.
+	 * @param	string	$boolean	Boolean glue (and/or).
+	 */
+	public function whereDate(string $column, mixed $operator = null, mixed $value = null, string $boolean = 'and'): static {
+
+		return $this->addDateBasedWhere('DATE', $column, $operator, $value, $boolean);
+
+	}
+
+	/**
+	 * Add a "where day" clause.
+	 *
+	 * @param	string	$column	Column name.
+	 * @param	mixed	$operator	Comparison operator or value.
+	 * @param	mixed	$value		Value when operator is provided.
+	 * @param	string	$boolean	Boolean glue (and/or).
+	 */
+	public function whereDay(string $column, mixed $operator = null, mixed $value = null, string $boolean = 'and'): static {
+
+		return $this->addDateBasedWhere('DAY', $column, $operator, $value, $boolean);
+
+	}
+
+	/**
+	 * Add a "where month" clause.
+	 *
+	 * @param	string	$column	Column name.
+	 * @param	mixed	$operator	Comparison operator or value.
+	 * @param	mixed	$value		Value when operator is provided.
+	 * @param	string	$boolean	Boolean glue (and/or).
+	 */
+	public function whereMonth(string $column, mixed $operator = null, mixed $value = null, string $boolean = 'and'): static {
+
+		return $this->addDateBasedWhere('MONTH', $column, $operator, $value, $boolean);
+
+	}
+
+	/**
+	 * Add a "where time" clause.
+	 *
+	 * @param	string	$column	Column name.
+	 * @param	mixed	$operator	Comparison operator or value.
+	 * @param	mixed	$value		Value when operator is provided.
+	 * @param	string	$boolean	Boolean glue (and/or).
+	 */
+	public function whereTime(string $column, mixed $operator = null, mixed $value = null, string $boolean = 'and'): static {
+
+		return $this->addDateBasedWhere('TIME', $column, $operator, $value, $boolean);
+
+	}
+
+	/**
+	 * Add a "where year" clause.
+	 *
+	 * @param	string	$column	Column name.
+	 * @param	mixed	$operator	Comparison operator or value.
+	 * @param	mixed	$value		Value when operator is provided.
+	 * @param	string	$boolean	Boolean glue (and/or).
+	 */
+	public function whereYear(string $column, mixed $operator = null, mixed $value = null, string $boolean = 'and'): static {
+
+		return $this->addDateBasedWhere('YEAR', $column, $operator, $value, $boolean);
 
 	}
 
