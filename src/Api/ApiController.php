@@ -5,7 +5,6 @@ namespace Pair\Api;
 use Pair\Core\Application;
 use Pair\Core\Controller;
 use Pair\Models\Session;
-use Pair\Models\Token;
 use Pair\Models\User;
 
 /**
@@ -14,11 +13,6 @@ use Pair\Models\User;
  * and middleware pipeline support.
  */
 abstract class ApiController extends Controller {
-
-	/**
-	 * The token object for token-based authentication.
-	 */
-	protected ?Token $token = null;
 
 	/**
 	 * The Bearer token string for OAuth2 authentication.
@@ -57,15 +51,6 @@ abstract class ApiController extends Controller {
 	public function setBearerToken(string $bearerToken): void {
 
 		$this->bearerToken = $bearerToken;
-
-	}
-
-	/**
-	 * Set the valid Token object.
-	 */
-	public function setToken(Token $token): void {
-
-		$this->token = $token;
 
 	}
 

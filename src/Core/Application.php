@@ -18,7 +18,6 @@ use Pair\Models\Audit;
 use Pair\Models\OAuth2Token;
 use Pair\Models\Session;
 use Pair\Models\Template;
-use Pair\Models\Token;
 use Pair\Models\User;
 use Pair\Orm\ActiveRecord;
 use Pair\Orm\Database;
@@ -688,9 +687,8 @@ class Application {
 		// require controller file
 		require (APPLICATION_PATH . '/' . MODULE_PATH . 'controller.php');
 
-		// get SID or token via GET
-		$sid		= Router::get('sid');
-		$tokenValue	= Router::get('token');
+		// get SID via GET
+		$sid = Router::get('sid');
 
 		// read the Bearer token via HTTP header
 		$bearerToken = OAuth2Token::bearerToken();
@@ -711,21 +709,8 @@ class Application {
 		// set the action function
 		$action = $router->action ? $router->action . 'Action' : 'defaultAction';
 
-		// check token as first
-		if ($tokenValue) {
-
-			$token = Token::getByValue((string)$tokenValue);
-
-			// set token and start controller
-			if (!$token) {
-				Utilities::jsonError('BAD_REQUEST','Token not found');
-			}
-
-			$token->updateLastUse();
-			$apiCtl->setToken($token);
-
-		// or check for Oauth2 Bearer token via http header
-		} else if ($bearerToken) {
+		// check for Oauth2 Bearer token via http header
+		if ($bearerToken) {
 
 			if (!OAuth2Token::isValid($bearerToken)) {
 				sleep(3);
