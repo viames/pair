@@ -259,6 +259,11 @@ class Logger implements LoggerInterface {
 	 */
 	public static function errorHandler(int $errno, string $errstr, ?string $errfile = null, ?int $errline = null): bool {
 
+		// respect error suppression (@) and current error_reporting mask
+		if (!(error_reporting() & $errno)) {
+			return true;
+		}
+
 		// log the error internally
 		$context = [
 			'type'		=> $errno,

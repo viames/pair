@@ -522,8 +522,8 @@ class Application {
 	/**
 	 * Retrieves a persistent state value from cookies. The cookie name is derived
 	 * from the given state name and the application cookie prefix. Values are
-	 * unserialized with a whitelist of allowed classes for security and may throw
-	 * an AppException on failure.
+	 * unserialized with a whitelist of allowed classes for security. Invalid or
+	 * tampered cookie values are discarded and removed.
 	 *
 	 * @param	string	Name of the state variable.
 	 * @return	mixed	The stored value, or null if not found.
@@ -547,19 +547,27 @@ class Application {
 			// as of PHP 8.4.0 supports throw_on_error
 			if (version_compare(PHP_VERSION, '8.4.0', '>=')) {
 				try {
-					return @unserialize($_COOKIE[$cookieName], [
+					$value = @unserialize($_COOKIE[$cookieName], [
 						'allowed_classes' => $allowedClasses,
 						'throw_on_error' => true
 					]);
+
+					// valid serialized false value
+					if (false === $value and 'b:0;' !== $_COOKIE[$cookieName]) {
+						$this->unsetPersistentState($stateName);
+						return null;
+					}
+
+					return $value;
 				} catch (\Throwable $e) {
 					$this->unsetPersistentState($stateName);
-					throw new AppException('Error unserializing cookie ' . $cookieName, ErrorCodes::UNSERIALIZE_ERROR, $e);
+					return null;
 				}
 			} else if (Utilities::isSerialized($_COOKIE[$cookieName], $allowedClasses)) {
 				return unserialize($_COOKIE[$cookieName], ['allowed_classes' => $allowedClasses]);
 			} else {
 				$this->unsetPersistentState($stateName);
-				throw new AppException('Error unserializing cookie ' . $cookieName, ErrorCodes::UNSERIALIZE_ERROR);
+				return null;
 			}
 
 		}

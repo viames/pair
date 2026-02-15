@@ -424,6 +424,17 @@ class ChartJs {
 	}
 
 	/**
+	 * Load the Chart.js Geo plugin from a CDN.
+	 * This enables chart types like choropleth and bubbleMap when explicitly used in custom code.
+	 */
+	public static function loadGeo(): void {
+
+		$app = Application::getInstance();
+		$app->loadScript('https://cdn.jsdelivr.net/npm/chartjs-chart-geo@4.3.6/build/index.umd.min.js');
+
+	}
+
+	/**
 	 * Set the aspect ratio of the chart.
 	 *
 	 * @param	bool	If true, the aspect ratio is maintained.
