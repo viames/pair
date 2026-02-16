@@ -4,6 +4,7 @@ Guide for automated agents (LLMs, code assistants, review bots) working on this 
 
 This file focuses on **how to work** (workflow, expectations, PR format).
 Project context, conventions, and environment are in **GEMINI.md** (single source of truth).
+`SKILL.md` is the lightweight entrypoint that points to this file and GEMINI.
 
 > Read GEMINI.md first: architecture, coding standards, security rules.
 

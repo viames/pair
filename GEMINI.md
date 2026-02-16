@@ -33,6 +33,11 @@ Primary goals: provide a solid foundation for MVC architecture, database abstrac
   - Avoid `eval` or unsafe inline handlers.
 - Framework: **Pair (PHP) v3-alpha**.
 
+### Language and i18n
+- Default user-facing framework messages should be in **English**.
+- Internationalization should use the files under `/translations`.
+- Avoid hardcoding language-specific strings when a translation key exists.
+
 ---
 
 ## PHP Environment (for framework developers)
