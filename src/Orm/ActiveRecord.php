@@ -2092,29 +2092,86 @@ abstract class ActiveRecord implements \JsonSerializable {
 	}
 
 	/**
-	 * Return the HTML-escaped value of a property of this object. It is useful to print
-	 * properties in views without worrying about escaping. It accepts an optional array
-	 * of options with the following keys:
-	 * - value: to specify a custom value instead of the property value.
-	 * - escape: to specify whether to escape the value or not, default true.
+	 * Return an object property or method properly formatted and escaped as HTML string.
 	 *
-	 * @param string $property Name of property of this object to print.
-	 * @param array $options Optional array of options.
-	 * @return string HTML-escaped value of the property.
-	 * @throws PairException If the property does not exist in the class.
+	 * @param string $name Property or method (with or without parentheses) name.
+	 * @param array $params Additional parameters for formatting.
+	 * @return string
 	 */
-	public function html(string $property, array $options = []): string {
+	public function html(string $name, array $params = []): string {
 
-		$class = get_called_class();
+		// return standard ascii one or a predefined icon HTML as constant
+		$booleanHtml = function ($value): string {
+			if ($value) {
+				return (defined('PAIR_CHECK_ICON') ? PAIR_CHECK_ICON : '<span style="color:green">√</span>');
+			} else {
+				return (defined('PAIR_TIMES_ICON') ? PAIR_TIMES_ICON : '<span style="color:red">×</span>');
+			}
+		};
 
-		if (!property_exists($class, $property)) {
-			throw new PairException('Property ' . $property . ' does not exist in class ' . $class, ErrorCodes::PROPERTY_NOT_FOUND);
+		// return the class property in the proper way
+		if (property_exists($this, $name)) {
+
+			switch ($this->getPropertyType($name)) {
+
+				case 'bool':
+					return $booleanHtml($this->__get($name));
+
+				case 'DateTime':
+					$field = static::getMappedField($name);
+					$column = static::getColumnType($field);
+					return ('date' == $column->type
+					? $this->formatDate($name)
+					: $this->formatDateTime($name));
+
+				case 'csv':
+					return htmlspecialchars(implode(', ', $this->__get($name)));
+
+				case 'json':
+					return '<pre>' . Utilities::varToText($this->__get($name), false) . '</pre>';
+
+				default:
+					return nl2br(htmlspecialchars((string)$this->__get($name)));
+
+			}
+
+		} else {
+
+			// the name is a method, with or without brackets
+			if ('()' == substr($name, -2) or method_exists($this, $name)) {
+
+				$methodName = '()' == substr($name, -2) ? substr($name, 0, -2) : $name;
+
+				if (!method_exists($this, $methodName)) {
+					$this->addError('The ' . $methodName . '() method to html was not found in the ' . get_called_class() . ' class');
+					return '';
+				}
+
+				// run the method
+				$result = $this->$methodName();
+
+			// otherwise the requested value is handled with __get()
+			} else {
+
+				$result = $this->__get($name);
+
+			}
+
+			switch (gettype($result)) {
+
+				case 'boolean':
+					return $booleanHtml($result);
+
+				case 'array':
+					return htmlspecialchars(implode(', ', $result));
+
+				// integer, double, string, object, resource, null, unknown type
+				default:
+					return htmlspecialchars((string)$result);
+
+			}
+
 		}
-
-		$value = $options['value'] ?? $this->$property;
-		$escape = $options['escape'] ?? true;
-
-		return ($escape ? htmlspecialchars((string)$value) : (string)$value);
 
 	}
 
@@ -2537,86 +2594,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	public function printHtml(string $name): void {
 
-		// print standard ascii one or a predefined icon HTML as constant
-		$printBoolean = function ($value) {
-			if ($value) {
-				print (defined('PAIR_CHECK_ICON') ? PAIR_CHECK_ICON : '<span style="color:green">√</span>');
-			} else {
-				print (defined('PAIR_TIMES_ICON') ? PAIR_TIMES_ICON : '<span style="color:red">×</span>');
-			}
-		};
-
-		// print the class property in the proper way
-		if (property_exists($this, $name)) {
-
-			switch ($this->getPropertyType($name)) {
-
-				case 'bool':
-					$printBoolean($this->__get($name));
-					break;
-
-				case 'DateTime':
-					$field = static::getMappedField($name);
-					$column = static::getColumnType($field);
-					print ('date' == $column->type
-					? $this->formatDate($name)
-					: $this->formatDateTime($name));
-					break;
-
-				case 'csv':
-					print htmlspecialchars(implode(', ', $this->__get($name)));
-					break;
-
-				case 'json':
-					print '<pre>' . Utilities::varToText($this->__get($name), false) . '</pre>';
-					break;
-
-				default:
-					print nl2br(htmlspecialchars((string)$this->__get($name)));
-					break;
-
-			}
-
-		} else {
-
-			// the name is a method, with or without brackets
-			if ('()' == substr($name, -2) or method_exists($this, $name)) {
-
-				$methodName = '()' == substr($name, -2) ? substr($name, 0, -2) : $name;
-
-				if (!method_exists($this, $methodName)) {
-					$this->addError('The ' . $methodName . '() method to printHtml was not found in the ' . get_called_class() . ' class');
-					return;
-				}
-
-				// run the method
-				$result = $this->$methodName();
-
-			// otherwise the requested value is handled with __get()
-			} else {
-
-				$result = $this->__get($name);
-
-			}
-
-			switch (gettype($result)) {
-
-				case 'boolean':
-					$printBoolean($result);
-					break;
-
-				case 'array':
-					htmlspecialchars(implode(', ', $result));
-					break;
-
-				// integer, double, string, object, resource, null, unknown type
-				default:
-					print htmlspecialchars((string)$result);
-					break;
-
-			}
-
-		}
+		print $this->html($name);
 
 	}
 

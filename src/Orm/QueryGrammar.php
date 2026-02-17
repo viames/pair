@@ -330,6 +330,25 @@ class QueryGrammar {
 	 */
 	public function wrapTable(string $table, bool $wrap = true): string {
 
+		if (!$wrap or $table === '*') return $table;
+
+		$table = trim($table);
+
+		// leave subqueries and raw table expressions untouched
+		if (preg_match('/[\(\),]/', $table)) {
+			return $table;
+		}
+
+		// support aliases in Eloquent style: "table as alias"
+		if (preg_match('/^([^\s]+)\s+as\s+([^\s]+)$/i', $table, $matches)) {
+			return $this->wrapIdentifier($matches[1], $wrap) . ' AS ' . $this->wrapIdentifier($matches[2], $wrap);
+		}
+
+		// support shorthand aliases: "table alias"
+		if (preg_match('/^([^\s]+)\s+([^\s]+)$/', $table, $matches)) {
+			return $this->wrapIdentifier($matches[1], $wrap) . ' AS ' . $this->wrapIdentifier($matches[2], $wrap);
+		}
+
 		return $this->wrapIdentifier($table, $wrap);
 
 	}
