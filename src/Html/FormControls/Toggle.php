@@ -24,8 +24,8 @@ class Toggle extends FormControl {
 		$html .= '<span class="track" aria-hidden="true"></span>';
 		
 		if (!$this->labelSuppressed && $labelText) {
-			$labelClass = (isset($this->labelClass) and $this->labelClass) ? ' class="' . $this->labelClass . '"' : '';
-			$html .= '<span' . $labelClass . '>' . $labelText . '</span>';
+			$labelClass = $this->labelClass ?? 'label';
+			$html .= '<span class="' . $labelClass . '">' . $labelText . '</span>';
 		}
 
 		$html .= '</label>';
