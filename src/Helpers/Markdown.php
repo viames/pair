@@ -106,6 +106,158 @@ class Markdown {
 	}
 
 	/**
+	 * Determine whether a line is a potential table row.
+	 * 
+	 * @param string $line The line to check.
+	 * @return bool True if the line can be interpreted as a table row.
+	 */
+	private static function isTableRow(string $line): bool {
+
+		$line = trim($line);
+		if ('' === $line) {
+			return false;
+		}
+
+		if (str_starts_with($line, '|') and str_ends_with($line, '|')) {
+			return 2 <= substr_count($line, '|');
+		}
+
+		return false;
+
+	}
+
+	/**
+	 * Determine whether a line is a valid Markdown table separator row.
+	 * 
+	 * @param string $line The line to check.
+	 * @return bool True when the line matches a table separator pattern.
+	 */
+	private static function isTableSeparator(string $line): bool {
+
+		if (!self::isTableRow($line)) {
+			return false;
+		}
+
+		$cells = self::splitTableRow($line);
+		if ([] === $cells) {
+			return false;
+		}
+
+		foreach ($cells as $cell) {
+			if (!preg_match('/^:?-{3,}:?$/', $cell)) {
+				return false;
+			}
+		}
+
+		return true;
+
+	}
+
+	/**
+	 * Convert a Markdown table alignment cell to CSS text-align value.
+	 * 
+	 * @param string $separatorCell The separator cell (e.g. :---, ---:, :---:).
+	 * @return string|null The CSS alignment value or null when not specified.
+	 */
+	private static function parseTableAlignment(string $separatorCell): ?string {
+
+		$separatorCell = trim($separatorCell);
+		$hasLeft = str_starts_with($separatorCell, ':');
+		$hasRight = str_ends_with($separatorCell, ':');
+
+		if ($hasLeft and $hasRight) {
+			return 'center';
+		}
+
+		if ($hasRight) {
+			return 'right';
+		}
+
+		if ($hasLeft) {
+			return 'left';
+		}
+
+		return null;
+
+	}
+
+	/**
+	 * Render a Markdown table block as HTML.
+	 * 
+	 * @param array<int, string> $tableLines Raw table lines including header, separator, and optional rows.
+	 * @return string The rendered table HTML.
+	 */
+	private static function renderTable(array $tableLines): string {
+
+		$headerCells = self::splitTableRow($tableLines[0]);
+		$separatorCells = self::splitTableRow($tableLines[1]);
+		$alignments = [];
+		foreach ($separatorCells as $separatorCell) {
+			$alignments[] = self::parseTableAlignment($separatorCell);
+		}
+
+		$maxColumns = max(count($headerCells), count($alignments));
+		if (0 === $maxColumns) {
+			return '';
+		}
+
+		$headerCells = array_pad($headerCells, $maxColumns, '');
+		$alignments = array_pad($alignments, $maxColumns, null);
+
+		$html = [];
+		$html[] = '<table>';
+		$html[] = '<thead>';
+		$html[] = '<tr>';
+
+		for ($i = 0; $i < $maxColumns; $i++) {
+			$style = null === $alignments[$i] ? '' : ' style="text-align:' . $alignments[$i] . '"';
+			$html[] = '<th' . $style . '>' . self::inline($headerCells[$i]) . '</th>';
+		}
+
+		$html[] = '</tr>';
+		$html[] = '</thead>';
+
+		if (2 < count($tableLines)) {
+			$html[] = '<tbody>';
+			for ($rowIndex = 2; $rowIndex < count($tableLines); $rowIndex++) {
+				$rowCells = array_pad(self::splitTableRow($tableLines[$rowIndex]), $maxColumns, '');
+				$html[] = '<tr>';
+				for ($i = 0; $i < $maxColumns; $i++) {
+					$style = null === $alignments[$i] ? '' : ' style="text-align:' . $alignments[$i] . '"';
+					$html[] = '<td' . $style . '>' . self::inline($rowCells[$i]) . '</td>';
+				}
+				$html[] = '</tr>';
+			}
+			$html[] = '</tbody>';
+		}
+
+		$html[] = '</table>';
+
+		return implode("\n", $html);
+
+	}
+
+	/**
+	 * Split a Markdown table row into cells.
+	 * 
+	 * @param string $line The table row line.
+	 * @return array<int, string> The trimmed table cells.
+	 */
+	private static function splitTableRow(string $line): array {
+
+		$line = trim($line);
+		$line = trim($line, '|');
+		if ('' === $line) {
+			return [];
+		}
+
+		$cells = explode('|', $line);
+
+		return array_map('trim', $cells);
+
+	}
+
+	/**
 	 * Generate a URL-friendly slug from a heading text, compatible with common
 	 * Markdown implementations (GitHub, GitLab, etc.).
 	 * 
@@ -164,7 +316,9 @@ class Markdown {
 			}
 		};
 
-		foreach ($lines as $line) {
+		for ($lineIndex = 0; $lineIndex < count($lines); $lineIndex++) {
+
+			$line = $lines[$lineIndex];
 
 			// handle fenced code blocks first, since they disable all other formatting
 			if (preg_match('/^```/', $line)) {
@@ -191,6 +345,23 @@ class Markdown {
 			if ('' === trim($line)) {
 				$flushParagraph();
 				$closeList();
+				continue;
+			}
+
+			// tables (header row followed by a separator row, optional data rows)
+			if (isset($lines[$lineIndex + 1]) and self::isTableRow($line) and self::isTableSeparator($lines[$lineIndex + 1])) {
+				$flushParagraph();
+				$closeList();
+
+				$tableLines = [$line, $lines[$lineIndex + 1]];
+				$lineIndex += 2;
+				while ($lineIndex < count($lines) and self::isTableRow($lines[$lineIndex])) {
+					$tableLines[] = $lines[$lineIndex];
+					$lineIndex++;
+				}
+				$lineIndex--;
+
+				$html[] = self::renderTable($tableLines);
 				continue;
 			}
 

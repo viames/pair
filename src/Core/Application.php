@@ -714,6 +714,10 @@ class Application {
 
 		$this->headless(true);
 
+		// normalize session lifetime and cleanup stale sessions also for API traffic.
+		$sessionTime = max(1, (int)Options::get('session_time'));
+		Session::cleanOlderThan($sessionTime);
+
 		// set the action function
 		$action = $router->action ? $router->action . 'Action' : 'defaultAction';
 
@@ -767,6 +771,13 @@ class Application {
 			// check if sid is valid
 			if (!$session->isLoaded()) {
 				Utilities::jsonError('SESSION_NOT_FOUND','Session not found');
+			}
+
+			// reject and remove expired API sessions before extending timeout
+			if ($session->isExpired($sessionTime)) {
+				Audit::sessionExpired($session);
+				$session->delete();
+				Utilities::jsonError('AUTH_SESSION_EXPIRED','User session expired',401);
 			}
 
 			// if session exists, extend session timeout
@@ -874,7 +885,7 @@ class Application {
 		$this->session = Session::find(session_id());
 
 		// session time length in minutes
-		$sessionTime = Options::get('session_time');
+		$sessionTime = max(1, (int)Options::get('session_time'));
 
 		// clean all old sessions
 		Session::cleanOlderThan($sessionTime);

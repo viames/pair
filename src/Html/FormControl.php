@@ -624,14 +624,23 @@ abstract class FormControl {
 	/**
 	 * Sets this field as required (enables JS client-side and PHP server-side validation).
 	 * Chainable method.
+	 * 
+	 * @param bool $required True to set this field as required, false to unset it. Default is true.
+	 * @return static
 	 */
-	public function required(): static {
+	public function required(bool $required = true): static {
 
-		$this->required = true;
+		$this->required = $required;
 		return $this;
 
 	}
 
+	/**
+	 * Sets this field as disabled. Chainable method.
+	 * 
+	 * @param string $title The title attribute for this control.
+	 * @return static
+	 */
 	public function title(string $title): static {
 
 		$unsupportedClasses = [

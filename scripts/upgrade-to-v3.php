@@ -99,6 +99,7 @@ foreach ($files as $file) {
 
 	// Page title: v2 script introduced setPageTitle(), Pair3 uses pageTitle()
 	$content = str_replace('setPageTitle(', 'pageTitle(', $content);
+	$content = str_replace('setGuestModule(', 'guestModule(', $content);
 
 	// OAuth2 classes
 	$content = str_replace('Pair\\Models\\Oauth2Client', 'Pair\\Models\\OAuth2Client', $content);
