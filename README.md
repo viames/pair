@@ -57,6 +57,137 @@ Main directives:
 
 Also included: a tiny plugin system, `PairUI.http` helpers, and `PairUI.createApp()` for quick setup.
 
+### Pair PWA helpers (no build step)
+
+Pair includes standalone PWA-oriented frontend files under `vendor/viames/pair/assets/`, designed for direct usage with script tags and no compilation:
+
+- `PairPWA.js`: service worker bootstrap, lifecycle events, online/offline helpers, background refresh.
+- `PairSW.js`: default service worker with app-shell precache, runtime caching and offline fallback.
+- `PairRouter.js`: progressive navigation and History API routing for server-rendered pages.
+- `PairSkeleton.js`: loading skeleton toggles using `data-skeleton` markers.
+- `PairDevice.js`: safe wrappers for camera, bluetooth, geolocation, permissions and vibration.
+
+Backend quick start (Pair framework):
+
+```php
+use Pair\Helpers\PwaConfig;
+use Pair\Helpers\PwaManifest;
+
+// generate a manifest file once (for example during setup/deploy)
+PwaManifest::write(APPLICATION_PATH . '/public/manifest.webmanifest', [
+	'name' => 'My Pair App',
+	'short_name' => 'PairApp',
+	'start_url' => '/',
+	'scope' => '/',
+	'theme_color' => '#1b6ec2',
+	'background_color' => '#ffffff',
+]);
+
+// in your controller/layout bootstrap
+$this->loadManifest('/manifest.webmanifest');
+$this->loadPwaScripts('/assets', true, true); // includes PairUI and PairPush too
+
+// optional: centralized SW runtime policy
+$swUrl = PwaConfig::buildServiceWorkerUrl('/assets/PairSW.js', [
+	'offlineFallback' => '/offline.html',
+	'cache' => [
+		'pageStrategy' => 'network-first',
+		'apiStrategy' => 'network-first',
+		'assetStrategy' => 'stale-while-revalidate',
+		'maxRuntimeEntries' => 400,
+		'maxRuntimeAgeSeconds' => 604800,
+	],
+	'sync' => [
+		'maxQueueEntries' => 300,
+		'maxBodyBytes' => 262144,
+		'maxAttempts' => 6,
+	],
+]);
+```
+
+Frontend quick start:
+
+```html
+<script src="/assets/PairUI.js" defer></script>
+<script src="/assets/PairPWA.js" defer></script>
+<script src="/assets/PairRouter.js" defer></script>
+<script src="/assets/PairSkeleton.js" defer></script>
+<script src="/assets/PairDevice.js" defer></script>
+```
+
+```html
+<script>
+document.addEventListener("DOMContentLoaded", async () => {
+	await PairPWA.init({
+		swUrl: "/assets/PairSW.js",
+		scope: "/",
+		swOfflineFallback: "/offline.html",
+		serviceWorkerConfig: {
+			cache: {
+				pageStrategy: "network-first",
+				apiStrategy: "network-first",
+				assetStrategy: "stale-while-revalidate",
+				maxRuntimeEntries: 400
+			},
+			sync: {
+				maxQueueEntries: 300,
+				maxAttempts: 6
+			}
+		},
+		reloadOnControllerChange: true
+	});
+
+	PairRouter.start({
+		viewSelector: "[data-pair-router-view]"
+	});
+
+	PairSkeleton.autoBind({ withStyles: true });
+
+	// optional: install prompt support
+	window.addEventListener("pair:pwa:install-available", async () => {
+		// show your custom button/modal, then:
+		// await PairPWA.promptInstall();
+	});
+});
+</script>
+```
+
+Queue writes while offline (background sync):
+
+```js
+await PairPWA.fetchWithQueue("/api/orders/save", {
+	method: "POST",
+	headers: {
+		"Content-Type": "application/json",
+		"X-Pair-Background-Sync": "1"
+	},
+	body: JSON.stringify({ orderId: 123 })
+});
+```
+
+Backend idempotency guard for replayed/offline requests:
+
+```php
+use Pair\Api\Idempotency;
+use Pair\Api\ApiResponse;
+
+// at the beginning of a mutating endpoint
+Idempotency::respondIfDuplicate($this->request, 'orders:create');
+
+$result = ['orderId' => 123, 'saved' => true];
+
+// store canonical response for same idempotency key
+Idempotency::storeResponse($this->request, 'orders:create', $result, 201);
+ApiResponse::respond($result, 201);
+```
+
+Important notes:
+- Keep progressive enhancement: pages must still work without advanced browser APIs.
+- Keep your web app manifest linked in page head.
+- Service workers require HTTPS (except localhost).
+- For custom offline pages, use `swOfflineFallback` or PwaConfig `offlineFallback`.
+- If you use `PairPush`, register the same service worker URL to avoid multiple workers.
+
 ### Routing basics (Pair apps)
 
 In Pair applications, the default routing format (after the base path) is:
@@ -122,6 +253,7 @@ Please consult the [Wiki](https://github.com/viames/pair/wiki) of this project. 
 * [Router](https://github.com/viames/pair/wiki/Router)
 * [View](https://github.com/viames/pair/wiki/View)
 * [PairUI](https://github.com/viames/pair/wiki/PairUI.js)
+* [PairPush](https://github.com/viames/pair/wiki/Push-notifications)
 * [index.php](https://github.com/viames/pair/wiki/index)
 * [.htaccess](https://github.com/viames/pair/wiki/htaccess)
 * [.env](https://github.com/viames/pair/wiki/Configuration-file)

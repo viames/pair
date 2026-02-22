@@ -71,6 +71,32 @@ trait AppTrait {
 	}
 
 	/**
+	 * Registers a web app manifest file to be included in page head.
+	 * Proxy to Application::loadManifest().
+	 *
+	 * @param string $href Manifest path, absolute or relative without trailing slash.
+	 */
+	public function loadManifest(string $href): void {
+
+		Application::getInstance()->loadManifest($href);
+
+	}
+
+	/**
+	 * Loads Pair PWA helper scripts.
+	 * Proxy to Application::loadPwaScripts().
+	 *
+	 * @param string $assetsPath      Base assets path (default /assets).
+	 * @param bool   $includePairUi   Whether to include PairUI.js.
+	 * @param bool   $includePairPush Whether to include PairPush.js.
+	 */
+	public function loadPwaScripts(string $assetsPath = '/assets', bool $includePairUi = false, bool $includePairPush = false): void {
+
+		Application::getInstance()->loadPwaScripts($assetsPath, $includePairUi, $includePairPush);
+
+	}
+
+	/**
 	 * Adds an alert modal to the page and returns it for further customization.
 	 * Proxy to Application::modal().
 	 *

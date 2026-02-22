@@ -71,6 +71,24 @@ class Request {
 	}
 
 	/**
+	 * Returns the idempotency key from request headers, if present.
+	 * Supports both Idempotency-Key and X-Idempotency-Key.
+	 */
+	public function idempotencyKey(): ?string {
+
+		$key = $this->header('Idempotency-Key');
+
+		if (is_null($key) or !strlen(trim($key))) {
+			$key = $this->header('X-Idempotency-Key');
+		}
+
+		$key = trim((string)$key);
+
+		return strlen($key) ? $key : null;
+
+	}
+
+	/**
 	 * Get the raw request body from php://input.
 	 */
 	public function rawBody(): string {
@@ -231,6 +249,17 @@ class Request {
 	public function ip(): string {
 
 		return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+
+	}
+
+	/**
+	 * True when request is replayed from offline queue.
+	 */
+	public function isReplayRequest(): bool {
+
+		$value = strtolower((string)($this->header('X-Pair-Replay') ?? ''));
+
+		return ($value === '1' or $value === 'true');
 
 	}
 

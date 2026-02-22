@@ -41,7 +41,7 @@ class PairPush {
 	 * @param {*} param0 
 	 * @returns {Promise<PushSubscription>}
 	 */
-	static async subscribe({ vapidPublicKey, subscribeUrl = '/push/subscribe' }) {
+	static async subscribe({ vapidPublicKey, subscribeUrl = '/push/subscribe', swUrl = '/sw.js' }) {
 		if (!this.isSupported()) {
 			throw new Error('Web Push is not supported in this browser.');
 		}
@@ -50,7 +50,7 @@ class PairPush {
 			throw new Error('VAPID public key is required.');
 		}
 
-		const registration = await navigator.serviceWorker.ready;
+		const registration = await this.registerServiceWorker(swUrl);
 		const applicationServerKey = this.#urlBase64ToUint8Array(vapidPublicKey);
 
 		const subscription = await registration.pushManager.subscribe({
@@ -72,12 +72,12 @@ class PairPush {
 	 * @param {string} unsubscribeUrl
 	 * @returns {Promise<boolean>}
 	 */
-	static async unsubscribe({ unsubscribeUrl = '/push/unsubscribe' } = {}) {
+	static async unsubscribe({ unsubscribeUrl = '/push/unsubscribe', swUrl = '/sw.js' } = {}) {
 		if (!this.isSupported()) {
 			return false;
 		}
 
-		const registration = await navigator.serviceWorker.ready;
+		const registration = await this.registerServiceWorker(swUrl);
 		const subscription = await registration.pushManager.getSubscription();
 
 		if (!subscription) {

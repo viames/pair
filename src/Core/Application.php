@@ -1024,6 +1024,36 @@ class Application {
 	}
 
 	/**
+	 * Loads the default Pair PWA scripts into the page.
+	 *
+	 * @param	string	Path to the assets folder (default /assets).
+	 * @param	bool	Whether to include PairUI.js.
+	 * @param	bool	Whether to include PairPush.js.
+	 */
+	public function loadPwaScripts(string $assetsPath = '/assets', bool $includePairUi = false, bool $includePairPush = false): void {
+
+		$assetsPath = '/' . trim($assetsPath, '/');
+
+		if ('/' == $assetsPath) {
+			$assetsPath = '';
+		}
+
+		if ($includePairUi) {
+			$this->loadScript($assetsPath . '/PairUI.js', true);
+		}
+
+		$this->loadScript($assetsPath . '/PairPWA.js', true);
+		$this->loadScript($assetsPath . '/PairRouter.js', true);
+		$this->loadScript($assetsPath . '/PairSkeleton.js', true);
+		$this->loadScript($assetsPath . '/PairDevice.js', true);
+
+		if ($includePairPush) {
+			$this->loadScript($assetsPath . '/PairPush.js', true);
+		}
+
+	}
+
+	/**
 	 * Registers an external script file to be loaded, with optional attributes.
 	 *
 	 * @param	string	Path to script, absolute or relative with no trailing slash.
