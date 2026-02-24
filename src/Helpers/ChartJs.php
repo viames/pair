@@ -410,11 +410,19 @@ class ChartJs {
 	/**
 	 * Load the Chart.js library from a CDN.
 	 * This method should be called in the view to load the library before rendering the chart.
+	 *
+	 * @param	string	$version	Optional Chart.js version (e.g. 4.4.1).
 	 */
-	public static function load(): void {
+	public static function load(string $version = ''): void {
 
 		$app = Application::getInstance();
-		$app->loadScript('https://cdn.jsdelivr.net/npm/chart.js');
+
+		$scriptUrl = 'https://cdn.jsdelivr.net/npm/chart.js';
+		if ('' !== trim($version)) {
+			$scriptUrl .= '@' . trim($version);
+		}
+
+		$app->loadScript($scriptUrl);
 
 	}
 
@@ -423,11 +431,19 @@ class ChartJs {
 	 * This method should be called in the view to load the plugin before rendering the chart.
 	 * The Datalabels plugin is used to display labels on the chart data points.
 	 * It can be used with any chart type that supports data labels.
+	 *
+	 * @param	string	$version	Optional chartjs-plugin-datalabels version (e.g. 2.2.0).
 	 */
-	public static function loadDatalabels(): void {
+	public static function loadDatalabels(string $version = ''): void {
 
 		$app = Application::getInstance();
-		$app->loadScript('https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels');
+
+		$scriptUrl = 'https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels';
+		if ('' !== trim($version)) {
+			$scriptUrl .= '@' . trim($version);
+		}
+
+		$app->loadScript($scriptUrl);
 		$app->addScript('Chart.register(ChartDataLabels);');
 
 	}
