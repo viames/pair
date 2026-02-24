@@ -470,15 +470,19 @@ class Logger implements LoggerInterface {
 		// send Telegram notification, if level is below threshold and recipients are set
 		if ($errorCode !== ErrorCodes::TELEGRAM_FAILURE and $this->telegramThreshold >= $level and $this->telegramBotToken and count($this->telegramChatIds)) {
 
-			$sender = new TelegramSender($this->telegramBotToken);
+			try {
+				$sender = new TelegramSender($this->telegramBotToken);
 
-			$message = $levelDescription . ' level in ' . Env::get('APP_NAME') . ' ' . Env::get('APP_VERSION') . ' ' . Application::getEnvironment() . ' at ' . date('Y-m-d H:i:s');
-			$message .= "\n\n" . $description;
+				$message = $levelDescription . ' level in ' . Env::get('APP_NAME') . ' ' . Env::get('APP_VERSION') . ' ' . Application::getEnvironment() . ' at ' . date('Y-m-d H:i:s');
+				$message .= "\n\n" . $description;
 
-			foreach ($this->telegramChatIds as $chatId) {
-				if ($chatId>0) {
-					$sender->message($chatId, $message);
+				foreach ($this->telegramChatIds as $chatId) {
+					if ($chatId > 0) {
+						$sender->message($chatId, $message);
+					}
 				}
+			} catch (\Throwable $e) {
+				// telegram notification failures must never break application flow
 			}
 
 		}
