@@ -395,19 +395,33 @@ class User extends ActiveRecord {
 		$this->beforeRememberMeCreate();
 
 		$dateTimeZone = User::getValidTimeZone($timezone);
+		$rememberMe = null;
+
+		try {
+			$rememberMe = self::getSecureRandomString(32);
+		} catch (\Throwable $e) {
+			return false;
+		}
 
 		// set a random string
 		$ur = new UserRemember();
 		$ur->userId = $this->id;
-		$ur->rememberMe = self::getSecureRandomString(32);
+		$ur->rememberMe = self::getRememberMeTokenHash($rememberMe);
 		$ur->createdAt = new \DateTime('now', $dateTimeZone);
 
 		if (!$ur->store()) {
 			return false;
 		}
 
-		// serialize an array with timezone and RememberMe string
-		$content = serialize([$timezone, $ur->rememberMe]);
+		// keep only one remember-me token per user
+		Database::run('DELETE FROM `users_remembers` WHERE `user_id` = ? AND `remember_me` != ?', [$this->id, $ur->rememberMe]);
+
+		try {
+			$content = self::buildRememberMeCookiePayload($dateTimeZone->getName(), $rememberMe);
+		} catch (\Throwable $e) {
+			Database::run('DELETE FROM `users_remembers` WHERE `user_id` = ? AND `remember_me` = ?', [$this->id, $ur->rememberMe]);
+			return false;
+		}
 
 		// expire in 30 days 2592000
 		$expires = time() + 2592000;
@@ -850,15 +864,44 @@ class User extends ActiveRecord {
 		$maxIndex = strlen($chars) - 1;
 		$value = '';
 
-		try {
-			for ($i = 0; $i < $length; $i++) {
-				$value .= $chars[random_int(0, $maxIndex)];
-			}
-		} catch (\Throwable $e) {
-			return Utilities::getRandomString($length);
+		for ($i = 0; $i < $length; $i++) {
+			$value .= $chars[random_int(0, $maxIndex)];
 		}
 
 		return $value;
+
+	}
+
+	/**
+	 * Builds the remember-me cookie payload in v2 format.
+	 *
+	 * @param string $timezone   IANA time zone identifier.
+	 * @param string $rememberMe Plain remember-me token.
+	 */
+	private static function buildRememberMeCookiePayload(string $timezone, string $rememberMe): string {
+
+		$payload = json_encode([
+			'timezone' => $timezone,
+			'rememberMe' => $rememberMe
+		], JSON_UNESCAPED_SLASHES);
+
+		if (!is_string($payload)) {
+			throw new \RuntimeException('Unable to encode remember-me cookie payload');
+		}
+
+		// use base64url to avoid reserved cookie chars
+		$encoded = rtrim(strtr(base64_encode($payload), '+/', '-_'), '=');
+
+		return 'v2.' . $encoded;
+
+	}
+
+	/**
+	 * Returns a deterministic hash for remember-me token storage in database.
+	 */
+	public static function getRememberMeTokenHash(string $rememberMe): string {
+
+		return substr(hash('sha256', $rememberMe), 0, 32);
 
 	}
 
@@ -898,13 +941,23 @@ class User extends ActiveRecord {
 	}
 
 	/**
-	 * Utility to unserialize and return the remember-me cookie content {timezone, rememberMe}.
+	 * Utility to parse and return remember-me cookie content {timezone, rememberMe}.
 	 */
 	private static function getRememberMeCookie(): ?\stdClass {
 
-		// try to unserialize the cookie content
-		$app = Application::getInstance();
-		$content = $app->getPersistentState('RememberMe');
+		$cookieName = self::getRememberMeCookieName();
+		$content = null;
+
+		// first try remember-me cookie payload v2
+		if (isset($_COOKIE[$cookieName]) and is_string($_COOKIE[$cookieName])) {
+			$content = self::parseRememberMeCookiePayload($_COOKIE[$cookieName]);
+		}
+
+		// fallback for legacy cookie payload {timezone, rememberMe}
+		if (!is_array($content)) {
+			$app = Application::getInstance();
+			$content = $app->getPersistentState('RememberMe');
+		}
 
 		$regex = '#^[' . Utilities::RANDOM_STRING_CHARS . ']{32}$#';
 
@@ -918,6 +971,46 @@ class User extends ActiveRecord {
 		}
 
 		return null;
+
+	}
+
+	/**
+	 * Parses remember-me cookie payload in v2 format.
+	 *
+	 * @param string $content Raw cookie value.
+	 * @return array<int,string>|null [timezone, rememberMe] on success.
+	 */
+	private static function parseRememberMeCookiePayload(string $content): ?array {
+
+		if (!str_starts_with($content, 'v2.')) {
+			return null;
+		}
+
+		$encoded = substr($content, 3);
+
+		if ('' === $encoded) {
+			return null;
+		}
+
+		$paddingLen = strlen($encoded) % 4;
+
+		if ($paddingLen > 0) {
+			$encoded .= str_repeat('=', 4 - $paddingLen);
+		}
+
+		$json = base64_decode(strtr($encoded, '-_', '+/'), true);
+
+		if (false === $json) {
+			return null;
+		}
+
+		$data = json_decode($json, true);
+
+		if (!is_array($data) or !isset($data['timezone']) or !isset($data['rememberMe'])) {
+			return null;
+		}
+
+		return [(string)$data['timezone'], (string)$data['rememberMe']];
 
 	}
 
@@ -1087,9 +1180,13 @@ class User extends ActiveRecord {
 
 		// get the cookie content
 		$cookieContent = self::getRememberMeCookie();
+		$cookieName = self::getRememberMeCookieName();
 
 		// check if cookie exists
 		if (is_null($cookieContent)) {
+			if (isset($_COOKIE[$cookieName])) {
+				setcookie($cookieName, '', Application::getCookieParams(-1));
+			}
 			return false;
 		}
 
@@ -1109,7 +1206,11 @@ class User extends ActiveRecord {
 			$user->beforeRememberMeLogin();
 
 			$user->createSession($cookieContent->timezone);
-			$user->renewRememberMe();
+
+			if (!$user->renewRememberMe()) {
+				setcookie($cookieName, '', Application::getCookieParams(-1));
+				return false;
+			}
 
 			$app = Application::getInstance();
 			$app->setCurrentUser($user);
@@ -1122,6 +1223,9 @@ class User extends ActiveRecord {
 			return true;
 
 		}
+
+		// remove unknown or stale remember-me cookies
+		setcookie($cookieName, '', Application::getCookieParams(-1));
 
 		// login unsucceded
 		return false;
@@ -1159,8 +1263,8 @@ class User extends ActiveRecord {
 	/**
 	 * Renews the remember-me token for this user.
 	 *
-	 * Updates the created_at timestamp in DB, deletes older tokens for the same
-	 * user and refreshes the browser cookie with a new expiration date.
+	 * Rotates the remember-me token for this user, keeps only the newest token
+	 * in DB and refreshes the browser cookie with a new expiration date.
 	 *
 	 * @return bool True if the cookie was updated, false otherwise.
 	 */
@@ -1175,19 +1279,49 @@ class User extends ActiveRecord {
 		}
 
 		$cookieContent = self::getRememberMeCookie();
+		if (is_null($cookieContent)) {
+			setcookie($cookieName, '', Application::getCookieParams(-1));
+			return false;
+		}
+
+		$newRememberMe = null;
+
+		try {
+			$newRememberMe = self::getSecureRandomString(32);
+		} catch (\Throwable $e) {
+			return false;
+		}
+
+		$newRememberMeHash = self::getRememberMeTokenHash($newRememberMe);
+		$currentRememberMeHash = self::getRememberMeTokenHash($cookieContent->rememberMe);
 
 		// hook for tasks to be executed before remember-me token renewal
 		$this->beforeRememberMeRenew();
 
-		// update created_at date and delete older remember-me records
-		Database::run('UPDATE `users_remembers` SET `created_at` = NOW() WHERE `user_id` = ? AND `remember_me` = ?', [$this->id, $cookieContent->rememberMe]);
-		Database::run('DELETE FROM `users_remembers` WHERE `user_id` = ? AND `remember_me` != ?', [$this->id, $cookieContent->rememberMe]);
+		// rotate remember-me token and keep compatibility with legacy plain-text storage
+		$updated = Database::run(
+			'UPDATE `users_remembers` SET `remember_me` = ?, `created_at` = NOW() WHERE `user_id` = ? AND (`remember_me` = ? OR `remember_me` = ?)',
+			[$newRememberMeHash, $this->id, $currentRememberMeHash, $cookieContent->rememberMe]
+		);
+
+		if (!$updated) {
+			setcookie($cookieName, '', Application::getCookieParams(-1));
+			return false;
+		}
+
+		Database::run('DELETE FROM `users_remembers` WHERE `user_id` = ? AND `remember_me` != ?', [$this->id, $newRememberMeHash]);
+
+		try {
+			$content = self::buildRememberMeCookiePayload($cookieContent->timezone, $newRememberMe);
+		} catch (\Throwable $e) {
+			return false;
+		}
 
 		// expires in 30 days
 		$expires = time() + 2592000;
 
 		// set cookie and return the result
-		$result = setcookie($cookieName, $_COOKIE[$cookieName], Application::getCookieParams($expires));
+		$result = setcookie($cookieName, $content, Application::getCookieParams($expires));
 
 		// hook for tasks to be executed after remember-me token renewal
 		$this->afterRememberMeRenew();
@@ -1233,20 +1367,27 @@ class User extends ActiveRecord {
 
 		// build the cookie name
 		$cookieContent = self::getRememberMeCookie();
+		$cookieName = self::getRememberMeCookieName();
 
 		// check if cookie exists
 		if (is_null($cookieContent)) {
-			return false;
+			Database::run('DELETE FROM `users_remembers` WHERE `user_id` = ?', [$this->id]);
+			return setcookie($cookieName, '', Application::getCookieParams(-1));
 		}
 
 		// hook for tasks to be executed before remember-me token revocation
 		$this->beforeRememberMeUnset();
 
 		// delete the current remember-me DB record
-		Database::run('DELETE FROM `users_remembers` WHERE `user_id` = ? AND `remember_me` = ?', [$this->id, $cookieContent->rememberMe]);
+		$currentRememberMeHash = self::getRememberMeTokenHash($cookieContent->rememberMe);
+
+		Database::run(
+			'DELETE FROM `users_remembers` WHERE `user_id` = ? AND (`remember_me` = ? OR `remember_me` = ?)',
+			[$this->id, $currentRememberMeHash, $cookieContent->rememberMe]
+		);
 
 		// delete the current remember-me Cookie
-		$result = setcookie(self::getRememberMeCookieName(), '', Application::getCookieParams(-1));
+		$result = setcookie($cookieName, '', Application::getCookieParams(-1));
 
 		// hook for tasks to be executed after remember-me token revocation
 		$this->afterRememberMeUnset();

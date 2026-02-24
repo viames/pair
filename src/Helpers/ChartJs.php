@@ -16,6 +16,11 @@ use Pair\Models\User;
 class ChartJs {
 
 	/**
+	 * Debounce delay (ms) before Chart.js performs a redraw after resize/orientation changes.
+	 */
+	private const DEFAULT_RESIZE_DELAY_MS = 250;
+
+	/**
 	 * The HTML element ID where the chart will be rendered.
 	 */
 	private string $elementId;
@@ -91,6 +96,10 @@ class ChartJs {
 		}
 
 		$this->elementId = $elementId ? $elementId : 'chart-' . uniqid();
+
+		// centralized defaults: all charts stay responsive and redraw after a short debounce.
+		$this->options['responsive'] = true;
+		$this->options['resizeDelay'] = self::DEFAULT_RESIZE_DELAY_MS;
 
 	}
 
@@ -680,6 +689,23 @@ class ChartJs {
 	public function responsive(bool $responsive): self {
 
 		$this->options['responsive'] = $responsive;
+
+		return $this;
+
+	}
+
+	/**
+	 * Set debounce delay (milliseconds) before resizing/redrawing the chart.
+	 *
+	 * @param	int	$milliseconds	Delay in milliseconds, must be >= 0.
+	 */
+	public function resizeDelay(int $milliseconds): self {
+
+		if ($milliseconds < 0) {
+			throw new AppException('Invalid resize delay: ' . $milliseconds);
+		}
+
+		$this->options['resizeDelay'] = $milliseconds;
 
 		return $this;
 

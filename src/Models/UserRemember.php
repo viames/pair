@@ -62,15 +62,19 @@ class UserRemember extends ActiveRecord {
 		// delete older remember-me DB records
 		Database::run('DELETE FROM `users_remembers` WHERE `created_at` < DATE_SUB(NOW(), INTERVAL 1 MONTH)');
 
+		$rememberMeHash = User::getRememberMeTokenHash($rememberMe);
+
 		$query =
 			'SELECT u.*
 			FROM `users` AS u
 			INNER JOIN `users_remembers` AS ur ON u.`id` = ur.`user_id`
-			WHERE ur.`remember_me` = ?';
+			WHERE (ur.`remember_me` = ? OR ur.`remember_me` = ?)
+			ORDER BY ur.`created_at` DESC
+			LIMIT 1';
 
 		$userClass = Application::getInstance()->userClass;
 
-		return $userClass::getObjectByQuery($query, [$rememberMe]);
+		return $userClass::getObjectByQuery($query, [$rememberMeHash, $rememberMe]);
 
 	}
 

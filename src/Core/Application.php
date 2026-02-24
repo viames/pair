@@ -467,7 +467,8 @@ class Application {
 			'expires' => $expires,
 			'path' => '/',
 			'samesite' => 'Lax',
-			'secure' => 'development' != Application::getEnvironment()
+			'secure' => 'development' != Application::getEnvironment(),
+			'httponly' => true
 		];
 
 	}
