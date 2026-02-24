@@ -586,6 +586,98 @@ class User extends ActiveRecord {
 	}
 
 	/**
+	 * Logs in a user already validated by an external authentication factor
+	 * (for example Passkey/WebAuthn) and returns an object with error, message,
+	 * userId and sessionId properties.
+	 *
+	 * @param	int		$userId		User ID.
+	 * @param	string	$timezone	IANA time zone identifier.
+	 * @return	\stdClass			Object with error, message, userId and sessionId properties.
+	 */
+	public static function doLoginById(int $userId, string $timezone): \stdClass {
+
+		$ret = new \stdClass();
+
+		$ret->error		= false;
+		$ret->message	= null;
+		$ret->userId	= null;
+		$ret->sessionId	= null;
+
+		$genericMessage = Translator::do('AUTHENTICATION_FAILED');
+		$user = new static($userId);
+
+		// track ip address and user_agent for audit
+		$ipAddress = $_SERVER['REMOTE_ADDR'] ?? null;
+		$userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
+
+		if (!$user->isLoaded()) {
+
+			Audit::loginFailed('uid:' . $userId, $ipAddress, $userAgent);
+
+			$ret->error = true;
+			$ret->message = $genericMessage;
+
+			return $ret;
+
+		}
+
+		// over 9 faults
+		if ($user->faults > 9) {
+
+			$ret->error = true;
+			$ret->message = $genericMessage;
+			$user->addFault();
+
+			Audit::loginFailed($user->username, $ipAddress, $userAgent);
+
+			// hook for tasks to be executed after failed login
+			$user->afterLoginFailed();
+
+			return $ret;
+
+		}
+
+		// user disabled
+		if ('0' == $user->enabled) {
+
+			$ret->error = true;
+			$ret->message = $genericMessage;
+			$user->addFault();
+
+			Audit::loginFailed($user->username, $ipAddress, $userAgent);
+
+			// hook for tasks to be executed after failed login
+			$user->afterLoginFailed();
+
+			return $ret;
+
+		}
+
+		// hook for tasks to be executed before login
+		$user->beforeLogin();
+
+		// creates session for this user
+		$user->createSession($timezone);
+		$ret->userId = $user->id;
+		$ret->sessionId = session_id();
+		$user->resetFaults();
+
+		// clear any password-reset
+		if (!is_null($user->pwReset)) {
+			$user->pwReset = null;
+			$user->store();
+		}
+
+		// hook for tasks to be executed after login
+		$user->afterLogin();
+
+		Audit::loginSuccessful($user, $ipAddress, $userAgent);
+
+		return $ret;
+
+	}
+
+	/**
 	 * Does the logout action and returns true if session is found and deleted.
 	 *
 	 * @param	string	Session ID to close.

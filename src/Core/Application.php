@@ -762,6 +762,14 @@ class Application {
 
 			// continue with apiCtl action
 
+		// passkey login ceremony can start without sid, challenge is stored in PHP session
+		} else if ('passkey' == $router->action and !$sid) {
+
+			// ensure a session exists for challenge storage
+			if (PHP_SESSION_ACTIVE !== session_status()) {
+				session_start();
+			}
+
 		// all the other requests with sid
 		} else if ($sid) {
 
@@ -1029,8 +1037,9 @@ class Application {
 	 * @param	string	Path to the assets folder (default /assets).
 	 * @param	bool	Whether to include PairUI.js.
 	 * @param	bool	Whether to include PairPush.js.
+	 * @param	bool	Whether to include PairPasskey.js.
 	 */
-	public function loadPwaScripts(string $assetsPath = '/assets', bool $includePairUi = false, bool $includePairPush = false): void {
+	public function loadPwaScripts(string $assetsPath = '/assets', bool $includePairUi = false, bool $includePairPush = false, bool $includePairPasskey = false): void {
 
 		$assetsPath = '/' . trim($assetsPath, '/');
 
@@ -1049,6 +1058,10 @@ class Application {
 
 		if ($includePairPush) {
 			$this->loadScript($assetsPath . '/PairPush.js', true);
+		}
+
+		if ($includePairPasskey) {
+			$this->loadScript($assetsPath . '/PairPasskey.js', true);
 		}
 
 	}

@@ -89,10 +89,11 @@ trait AppTrait {
 	 * @param string $assetsPath      Base assets path (default /assets).
 	 * @param bool   $includePairUi   Whether to include PairUI.js.
 	 * @param bool   $includePairPush Whether to include PairPush.js.
+	 * @param bool   $includePairPasskey Whether to include PairPasskey.js.
 	 */
-	public function loadPwaScripts(string $assetsPath = '/assets', bool $includePairUi = false, bool $includePairPush = false): void {
+	public function loadPwaScripts(string $assetsPath = '/assets', bool $includePairUi = false, bool $includePairPush = false, bool $includePairPasskey = false): void {
 
-		Application::getInstance()->loadPwaScripts($assetsPath, $includePairUi, $includePairPush);
+		Application::getInstance()->loadPwaScripts($assetsPath, $includePairUi, $includePairPush, $includePairPasskey);
 
 	}
 

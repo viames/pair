@@ -66,6 +66,7 @@ Pair includes standalone PWA-oriented frontend files under `vendor/viames/pair/a
 - `PairRouter.js`: progressive navigation and History API routing for server-rendered pages.
 - `PairSkeleton.js`: loading skeleton toggles using `data-skeleton` markers.
 - `PairDevice.js`: safe wrappers for camera, bluetooth, geolocation, permissions and vibration.
+- `PairPasskey.js`: browser helper for Passkey/WebAuthn registration and login.
 
 Backend quick start (Pair framework):
 
@@ -85,7 +86,7 @@ PwaManifest::write(APPLICATION_PATH . '/public/manifest.webmanifest', [
 
 // in your controller/layout bootstrap
 $this->loadManifest('/manifest.webmanifest');
-$this->loadPwaScripts('/assets', true, true); // includes PairUI and PairPush too
+$this->loadPwaScripts('/assets', true, true, true); // includes PairUI, PairPush and PairPasskey too
 
 // optional: centralized SW runtime policy
 $swUrl = PwaConfig::buildServiceWorkerUrl('/assets/PairSW.js', [
@@ -113,6 +114,7 @@ Frontend quick start:
 <script src="/assets/PairRouter.js" defer></script>
 <script src="/assets/PairSkeleton.js" defer></script>
 <script src="/assets/PairDevice.js" defer></script>
+<script src="/assets/PairPasskey.js" defer></script>
 ```
 
 ```html
@@ -187,6 +189,40 @@ Important notes:
 - Service workers require HTTPS (except localhost).
 - For custom offline pages, use `swOfflineFallback` or PwaConfig `offlineFallback`.
 - If you use `PairPush`, register the same service worker URL to avoid multiple workers.
+
+### Passkey quick start
+
+Backend (API module controller):
+
+```php
+class ApiController extends \Pair\Api\PasskeyController {}
+```
+
+This enables ready-to-use endpoints:
+- `POST /api/passkey/login/options`
+- `POST /api/passkey/login/verify`
+- `POST /api/passkey/register/options` (requires `sid`)
+- `POST /api/passkey/register/verify` (requires `sid`)
+- `GET /api/passkey/list` (requires `sid`)
+- `DELETE /api/passkey/revoke/{id}` (requires `sid`)
+
+Frontend:
+
+```js
+// login
+const loginResult = await PairPasskey.login({
+	optionsUrl: "/api/passkey/login/options",
+	verifyUrl: "/api/passkey/login/verify",
+	username: "john"
+});
+
+// register (user must be authenticated and pass sid for API auth)
+const registrationResult = await PairPasskey.register({
+	optionsUrl: "/api/passkey/register/options?sid=YOUR_SESSION_ID",
+	verifyUrl: "/api/passkey/register/verify?sid=YOUR_SESSION_ID",
+	label: "My MacBook"
+});
+```
 
 ### Routing basics (Pair apps)
 
