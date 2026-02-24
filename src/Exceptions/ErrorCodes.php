@@ -289,4 +289,9 @@ class ErrorCodes {
 	 */
 	const STRIPE_ERROR = 1057;
 
+	/**
+	 * Aircall error.
+	 */
+	const AIRCALL_ERROR = 1058;
+
 }
