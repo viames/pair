@@ -6,6 +6,7 @@ use Pair\Core\Application;
 use Pair\Core\Env;
 use Pair\Models\User;
 use Pair\Models\UserPasskey;
+use Pair\Orm\Database;
 use Pair\Services\PasskeyAuth;
 
 /**
@@ -165,14 +166,32 @@ abstract class PasskeyController extends CrudController {
 		$user = $this->requireAuth();
 		$data = [];
 
-		foreach (UserPasskey::getActiveByUserId($user->id) as $passkey) {
+		$query =
+			'SELECT *
+			FROM `users_passkeys`
+			WHERE `user_id` = ?
+			AND `revoked_at` IS NULL
+			ORDER BY `created_at` DESC';
+
+		$rows = Database::load($query, [$user->id], Database::OBJECT_LIST);
+
+		foreach ($rows as $row) {
+			$transports = [];
+
+			if (isset($row->transports) and is_string($row->transports) and '' !== trim($row->transports)) {
+				$decoded = json_decode($row->transports, true);
+				if (is_array($decoded)) {
+					$transports = array_values($decoded);
+				}
+			}
+
 			$data[] = [
-				'id' => $passkey->id,
-				'label' => $passkey->label,
-				'credentialId' => $passkey->credentialId,
-				'createdAt' => $passkey->createdAt?->format('Y-m-d H:i:s'),
-				'lastUsedAt' => $passkey->lastUsedAt?->format('Y-m-d H:i:s'),
-				'transports' => $passkey->getTransports()
+				'id' => intval($row->id ?? 0),
+				'label' => $row->label ?? null,
+				'credentialId' => $row->credential_id ?? null,
+				'createdAt' => $row->created_at ?? null,
+				'lastUsedAt' => $row->last_used_at ?? null,
+				'transports' => $transports
 			];
 		}
 
@@ -201,7 +220,7 @@ abstract class PasskeyController extends CrudController {
 	private function passkeyLoginVerify(): void {
 
 		$body = $this->optionalJsonPost();
-		$credential = isset($body['credential']) and is_array($body['credential']) ? $body['credential'] : null;
+		$credential = (isset($body['credential']) and is_array($body['credential'])) ? $body['credential'] : null;
 
 		if (!$credential) {
 			ApiResponse::error('BAD_REQUEST', ['detail' => 'Missing passkey credential payload']);
@@ -216,10 +235,33 @@ abstract class PasskeyController extends CrudController {
 			ApiResponse::error('AUTH_INVALID_CREDENTIALS');
 		}
 
+		$destinationUrl = null;
+		$page = trim((string)$this->getPersistentState('lastRequestedUrl'));
+
+		if ('' !== $page) {
+			$destinationUrl = $page;
+			$this->unsetPersistentState('lastRequestedUrl');
+		}
+
+		if (!$destinationUrl) {
+			$userClass = Application::getInstance()->userClass;
+			$loggedUser = new $userClass((int)$result->userId);
+			$landing = $loggedUser->landing();
+
+			if (is_object($landing) and isset($landing->module)) {
+				$destinationUrl = (string)$landing->module . '/' . (string)($landing->action ?? 'default');
+			}
+		}
+
+		if (!$destinationUrl) {
+			$destinationUrl = 'user/profile';
+		}
+
 		ApiResponse::respond([
 			'message' => 'Authenticated',
 			'userId' => $result->userId,
-			'sessionId' => $result->sessionId
+			'sessionId' => $result->sessionId,
+			'redirectUrl' => $destinationUrl
 		]);
 
 	}
@@ -246,7 +288,7 @@ abstract class PasskeyController extends CrudController {
 
 		$user = $this->requireAuth();
 		$body = $this->optionalJsonPost();
-		$credential = isset($body['credential']) and is_array($body['credential']) ? $body['credential'] : null;
+		$credential = (isset($body['credential']) and is_array($body['credential'])) ? $body['credential'] : null;
 
 		if (!$credential) {
 			ApiResponse::error('BAD_REQUEST', ['detail' => 'Missing passkey credential payload']);

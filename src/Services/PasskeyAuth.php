@@ -443,7 +443,7 @@ class PasskeyAuth {
 	 */
 	private function responseField(array $credential, string $field): string {
 
-		$response = isset($credential['response']) and is_array($credential['response'])
+		$response = (isset($credential['response']) and is_array($credential['response']))
 			? $credential['response']
 			: [];
 
@@ -584,7 +584,7 @@ class PasskeyAuth {
 			throw new PairException('OpenSSL extension is required for Passkey', ErrorCodes::MISSING_CONFIGURATION);
 		}
 
-		$response = isset($credential['response']) and is_array($credential['response'])
+		$response = (isset($credential['response']) and is_array($credential['response']))
 			? $credential['response']
 			: [];
 
