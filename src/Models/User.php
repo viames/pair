@@ -816,7 +816,7 @@ class User extends ActiveRecord {
 
 		$session = Session::current();
 
-		return new \DateTimeZone($session ? $session->timezoneName : BASE_TIMEZONE);
+		return new \DateTimeZone($session->timezoneName ?? BASE_TIMEZONE);
 
 	}
 

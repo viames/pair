@@ -91,7 +91,7 @@ class AircallClient {
 	public function addContactEmail(int $contactId, array $payload): array {
 
 		$this->assertPositiveId($contactId, 'contact');
-		return $this->request('POST', '/v1/contacts/' . $contactId . '/emails', [], $payload);
+		return $this->request('POST', '/v1/contacts/' . $contactId . '/email_details', [], $payload);
 
 	}
 
@@ -101,7 +101,7 @@ class AircallClient {
 	public function addContactPhoneNumber(int $contactId, array $payload): array {
 
 		$this->assertPositiveId($contactId, 'contact');
-		return $this->request('POST', '/v1/contacts/' . $contactId . '/phone_numbers', [], $payload);
+		return $this->request('POST', '/v1/contacts/' . $contactId . '/phone_details', [], $payload);
 
 	}
 
@@ -112,17 +112,23 @@ class AircallClient {
 
 		$this->assertPositiveId($callId, 'call');
 		$this->assertPositiveId($tagId, 'tag');
-		return $this->request('POST', '/v1/calls/' . $callId . '/tags/' . $tagId);
+		return $this->request('POST', '/v1/calls/' . $callId . '/tags', [], ['tags' => [$tagId]]);
 
 	}
 
 	/**
 	 * Add a phone number to a dialer campaign.
 	 */
-	public function addPhoneNumberToDialerCampaign(int $campaignId, string $phoneNumber): array {
+	public function addPhoneNumberToDialerCampaign(int $userId, string $phoneNumber): array {
 
-		$this->assertPositiveId($campaignId, 'dialer campaign');
-		return $this->request('POST', '/v1/dialer_campaigns/' . $campaignId . '/phone_numbers/' . $this->encodeSegment($phoneNumber));
+		$this->assertPositiveId($userId, 'user');
+		$phoneNumber = trim($phoneNumber);
+
+		if ($phoneNumber === '') {
+			throw new PairException('Aircall phone number cannot be empty.', ErrorCodes::AIRCALL_ERROR);
+		}
+
+		return $this->request('POST', '/v1/users/' . $userId . '/dialer_campaign/phone_numbers', [], ['phone_numbers' => [$phoneNumber]]);
 
 	}
 
@@ -143,7 +149,7 @@ class AircallClient {
 	public function archiveCall(int $callId): array {
 
 		$this->assertPositiveId($callId, 'call');
-		return $this->request('POST', '/v1/calls/' . $callId . '/archive');
+		return $this->request('PUT', '/v1/calls/' . $callId . '/archive');
 
 	}
 
@@ -153,7 +159,7 @@ class AircallClient {
 	public function checkUserAvailability(int $userId): array {
 
 		$this->assertPositiveId($userId, 'user');
-		return $this->request('GET', '/v1/users/' . $userId . '/available');
+		return $this->request('GET', '/v1/users/' . $userId . '/availability');
 
 	}
 
@@ -179,9 +185,10 @@ class AircallClient {
 	/**
 	 * Create a dialer campaign.
 	 */
-	public function createDialerCampaign(array $payload): array {
+	public function createDialerCampaign(int $userId, array $payload): array {
 
-		return $this->request('POST', '/v1/dialer_campaigns', [], $payload);
+		$this->assertPositiveId($userId, 'user');
+		return $this->request('POST', '/v1/users/' . $userId . '/dialer_campaign', [], $payload);
 
 	}
 
@@ -277,7 +284,7 @@ class AircallClient {
 
 		$this->assertPositiveId($contactId, 'contact');
 		$this->assertPositiveId($emailId, 'email');
-		return $this->request('DELETE', '/v1/contacts/' . $contactId . '/emails/' . $emailId);
+		return $this->request('DELETE', '/v1/contacts/' . $contactId . '/email_details/' . $emailId);
 
 	}
 
@@ -288,17 +295,17 @@ class AircallClient {
 
 		$this->assertPositiveId($contactId, 'contact');
 		$this->assertPositiveId($phoneNumberId, 'phone number');
-		return $this->request('DELETE', '/v1/contacts/' . $contactId . '/phone_numbers/' . $phoneNumberId);
+		return $this->request('DELETE', '/v1/contacts/' . $contactId . '/phone_details/' . $phoneNumberId);
 
 	}
 
 	/**
 	 * Delete a dialer campaign.
 	 */
-	public function deleteDialerCampaign(int $campaignId): array {
+	public function deleteDialerCampaign(int $userId): array {
 
-		$this->assertPositiveId($campaignId, 'dialer campaign');
-		return $this->request('DELETE', '/v1/dialer_campaigns/' . $campaignId);
+		$this->assertPositiveId($userId, 'user');
+		return $this->request('DELETE', '/v1/users/' . $userId . '/dialer_campaign');
 
 	}
 
@@ -345,10 +352,9 @@ class AircallClient {
 	/**
 	 * Delete a webhook.
 	 */
-	public function deleteWebhook(int $webhookId): array {
+	public function deleteWebhook(string $webhookId): array {
 
-		$this->assertPositiveId($webhookId, 'webhook');
-		return $this->request('DELETE', '/v1/webhooks/' . $webhookId);
+		return $this->request('DELETE', '/v1/webhooks/' . $this->encodeSegment($webhookId));
 
 	}
 
@@ -358,25 +364,29 @@ class AircallClient {
 	public function dialPhoneNumberInPhone(int $userId, array $payload): array {
 
 		$this->assertPositiveId($userId, 'user');
-		return $this->request('POST', '/v1/users/' . $userId . '/dial_phone_number_in_phone', [], $payload);
+		return $this->request('POST', '/v1/users/' . $userId . '/dial', [], $payload);
 
 	}
 
 	/**
 	 * Disable an integration.
+	 *
+	 * OAuth-only endpoint, not available with basic auth.
 	 */
-	public function disableIntegration(string $integrationName): array {
+	public function disableIntegration(string $_integrationName): array {
 
-		return $this->request('POST', '/v1/integrations/' . $this->encodeSegment($integrationName) . '/disable');
+		throw new PairException('Aircall integration endpoints require OAuth and are not supported with Basic Auth.', ErrorCodes::AIRCALL_ERROR);
 
 	}
 
 	/**
 	 * Enable an integration.
+	 *
+	 * OAuth-only endpoint, not available with basic auth.
 	 */
-	public function enableIntegration(string $integrationName): array {
+	public function enableIntegration(string $_integrationName): array {
 
-		return $this->request('POST', '/v1/integrations/' . $this->encodeSegment($integrationName) . '/enable');
+		throw new PairException('Aircall integration endpoints require OAuth and are not supported with Basic Auth.', ErrorCodes::AIRCALL_ERROR);
 
 	}
 
@@ -438,7 +448,7 @@ class AircallClient {
 	public function getCallCustomSummary(int $callId): array {
 
 		$this->assertPositiveId($callId, 'call');
-		return $this->request('GET', '/v1/calls/' . $callId . '/custom_summary');
+		return $this->request('GET', '/v1/calls/' . $callId . '/custom_summary_result');
 
 	}
 
@@ -453,12 +463,12 @@ class AircallClient {
 	}
 
 	/**
-	 * Get call insight cards.
+	 * Send call insight cards.
 	 */
-	public function getCallInsightCards(int $callId): array {
+	public function getCallInsightCards(int $callId, array $payload): array {
 
 		$this->assertPositiveId($callId, 'call');
-		return $this->request('GET', '/v1/calls/' . $callId . '/insight_cards');
+		return $this->request('POST', '/v1/calls/' . $callId . '/insight_cards', [], $payload);
 
 	}
 
@@ -536,7 +546,7 @@ class AircallClient {
 	 */
 	public function getCompany(): array {
 
-		return $this->request('GET', '/v1/companies/me');
+		return $this->request('GET', '/v1/company');
 
 	}
 
@@ -562,38 +572,42 @@ class AircallClient {
 	/**
 	 * Get dialer campaign details.
 	 */
-	public function getDialerCampaign(int $campaignId): array {
+	public function getDialerCampaign(int $userId): array {
 
-		$this->assertPositiveId($campaignId, 'dialer campaign');
-		return $this->request('GET', '/v1/dialer_campaigns/' . $campaignId);
+		$this->assertPositiveId($userId, 'user');
+		return $this->request('GET', '/v1/users/' . $userId . '/dialer_campaign');
 
 	}
 
 	/**
 	 * Get dialer campaign phone numbers.
 	 */
-	public function getDialerCampaignPhoneNumbers(int $campaignId, array $query = []): array {
+	public function getDialerCampaignPhoneNumbers(int $userId, array $query = []): array {
 
-		$this->assertPositiveId($campaignId, 'dialer campaign');
-		return $this->request('GET', '/v1/dialer_campaigns/' . $campaignId . '/phone_numbers', $query);
+		$this->assertPositiveId($userId, 'user');
+		return $this->request('GET', '/v1/users/' . $userId . '/dialer_campaign/phone_numbers', $query);
 
 	}
 
 	/**
 	 * Get one integration details.
+	 *
+	 * OAuth-only endpoint, not available with basic auth.
 	 */
-	public function getIntegration(string $integrationName): array {
+	public function getIntegration(string $_integrationName): array {
 
-		return $this->request('GET', '/v1/integrations/' . $this->encodeSegment($integrationName));
+		throw new PairException('Aircall integration endpoints require OAuth and are not supported with Basic Auth.', ErrorCodes::AIRCALL_ERROR);
 
 	}
 
 	/**
 	 * Get integrations list.
+	 *
+	 * OAuth-only endpoint, not available with basic auth.
 	 */
 	public function getIntegrations(): array {
 
-		return $this->request('GET', '/v1/integrations');
+		throw new PairException('Aircall integration endpoints require OAuth and are not supported with Basic Auth.', ErrorCodes::AIRCALL_ERROR);
 
 	}
 
@@ -797,10 +811,9 @@ class AircallClient {
 	/**
 	 * Get webhook details.
 	 */
-	public function getWebhook(int $webhookId): array {
+	public function getWebhook(string $webhookId): array {
 
-		$this->assertPositiveId($webhookId, 'webhook');
-		return $this->request('GET', '/v1/webhooks/' . $webhookId);
+		return $this->request('GET', '/v1/webhooks/' . $this->encodeSegment($webhookId));
 
 	}
 
@@ -835,23 +848,13 @@ class AircallClient {
 	}
 
 	/**
-	 * Remove a tag from a call.
-	 */
-	public function removeCallTag(int $callId, int $tagId): array {
-
-		$this->assertPositiveId($callId, 'call');
-		$this->assertPositiveId($tagId, 'tag');
-		return $this->request('DELETE', '/v1/calls/' . $callId . '/tags/' . $tagId);
-
-	}
-
-	/**
 	 * Remove a phone number from a dialer campaign.
 	 */
-	public function removePhoneNumberFromDialerCampaign(int $campaignId, string $phoneNumber): array {
+	public function removePhoneNumberFromDialerCampaign(int $userId, int $phoneNumberId): array {
 
-		$this->assertPositiveId($campaignId, 'dialer campaign');
-		return $this->request('DELETE', '/v1/dialer_campaigns/' . $campaignId . '/phone_numbers/' . $this->encodeSegment($phoneNumber));
+		$this->assertPositiveId($userId, 'user');
+		$this->assertPositiveId($phoneNumberId, 'phone number');
+		return $this->request('DELETE', '/v1/users/' . $userId . '/dialer_campaign/phone_numbers/' . $phoneNumberId);
 
 	}
 
@@ -940,7 +943,7 @@ class AircallClient {
 	public function unarchiveCall(int $callId): array {
 
 		$this->assertPositiveId($callId, 'call');
-		return $this->request('POST', '/v1/calls/' . $callId . '/unarchive');
+		return $this->request('PUT', '/v1/calls/' . $callId . '/unarchive');
 
 	}
 
@@ -950,7 +953,7 @@ class AircallClient {
 	public function updateContact(int $contactId, array $payload): array {
 
 		$this->assertPositiveId($contactId, 'contact');
-		return $this->request('PUT', '/v1/contacts/' . $contactId, [], $payload);
+		return $this->request('POST', '/v1/contacts/' . $contactId, [], $payload);
 
 	}
 
@@ -961,7 +964,7 @@ class AircallClient {
 
 		$this->assertPositiveId($contactId, 'contact');
 		$this->assertPositiveId($emailId, 'email');
-		return $this->request('PUT', '/v1/contacts/' . $contactId . '/emails/' . $emailId, [], $payload);
+		return $this->request('PUT', '/v1/contacts/' . $contactId . '/email_details/' . $emailId, [], $payload);
 
 	}
 
@@ -972,7 +975,7 @@ class AircallClient {
 
 		$this->assertPositiveId($contactId, 'contact');
 		$this->assertPositiveId($phoneNumberId, 'phone number');
-		return $this->request('PUT', '/v1/contacts/' . $contactId . '/phone_numbers/' . $phoneNumberId, [], $payload);
+		return $this->request('PUT', '/v1/contacts/' . $contactId . '/phone_details/' . $phoneNumberId, [], $payload);
 
 	}
 
@@ -1039,10 +1042,9 @@ class AircallClient {
 	/**
 	 * Update a webhook.
 	 */
-	public function updateWebhook(int $webhookId, array $payload): array {
+	public function updateWebhook(string $webhookId, array $payload): array {
 
-		$this->assertPositiveId($webhookId, 'webhook');
-		return $this->request('PUT', '/v1/webhooks/' . $webhookId, [], $payload);
+		return $this->request('PUT', '/v1/webhooks/' . $this->encodeSegment($webhookId), [], $payload);
 
 	}
 

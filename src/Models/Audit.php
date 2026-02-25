@@ -138,10 +138,12 @@ class Audit extends ActiveRecord {
 		$list = [];
 
 		foreach($events as $e) {
+			$constantName = strtoupper('PAIR_AUDIT_'.$e);
+
 			$list[] = (object)[
 				'type'    => $e,
 				'name'    => ucfirst(str_replace('_',' ', $e)),
-				'enabled' => constant(strtoupper('PAIR_AUDIT_'.$e))
+				'enabled' => defined($constantName) ? constant($constantName) : Env::get($constantName)
 				];
 		}
 

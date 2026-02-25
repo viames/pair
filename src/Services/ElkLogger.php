@@ -44,7 +44,7 @@ class ElkLogger {
      */
     public function __construct(string $elkUrl, ?string $elkUser = null, ?string $elkPassword = null) {
 
-		$env = Env::get('ENVIRONMENT');
+		$env = strtolower(trim((string)Env::get('APP_ENV')));
 		$shortEnv = 'production' == $env ? 'prod' : ('staging' == $env ? 'stag' : 'dev');
 
         $this->elkUrl		= rtrim($elkUrl, '/');
