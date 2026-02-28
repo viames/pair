@@ -3,6 +3,7 @@
 namespace Pair\Models;
 
 use Pair\Orm\ActiveRecord;
+use Pair\Orm\Database;
 
 class Migration extends ActiveRecord {
 
@@ -15,6 +16,11 @@ class Migration extends ActiveRecord {
 	 * This property maps “file” column.
 	 */
 	protected string $file;
+
+	/**
+	 * This property maps “source” column.
+	 */
+	protected ?string $source = null;
 
 	/**
 	 * This property maps “query_index” column.
@@ -52,6 +58,12 @@ class Migration extends ActiveRecord {
 	const TABLE_NAME = 'migrations';
 
 	/**
+	 * Allowed values for source column.
+	 */
+	const SOURCE_APP = 'app';
+	const SOURCE_PAIR = 'pair';
+
+	/**
 	 * Name of primary key db field.
 	 */
 	const TABLE_KEY = 'id';
@@ -66,6 +78,17 @@ class Migration extends ActiveRecord {
 		$this->bindAsDatetime('createdAt', 'updatedAt');
 
 		$this->bindAsInteger('id', 'queryIndex', 'affectedRows');
+
+	}
+
+	/**
+	 * Ensures backward compatibility when DB column source is not available yet.
+	 */
+	protected function afterPrepareData(\stdClass &$dbObj) {
+
+		if (!Database::getInstance()->describeColumn(self::TABLE_NAME, 'source')) {
+			unset($dbObj->source);
+		}
 
 	}
 

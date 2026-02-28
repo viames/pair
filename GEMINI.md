@@ -91,6 +91,8 @@ Primary goals: provide a solid foundation for MVC architecture, database abstrac
 - Classes: `CamelCase`, filename matches class name.
 - Interfaces: suffix `Interface`.
 - Constants: `UPPER_SNAKE_CASE`.
+- Public method names: keep them **very short** and avoid the `get` prefix where possible.
+- Private method names: keep them short when possible; medium-length names are acceptable when needed to disambiguate intent.
 
 ### Ordering
 - Methods in classes should be ordered alphabetically (case-insensitive) when possible.
