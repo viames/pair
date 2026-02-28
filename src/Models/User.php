@@ -239,9 +239,10 @@ class User extends ActiveRecord {
 	/**
 	 * Returns the HTML code for the user avatar (initials with colored background).
 	 *
+	 * @param string $classPrefix Optional CSS class prefix for the avatar element (default: "user").
 	 * @return string HTML code for the user avatar.
 	 */
-	public function avatar(): string {
+	public function avatar(string $classPrefix = 'user'): string {
 
 		// verify name and surname
 		if (!isset($this->name) or !isset($this->surname) or $this->name === '' or $this->surname === '') {
@@ -252,13 +253,29 @@ class User extends ActiveRecord {
 		$initials = strtoupper(substr($this->name, 0, 1) . substr($this->surname, 0, 1));
 
 		// color based on user id (to keep consistency across sessions)
-		$colorInt = crc32((string)$this->id) & 0xFFFFFF;
-		$bgColor = sprintf('#%06X', $colorInt);
+		$identifier = isset($this->id) ? (string)$this->id : '';
+
+		$template = null;
+
+		try {
+			$app = Application::getInstance();
+			if ($app->template and is_a($app->template, Template::class)) {
+				$template = $app->template;
+			}
+		} catch (\Throwable $e) {}
+
+		if (!$template) {
+			$template = Template::getDefault();
+		}
+
+		$bgColor = $template
+			? $template->colorByIdentifier($identifier)
+			: Template::defaultPaletteColor(0);
 
 		// white or black text based on background color brightness
 		$textColor = Utilities::isDarkColor($bgColor) ? '#FFF' : '#000';
 
-		return '<span class="avatar-circle" style="background-color:' . $bgColor . ';color:' . $textColor . '">' . $initials . '</span>';
+		return '<span class="' . $classPrefix . '-avatar" style="background-color:' . $bgColor . ';color:' . $textColor . '">' . $initials . '</span>';
 
 	}
 

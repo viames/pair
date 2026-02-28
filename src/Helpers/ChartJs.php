@@ -5,6 +5,7 @@ namespace Pair\Helpers;
 use Pair\Core\Application;
 use Pair\Exceptions\AppException;
 use Pair\Models\Session;
+use Pair\Models\Template;
 use Pair\Models\User;
 
 /**
@@ -44,36 +45,6 @@ class ChartJs {
 	 * The options to configure the chart.
 	 */
 	private array $options = [];
-
-	/**
-	 * Extends the base list of default colors.
-	 */
-	const COLORS = [
-		'#57A0E5', // bright sky blue
-		'#ED6E85', // soft coral pink
-		'#F1A454', // warm apricot orange
-		'#F7CF6B', // golden pastel yellow
-		'#6CBEBF', // soft teal blue
-		'#9269F7', // vibrant lavender purple
-		'#C9D1CB', // muted sage gray
-		'#3E7CB1', // deep ocean blue
-		'#8CD0A4', // pale seafoam green
-		'#D3A4F9', // light orchid purple
-		'#FFBC8B', // light apricot orange
-		'#A1C9F1', // light periwinkle blue
-		'#FFE599', // pastel butter yellow
-		'#B9CBC2', // cool light sage
-		'#F88D9C', // bright soft rose
-		'#9ED0F0', // icy blue
-		'#C295D8', // dusty lilac
-		'#F6A785', // peachy coral
-		'#A8BFA3', // soft olive-sage green
-		'#F0E1B2', // balanced soft beige-yellow
-		'#B37D5E', // soft cocoa brown
-		'#95B2C2', // light steel blue
-		'#6F9E75', // desaturated moss green
-		'#D65555'  // warm coral red
-	];
 
 	/**
 	 * Constructor. Set the HTML element ID and the type of the chart.
@@ -172,6 +143,49 @@ class ChartJs {
 	public function datalabels(array $pluginOptions): self {
 
 		return $this->plugin('datalabels', $pluginOptions);
+
+	}
+
+	/**
+	 * Returns one color from the current template palette.
+	 *
+	 * @param	int	$index	Color index.
+	 */
+	public static function color(int $index = 0): string {
+
+		$template = static::resolveTemplate();
+
+		if ($template) {
+			return $template->getPaletteColor($index);
+		}
+
+		return Template::defaultPaletteColor($index);
+
+	}
+
+	/**
+	 * Returns a sequence of colors from the current template palette.
+	 *
+	 * @param	int	$total	Number of colors to return.
+	 * @param	int	$offset	Starting index.
+	 */
+	public static function colors(int $total, int $offset = 0): array {
+
+		if ($total < 0) {
+			throw new AppException('Invalid colors count: ' . $total);
+		}
+
+		if (0 === $total) {
+			return [];
+		}
+
+		$template = static::resolveTemplate();
+
+		if ($template) {
+			return $template->getPaletteColors($total, $offset);
+		}
+
+		return Template::defaultPaletteColors($total, $offset);
 
 	}
 
@@ -679,13 +693,31 @@ class ChartJs {
 	 */
 	public function renderConfig(): string {
 
+		$datasets = [];
+		$paletteOffset = 0;
+
+		foreach ($this->datasets as $dataset) {
+
+			$datasetExport = $dataset->export();
+			$datasetExport = $this->buildDatasetColors($datasetExport, $paletteOffset);
+			$datasets[] = $datasetExport;
+
+			$dataPoints = count(isset($datasetExport['data']) && is_array($datasetExport['data']) ? $datasetExport['data'] : []);
+			$datasetType = $datasetExport['type'] ?? $this->type;
+
+			if (in_array($datasetType, ['pie', 'doughnut', 'polarArea'], true)) {
+				$paletteOffset += max(1, $dataPoints);
+			} else {
+				$paletteOffset++;
+			}
+
+		}
+
 		$config = [
 			'type' => $this->type,
 			'data' => [
 				'labels' => $this->labels,
-				'datasets' => array_map(function($dataset) {
-					return $dataset->export();
-				}, $this->datasets)
+				'datasets' => $datasets
 			]
 		];
 
@@ -694,6 +726,38 @@ class ChartJs {
 		}
 
 		return json_encode($config);
+
+	}
+
+	/**
+	 * Builds background colors automatically when missing.
+	 * Default: one color per dataset.
+	 * Exceptions (segment charts): pie, doughnut, polarArea => one color per data point.
+	 *
+	 * @param	array	$dataset	Dataset config export.
+	 * @param	int		$offset		Palette offset.
+	 */
+	private function buildDatasetColors(array $dataset, int $offset): array {
+
+		if (array_key_exists('backgroundColor', $dataset)) {
+			return $dataset;
+		}
+
+		if (!array_key_exists('data', $dataset) or !is_array($dataset['data']) or !count($dataset['data'])) {
+			return $dataset;
+		}
+
+		$datasetType = $dataset['type'] ?? $this->type;
+		$points = count($dataset['data']);
+
+		if (in_array($datasetType, ['pie', 'doughnut', 'polarArea'], true)) {
+			$dataset['backgroundColor'] = static::colors($points, $offset);
+			return $dataset;
+		}
+
+		$dataset['backgroundColor'] = array_fill(0, $points, static::color($offset));
+
+		return $dataset;
 
 	}
 
@@ -794,6 +858,25 @@ class ChartJs {
 		}
 
 		return $this;
+
+	}
+
+	/**
+	 * Resolve the active template if available.
+	 */
+	private static function resolveTemplate(): ?Template {
+
+		try {
+			$app = Application::getInstance();
+		} catch (\Throwable $e) {
+			return null;
+		}
+
+		if ($app->template and is_a($app->template, Template::class)) {
+			return $app->template;
+		}
+
+		return null;
 
 	}
 

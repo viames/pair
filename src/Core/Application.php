@@ -593,8 +593,7 @@ class Application {
 	}
 
 	/**
-	 * If current selected template is not valid, replace it with the default one. It’s private to avoid
-	 * loops on derived templates load.
+	 * If current selected template is not valid, replace it with the default one.
 	 */
 	private function getTemplate(): Template {
 
@@ -604,12 +603,6 @@ class Application {
 
 		if (!$this->template) {
 			throw new CriticalException(Translator::do('NO_VALID_TEMPLATE'), ErrorCodes::NO_VALID_TEMPLATE);
-		}
-
-		// if this is derived template, load derived.php file
-		if ($this->template->derived) {
-			$derivedFile = $this->template->getBaseFolder() . '/'  . strtolower($this->template->name) . '/derived.php';
-			if (file_exists($derivedFile)) require $derivedFile;
 		}
 
 		return $this->template;

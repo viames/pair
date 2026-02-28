@@ -905,9 +905,10 @@ class Utilities {
 	}
 
 	/**
-	 * Determines whether a hex background color should be considered "dark". Supports 3-digit (#FFF)
-	 * and 6-digit (#FFFFFF) formats (with or without #). The decision is based on WCAG relative luminance
-	 * and contrast vs white/black text.
+	 * Determines whether a hex background color should be considered "dark". Supports 3-digit (#FFF),
+	 * 4-digit with alpha (#FFFF), 6-digit (#FFFFFF) and 8-digit with alpha (#FFFFFFFF) formats
+	 * (with or without #). Alpha, if present, is ignored. The decision is based on WCAG relative
+	 * luminance and contrast vs white/black text.
 	 *
 	 * @param  string $hexColor Hex color code (with or without #).
 	 * @return bool   True if the color is dark (white text has higher contrast), false otherwise.
@@ -918,12 +919,19 @@ class Utilities {
 		$hexColor = trim($hexColor);
 
 		// validate hex color format
-		if (!preg_match('/^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/', $hexColor, $m)) {
+		if (!preg_match('/^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/', $hexColor, $m)) {
 			throw new \InvalidArgumentException('Invalid hex color format: ' . $hexColor);
 		}
 
 		// extract hex digits
 		$hex = $m[1];
+
+		// if alpha is present, drop it before luminance checks
+		if (strlen($hex) === 4) {
+			$hex = substr($hex, 0, 3);
+		} else if (strlen($hex) === 8) {
+			$hex = substr($hex, 0, 6);
+		}
 
 		// expand 3-digit hex to 6-digit hex
 		if (strlen($hex) === 3) {
