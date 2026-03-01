@@ -21,10 +21,18 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
  * It is not responsible for data retrieval or business logic.
  * It can be extended to create custom reports, or used directly by setting columns and rows and
  * supports saving the report to a file or sending it to the browser for download.
- * It also supports CSV export if the csv2xlsx utility is available.
+ * It supports direct CSV download, and CSV-to-Excel conversion if the csv2xlsx utility is available.
  * Requires the PhpSpreadsheet library: composer require phpoffice/phpspreadsheet
  */
 abstract class Report {
+
+	private const CSV_DEFAULT_DELIMITER = ',';
+	private const CSV_DEFAULT_ENCLOSURE = '"';
+	private const CSV_DEFAULT_EOL = "\r\n";
+	private const CSV_DEFAULT_ESCAPE = '';
+	private const DATA_STREAM_MEMORY_BYTES = 2097152;
+	private const DOWNLOAD_FORMAT_CSV = 'CSV';
+	private const DOWNLOAD_FORMAT_XLSX = 'XLSX';
 
 	/**
 	 * Document title.
@@ -42,19 +50,59 @@ abstract class Report {
 	private ?string $query = null;
 
 	/**
+	 * Parameters bound to query execution.
+	 */
+	private array $queryParams = [];
+
+	/**
+	 * Tracks if query rows were already loaded.
+	 */
+	private bool $queryLoaded = false;
+
+	/**
 	 * Column definitions (header, format).
 	 */
 	private array $columns = [];
 
 	/**
-	 * Rows of cell data, for each row an array with zero-based numeric index.
+	 * Number of rows added to the report.
 	 */
-	private array $data = [];
+	private int $rowsCount = 0;
+
+	/**
+	 * Temporary stream that stores serialized rows to reduce memory usage.
+	 */
+	private ?\SplTempFileObject $rowsStorage = null;
 
 	/**
 	 * Contains the name of the builder library class.
 	 */
 	private string $library = 'PhpSpreadsheet';
+
+	/**
+	 * Output format used when download() is called.
+	 */
+	private string $downloadFormat = self::DOWNLOAD_FORMAT_XLSX;
+
+	/**
+	 * CSV delimiter character.
+	 */
+	private string $csvDelimiter = self::CSV_DEFAULT_DELIMITER;
+
+	/**
+	 * CSV enclosure character.
+	 */
+	private string $csvEnclosure = self::CSV_DEFAULT_ENCLOSURE;
+
+	/**
+	 * CSV line ending.
+	 */
+	private string $csvEol = self::CSV_DEFAULT_EOL;
+
+	/**
+	 * CSV escape character.
+	 */
+	private string $csvEscape = self::CSV_DEFAULT_ESCAPE;
 
 	/**
 	 * Populates the title and subject defaults of the Report document.
@@ -93,7 +141,9 @@ abstract class Report {
 	 */
 	protected function addRow(array $indexedCellsValue): void {
 
-		$this->data[] = $indexedCellsValue;
+		$this->ensureRowsStorage();
+		$this->rowsStorage->fwrite($this->encodeRow($indexedCellsValue));
+		$this->rowsCount++;
 
 	}
 
@@ -112,22 +162,94 @@ abstract class Report {
 	 */
 	protected function countRows(): int {
 
-		return count($this->data);
+		$this->populateDataFromQuery();
+
+		return $this->rowsCount;
 
 	}
 
 	/**
-	 * Public function to process the Excel document, save it to disk in a temporary file
+	 * Decode a serialized row from storage.
+	 */
+	private function decodeRow(string $line): ?array {
+
+		$payload = base64_decode(rtrim($line, "\r\n"), true);
+
+		if (false === $payload) {
+			return null;
+		}
+
+		$row = unserialize($payload, ['allowed_classes' => true]);
+
+		return is_array($row) ? $row : null;
+
+	}
+
+	/**
+	 * Ensure row storage stream is ready for writes.
+	 */
+	private function ensureRowsStorage(): void {
+
+		if (!is_null($this->rowsStorage)) {
+			return;
+		}
+
+		$this->rowsStorage = new \SplTempFileObject(self::DATA_STREAM_MEMORY_BYTES);
+
+	}
+
+	/**
+	 * Encode a row in a storage-safe representation.
+	 */
+	private function encodeRow(array $row): string {
+
+		return base64_encode(serialize($row)) . "\n";
+
+	}
+
+	/**
+	 * Iterate stored rows without loading all data in memory.
+	 */
+	private function getRows(): \Generator {
+
+		if (is_null($this->rowsStorage)) {
+			return;
+		}
+
+		$this->rowsStorage->rewind();
+
+		while (!$this->rowsStorage->eof()) {
+
+			$line = $this->rowsStorage->fgets();
+
+			if ('' === $line or "\n" === $line or "\r\n" === $line) {
+				continue;
+			}
+
+			$row = $this->decodeRow($line);
+
+			if (!is_null($row)) {
+				yield $row;
+			}
+
+		}
+
+	}
+
+	/**
+	 * Public function to process the report document, save it to disk in a temporary file
 	 * and send it to the browser for download.
 	 */
 	public function download(): void {
 
+		$isCsv = (self::DOWNLOAD_FORMAT_CSV == $this->downloadFormat);
+
 		// gets the filename from the document title
-		$filePath = TEMP_PATH . Utilities::cleanFilename($this->title . '.xlsx');
+		$filePath = TEMP_PATH . Utilities::cleanFilename($this->title . ($isCsv ? '.csv' : '.xlsx'));
 
 		$this->save($filePath);
 
-		header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+		header('Content-Type: ' . ($isCsv ? 'text/csv; charset=UTF-8' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'));
 		header('Content-Length: ' . filesize($filePath));
 		header('Content-Disposition: attachment; filename="' . basename($filePath) . '"');
 		header('Cache-Control: max-age=0');
@@ -243,10 +365,7 @@ abstract class Report {
 	 */
 	public function getSpreadsheet(): Spreadsheet {
 
-		// if there is no data and a query has been set, runs it to populate the data
-		if (empty($this->data) and !is_null($this->query)) {
-			$this->setDataAndColumnsFromDictionary(Database::load($this->query, [], Database::DICTIONARY));
-		}
+		$this->populateDataFromQuery();
 
 		// create the document and set up the sheet
 		$spreadsheet = new Spreadsheet();
@@ -269,12 +388,12 @@ abstract class Report {
 		$row = 2;
 
 		// sets the rows of the table
-		foreach ($this->data as $o) {
+		foreach ($this->getRows() as $o) {
 
 			// column number (zero-based) and defined properties
 			foreach ($this->columns as $col => $def) {
 
-				$value = $o[$col];
+				$value = $o[$col] ?? null;
 
 				// Cell object to write to
 				$cell = $activeSheet->getCell([$col+1, $row]);
@@ -301,14 +420,21 @@ abstract class Report {
 	}
 
 	/**
-	 * Save the Excel file to disk on the specified absolute path.
+	 * Save the report file to disk on the specified absolute path.
+	 * The output extension decides the file type.
 	 */
 	public function save(string $filePath): bool {
 
 		// hook for custom processing
 		$this->beforeSave();
 
-		if ('CSV' == $this->library and !is_null(Utilities::getExecutablePath('csv2xlsx', 'CSV2XLSX_PATH'))) {
+		$fileExtension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+
+		if ('csv' == $fileExtension) {
+
+			$this->saveCsv($filePath);
+
+		} else if ('CSV' == $this->library and !is_null(Utilities::getExecutablePath('csv2xlsx', 'CSV2XLSX_PATH'))) {
 
 			$this->saveCsvAndConvert($filePath);
 
@@ -332,6 +458,68 @@ abstract class Report {
 	public function setBuilder(string $library): self {
 
 		$this->setLibrary($library);
+
+		return $this;
+
+	}
+
+	/**
+	 * Set CSV options using RFC 4180 defaults, overriding only provided values.
+	 */
+	public function setCsvOptions(?string $delimiter = null, ?string $enclosure = null, ?string $escape = null, ?string $eol = null): self {
+
+		if (!is_null($delimiter) and strlen($delimiter) === 1) {
+			$this->csvDelimiter = $delimiter;
+		}
+
+		if (!is_null($enclosure) and strlen($enclosure) === 1) {
+			$this->csvEnclosure = $enclosure;
+		}
+
+		if (!is_null($escape) and (strlen($escape) === 1 or '' === $escape)) {
+			$this->csvEscape = $escape;
+		}
+
+		if (!is_null($eol) and '' !== $eol) {
+			$this->csvEol = $eol;
+		}
+
+		return $this;
+
+	}
+
+	/**
+	 * Set only CSV delimiter while keeping all other CSV options unchanged.
+	 */
+	public function setCsvDelimiter(string $delimiter): self {
+
+		$this->setCsvOptions($delimiter);
+
+		return $this;
+
+	}
+
+	/**
+	 * Set the output format that download() will send to the browser.
+	 */
+	public function setDownloadFormat(string $format): self {
+
+		$format = strtoupper(trim($format));
+
+		if (in_array($format, [self::DOWNLOAD_FORMAT_XLSX, self::DOWNLOAD_FORMAT_CSV], true)) {
+			$this->downloadFormat = $format;
+		}
+
+		return $this;
+
+	}
+
+	/**
+	 * Set an output format alias for backward readability in child classes.
+	 */
+	public function setOutputFormat(string $format): self {
+
+		$this->setDownloadFormat($format);
 
 		return $this;
 
@@ -436,7 +624,7 @@ abstract class Report {
 	}
 
 	/**
-	 * Set the library to be used to build the Excel document.
+	 * Set the internal builder used for XLSX generation.
 	 */
 	protected function setLibrary(string $library): self {
 
@@ -447,13 +635,87 @@ abstract class Report {
 	}
 
 	/**
-	 * Set up a SQL query that getSpreadsheet() will execute to easily populate data and columns.
+	 * Populate columns and rows from query when data has not been manually assigned.
 	 */
-	protected function setQuery(string $query): self {
+	private function populateDataFromQuery(): void {
+
+		if ($this->queryLoaded or is_null($this->query) or $this->rowsCount > 0) {
+			return;
+		}
+
+		$hasRows = false;
+
+		foreach (Database::iterateDictionary($this->query, $this->queryParams) as $line) {
+
+			if (!$hasRows) {
+				if (empty($this->columns)) {
+					foreach (array_keys($line) as $varName) {
+						$this->addColumn($varName);
+					}
+				}
+				$hasRows = true;
+			}
+
+			$this->addRow(array_values($line));
+
+		}
+
+		$this->queryLoaded = true;
+
+	}
+
+	/**
+	 * Set up a SQL query that report builders will execute to easily populate data and columns.
+	 */
+	protected function setQuery(string $query, array $params = []): self {
 
 		$this->query = $query;
+		$this->queryParams = $params;
+		$this->queryLoaded = false;
 
 		return $this;
+
+	}
+
+	/**
+	 * Save the CSV file to disk on the specified absolute path.
+	 */
+	private function saveCsv(string $filePath, bool $forceStrings = false): void {
+
+		$this->populateDataFromQuery();
+
+		$filePointer = fopen($filePath, 'w');
+
+		if (false === $filePointer) {
+			return;
+		}
+
+		// write the header
+		fputcsv($filePointer, array_map(function($o) { return $o->head; }, $this->columns), $this->csvDelimiter, $this->csvEnclosure, $this->csvEscape, $this->csvEol);
+
+		$dateFormats = ['stringDate', 'stringDateTime', 'Date', 'DateTime'];
+		$numericFormats = ['int', 'integer', 'numeric', 'currency'];
+
+		// write the data
+		foreach ($this->getRows() as $row) {
+
+			foreach ($row as $key => $value) {
+
+				$format = $this->columns[$key]->format ?? null;
+
+				if (in_array($format, $dateFormats, true)) {
+					$row[$key] = $this->formatDateCell($value, $format);
+				} else if ($forceStrings and !in_array($format, $numericFormats, true)) {
+					$row[$key] = '\'' . $value; // forced to string in converter
+				}
+
+			}
+
+			fputcsv($filePointer, $row, $this->csvDelimiter, $this->csvEnclosure, $this->csvEscape, $this->csvEol);
+
+		}
+
+		fclose($filePointer);
 
 	}
 
@@ -464,38 +726,10 @@ abstract class Report {
 
 		$csvFile = $filePath . '.csv';
 
-		$fp = fopen($csvFile, 'w');
-
-		// write the header
-		fputcsv($fp, array_map(function($o) { return $o->head; }, $this->columns), ',', '"', '\\', PHP_EOL);
-
-		$dateFormats = ['stringDate', 'stringDateTime', 'Date', 'DateTime'];
-
-		// write the data
-		foreach ($this->data as $row) {
-
-			foreach ($row as $key => $value) {
-
-				$format = $this->columns[$key]->format ?? null;
-
-				if (in_array($format, $dateFormats)) {
-					$row[$key] = $this->formatDateCell($value, $format);
-				} else if (in_array($format, ['currency','numeric'])) {
-					$row[$key] = $value;
-				} else {
-					$row[$key] = '\'' . $value; // forced to string in converter
-				}
-
-			}
-
-			fputcsv($fp, $row, ',', '"', '\\', PHP_EOL);
-
-		}
-
-		fclose($fp);
+		$this->saveCsv($csvFile, true);
 
 		// convert to Excel
-		Utilities::convertCsvToExcel($csvFile, $filePath, ',');
+		Utilities::convertCsvToExcel($csvFile, $filePath, $this->csvDelimiter);
 
 	}
 

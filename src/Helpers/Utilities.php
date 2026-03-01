@@ -907,47 +907,74 @@ class Utilities {
 	/**
 	 * Determines whether a hex background color should be considered "dark". Supports 3-digit (#FFF),
 	 * 4-digit with alpha (#FFFF), 6-digit (#FFFFFF) and 8-digit with alpha (#FFFFFFFF) formats
-	 * (with or without #). Alpha, if present, is ignored. The decision is based on WCAG relative
-	 * luminance and contrast vs white/black text.
+	 * (with or without #). If alpha is present, the color is composited over the optional base color
+	 * before computing contrast. The decision is based on WCAG relative luminance and contrast vs
+	 * white/black text.
 	 *
-	 * @param  string $hexColor Hex color code (with or without #).
+	 * @param  string $hexColor  Hex color code (with or without #).
+	 * @param  string $baseColor Base color used when $hexColor has alpha. Defaults to white.
 	 * @return bool   True if the color is dark (white text has higher contrast), false otherwise.
 	 * @throws \InvalidArgumentException If the hex color format is invalid.
 	 */
-	public static function isDarkColor(string $hexColor): bool {
+	public static function isDarkColor(string $hexColor, string $baseColor = '#FFFFFF'): bool {
 
-		$hexColor = trim($hexColor);
+		$parseHexColor = static function (string $color, string $label): array {
 
-		// validate hex color format
-		if (!preg_match('/^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/', $hexColor, $m)) {
-			throw new \InvalidArgumentException('Invalid hex color format: ' . $hexColor);
+			$color = trim($color);
+
+			if (!preg_match('/^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/', $color, $m)) {
+				throw new \InvalidArgumentException('Invalid hex color format for ' . $label . ': ' . $color);
+			}
+
+			$hex = $m[1];
+			$alphaHex = 'FF';
+
+			if (3 == strlen($hex)) {
+				$hex = $hex[0] . $hex[0]
+					. $hex[1] . $hex[1]
+					. $hex[2] . $hex[2];
+			} else if (4 == strlen($hex)) {
+				$alphaHex = $hex[3] . $hex[3];
+				$hex = $hex[0] . $hex[0]
+					. $hex[1] . $hex[1]
+					. $hex[2] . $hex[2];
+			} else if (8 == strlen($hex)) {
+				$alphaHex = substr($hex, 6, 2);
+				$hex = substr($hex, 0, 6);
+			}
+
+			return [
+				'r' => hexdec(substr($hex, 0, 2)),
+				'g' => hexdec(substr($hex, 2, 2)),
+				'b' => hexdec(substr($hex, 4, 2)),
+				'a' => hexdec($alphaHex) / 255
+			];
+
+		};
+
+		$color = $parseHexColor($hexColor, 'background color');
+		$base = $parseHexColor($baseColor, 'base color');
+
+		if ($base['a'] < 1.0) {
+			$base['r'] = (int)round($base['r'] * $base['a'] + 255 * (1 - $base['a']));
+			$base['g'] = (int)round($base['g'] * $base['a'] + 255 * (1 - $base['a']));
+			$base['b'] = (int)round($base['b'] * $base['a'] + 255 * (1 - $base['a']));
 		}
 
-		// extract hex digits
-		$hex = $m[1];
-
-		// if alpha is present, drop it before luminance checks
-		if (strlen($hex) === 4) {
-			$hex = substr($hex, 0, 3);
-		} else if (strlen($hex) === 8) {
-			$hex = substr($hex, 0, 6);
+		if ($color['a'] < 1.0) {
+			$r = (int)round($color['r'] * $color['a'] + $base['r'] * (1 - $color['a']));
+			$g = (int)round($color['g'] * $color['a'] + $base['g'] * (1 - $color['a']));
+			$b = (int)round($color['b'] * $color['a'] + $base['b'] * (1 - $color['a']));
+		} else {
+			$r = $color['r'];
+			$g = $color['g'];
+			$b = $color['b'];
 		}
-
-		// expand 3-digit hex to 6-digit hex
-		if (strlen($hex) === 3) {
-			$hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
-		}
-
-		// convert hex to RGB
-		$rgb = hexdec($hex);
-		$r = ($rgb >> 16) & 0xFF;
-		$g = ($rgb >> 8) & 0xFF;
-		$b = $rgb & 0xFF;
 
 		// sRGB to linear conversion
 		$toLinear = static function (int $c): float {
 			$v = $c / 255;
-			return ($v <= 0.03928) ? ($v / 12.92) : (($v + 0.055) / 1.055) ** 2.4;
+			return ($v <= 0.04045) ? ($v / 12.92) : (($v + 0.055) / 1.055) ** 2.4;
 		};
 
 		$rl = $toLinear($r);

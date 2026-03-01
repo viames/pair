@@ -524,6 +524,86 @@ class Database {
 	}
 
 	/**
+	 * Iterate query rows as associative arrays without loading the full result in memory.
+	 *
+	 * @param	string	SQL query.
+	 * @param	array	List of parameters to bind on the sql query.
+	 * @return	\Generator<int, array<string, mixed>>
+	 * @throws	PairException
+	 */
+	public static function iterateDictionary(string $query, array $params = []): \Generator {
+
+		$self = static::getInstance();
+		$self->openConnection();
+		$self->castParams($params);
+
+		$stat = $self->handler->prepare($query);
+
+		try {
+
+			$stat->execute($params);
+
+		} catch (\PDOException $e) {
+
+			// choose the right exception based on MySQL error code
+			switch ($e->getCode()) {
+
+				case '21000':
+					throw new PairException($e->getMessage(), ErrorCodes::DB_CARDINALITY_VIOLATION, $e);
+
+				case '42000':
+					throw new PairException($e->getMessage(), ErrorCodes::INVALID_QUERY_SYNTAX, $e);
+
+				case '42S02':
+					if (false !== strpos($e->getMessage(), 'Unknown database')) {
+						throw new CriticalException($e->getMessage(), ErrorCodes::MISSING_DB, $e);
+					} else if (false !== strpos($e->getMessage(), 'Table')) {
+						throw new CriticalException($e->getMessage(), ErrorCodes::MISSING_DB_TABLE, $e);
+					} else {
+						throw new PairException($e->getMessage(), ErrorCodes::INVALID_QUERY_SYNTAX, $e);
+					}
+
+				case 'HY000':
+					throw new CriticalException($e->getMessage(), ErrorCodes::MYSQL_GENERAL_ERROR, $e);
+
+				// invalid parameter number: mixed named and positional parameters
+				case 'HY093':
+					throw new PairException($e->getMessage(), ErrorCodes::INVALID_QUERY_SYNTAX, $e);
+
+				default:
+					throw new PairException($e->getMessage(), ErrorCodes::DB_QUERY_FAILED, $e);
+
+			}
+
+		}
+
+		$count = 0;
+
+		try {
+
+			while (true) {
+
+				$row = $stat->fetch(\PDO::FETCH_ASSOC);
+
+				if (false === $row) {
+					break;
+				}
+
+				$count++;
+				yield $row;
+
+			}
+
+		} finally {
+
+			$self->logParamQuery($query, $count, $params);
+			$stat->closeCursor();
+
+		}
+
+	}
+
+	/**
 	 * Return the query count as integer number.
 	 *
 	 * @param	array	Optional list of parameters to bind on sql query.
