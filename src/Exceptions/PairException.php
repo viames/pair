@@ -45,6 +45,35 @@ class PairException extends \Exception {
 	}
 
 	/**
+	 * Return a user-facing localized message.
+	 */
+	protected static function localizeOutputMessage(string $message): string {
+
+		$message = trim($message);
+
+		if ('' === $message) {
+			return Translator::do('AN_ERROR_OCCURRED');
+		}
+
+		// if message is a translation key, translate it
+		$localized = Translator::do($message, null, false, $message);
+
+		if ($localized !== $message) {
+			return $localized;
+		}
+
+		// avoid showing english hard-coded messages on non-english locales
+		$currentLanguage = strtolower((string)Translator::getCurrentLanguageCode());
+
+		if ($currentLanguage and !str_starts_with($currentLanguage, 'en')) {
+			return Translator::do('AN_ERROR_OCCURRED');
+		}
+
+		return $message;
+
+	}
+
+	/**
 	 * Front-end notification.
 	 */
 	public static function frontEnd(string $message): void {
@@ -52,6 +81,8 @@ class PairException extends \Exception {
 		// overwrite the message with a more user-friendly one in production
 		if ('production' == Application::getEnvironment()) {
 			$message = Translator::do('AN_ERROR_OCCURRED');
+		} else {
+			$message = static::localizeOutputMessage($message);
 		}
 		
 		$app = Application::getInstance();
