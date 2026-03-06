@@ -1,140 +1,236 @@
 # GEMINI.md — Pair Framework (single source of truth)
 
 Project context, conventions, and guardrails for AI assistants working on the Pair framework.
-All agents must follow this file unless a task explicitly overrides it.
+
+All automated agents must follow this file unless a task explicitly overrides it.
 
 If you are an automated agent, also read **AGENTS.md** for workflow and PR expectations.
 
 ---
 
-## Operating principles
+# Operating principles
 
-- **Minimal diff**: change only what the task requires.
-- **No breaking changes**: maintain backward compatibility unless explicitly requested.
-- **Security first**: never bypass security mechanisms, never weaken validation.
-- **Follow existing patterns** instead of inventing new ones.
-
----
-
-## Project overview
-
-**Pair** is a PHP framework for building modern web applications.
-
-Primary goals: provide a solid foundation for MVC architecture, database abstraction (ORM), user management, task scheduling (cron), push notifications, and more.
+- **Minimal diff:** change only what the task requires.
+- **No breaking changes:** maintain backward compatibility unless explicitly requested.
+- **Security first:** never weaken validation or security mechanisms.
+- **Follow existing patterns:** reuse architecture already present in the framework.
 
 ---
 
-## Stack and conventions
+# Project overview
 
-- UI: The framework provides a lightweight UI library, **PairUI**.
-- JavaScript:
-  - Prefer **Vanilla JS** for new code.
-  - Use PairUI directives for reactivity: `data-text`, `data-html`, `data-show`, `data-if`, `data-model` (two-way), `data-on` (events), `data-each` (lists).
-  - Avoid `eval` or unsafe inline handlers.
-- Framework: **Pair (PHP) v3-alpha**.
+**Pair** is a lightweight PHP framework for building modern web applications.
 
-### Language and i18n
-- Default user-facing framework messages should be in **English**.
-- Internationalization should use the files under `/translations`.
-- Avoid hardcoding language-specific strings when a translation key exists.
+Primary goals:
 
----
-
-## PHP Environment (for framework developers)
-
-- PHP Version: **8.3 / 8.4 (or higher if the framework has been upgraded)**.
-- Required extensions (minimum): `fileinfo`, `json`, `pcre`, `PDO`, `intl`, `pdo_mysql`, `Reflection`.
+- MVC architecture
+- ActiveRecord ORM
+- Clean routing
+- Framework utilities
+- Push notifications
+- PWA helpers
+- Simple integration with external services
 
 ---
 
-## Project structure and architecture
+# Stack and conventions
 
-### Folder layout (high-level)
-- `/src`                Framework source code, organized by namespace (e.g. `Core`, `Orm`, `Html`).
-- `/assets`             Frontend assets, such as `PairUI` JavaScript files.
-- `/translations`       Translation files for framework strings (e.g. `it-IT.ini`).
-- `/tests`              Unit tests and integration tests.
+## Backend
 
-### Architecture
-- The framework is designed to support the **MVC** pattern in applications that use it.
-- Core classes reside under the `Pair\` namespace and follow the PSR-4 standard for autoloading.
-- One class per file; **filename matches class name**.
+Language: **PHP 8.3+ / 8.4+**
 
-### ORM relationship magic methods (important for AI agents)
-- Pair `ActiveRecord` automatically exposes relation helpers for mapped foreign keys.
-- **Automatic casting**: Properties are automatically cast to PHP types (int, bool, DateTime, float) based on the database schema.
-- For a parent relation (e.g. `affiliate_id`), calling `getAffiliate()` returns the related `Affiliate` object.
-- If the FK is null or not resolvable, the magic method returns `null` (it must be null-checked before use).
-- Equivalent read access is also available via parent-property helpers (e.g. `getParentProperty('affiliateId', 'name')`) when only one field is needed.
-- Reverse relations (1:N) are also supported. For example, if `User` has `group_id`, calling `$group->getUsers()` on a `Group` object returns a `Collection` of `User` objects.
-- Agents should prefer these relation methods over manual duplicate queries when a mapped relation already exists.
+Required extensions:
 
-### Routing and URL mapping (Pair apps)
-- After the base path, URLs follow `/<module>/<action>/<params...>`.
-- The module maps to `/modules/<module>` in the host app and its `controller.php` (extending `Pair\Core\Controller`).
-- The action typically maps to an `<action>Action()` method if present.
-- Pair auto-loads the module `model.php`, the view `view<Action>.php` (e.g. `UserViewLogin`), and the layout `/modules/<module>/layouts/<action>.php` by default.
+- fileinfo
+- json
+- pcre
+- PDO
+- intl
+- pdo_mysql
+- Reflection
 
 ---
 
-## Coding standards (framework-specific)
+## Frontend
 
-### Formatting
-- PHP indentation: **tabs only**, editor width **4 spaces**.
-- Inline PHP: avoid short tags; use `<?php ... ?>`.
-- Prefer `print` (framework convention) instead of `echo`.
-- Keep conditions readable (no complex one-liners).
-- Opening braces `{` stay on the **same line** as the statement (K&R style).
+Pair includes a lightweight frontend helper library:
 
-### Naming
-- Variables: `camelCase`, descriptive.
-- Classes: `CamelCase`, filename matches class name.
-- Interfaces: suffix `Interface`.
-- Constants: `UPPER_SNAKE_CASE`.
-- Public method names: keep them **very short** and avoid the `get` prefix where possible.
-- Private method names: keep them short when possible; medium-length names are acceptable when needed to disambiguate intent.
+**PairUI**
 
-### Ordering
-- Methods in classes should be ordered alphabetically (case-insensitive) when possible.
+Agents should prefer:
 
-### Comments
-- Single-line `//` in lowercase.
-- Docblock `/** ... */` as complete sentences with punctuation.
+- Vanilla JavaScript
+- PairUI directives
 
-### Control flow style
-- Prefer multi-line `if/else` for non-trivial logic.
-- Ternary operator only for simple expressions.
-- Prefer `and` instead of `&&` and `or` instead of `||`.
-  - Note: `and`/`or` have different precedence than `&&`/`||` in PHP. Use parentheses to remove ambiguity.
+Avoid:
+
+- jQuery
+- heavy frontend frameworks
 
 ---
 
-## Database and Migrations
+# Framework architecture
 
-- The framework provides an ORM (`Pair\Orm\ActiveRecord`) and migration tools.
-- Framework development must ensure these tools are robust and, where possible, database-agnostic.
-- Always follow safe query practices (e.g. prepared statements).
+## Directory layout
 
----
+/src
+Framework source code
 
-## Security
+/assets
+Frontend utilities
 
-- Provide tools that are "secure-by-default".
-- Key areas are: input validation, output encoding, CSRF protection, secure session management.
-- Every contribution will be reviewed for security to avoid introducing vulnerabilities.
+/translations
+Localization files
 
----
-
-## Cronjob / Scheduler
-
-- The framework provides an engine for executing scheduled tasks, typically initialized by a `cronjob.php` file in the host application.
-- The framework does not define specific tasks but provides the tools to create and manage them.
-- Tasks developed with the framework should be idempotent.
+/tests
+Unit and integration tests
 
 ---
 
-## Push Notifications
+## Namespace rules
 
-- The framework provides the `Pair\Push` component for the backend and `pair/push.js` for frontend integration.
-- It handles subscription, VAPID key management, and notification sending.
-- The host application must provide VAPID keys in its environment.
+Core classes are under:
+
+Pair\
+
+PSR‑4 autoloading.
+
+One class per file.
+
+Filename must match class name.
+
+---
+
+# ORM behavior
+
+Pair uses **ActiveRecord**.
+
+Important behaviors:
+
+- automatic type casting
+- relationship helpers
+- parent relation helpers
+- reverse relations returning collections
+
+Agents must prefer relation helpers instead of manual SQL joins when possible.
+
+---
+
+# Routing conventions
+
+Default route pattern:
+
+/<module>/<action>/<params>
+
+Example:
+
+example.com/user/login
+
+module → /modules/user
+
+controller → controller.php
+
+action → loginAction()
+
+Views and layouts are auto-loaded by convention.
+
+---
+
+# Coding standards
+
+## Formatting
+
+- indentation: **tabs**
+- tab width: **4**
+- opening brace on same line
+- avoid short PHP tags
+
+---
+
+## Naming
+
+Variables:
+
+camelCase
+
+Classes:
+
+CamelCase
+
+Interfaces:
+
+Suffix Interface
+
+Constants:
+
+UPPER_SNAKE_CASE
+
+---
+
+## Control flow
+
+Prefer readable multi-line code instead of complex one-liners.
+
+Prefer:
+
+and / or
+
+instead of
+
+&& / ||
+
+Use parentheses when needed due to precedence differences.
+
+---
+
+# Security rules
+
+Framework code must always be:
+
+secure-by-default.
+
+Critical areas:
+
+- input validation
+- output escaping
+- CSRF protection
+- session handling
+- database queries
+
+Never introduce code that weakens security mechanisms.
+
+---
+
+# Framework evolution rules
+
+When adding new features:
+
+- Prefer additive changes.
+- Avoid modifying public APIs.
+- Preserve backward compatibility.
+- Extend existing components instead of introducing parallel systems.
+
+---
+
+# Testing philosophy
+
+When tests exist:
+
+- Update them when behavior changes.
+- Add tests for new behavior.
+- Prefer deterministic tests.
+
+Never modify tests just to make failing implementations pass.
+
+---
+
+# Performance
+
+Agents should avoid:
+
+- N+1 queries
+- heavy loops
+- unnecessary allocations
+- repeated database calls
+
+Prefer reusing cached results and collections when possible.

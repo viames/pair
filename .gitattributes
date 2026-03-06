@@ -2,7 +2,11 @@
 
 # exclude repository-only files from composer dist archives
 /.github export-ignore
+/.github/copilot-instructions.md export-ignore
 /AGENTS.md export-ignore
 /CLAUDE.md export-ignore
 /GEMINI.md export-ignore
 /SKILL.md export-ignore
+/.cursorrules export-ignore
+/.cursor export-ignore
+/.windsurfrules export-ignore
