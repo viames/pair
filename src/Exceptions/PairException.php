@@ -40,7 +40,13 @@ class PairException extends \Exception {
 		// intercept any previous message and track it
 		$trackedMessage = ($previous and $previous->getMessage()) ? $previous->getMessage() : $message;
 		$logger = Logger::getInstance();
-		$logger->error($trackedMessage, ['errorCode' => $code]);
+
+		// Expired or regenerated sessions can legitimately miss the CSRF token, so avoid escalating them as errors.
+		if (ErrorCodes::CSRF_TOKEN_NOT_FOUND === $code) {
+			$logger->notice($trackedMessage, ['errorCode' => $code]);
+		} else {
+			$logger->error($trackedMessage, ['errorCode' => $code]);
+		}
 
 	}
 

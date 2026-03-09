@@ -1,10 +1,10 @@
-# GEMINI.md — Pair Framework (single source of truth)
+# GEMINI.md — Pair Framework Technical Reference
 
-Project context, conventions, and guardrails for AI assistants working on the Pair framework.
+Technical context, conventions, and guardrails for AI assistants working on the Pair framework.
 
-All automated agents must follow this file unless a task explicitly overrides it.
-
-If you are an automated agent, also read **AGENTS.md** for workflow and PR expectations.
+Read `SKILL.md` first for the critical entry rules.
+Read `AGENTS.md` for workflow and completion expectations.
+Use this file as the main technical reference after the entrypoint.
 
 ---
 
@@ -15,21 +15,22 @@ If you are an automated agent, also read **AGENTS.md** for workflow and PR expec
 - **Security first:** never weaken validation or security mechanisms.
 - **Follow existing patterns:** reuse architecture already present in the framework.
 
+This file expands on those principles with technical detail. It should not duplicate workflow rules owned by `AGENTS.md`.
+
 ---
 
-# Project overview
+# High-signal conventions
 
-**Pair** is a lightweight PHP framework for building modern web applications.
+These are the conventions most likely to affect implementation accuracy:
 
-Primary goals:
-
-- MVC architecture
-- ActiveRecord ORM
-- Clean routing
-- Framework utilities
-- Push notifications
-- PWA helpers
-- Simple integration with external services
+- Use tabs for indentation.
+- Keep one class per file.
+- Match filename and class name.
+- Prefer readable multi-line code over compact clever code.
+- Prefer existing ORM relation helpers over manual joins when possible.
+- Keep frontend behavior lightweight and progressively enhanced.
+- Add comments/docblocks to PHP and JS functions.
+- Add a short explanatory comment for non-trivial logic.
 
 ---
 
@@ -66,24 +67,6 @@ Avoid:
 
 - jQuery
 - heavy frontend frameworks
-
----
-
-# Framework architecture
-
-## Directory layout
-
-/src
-Framework source code
-
-/assets
-Frontend utilities
-
-/translations
-Localization files
-
-/tests
-Unit and integration tests
 
 ---
 
@@ -181,6 +164,12 @@ instead of
 
 Use parentheses when needed due to precedence differences.
 
+## Comments
+
+- PHP functions should include a docblock or function comment.
+- JS functions should include a docblock or function comment.
+- Non-trivial code should include a short explanatory comment.
+
 ---
 
 # Security rules
@@ -198,17 +187,6 @@ Critical areas:
 - database queries
 
 Never introduce code that weakens security mechanisms.
-
----
-
-# Framework evolution rules
-
-When adding new features:
-
-- Prefer additive changes.
-- Avoid modifying public APIs.
-- Preserve backward compatibility.
-- Extend existing components instead of introducing parallel systems.
 
 ---
 

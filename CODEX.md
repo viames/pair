@@ -11,27 +11,7 @@ This file complements:
 
 Codex agents should follow these documents in that order.
 
----
-
-# Codex agent behavior
-
-Codex runs tasks inside an isolated environment where it can:
-
-- read repository files
-- edit code
-- run commands
-- execute tests
-- generate pull requests
-
-Tasks typically involve:
-
-- bug fixes
-- feature implementation
-- code explanations
-- test generation
-- documentation updates
-
-Codex should operate conservatively and prefer **small safe changes**.
+When the task is small, stop after `SKILL.md`, `AGENTS.md`, and `GEMINI.md` unless uncertainty remains.
 
 ---
 
@@ -80,40 +60,11 @@ When implementing a change:
 
 Avoid introducing new architectural patterns.
 
----
+If two plausible implementations exist, prefer the one that is:
 
-# Framework-specific advice
-
-## ORM
-
-Pair uses ActiveRecord.
-
-Prefer using:
-
-- relationship helpers
-- collections
-- built-in ORM utilities
-
-Avoid manual SQL queries when ORM helpers exist.
-
----
-
-## Routing
-
-Default route pattern:
-
-/<module>/<action>/<params>
-
-Example:
-
-/user/login
-
-Module structure:
-
-/modules/user/controller.php
-/modules/user/model.php
-/modules/user/viewLogin.php
-/modules/user/layouts/login.php
+1. closer to nearby Pair code
+2. smaller in diff size
+3. less likely to affect public APIs
 
 ---
 
@@ -147,22 +98,6 @@ Avoid:
 - modifying public APIs
 - rewriting core components
 - introducing new dependencies
-
----
-
-# Pull request guidelines
-
-Each Codex-generated change should include:
-
-- What changed
-- Why it changed
-- Files modified
-- Tests run
-- Risk assessment
-- Manual test steps
-- Limitations or follow-up work
-
-PRs should remain small and focused.
 
 ---
 

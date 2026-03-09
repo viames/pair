@@ -33,6 +33,8 @@ When working on a task:
 5. Avoid introducing new architectural concepts.
 6. Maintain backward compatibility unless explicitly instructed otherwise.
 
+Use this file mainly for tasks that are not obviously local and low-risk. Small fixes should usually be handled by following `SKILL.md`, `AGENTS.md`, and `GEMINI.md` first.
+
 ---
 
 # Bug fix tasks
@@ -122,6 +124,7 @@ When updating documentation:
 2. Keep documentation concise.
 3. Prefer practical examples.
 4. Avoid duplicating information across files.
+5. Preserve the role of each document instead of turning every file into a general source of truth.
 
 ---
 

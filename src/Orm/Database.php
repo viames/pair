@@ -420,7 +420,7 @@ class Database {
 	 * @param	int		Returned type (see class constants). self::OBJECT_LIST is default.
 	 * @throws	PairException
 	 */
-	public static function load(string $query, array $params = [], int $option=self::OBJECT_LIST): array|Collection|\stdClass|string|int|null {
+	public static function load(string $query, array $params = [], int $option=self::OBJECT_LIST): array|Collection|\stdClass|string|int|float|null {
 
 		$res = null;
 

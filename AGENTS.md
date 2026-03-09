@@ -2,9 +2,9 @@
 
 Guide for automated agents (LLMs, code assistants, review bots) working on this repository.
 
-This file focuses on **how to work** (workflow, expectations, PR format).
-Project context, conventions, and environment are in **GEMINI.md** (single source of truth).
-`SKILL.md` is the lightweight entrypoint that points to this file and GEMINI.
+This file focuses on **how to work**: workflow, change hygiene, review expectations, and completion format.
+`SKILL.md` is the primary entrypoint and contains the critical guardrails to apply first.
+`GEMINI.md` complements this file with technical conventions and framework-level guardrails.
 
 ---
 
@@ -27,6 +27,8 @@ Before making any change:
 
 Never introduce a new architectural pattern if an existing one already solves the problem.
 
+For coding conventions and technical guardrails, defer to `GEMINI.md`.
+
 ---
 
 ## Workflow (recommended)
@@ -37,6 +39,13 @@ Never introduce a new architectural pattern if an existing one already solves th
 4. Verify that backward compatibility is preserved (unless explicitly requested otherwise).
 5. Add or update tests if the behavior changes.
 6. Keep the implementation consistent with Pair conventions defined in `GEMINI.md`.
+
+Use deeper documents only when needed:
+
+- `PAIR_PATTERNS.md` for idiomatic implementation details
+- `PAIR_ARCHITECTURE.md` for framework internals
+- `PAIR_TASKS.md` for larger or riskier tasks
+- `PAIR_CONTEXT.md` when there is a risk of importing patterns from other frameworks
 
 ---
 
@@ -52,6 +61,8 @@ Agents must follow these rules:
 - Do not log sensitive data.
 - Do not commit credentials or secrets.
 - Do not modify unrelated files.
+- Add comments/docblocks to PHP and JS functions that are touched.
+- Add a short comment for non-trivial code paths that are introduced or changed.
 
 ---
 
@@ -100,6 +111,7 @@ Manual test:
 Before completing the task:
 
 - [ ] I followed conventions defined in GEMINI.md
+- [ ] I applied the critical guardrails defined in SKILL.md
 - [ ] I explored the repository before coding
 - [ ] I preserved backward compatibility
 - [ ] I did not introduce performance regressions

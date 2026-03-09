@@ -1,21 +1,7 @@
 # PAIR_ARCHITECTURE.md — Pair Framework
 
 This document explains the architectural philosophy and internal structure of the **Pair PHP framework**.
-
-It is intended primarily for:
-
-- AI coding agents
-- Framework contributors
-- Developers extending Pair internals
-
-This file complements:
-
-- SKILL.md
-- GEMINI.md
-- AGENTS.md
-- CODEX.md
-
-Agents should read these files before modifying the framework.
+Read it when a task touches framework internals or requires architectural decisions.
 
 ---
 
@@ -34,6 +20,16 @@ Pair is designed with these principles:
 Pair intentionally avoids heavy abstractions or unnecessary layers.
 
 Agents should extend existing patterns instead of introducing new architectural concepts.
+
+---
+
+# Fast architecture view
+
+- Pair is pragmatic MVC.
+- Applications define modules under `/modules`.
+- Routing resolves a module, then a controller action, then a view/layout convention.
+- ORM usage should stay close to ActiveRecord and relation helpers.
+- PairUI is progressive enhancement, not a frontend application framework.
 
 ---
 
@@ -72,23 +68,6 @@ Typical lifecycle:
 9. Response is returned
 
 Agents should respect this flow when modifying framework code.
-
----
-
-# Directory structure
-
-Core framework directories:
-
-- `/src` – framework source code
-- `/assets` – frontend helpers
-- `/translations` – localization files
-- `/tests` – framework tests
-
-Applications using Pair typically include:
-
-- `/modules`
-- `/config`
-- `/public`
 
 ---
 
@@ -135,24 +114,6 @@ Agents should prefer these directives instead of introducing heavy frontend fram
 
 ---
 
-# Framework evolution guidelines
-
-When modifying the framework:
-
-Prefer:
-
-- additive changes
-- extending existing classes
-- small focused improvements
-
-Avoid:
-
-- breaking public APIs
-- large refactors
-- heavy dependencies
-
----
-
 # Security model
 
 Framework code must remain **secure by default**.
@@ -192,15 +153,3 @@ If architecture decisions are unclear:
 4. Ask for clarification only when a change would introduce a new subsystem or break public APIs
 
 ---
-
-# Summary
-
-Agents working on Pair should:
-
-1. Study the repository structure
-2. Follow existing patterns
-3. Implement minimal changes
-4. Preserve backward compatibility
-5. Avoid unnecessary complexity
-
-Pair favors **clarity and stability over cleverness**.

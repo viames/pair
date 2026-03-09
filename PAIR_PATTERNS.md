@@ -1,25 +1,20 @@
 # PAIR_PATTERNS.md — Pair Framework
 
 This document describes **idiomatic coding patterns** for the Pair PHP framework.
+Read it when you already know where to change code and need to match Pair’s implementation style.
 
-Its purpose is to help:
+---
 
-- AI coding agents
-- contributors
-- developers extending Pair
+## Fast pattern guide
 
-write code that is **consistent with the framework style and architecture**.
+Use these defaults unless nearby code shows a different established pattern:
 
-This file complements:
-
-- SKILL.md
-- GEMINI.md
-- AGENTS.md
-- CODEX.md
-- PAIR_ARCHITECTURE.md
-- PAIR_CONTEXT.md
-
-Agents should follow these patterns when implementing new functionality.
+- Controllers stay thin and coordinate work.
+- Models and ORM relations carry data access behavior.
+- Views stay simple and contain minimal logic.
+- Frontend behavior stays progressive and lightweight.
+- Prefer existing framework helpers over custom abstractions.
+- Comment PHP and JS functions, and annotate non-trivial logic.
 
 ---
 
@@ -76,6 +71,8 @@ Business logic should live in:
 - services
 - framework utilities
 
+Use the controller to orchestrate, not to accumulate branching business logic.
+
 ---
 
 # Model / ORM pattern
@@ -129,6 +126,8 @@ $group->getUsers()
 
 Agents should prefer these methods over manual joins.
 
+If relation helpers already express the intent, using manual joins is usually the wrong tradeoff.
+
 ---
 
 # View pattern
@@ -148,24 +147,6 @@ viewLogin.php
 ```
 
 Views should contain minimal logic.
-
----
-
-# Layout pattern
-
-Layouts wrap views and define page structure.
-
-Location:
-
-```text
-/modules/<module>/layouts/
-```
-
-Example:
-
-```text
-/modules/user/layouts/login.php
-```
 
 ---
 
@@ -213,6 +194,8 @@ Avoid:
 - large frontend frameworks
 - build pipelines
 
+Keep JS local, explicit, and easy to remove.
+
 ---
 
 # Form handling pattern
@@ -231,22 +214,6 @@ Agents should follow existing request helpers.
 
 ---
 
-# Error handling
-
-Prefer predictable errors.
-
-Avoid silent failures.
-
-Example:
-
-```php
-if (!$user) {
-	throw new Exception('User not found');
-}
-```
-
----
-
 # Logging
 
 Use existing logging utilities when available.
@@ -256,6 +223,16 @@ Avoid logging:
 - passwords
 - tokens
 - personal sensitive data
+
+---
+
+## Pattern selection rule
+
+If multiple patterns seem possible:
+
+1. prefer the one already used in the same namespace or component
+2. prefer the one with the smaller diff
+3. prefer the one that preserves current public behavior most directly
 
 ---
 

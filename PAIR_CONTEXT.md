@@ -1,7 +1,6 @@
 # PAIR_CONTEXT.md — Context for AI Agents Working on Pair
 
 This document gives AI coding agents the **strategic context** needed to work effectively on the Pair framework.
-
 Its purpose is to reduce incorrect assumptions and prevent agents from importing patterns from other frameworks that do not fit Pair.
 
 This file complements:
@@ -14,7 +13,21 @@ This file complements:
 - PAIR_PATTERNS.md
 - PAIR_TASKS.md
 
-Agents should read this file when they need to understand **what Pair is**, **what it is not**, and **how it differs from larger frameworks**.
+Read this file when a task risks importing patterns from larger frameworks or when the right implementation style is unclear.
+
+---
+
+## Fast mental model
+
+Use this mental model by default:
+
+- Find the closest existing class and follow it.
+- Prefer a small addition over a new subsystem.
+- Preserve server-rendered behavior.
+- Use progressive enhancement instead of frontend-heavy rewrites.
+- Prefer direct framework utilities over extra abstraction layers.
+
+If a solution feels like Laravel, Symfony, Rails, or a SPA architecture, it is probably wrong for Pair unless the repository already does it nearby.
 
 ---
 
@@ -56,21 +69,7 @@ Pair is intentionally smaller, more direct, and more explicit.
 
 ---
 
-## Mental model agents should use
-
-When working on Pair, agents should think:
-
-- "Find the closest existing class and follow it."
-- "Use conventions already present in the framework."
-- "Prefer a small addition over a new subsystem."
-- "Preserve server-rendered behavior."
-- "Enhance progressively instead of shifting logic to the frontend."
-
-This mental model is usually more correct for Pair than patterns borrowed from larger frameworks.
-
----
-
-## Comparison with larger PHP frameworks
+## Anti-import checklist
 
 Compared to Laravel or Symfony, Pair generally prefers:
 
@@ -88,6 +87,14 @@ Agents should not introduce patterns such as:
 - event-driven indirection without strong justification
 - elaborate configuration systems for small features
 - frontend architecture that depends on transpilation or bundling unless explicitly requested
+
+Before implementing, stop if you are about to introduce:
+
+- a repository layer for simple ORM work
+- a service container pattern not already used nearby
+- event-driven indirection without a real need
+- a frontend component architecture for a small UI enhancement
+- configuration machinery for a local feature
 
 ---
 
@@ -173,16 +180,16 @@ If the answer to the last question is "yes", the implementation approach should 
 
 ---
 
-## Common mistakes agents should avoid
+## Common failure modes
 
-Frequent mistakes when agents work on lightweight frameworks like Pair:
+Frequent mistakes when agents work on Pair:
 
 - overengineering simple features
 - introducing unnecessary interfaces
 - adding service layers without real benefit
 - moving too much logic to JavaScript
 - breaking server-rendered assumptions
-- using architecture copied from Laravel/Symfony without need
+- using architecture copied from Laravel or Symfony without need
 - performing large refactors instead of focused fixes
 
 ---
