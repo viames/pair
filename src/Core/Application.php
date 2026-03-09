@@ -365,7 +365,7 @@ class Application {
 			$baseHref = $urlPath = null;
 		// define full URL to web page index with trailing slash or null
 		} else {
-			$protocol = ($_SERVER['SERVER_PORT'] == 443 or (isset($_SERVER['HTTPS']) and $_SERVER['HTTPS'] !== 'off')) ? "https://" : "http://";
+			$protocol = static::isSecureRequest() ? "https://" : "http://";
 			$urlPath = substr($_SERVER['SCRIPT_NAME'], 0, -strlen('/public/index.php'));
 			$baseHref = isset($_SERVER['HTTP_HOST']) ? $protocol . $_SERVER['HTTP_HOST'] . $urlPath . '/' : null;
 		}
@@ -459,6 +459,55 @@ class Application {
 	}
 
 	/**
+	 * Returns true when the current HTTP request is effectively served over HTTPS.
+	 *
+	 * Supports common reverse-proxy headers so secure cookies and generated URLs
+	 * stay coherent even when TLS is terminated upstream.
+	 */
+	private static function isSecureRequest(): bool {
+
+		if (static::isCli()) {
+			return false;
+		}
+
+		$https = strtolower(trim((string)($_SERVER['HTTPS'] ?? '')));
+		if ($https !== '' and $https !== 'off') {
+			return true;
+		}
+
+		if ((string)($_SERVER['SERVER_PORT'] ?? '') === '443') {
+			return true;
+		}
+
+		$forwardedProto = strtolower(trim((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')));
+		if ($forwardedProto !== '') {
+			foreach (explode(',', $forwardedProto) as $proto) {
+				if (trim($proto) === 'https') {
+					return true;
+				}
+			}
+		}
+
+		$forwardedSsl = strtolower(trim((string)($_SERVER['HTTP_X_FORWARDED_SSL'] ?? '')));
+		if ($forwardedSsl === 'on' or $forwardedSsl === '1') {
+			return true;
+		}
+
+		$requestScheme = strtolower(trim((string)($_SERVER['REQUEST_SCHEME'] ?? '')));
+		if ($requestScheme === 'https') {
+			return true;
+		}
+
+		$cloudflareVisitor = strtolower(trim((string)($_SERVER['HTTP_CF_VISITOR'] ?? '')));
+		if ($cloudflareVisitor !== '' and str_contains($cloudflareVisitor, '"scheme":"https"')) {
+			return true;
+		}
+
+		return false;
+
+	}
+
+	/**
 	 * Return a list of common parameters for cookies with custom expiration time.
 	 */
 	public static function getCookieParams(int $expires): array {
@@ -467,7 +516,7 @@ class Application {
 			'expires' => $expires,
 			'path' => '/',
 			'samesite' => 'Lax',
-			'secure' => 'development' != Application::getEnvironment(),
+			'secure' => static::isSecureRequest(),
 			'httponly' => true
 		];
 
