@@ -116,6 +116,11 @@ class AmazonS3 {
 	 */
 	public function delete(string $remoteFile): bool {
 
+		// evita chiamate AWS con key vuota e tratta il caso come file assente
+		if (!$this->hasObjectKey($remoteFile)) {
+			return false;
+		}
+
 		if (!$this->exists($remoteFile)) {
 			return false;
 		}
@@ -126,7 +131,7 @@ class AmazonS3 {
 				'Key' => $remoteFile,
 			]);
 		} catch (\Throwable $e) {
-			throw new \Exception('S3 delete() failed: ' . $e->getMessage(), ErrorCodes::AMAZON_S3_ERROR, $e);
+			throw new PairException('S3 delete() failed: ' . $e->getMessage(), ErrorCodes::AMAZON_S3_ERROR, $e);
 		}
 
 		return true;
@@ -141,6 +146,11 @@ class AmazonS3 {
 	 * @throws	\Exception			In case of error during deletion.
 	 */
 	public function deleteDir(string $remoteDir): bool {
+
+		// una directory vuota implicherebbe l’intero bucket: qui la trattiamo come input non valido
+		if (!$this->hasObjectKey($remoteDir)) {
+			return false;
+		}
 
 		$prefix = rtrim($remoteDir, '/');
 		if ($prefix !== '') {
@@ -182,6 +192,11 @@ class AmazonS3 {
 	 */
 	public function exists(string $remoteFile): bool {
 
+		// alcuni record legacy possono arrivare con path vuoto: per i probe su esistenza restituiamo false
+		if (!$this->hasObjectKey($remoteFile)) {
+			return false;
+		}
+
 		try {
 			$this->client->headObject([
 				'Bucket' => $this->bucket,
@@ -209,12 +224,14 @@ class AmazonS3 {
 	 */
 	public function get(string $remoteFile, string $localFilePath): bool {
 
-		if (!$this->exists($remoteFile)) return false;
+		if (!$this->exists($remoteFile)) {
+			return false;
+		}
 
 		try {
 			file_put_contents($localFilePath, $this->read($remoteFile));
 		} catch(\Throwable $e) {
-			throw new \Exception($e->getMessage(), ErrorCodes::AMAZON_S3_ERROR, $e);
+			throw new PairException($e->getMessage(), ErrorCodes::AMAZON_S3_ERROR, $e);
 		}
 
 		return true;
@@ -230,6 +247,11 @@ class AmazonS3 {
 	 * @throws	\Exception	In case of error generating the URL.
 	 */
 	public function presignedUrl(string $remoteFile, int $expiration = 3600): ?string {
+
+		// una key vuota non è un errore bloccante per chi chiede solo un URL firmato: segnaliamo assenza file
+		if (!$this->hasObjectKey($remoteFile)) {
+			return null;
+		}
 
 		// clamp to the S3 allowed range: 1 sec to 7 days
 		$ttl = max(1, min(604800, (int)$expiration));
@@ -249,11 +271,11 @@ class AmazonS3 {
 				return null;
 			}
 
-			throw new \Exception('Failed to check object existence: ' . $e->getMessage(), 0, $e);
+			throw new PairException('Failed to check object existence: ' . $e->getMessage(), ErrorCodes::AMAZON_S3_ERROR, $e);
 
 		} catch (\Throwable $e) {
 
-			throw new \Exception('Failed to check object existence: ' . $e->getMessage(), 0, $e);
+			throw new PairException('Failed to check object existence: ' . $e->getMessage(), ErrorCodes::AMAZON_S3_ERROR, $e);
 
 		}
 
@@ -271,11 +293,11 @@ class AmazonS3 {
 
 		} catch (AwsException $e) {
 
-			throw new \Exception('S3 presignedUrl() AWS error: ' . $e->getAwsErrorMessage(), ErrorCodes::AMAZON_S3_ERROR);
+			throw new PairException('S3 presignedUrl() AWS error: ' . $e->getAwsErrorMessage(), ErrorCodes::AMAZON_S3_ERROR, $e);
 
 		} catch (\Throwable $e) {
 
-			throw new \Exception('Failed to generate presigned URL: ' . $e->getMessage(), 0, $e);
+			throw new PairException('Failed to generate presigned URL: ' . $e->getMessage(), ErrorCodes::AMAZON_S3_ERROR, $e);
 
 		}
 
@@ -290,13 +312,15 @@ class AmazonS3 {
 	 */
 	public function put(string $filePath, string $destination): void {
 
+		$destination = $this->requireObjectKey($destination, 'put');
+
 		if (!is_file($filePath) or !is_readable($filePath)) {
-			throw new \Exception('Local file not readable: ' . $filePath, ErrorCodes::AMAZON_S3_ERROR);
+			throw new PairException('Local file not readable: ' . $filePath, ErrorCodes::AMAZON_S3_ERROR);
 		}
 
 		$stream = fopen($filePath, 'rb');
 		if (false === $stream) {
-			throw new \Exception('Unable to open local file: ' . $filePath, ErrorCodes::AMAZON_S3_ERROR);
+			throw new PairException('Unable to open local file: ' . $filePath, ErrorCodes::AMAZON_S3_ERROR);
 		}
 
 		// try to detect MIME for proper Content-Type on S3
@@ -313,7 +337,7 @@ class AmazonS3 {
 				'Body' => $stream,
 			], $options));
 		} catch (\Throwable $e) {
-			throw new \Exception('S3 put() failed: ' . $e->getMessage(), ErrorCodes::AMAZON_S3_ERROR);
+			throw new PairException('S3 put() failed: ' . $e->getMessage(), ErrorCodes::AMAZON_S3_ERROR, $e);
 		} finally {
 			@fclose($stream);
 		}
@@ -340,8 +364,10 @@ class AmazonS3 {
 	 */
 	public function read(string $remoteFile): string {
 
+		$remoteFile = $this->requireObjectKey($remoteFile, 'read');
+
 		if (!$this->exists($remoteFile)) {
-			throw new \Exception('File not found: ' . $remoteFile, ErrorCodes::AMAZON_S3_ERROR);
+			throw new PairException('File not found: ' . $remoteFile, ErrorCodes::AMAZON_S3_ERROR);
 		}
 
 		try {
@@ -351,10 +377,40 @@ class AmazonS3 {
 			]);
 			$content = (string)$result['Body'];
 		} catch (\Throwable $e) {
-			throw new \Exception($e->getMessage(), ErrorCodes::AMAZON_S3_ERROR, $e);
+			throw new PairException($e->getMessage(), ErrorCodes::AMAZON_S3_ERROR, $e);
 		}
 
 		return $content;
+
+	}
+
+	/**
+	 * Verifica se la key S3 è valorizzata prima di inviarla all’SDK AWS.
+	 *
+	 * @param string|null $objectKey Key candidata.
+	 * @return bool True quando la key contiene almeno un carattere non vuoto.
+	 */
+	private function hasObjectKey(?string $objectKey): bool {
+
+		return is_string($objectKey) and '' !== trim($objectKey);
+
+	}
+
+	/**
+	 * Restituisce una key valida o solleva un’eccezione coerente con il framework.
+	 *
+	 * @param string|null $objectKey Key candidata.
+	 * @param string $operation Nome logico dell’operazione S3.
+	 * @return string Key validata.
+	 * @throws PairException Quando la key è vuota.
+	 */
+	private function requireObjectKey(?string $objectKey, string $operation): string {
+
+		if (!$this->hasObjectKey($objectKey)) {
+			throw new PairException('S3 ' . $operation . '() requires a non-empty object key.', ErrorCodes::AMAZON_S3_ERROR);
+		}
+
+		return $objectKey;
 
 	}
 
