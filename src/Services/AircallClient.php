@@ -2,6 +2,8 @@
 namespace Pair\Services;
 
 use Pair\Core\Env;
+use Pair\Exceptions\AircallRateLimitException;
+use Pair\Exceptions\AircallResourceUnavailableException;
 use Pair\Exceptions\ErrorCodes;
 use Pair\Exceptions\PairException;
 
@@ -10,6 +12,11 @@ use Pair\Exceptions\PairException;
  * Authentication uses HTTP basic auth with API ID and API token.
  */
 class AircallClient {
+
+	/**
+	 * Cooldown fallback in secondi quando Aircall risponde 429 senza header Retry-After.
+	 */
+	private const RATE_LIMIT_FALLBACK_COOLDOWN_SECONDS = 60;
 
 	/**
 	 * Aircall API host.
@@ -82,6 +89,32 @@ class AircallClient {
 		if ($this->retryDelayMs < 1) {
 			$this->retryDelayMs = 500;
 		}
+
+	}
+
+	/**
+	 * Restituisce il timestamp di fine cooldown locale corrente per la configurazione Aircall attiva.
+	 */
+	public static function activeLocalCooldownUntil(?string $apiId = null, ?string $apiHost = null): int {
+
+		$resolvedApiId = trim((string)($apiId ?? Env::get('AIRCALL_API_ID')));
+
+		if ($resolvedApiId === '') {
+			return 0;
+		}
+
+		$resolvedApiHost = self::sanitizeApiHostValue((string)($apiHost ?? Env::get('AIRCALL_API_HOST') ?? Env::get('AIRCALL_BASE_URL') ?? 'https://api.aircall.io'));
+		$cooldownPath = self::rateLimitCooldownPathFor($resolvedApiHost, $resolvedApiId);
+
+		self::clearExpiredRateLimitCooldownFile($cooldownPath);
+
+		if (!is_file($cooldownPath)) {
+			return 0;
+		}
+
+		$cooldownUntil = (int)trim((string)@file_get_contents($cooldownPath));
+
+		return ($cooldownUntil > time() ? $cooldownUntil : 0);
 
 	}
 
@@ -1190,6 +1223,31 @@ class AircallClient {
 	}
 
 	/**
+	 * Interrompe la request se è già attivo un cooldown locale successivo a un 429.
+	 */
+	private function assertRateLimitCooldownInactive(): void {
+
+		$cooldownUntil = $this->rateLimitCooldownUntil();
+
+		if ($cooldownUntil > time()) {
+			throw new AircallRateLimitException(
+				'Aircall API local cooldown active until ' . date('c', $cooldownUntil) . '.',
+				ErrorCodes::AIRCALL_ERROR
+			);
+		}
+
+	}
+
+	/**
+	 * Elimina il marker locale quando il cooldown Aircall è già scaduto.
+	 */
+	private function clearExpiredRateLimitCooldown(): void {
+
+		self::clearExpiredRateLimitCooldownFile($this->rateLimitCooldownPath());
+
+	}
+
+	/**
 	 * Extract list items from a paged response.
 	 */
 	private function extractItems(array $response, ?string $collectionKey = null): array {
@@ -1278,6 +1336,8 @@ class AircallClient {
 		$url = $this->buildUrl($path, $query);
 		$auth = base64_encode($this->apiId . ':' . $this->apiToken);
 
+		$this->assertRateLimitCooldownInactive();
+
 		$headers = [
 			'Accept: application/json',
 			'Authorization: Basic ' . $auth,
@@ -1312,7 +1372,7 @@ class AircallClient {
 
 			if (false === $rawResponse) {
 				$error = curl_error($ch);
-				curl_close($ch);
+				$ch = null;
 
 				if ($attempt < $this->maxRetries) {
 					usleep(($this->retryDelayMs * ($attempt + 1)) * 1000);
@@ -1326,9 +1386,11 @@ class AircallClient {
 			$headerSize = (int)curl_getinfo($ch, CURLINFO_HEADER_SIZE);
 			$rawHeaders = substr($rawResponse, 0, $headerSize);
 			$rawBody = substr($rawResponse, $headerSize);
-			curl_close($ch);
+			$ch = null;
 
-			if (($httpCode === 429 or $httpCode >= 500) and ($attempt < $this->maxRetries)) {
+			// il rate limit non deve attivare retry automatici: il chiamante deve poter interrompere
+			// subito i batch senza generare ulteriori richieste ravvicinate verso Aircall.
+			if (($httpCode >= 500) and ($attempt < $this->maxRetries)) {
 
 				$retryDelayMs = $this->extractRetryDelayMs($rawHeaders);
 				if ($retryDelayMs < 1) {
@@ -1344,6 +1406,15 @@ class AircallClient {
 					return [];
 				}
 
+				if ($httpCode === 429) {
+					$this->storeRateLimitCooldown($rawHeaders);
+					throw new AircallRateLimitException('Aircall API returned HTTP 429.', ErrorCodes::AIRCALL_ERROR);
+				}
+
+				if ($this->isResourceUnavailableStatus($httpCode)) {
+					throw new AircallResourceUnavailableException('Aircall API returned HTTP ' . $httpCode . '.');
+				}
+
 				throw new PairException('Aircall API returned HTTP ' . $httpCode . '.', ErrorCodes::AIRCALL_ERROR);
 			}
 
@@ -1353,11 +1424,31 @@ class AircallClient {
 					throw new PairException('Aircall returned invalid JSON response.', ErrorCodes::AIRCALL_ERROR);
 				}
 
+				if ($httpCode === 429) {
+					$this->storeRateLimitCooldown($rawHeaders);
+					throw new AircallRateLimitException('Aircall API returned HTTP 429 and invalid JSON response.', ErrorCodes::AIRCALL_ERROR);
+				}
+
+				if ($this->isResourceUnavailableStatus($httpCode)) {
+					throw new AircallResourceUnavailableException('Aircall API returned HTTP ' . $httpCode . ' and invalid JSON response.');
+				}
+
 				throw new PairException('Aircall API returned HTTP ' . $httpCode . ' and invalid JSON response.', ErrorCodes::AIRCALL_ERROR);
 			}
 
 			if (($httpCode < 200) or ($httpCode >= 300)) {
-				throw new PairException($this->extractErrorMessage($data, $rawBody, $httpCode), ErrorCodes::AIRCALL_ERROR);
+				$errorMessage = $this->extractErrorMessage($data, $rawBody, $httpCode);
+
+				if ($httpCode === 429) {
+					$this->storeRateLimitCooldown($rawHeaders);
+					throw new AircallRateLimitException($errorMessage, ErrorCodes::AIRCALL_ERROR);
+				}
+
+				if ($this->isResourceUnavailableStatus($httpCode)) {
+					throw new AircallResourceUnavailableException($errorMessage);
+				}
+
+				throw new PairException($errorMessage, ErrorCodes::AIRCALL_ERROR);
 			}
 
 			return $data;
@@ -1368,9 +1459,55 @@ class AircallClient {
 	}
 
 	/**
+	 * Restituisce il file marker del cooldown locale dedicato a questa coppia host/API ID.
+	 */
+	private function rateLimitCooldownPath(): string {
+
+		return self::rateLimitCooldownPathFor($this->apiHost, $this->apiId);
+
+	}
+
+	/**
+	 * Restituisce il timestamp di fine cooldown locale, oppure 0 se non attivo.
+	 */
+	private function rateLimitCooldownUntil(): int {
+
+		$this->clearExpiredRateLimitCooldown();
+
+		$cooldownPath = $this->rateLimitCooldownPath();
+
+		if (!is_file($cooldownPath)) {
+			return 0;
+		}
+
+		$cooldownUntil = (int)trim((string)@file_get_contents($cooldownPath));
+
+		return ($cooldownUntil > time() ? $cooldownUntil : 0);
+
+	}
+
+	/**
+	 * Verifica se lo status HTTP Aircall indica una risorsa non pronta o non più disponibile.
+	 */
+	private function isResourceUnavailableStatus(int $httpCode): bool {
+
+		return in_array($httpCode, [404, 410, 422], true);
+
+	}
+
+	/**
 	 * Normalize API host and strip path if provided.
 	 */
 	private function sanitizeApiHost(string $apiHost): string {
+
+		return self::sanitizeApiHostValue($apiHost);
+
+	}
+
+	/**
+	 * Normalizza l’host Aircall e ne rimuove eventuali path superflui.
+	 */
+	private static function sanitizeApiHostValue(string $apiHost): string {
 
 		$apiHost = trim($apiHost);
 
@@ -1392,6 +1529,56 @@ class AircallClient {
 		$port = isset($parts['port']) ? ':' . $parts['port'] : '';
 
 		return $scheme . '://' . $host . $port;
+
+	}
+
+	/**
+	 * Elimina il marker locale del cooldown Pair quando è già scaduto.
+	 */
+	private static function clearExpiredRateLimitCooldownFile(string $cooldownPath): void {
+
+		if (!is_file($cooldownPath)) {
+			return;
+		}
+
+		$cooldownUntil = (int)trim((string)@file_get_contents($cooldownPath));
+
+		if ($cooldownUntil < 1 or time() >= $cooldownUntil) {
+			@unlink($cooldownPath);
+		}
+
+	}
+
+	/**
+	 * Costruisce il path del marker locale del cooldown Pair per host e API ID dati.
+	 */
+	private static function rateLimitCooldownPathFor(string $apiHost, string $apiId): string {
+
+		$basePath = defined('TEMP_PATH') ? TEMP_PATH : (sys_get_temp_dir() . DIRECTORY_SEPARATOR);
+		$cacheKey = md5($apiHost . '|' . $apiId);
+
+		return rtrim($basePath, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'pair-aircall-rate-limit-' . $cacheKey . '.lock';
+
+	}
+
+	/**
+	 * Memorizza un cooldown locale successivo a un 429, usando Retry-After quando disponibile.
+	 *
+	 * @param string $headers Header HTTP grezzi dell’ultima risposta Aircall.
+	 * @return int Timestamp UNIX di fine cooldown.
+	 */
+	private function storeRateLimitCooldown(string $headers): int {
+
+		$retryDelayMs = $this->extractRetryDelayMs($headers);
+
+		if ($retryDelayMs < 1) {
+			$retryDelayMs = (self::RATE_LIMIT_FALLBACK_COOLDOWN_SECONDS * 1000);
+		}
+
+		$cooldownUntil = time() + max(1, (int)ceil($retryDelayMs / 1000));
+		@file_put_contents($this->rateLimitCooldownPath(), (string)$cooldownUntil, LOCK_EX);
+
+		return $cooldownUntil;
 
 	}
 
