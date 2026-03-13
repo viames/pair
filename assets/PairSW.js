@@ -1,6 +1,6 @@
 /* PairSW - default service worker for Pair apps (no build step). */
 
-const SW_VERSION = "pair-sw-v3";
+const SW_VERSION = "pair-sw-v4";
 const STATIC_CACHE = `${SW_VERSION}-static`;
 const RUNTIME_CACHE = `${SW_VERSION}-runtime`;
 

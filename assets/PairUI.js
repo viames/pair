@@ -4,7 +4,7 @@
  * Goals:
  * - No build step
  * - Progressive enhancement
- * - Vue-like directives via data-*
+ * - Declarative directives via data-*
  * - Simple reactive store + DOM bindings
  * - Safe parsing (no eval)
  *
@@ -15,7 +15,7 @@
   "use strict";
 
   const PairUI = {};
-  PairUI.version = "0.3.0";
+  PairUI.version = "0.4.0";
 
   // expose under both window.PairUI and window.Pair.UI
   global.Pair = global.Pair || {};
@@ -115,6 +115,311 @@
   PairUI.setClass = (el, className, enabled) => {
     if (!className) return;
     el.classList.toggle(className, !!enabled);
+  };
+
+  const RAW_HTML_TOKEN = Symbol("PairUI.rawHtml");
+  const loadingStateCache = new WeakMap();
+  const persistConfig = {
+    cookiePrefix: "",
+    days: 30,
+    path: "/",
+    sameSite: "Lax",
+    secure: null,
+  };
+
+  /**
+   * Returns true when the value is a plain object.
+   * @param {*} value
+   * @returns {boolean}
+   */
+  function isPlainObject(value) {
+    return Object.prototype.toString.call(value) === "[object Object]";
+  }
+
+  /**
+   * Resolve a selector, element or collection into an array of elements.
+   * @param {*} input
+   * @param {*} root
+   * @returns {Array}
+   */
+  function resolveElements(input, root = document) {
+    if (!input) return [];
+    if (typeof input === "string") return PairUI.qsa(input, root);
+    if (Array.isArray(input)) return input.filter(Boolean);
+    if (typeof input.length === "number" && typeof input !== "string") return Array.from(input).filter(Boolean);
+    return [input];
+  }
+
+  /**
+   * Append a key/value pair to URLSearchParams or FormData, supporting arrays.
+   * @param {*} target
+   * @param {*} key
+   * @param {*} value
+   * @returns {void}
+   */
+  function appendKeyValue(target, key, value) {
+    if (value === undefined) return;
+
+    if (Array.isArray(value)) {
+      for (const item of value) appendKeyValue(target, key, item);
+      return;
+    }
+
+    if (value == null) {
+      target.append(key, "");
+      return;
+    }
+
+    if (typeof Date !== "undefined" && value instanceof Date) {
+      target.append(key, value.toISOString());
+      return;
+    }
+
+    if (
+      typeof FormData !== "undefined"
+      && target instanceof FormData
+      && typeof Blob !== "undefined"
+      && value instanceof Blob
+    ) {
+      target.append(key, value);
+      return;
+    }
+
+    if (isPlainObject(value)) {
+      target.append(key, JSON.stringify(value));
+      return;
+    }
+
+    target.append(key, String(value));
+  }
+
+  /**
+   * Returns the UTF-8 byte length of a string for PHP-like serialization.
+   * @param {*} value
+   * @returns {number}
+   */
+  function getUtf8ByteLength(value) {
+    const stringValue = String(value ?? "");
+    if (typeof TextEncoder === "function") {
+      return new TextEncoder().encode(stringValue).length;
+    }
+
+    return unescape(encodeURIComponent(stringValue)).length;
+  }
+
+  /**
+   * Extract a readable error message from Error objects or HTTP payloads.
+   * @param {*} error
+   * @param {*} fallback
+   * @returns {string}
+   */
+  function getErrorMessage(error, fallback = "Unexpected error") {
+    if (error && typeof error === "object") {
+      if (error.payload && typeof error.payload === "object") {
+        if (typeof error.payload.message === "string" && error.payload.message.trim()) {
+          return error.payload.message.trim();
+        }
+
+        if (typeof error.payload.error === "string" && error.payload.error.trim()) {
+          return error.payload.error.trim();
+        }
+      }
+
+      if (typeof error.payload === "string" && error.payload.trim()) {
+        return error.payload.trim();
+      }
+
+      if (typeof error.message === "string" && error.message.trim()) {
+        return error.message.trim();
+      }
+    }
+
+    if (typeof error === "string" && error.trim()) {
+      return error.trim();
+    }
+
+    return String(fallback ?? "Unexpected error");
+  }
+
+  /**
+   * Read and decode a cookie value by name.
+   * @param {string} cookieName
+   * @returns {?string}
+   */
+  function readCookieValue(cookieName) {
+    const cookies = document.cookie ? document.cookie.split("; ") : [];
+    const prefix = encodeURIComponent(cookieName) + "=";
+
+    for (const cookie of cookies) {
+      if (cookie.startsWith(prefix)) {
+        return decodeURIComponent(cookie.slice(prefix.length));
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Returns the merged persistent-state configuration.
+   * @param {*} options
+   * @returns {Object}
+   */
+  function getPersistSettings(options = {}) {
+    const globalConfig = isPlainObject(global.PairUIPersistConfig) ? global.PairUIPersistConfig : {};
+    return { ...persistConfig, ...globalConfig, ...(options || {}) };
+  }
+
+  /**
+   * Mark an interpolation as already-safe HTML for PairUI.html templates.
+   * @param {*} value
+   * @returns {Object}
+   */
+  PairUI.raw = (value) => ({
+    [RAW_HTML_TOKEN]: true,
+    value: String(value ?? ""),
+  });
+
+  /**
+   * Build escaped HTML fragments while allowing explicit raw sections.
+   * @param {TemplateStringsArray} strings
+   * @param {...*} values
+   * @returns {string}
+   */
+  PairUI.html = (strings, ...values) => {
+    const renderValue = (value) => {
+      if (Array.isArray(value)) {
+        return value.map(renderValue).join("");
+      }
+
+      if (value && value[RAW_HTML_TOKEN]) {
+        return String(value.value ?? "");
+      }
+
+      return PairUI.escapeHtml(value ?? "");
+    };
+
+    let out = "";
+
+    for (let i = 0; i < strings.length; i++) {
+      out += strings[i];
+      if (i < values.length) out += renderValue(values[i]);
+    }
+
+    return out;
+  };
+
+  /**
+   * Submit the nearest form using requestSubmit when available.
+   * @param {*} elOrForm
+   * @returns {boolean}
+   */
+  PairUI.submit = (elOrForm) => {
+    const form = elOrForm instanceof HTMLFormElement ? elOrForm : PairUI.formRoot(elOrForm, null);
+    if (!(form instanceof HTMLFormElement)) return false;
+
+    if (typeof form.requestSubmit === "function") {
+      form.requestSubmit();
+    } else {
+      form.submit();
+    }
+
+    return true;
+  };
+
+  /**
+   * Run async work while toggling busy state on a target element.
+   * @param {*} target
+   * @param {*} task
+   * @param {*} options
+   * @returns {Promise<*>}
+   */
+  PairUI.withLoading = async (target, task, options = {}) => {
+    const runner = typeof task === "function" ? task : () => task;
+    if (!target) return Promise.resolve().then(() => runner(null));
+
+    const settings = {
+      className: "is-loading",
+      disable: true,
+      ariaBusy: true,
+      iconSelector: null,
+      loadingIconClass: null,
+      textSelector: null,
+      text: null,
+      ...options,
+    };
+
+    const icon = settings.iconSelector ? PairUI.qs(settings.iconSelector, target) : null;
+    const label = settings.textSelector ? PairUI.qs(settings.textSelector, target) : null;
+
+    loadingStateCache.set(target, {
+      disabled: "disabled" in target ? !!target.disabled : null,
+      ariaBusy: typeof target.getAttribute === "function" ? target.getAttribute("aria-busy") : null,
+      iconClassName: icon ? icon.className : null,
+      labelText: label ? label.textContent : null,
+    });
+
+    if (settings.disable && "disabled" in target) {
+      target.disabled = true;
+    }
+
+    if (settings.ariaBusy && typeof target.setAttribute === "function") {
+      target.setAttribute("aria-busy", "true");
+    }
+
+    if (settings.className && target.classList) {
+      target.classList.add(settings.className);
+    }
+
+    if (label && settings.text != null) {
+      label.textContent = String(settings.text);
+    }
+
+    if (icon && settings.loadingIconClass) {
+      icon.className = settings.loadingIconClass;
+    }
+
+    try {
+      return await Promise.resolve().then(() => runner(target));
+    } finally {
+      const snapshot = loadingStateCache.get(target);
+
+      if (settings.disable && snapshot && snapshot.disabled != null && "disabled" in target) {
+        target.disabled = snapshot.disabled;
+      }
+
+      if (settings.ariaBusy && typeof target.removeAttribute === "function") {
+        if (snapshot && snapshot.ariaBusy != null) {
+          target.setAttribute("aria-busy", snapshot.ariaBusy);
+        } else {
+          target.removeAttribute("aria-busy");
+        }
+      }
+
+      if (settings.className && target.classList) {
+        target.classList.remove(settings.className);
+      }
+
+      if (icon && snapshot && snapshot.iconClassName != null) {
+        icon.className = snapshot.iconClassName;
+      }
+
+      if (label && snapshot && snapshot.labelText != null) {
+        label.textContent = snapshot.labelText;
+      }
+
+      loadingStateCache.delete(target);
+    }
+  };
+
+  /**
+   * Convenience wrapper around withLoading for task-first call sites.
+   * @param {*} task
+   * @param {*} options
+   * @returns {Promise<*>}
+   */
+  PairUI.run = (task, options = {}) => {
+    const { target = null, ...rest } = options || {};
+    return PairUI.withLoading(target, task, rest);
   };
 
   // ---------------------------------------------------------------------------
@@ -482,11 +787,19 @@
           return makeReactive(v);
         },
         set(target, prop, value) {
+          if (Object.is(target[prop], value)) {
+            return true;
+          }
+
           target[prop] = value;
           notify();
           return true;
         },
         deleteProperty(target, prop) {
+          if (!Object.prototype.hasOwnProperty.call(target, prop)) {
+            return true;
+          }
+
           delete target[prop];
           notify();
           return true;
@@ -540,6 +853,10 @@
       },
 
       set(path, value) {
+        if (Object.is(getByPath(raw, path), value)) {
+          return true;
+        }
+
         const ok = setByPath(raw, path, value);
         if (ok) notify();
         return ok;
@@ -548,8 +865,16 @@
       // merge object into state
       patch(obj) {
         if (!obj || typeof obj !== "object") return;
-        Object.assign(raw, obj);
-        notify();
+        let changed = false;
+
+        for (const [key, value] of Object.entries(obj)) {
+          if (!Object.is(raw[key], value)) {
+            raw[key] = value;
+            changed = true;
+          }
+        }
+
+        if (changed) notify();
       },
 
       actions: Object.create(null),
@@ -592,7 +917,8 @@
     // "a:b c:d" or "a:b, c:d" or multiline
     if (!str) return [];
     const parts = String(str)
-      .split(/[,\n]+/)
+      // split also on spaces before the next "key:" token without breaking values
+      .split(/[\n,]+|\s+(?=[A-Za-z0-9_-]+\s*:)/)
       .map(s => s.trim())
       .filter(Boolean);
 
@@ -918,28 +1244,146 @@
   // ---------------------------------------------------------------------------
 
   PairUI.http = {
-    async request(url, opts = {}) {
-      const res = await fetch(url, {
-        credentials: "same-origin",
-        ...opts,
-        headers: {
-          "X-Requested-With": "XMLHttpRequest",
-          ...(opts.headers || {}),
-        },
-      });
+    /**
+     * Convert query params into a query string.
+     * @param {*} params
+     * @returns {string}
+     */
+    buildQuery(params) {
+      if (params == null) return "";
+      if (typeof params === "string") return params.replace(/^\?/, "");
+      if (params instanceof URLSearchParams) return params.toString();
+
+      const search = new URLSearchParams();
+      const entries = isPlainObject(params) ? Object.entries(params) : [];
+      for (const [key, value] of entries) appendKeyValue(search, key, value);
+      return search.toString();
+    },
+
+    /**
+     * Append query params to a URL without losing existing query strings.
+     * @param {string} url
+     * @param {*} params
+     * @returns {string}
+     */
+    buildUrl(url, params) {
+      const queryString = this.buildQuery(params);
+      if (!queryString) return String(url);
+
+      const rawUrl = String(url);
+      const hashIndex = rawUrl.indexOf("#");
+      const baseUrl = hashIndex === -1 ? rawUrl : rawUrl.slice(0, hashIndex);
+      const hash = hashIndex === -1 ? "" : rawUrl.slice(hashIndex);
+
+      return baseUrl + (baseUrl.includes("?") ? "&" : "?") + queryString + hash;
+    },
+
+    /**
+     * Convert forms, FormData and plain objects into FormData instances.
+     * @param {*} formElOrObj
+     * @returns {FormData}
+     */
+    formData(formElOrObj) {
+      if (formElOrObj instanceof FormData) return formElOrObj;
+      if (formElOrObj instanceof HTMLFormElement) return new FormData(formElOrObj);
+
+      const body = new FormData();
+
+      if (formElOrObj instanceof URLSearchParams) {
+        for (const [key, value] of formElOrObj.entries()) {
+          body.append(key, value);
+        }
+
+        return body;
+      }
+
+      const obj = formElOrObj || {};
+      for (const [key, value] of Object.entries(obj)) appendKeyValue(body, key, value);
+      return body;
+    },
+
+    /**
+     * Parse a fetch Response according to the expected payload type.
+     * @param {Response} res
+     * @param {string} expect
+     * @returns {Promise<*>}
+     */
+    async parseResponse(res, expect = "auto") {
+      if (expect === "response") {
+        if (!res.ok) {
+          const err = new Error(`HTTP ${res.status}`);
+          err.status = res.status;
+          err.response = res;
+          throw err;
+        }
+
+        return res;
+      }
 
       const contentType = res.headers.get("content-type") || "";
-      const isJson = contentType.includes("application/json");
+      const wantsJson = expect === "json" || (expect === "auto" && contentType.includes("application/json"));
 
-      const payload = isJson ? await res.json().catch(() => null) : await res.text();
+      let payload;
+      if (res.status === 204) {
+        payload = null;
+      } else if (wantsJson) {
+        payload = await res.json().catch(() => null);
+      } else if (expect === "blob") {
+        payload = await res.blob();
+      } else {
+        payload = await res.text();
+      }
 
       if (!res.ok) {
-        const err = new Error(`HTTP ${res.status}`);
+        const err = new Error(getErrorMessage({ payload }, `HTTP ${res.status}`));
         err.status = res.status;
         err.payload = payload;
+        err.response = res;
         throw err;
       }
+
       return payload;
+    },
+
+    /**
+     * Perform an HTTP request with default AJAX headers and helper payload options.
+     * @param {string} url
+     * @param {*} opts
+     * @returns {Promise<*>}
+     */
+    async request(url, opts = {}) {
+      const {
+        query,
+        json,
+        form,
+        expect = "auto",
+        ...fetchOptions
+      } = opts || {};
+
+      const headers = new Headers(fetchOptions.headers || {});
+      if (!headers.has("X-Requested-With")) {
+        headers.set("X-Requested-With", "XMLHttpRequest");
+      }
+
+      let body = fetchOptions.body;
+      if (json !== undefined) {
+        body = JSON.stringify(json ?? {});
+        if (!headers.has("Content-Type")) {
+          headers.set("Content-Type", "application/json");
+        }
+      } else if (form !== undefined) {
+        body = this.formData(form);
+      }
+
+      const requestUrl = query != null ? this.buildUrl(url, query) : url;
+      const res = await fetch(requestUrl, {
+        credentials: "same-origin",
+        ...fetchOptions,
+        headers,
+        body,
+      });
+
+      return this.parseResponse(res, expect);
     },
 
     get(url, opts) {
@@ -949,26 +1393,207 @@
     postJson(url, data, opts = {}) {
       return this.request(url, {
         method: "POST",
-        body: JSON.stringify(data ?? {}),
-        headers: { "Content-Type": "application/json", ...(opts.headers || {}) },
+        json: data,
         ...opts,
       });
     },
 
     postForm(url, formElOrObj, opts = {}) {
-      let body;
-      if (formElOrObj instanceof HTMLFormElement) body = new FormData(formElOrObj);
-      else {
-        body = new FormData();
-        const obj = formElOrObj || {};
-        for (const k of Object.keys(obj)) body.append(k, obj[k]);
-      }
-
       return this.request(url, {
         method: "POST",
-        body,
+        form: formElOrObj,
         ...opts,
       });
+    },
+  };
+
+  // helpers to read/write Pair-style persistent state cookies from the client
+  PairUI.persist = {
+    /**
+     * Shared persistent-state configuration used by PairUI.persist helpers.
+     */
+    config: persistConfig,
+
+    /**
+     * Merge runtime configuration into the persistent-state defaults.
+     * @param {*} options
+     * @returns {Object}
+     */
+    configure(options = {}) {
+      Object.assign(persistConfig, options || {});
+      return getPersistSettings();
+    },
+
+    /**
+     * Build the cookie name using Pair's ucfirst naming convention.
+     * @param {string} name
+     * @param {*} options
+     * @returns {string}
+     */
+    getCookieName(name, options = {}) {
+      const settings = getPersistSettings(options);
+      const rawName = String(name ?? "").trim();
+      return String(settings.cookiePrefix || "") + rawName.charAt(0).toUpperCase() + rawName.slice(1);
+    },
+
+    /**
+     * Serialize scalar values using PHP's cookie format for Pair persistent state.
+     * @param {*} value
+     * @returns {string}
+     */
+    serialize(value) {
+      if (value === null) return "N;";
+      if (value === true || value === false) return `b:${value ? 1 : 0};`;
+      if (typeof value === "number" && Number.isFinite(value)) {
+        return Number.isInteger(value) ? `i:${value};` : `d:${String(value)};`;
+      }
+
+      const stringValue = String(value ?? "");
+      return `s:${getUtf8ByteLength(stringValue)}:"${stringValue}";`;
+    },
+
+    /**
+     * Parse simple scalar values serialized by Pair persistent-state cookies.
+     * @param {*} serialized
+     * @returns {*}
+     */
+    deserialize(serialized) {
+      const value = String(serialized ?? "");
+
+      if (value === "N;") return null;
+
+      let match = /^b:(0|1);$/.exec(value);
+      if (match) return match[1] === "1";
+
+      match = /^i:(-?\d+);$/.exec(value);
+      if (match) return Number(match[1]);
+
+      match = /^d:(-?\d+(?:\.\d+)?(?:E[+-]?\d+)?);$/i.exec(value);
+      if (match) return Number(match[1]);
+
+      match = /^s:\d+:"([\s\S]*)";$/.exec(value);
+      if (match) return match[1];
+
+      return value;
+    },
+
+    /**
+     * Read the raw serialized cookie value for a persistent state key.
+     * @param {string} name
+     * @param {*} options
+     * @returns {?string}
+     */
+    getRaw(name, options = {}) {
+      return readCookieValue(this.getCookieName(name, options));
+    },
+
+    /**
+     * Read and deserialize a persistent state key from document.cookie.
+     * @param {string} name
+     * @param {*} options
+     * @returns {*}
+     */
+    get(name, options = {}) {
+      const raw = this.getRaw(name, options);
+      return raw == null ? null : this.deserialize(raw);
+    },
+
+    /**
+     * Set a Pair-style persistent state cookie from the browser.
+     * @param {string} name
+     * @param {*} value
+     * @param {*} options
+     * @returns {string}
+     */
+    set(name, value, options = {}) {
+      const settings = getPersistSettings(options);
+      const cookieName = this.getCookieName(name, settings);
+      const expires = new Date(Date.now() + (Number(settings.days || 30) * 86400000));
+      let cookie = `${encodeURIComponent(cookieName)}=${encodeURIComponent(this.serialize(value))}; path=${settings.path || "/"}; expires=${expires.toUTCString()}; SameSite=${settings.sameSite || "Lax"}`;
+
+      const isSecure = settings.secure == null
+        ? global.location && global.location.protocol === "https:"
+        : !!settings.secure;
+
+      if (isSecure) {
+        cookie += "; Secure";
+      }
+
+      document.cookie = cookie;
+      return cookieName;
+    },
+
+    /**
+     * Remove a persistent state cookie immediately.
+     * @param {string} name
+     * @param {*} options
+     * @returns {string}
+     */
+    unset(name, options = {}) {
+      const settings = getPersistSettings(options);
+      const cookieName = this.getCookieName(name, settings);
+      let cookie = `${encodeURIComponent(cookieName)}=; path=${settings.path || "/"}; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=${settings.sameSite || "Lax"}`;
+
+      const isSecure = settings.secure == null
+        ? global.location && global.location.protocol === "https:"
+        : !!settings.secure;
+
+      if (isSecure) {
+        cookie += "; Secure";
+      }
+
+      document.cookie = cookie;
+      return cookieName;
+    },
+
+    /**
+     * Bind form controls to persistent state cookies with optional reload.
+     * @param {*} selector
+     * @param {string} stateName
+     * @param {*} options
+     * @returns {Function}
+     */
+    bind(selector, stateName, options = {}) {
+      const settings = { event: "change", reload: true, root: document, ...options };
+      const elements = resolveElements(selector, settings.root);
+      const handleChange = (event) => {
+        const element = event.currentTarget;
+        let value = typeof settings.getValue === "function"
+          ? settings.getValue(element, event)
+          : element.value;
+
+        if (typeof settings.normalize === "function") {
+          value = settings.normalize(value, element, event);
+        }
+
+        const shouldUnset = typeof settings.shouldUnset === "function"
+          ? settings.shouldUnset(value, element, event)
+          : value == null || value === "" || Number.isNaN(value);
+
+        if (shouldUnset) {
+          this.unset(stateName, settings);
+        } else {
+          this.set(stateName, value, settings);
+        }
+
+        if (typeof settings.afterChange === "function") {
+          settings.afterChange(value, element, event);
+        }
+
+        if (settings.reload) {
+          global.location.reload();
+        }
+      };
+
+      for (const element of elements) {
+        PairUI.on(element, settings.event, handleChange);
+      }
+
+      return () => {
+        for (const element of elements) {
+          PairUI.off(element, settings.event, handleChange);
+        }
+      };
     },
   };
 
@@ -1067,5 +1692,36 @@ PairUI.createApp({
     }
   }
 });
+
+5) run async work with a loading state
+
+await PairUI.withLoading(button, async () => {
+  await PairUI.http.postForm("/api/save", form);
+}, {
+  iconSelector: "i",
+  loadingIconClass: "icon-spinner is-spinning"
+});
+
+6) emit a custom event
+
+const changed = PairUI.emit(form, "pair:filters-changed", { page: 1 });
+if (changed.defaultPrevented) {
+  return;
+}
+
+7) persist a filter and reload
+
+PairUI.persist.configure({ cookiePrefix: "app_" });
+PairUI.persist.bind("select.category-filter", "categoryFilter", {
+  normalize(value) {
+    return value === "" ? null : parseInt(value, 10);
+  }
+});
+
+8) build escaped HTML
+
+const optionsHtml = PairUI.html`
+  ${rows.map((row) => PairUI.html`<option value="${row.id}">${row.label}</option>`)}
+`;
 
 --------------------------------------------------------------------------- */
