@@ -103,10 +103,18 @@ class Database {
 		}
 
 		$dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME;
+		// PHP 8.5 deprecates PDO::MYSQL_ATTR_* in favor of Pdo\Mysql::ATTR_*.
+		// Resolve the available constant at runtime to stay compatible with PHP 8.3 production.
+		$attrInitCommand = defined('Pdo\\Mysql::ATTR_INIT_COMMAND')
+			? constant('Pdo\\Mysql::ATTR_INIT_COMMAND')
+			: \PDO::MYSQL_ATTR_INIT_COMMAND;
+		$attrFoundRows = defined('Pdo\\Mysql::ATTR_FOUND_ROWS')
+			? constant('Pdo\\Mysql::ATTR_FOUND_ROWS')
+			: \PDO::MYSQL_ATTR_FOUND_ROWS;
 		$options = [
-			\PDO::ATTR_PERSISTENT			=> (bool)$persistent,
-			\PDO::MYSQL_ATTR_INIT_COMMAND	=> "SET NAMES utf8",
-			\PDO::MYSQL_ATTR_FOUND_ROWS		=> TRUE
+			\PDO::ATTR_PERSISTENT	=> (bool)$persistent,
+			$attrInitCommand		=> 'SET NAMES utf8',
+			$attrFoundRows			=> TRUE
 		];
 
 		try {
