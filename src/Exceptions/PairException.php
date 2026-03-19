@@ -80,15 +80,52 @@ class PairException extends \Exception {
 	}
 
 	/**
-	 * Front-end notification.
+	 * Costruisce il messaggio tecnico completo da mostrare in ambienti non produttivi.
 	 */
-	public static function frontEnd(string $message): void {
+	protected static function buildThrowableDebugMessage(\Throwable $error): string {
+
+		$messages = [];
+		$currentError = $error;
+
+		do {
+			$message = trim((string)$currentError->getMessage());
+
+			if ('' === $message) {
+				$message = 'Eccezione senza messaggio';
+			}
+
+			$messages[] = get_class($currentError) . ': '
+				. $message
+				. ' in '
+				. $currentError->getFile()
+				. ' line '
+				. $currentError->getLine();
+
+			$currentError = $currentError->getPrevious();
+		} while ($currentError);
+
+		return implode("\n\nCaused by:\n", $messages);
+
+	}
+
+	/**
+	 * Front-end notification.
+	 *
+	 * @param string|\Throwable $error Messaggio semplice oppure eccezione completa da notificare.
+	 */
+	public static function frontEnd(string|\Throwable $error): void {
+
+		if ($error instanceof \Throwable) {
+			Logger::exceptionHandler($error);
+		}
 
 		// overwrite the message with a more user-friendly one in production
 		if ('production' == Application::getEnvironment()) {
 			$message = Translator::do('AN_ERROR_OCCURRED');
+		} else if ($error instanceof \Throwable) {
+			$message = static::buildThrowableDebugMessage($error);
 		} else {
-			$message = static::localizeOutputMessage($message);
+			$message = static::localizeOutputMessage($error);
 		}
 		
 		$app = Application::getInstance();

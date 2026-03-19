@@ -918,6 +918,23 @@ class Database {
 	}
 
 	/**
+	 * Returns the first column of the first row, or null if the query has no results.
+	 *
+	 * @param	string	SQL query.
+	 * @param	array	List of parameters to bind on the sql query.
+	 * @return	string|int|float|null
+	 * @throws	PairException
+	 */
+	public static function value(string $query, array $params = []): string|int|float|null {
+
+		// normalize the false of PDO to null to expose a more predictable helper
+		$value = static::load($query, $params, self::RESULT);
+
+		return false === $value ? null : $value;
+
+	}
+
+	/**
 	 * Check wheter a table exists by its name.
 	 *
 	 * @param	string	Table name.

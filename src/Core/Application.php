@@ -1481,7 +1481,7 @@ class Application {
 				try {
 					$controller->$action();
 				} catch (\Throwable $e) {
-					PairException::frontEnd($e->getMessage());
+					PairException::frontEnd($e);
 				}
 			} else {
 				$logger = Logger::getInstance();
@@ -1497,7 +1497,7 @@ class Application {
 			try {
 				$controller->renderView();
 			} catch (\Throwable $e) {
-				PairException::frontEnd($e->getMessage());
+				PairException::frontEnd($e);
 			}
 
 			$this->logBar = LogBar::getInstance();
