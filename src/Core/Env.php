@@ -27,6 +27,16 @@ class Env {
 		'PAIR_SINGLE_SESSION' => true,
 		'PAIR_AUDIT_ALL' => true,
 		'PAIR_AUTH_BY_EMAIL' => true,
+		'PAIR_API_RATE_LIMIT_ENABLED' => true,
+		'PAIR_API_RATE_LIMIT_MAX_ATTEMPTS' => 60,
+		'PAIR_API_RATE_LIMIT_DECAY_SECONDS' => 60,
+		'PAIR_API_RATE_LIMIT_REDIS_PREFIX' => 'pair:rate_limit:',
+		'PAIR_TRUSTED_PROXIES' => '',
+		'REDIS_HOST' => '',
+		'REDIS_PORT' => 6379,
+		'REDIS_PASSWORD' => '',
+		'REDIS_DB' => 0,
+		'REDIS_TIMEOUT' => 1,
 		'UTC_DATE' => true
 	];
 

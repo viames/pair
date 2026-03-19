@@ -2,6 +2,7 @@
 
 namespace Pair\Api;
 
+use Pair\Core\Env;
 use Pair\Core\Application;
 use Pair\Core\Controller;
 use Pair\Models\Session;
@@ -42,6 +43,7 @@ abstract class ApiController extends Controller {
 
 		$this->request = new Request();
 		$this->pipeline = new MiddlewarePipeline();
+		$this->registerDefaultMiddleware();
 
 	}
 
@@ -146,6 +148,23 @@ abstract class ApiController extends Controller {
 	public function middleware(Middleware $middleware): void {
 
 		$this->pipeline->add($middleware);
+
+	}
+
+	/**
+	 * Register the default middleware stack for API controllers.
+	 */
+	protected function registerDefaultMiddleware(): void {
+
+		if (!Env::get('PAIR_API_RATE_LIMIT_ENABLED')) {
+			return;
+		}
+
+		$maxAttempts = max(1, intval(Env::get('PAIR_API_RATE_LIMIT_MAX_ATTEMPTS') ?? 60));
+		$decaySeconds = max(1, intval(Env::get('PAIR_API_RATE_LIMIT_DECAY_SECONDS') ?? 60));
+
+		// attach the default throttle globally so API controllers are protected out of the box.
+		$this->pipeline->add(new ThrottleMiddleware($maxAttempts, $decaySeconds));
 
 	}
 

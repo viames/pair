@@ -39,6 +39,7 @@ For coding conventions and technical guardrails, defer to `GEMINI.md`.
 4. Verify that backward compatibility is preserved (unless explicitly requested otherwise).
 5. Add or update tests if the behavior changes.
 6. Keep the implementation consistent with Pair conventions defined in `GEMINI.md`.
+7. If public framework behavior changes, update the relevant pages in the sibling `pair.wiki` docs, especially for `src/Api` and `.env` configuration changes.
 
 Use deeper documents only when needed:
 
@@ -118,4 +119,5 @@ Before completing the task:
 - [ ] I did not introduce new dependencies unnecessarily
 - [ ] I did not commit secrets
 - [ ] I updated or added tests when behavior changed
+- [ ] I updated `pair.wiki` docs when public framework behavior changed
 - [ ] I documented manual test steps if applicable

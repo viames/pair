@@ -2,6 +2,8 @@
 
 namespace Pair\Api;
 
+use Pair\Core\Env;
+
 /**
  * HTTP request wrapper for API controllers. Provides methods for accessing
  * request method, headers, JSON body, query parameters, and validation.
@@ -244,11 +246,22 @@ class Request {
 	}
 
 	/**
-	 * Get the client IP address.
+	 * Get the effective client IP address. Forwarded headers are trusted only when the
+	 * immediate remote address belongs to a configured trusted proxy.
 	 */
 	public function ip(): string {
 
-		return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+		$remoteAddress = trim((string)($_SERVER['REMOTE_ADDR'] ?? ''));
+
+		if ($this->isTrustedProxy($remoteAddress)) {
+			$forwardedIp = $this->forwardedClientIp();
+
+			if (!is_null($forwardedIp)) {
+				return $forwardedIp;
+			}
+		}
+
+		return filter_var($remoteAddress, FILTER_VALIDATE_IP) ? $remoteAddress : '0.0.0.0';
 
 	}
 
@@ -278,6 +291,164 @@ class Request {
 				$this->jsonData = $decoded;
 			}
 		}
+
+	}
+
+	/**
+	 * Extract the client IP from trusted forwarding headers.
+	 */
+	private function forwardedClientIp(): ?string {
+
+		$forwarded = $this->header('Forwarded');
+		$forwardedIp = $this->parseForwardedHeader($forwarded);
+
+		if (!is_null($forwardedIp)) {
+			return $forwardedIp;
+		}
+
+		$forwardedFor = $this->header('X-Forwarded-For');
+
+		if (!is_string($forwardedFor) or !strlen(trim($forwardedFor))) {
+			return null;
+		}
+
+		foreach (explode(',', $forwardedFor) as $candidate) {
+			$ip = $this->normalizeForwardedIp($candidate);
+
+			if (!is_null($ip)) {
+				return $ip;
+			}
+		}
+
+		return null;
+
+	}
+
+	/**
+	 * Parse the standardized Forwarded header and return the first valid client IP.
+	 */
+	private function parseForwardedHeader(?string $header): ?string {
+
+		if (!is_string($header) or !strlen(trim($header))) {
+			return null;
+		}
+
+		foreach (explode(',', $header) as $entry) {
+			foreach (explode(';', $entry) as $part) {
+				$part = trim($part);
+
+				if (stripos($part, 'for=') !== 0) {
+					continue;
+				}
+
+				$value = trim(substr($part, 4));
+				return $this->normalizeForwardedIp($value);
+			}
+		}
+
+		return null;
+
+	}
+
+	/**
+	 * Normalize a forwarded IP token, stripping quotes, IPv6 brackets, and ports.
+	 */
+	private function normalizeForwardedIp(?string $value): ?string {
+
+		if (!is_string($value)) {
+			return null;
+		}
+
+		$value = trim($value, " \t\n\r\0\x0B\"'");
+
+		if (!strlen($value) or strtolower($value) === 'unknown') {
+			return null;
+		}
+
+		if (str_starts_with($value, '[')) {
+			$end = strpos($value, ']');
+
+			if (false !== $end) {
+				$value = substr($value, 1, $end - 1);
+			}
+		} else if (substr_count($value, ':') === 1 and !filter_var($value, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+			$value = substr($value, 0, strrpos($value, ':'));
+		}
+
+		return filter_var($value, FILTER_VALIDATE_IP) ? $value : null;
+
+	}
+
+	/**
+	 * Return true when the remote address belongs to a configured trusted proxy.
+	 * Supports exact IPs and CIDR ranges separated by commas.
+	 */
+	private function isTrustedProxy(string $ip): bool {
+
+		if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+			return false;
+		}
+
+		$trusted = Env::get('PAIR_TRUSTED_PROXIES');
+
+		if (!is_string($trusted) or !strlen(trim($trusted))) {
+			return false;
+		}
+
+		foreach (explode(',', $trusted) as $candidate) {
+			$candidate = trim($candidate);
+
+			if (!strlen($candidate)) {
+				continue;
+			}
+
+			if ($this->ipMatchesRange($ip, $candidate)) {
+				return true;
+			}
+		}
+
+		return false;
+
+	}
+
+	/**
+	 * Match an IP address against an exact IP or CIDR range.
+	 */
+	private function ipMatchesRange(string $ip, string $range): bool {
+
+		if (!str_contains($range, '/')) {
+			return $ip === $range;
+		}
+
+		list($subnet, $prefixLength) = explode('/', $range, 2);
+		$ipBinary = inet_pton($ip);
+		$subnetBinary = inet_pton($subnet);
+
+		if (false === $ipBinary or false === $subnetBinary or strlen($ipBinary) !== strlen($subnetBinary)) {
+			return false;
+		}
+
+		$prefixLength = intval($prefixLength);
+		$maxPrefix = strlen($ipBinary) * 8;
+
+		if ($prefixLength < 0 or $prefixLength > $maxPrefix) {
+			return false;
+		}
+
+		$fullBytes = intdiv($prefixLength, 8);
+		$remainingBits = $prefixLength % 8;
+
+		if ($fullBytes and substr($ipBinary, 0, $fullBytes) !== substr($subnetBinary, 0, $fullBytes)) {
+			return false;
+		}
+
+		if (!$remainingBits) {
+			return true;
+		}
+
+		$mask = (0xFF << (8 - $remainingBits)) & 0xFF;
+
+		return (ord($ipBinary[$fullBytes]) & $mask) === (ord($subnetBinary[$fullBytes]) & $mask);
 
 	}
 

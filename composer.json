@@ -67,6 +67,7 @@
 		}
 	},
 	"suggest": {
+		"ext-redis": "*",
 		"ext-xdebug": "*"
 	}
 }
