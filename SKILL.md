@@ -13,9 +13,10 @@ language: "en"
 
 # Pair Framework — SKILL
 
-Use this skill as the **primary entrypoint** for assistants working in this repository.
+Use this file as the **compact quick-start companion** to `AGENTS.md`.
 
-Read this file first. It contains the non-negotiable rules that must be applied before opening deeper project documentation.
+Read `AGENTS.md` first.
+Then use this file to move quickly through the repository without losing the main workflow and output rules.
 
 ---
 
@@ -36,7 +37,7 @@ Backward compatibility must be preserved unless explicitly requested otherwise.
 
 ## Core rules
 
-These rules take precedence for normal work in this repository:
+These are the fast-path guardrails to keep in mind while applying `AGENTS.md` and `GEMINI.md`:
 
 - Keep diffs minimal and focused on the requested task.
 - Preserve backward compatibility unless the task explicitly requires otherwise.
@@ -57,7 +58,7 @@ Before coding:
 5. Inspect `/tests` if present.
 6. Verify public API usage before changing framework internals.
 
-If a rule violation would likely produce the wrong implementation, that rule belongs here and must be followed immediately.
+If a task is ambiguous, too broad, or may cause a backward-compatibility or architecture mistake, stop and ask for clarification before editing code.
 
 ---
 
@@ -74,8 +75,8 @@ Use this decision guide to avoid reading too much documentation:
 
 Default reading order for most tasks:
 
-1. `SKILL.md`
-2. `AGENTS.md`
+1. `AGENTS.md`
+2. `SKILL.md`
 3. `GEMINI.md`
 4. One task-specific document from the list above
 
@@ -195,10 +196,10 @@ Agents should reuse existing framework components instead of reimplementing simi
 
 ## Documentation map
 
-Read the following files only as needed after this entrypoint:
+Read the following files only as needed after the primary entrypoint (`AGENTS.md`):
 
 1. AGENTS.md  
-   Workflow, review hygiene, and expected final output.
+   Primary entrypoint, workflow, review hygiene, document ownership, and expected final output.
 
 2. GEMINI.md  
    Technical conventions, architecture summary, and coding guardrails.
@@ -226,9 +227,9 @@ If guidance conflicts:
 
 1. Existing repository code
 2. Tests
-3. SKILL.md
-4. GEMINI.md
-5. AGENTS.md
+3. AGENTS.md
+4. SKILL.md
+5. GEMINI.md
 6. CODEX.md
 7. PAIR_ARCHITECTURE.md
 8. PAIR_CONTEXT.md
@@ -239,8 +240,8 @@ If guidance conflicts:
 
 ## Minimal runbook
 
-1. Read `SKILL.md`.
-2. Read `AGENTS.md`.
+1. Read `AGENTS.md`.
+2. Read `SKILL.md`.
 3. Read `GEMINI.md`.
 4. Read `CODEX.md` when working in Codex environments.
 5. Read deeper documents only if the task needs architectural or pattern-specific context.

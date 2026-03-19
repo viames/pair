@@ -2,8 +2,8 @@
 
 Technical context, conventions, and guardrails for AI assistants working on the Pair framework.
 
-Read `SKILL.md` first for the critical entry rules.
-Read `AGENTS.md` for workflow and completion expectations.
+Read `AGENTS.md` first for the primary workflow and operating contract.
+Read `SKILL.md` next for the compact quick-start and repository map.
 Use this file as the main technical reference after the entrypoint.
 
 ---

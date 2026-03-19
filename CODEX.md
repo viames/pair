@@ -4,14 +4,15 @@ Guidelines specifically for OpenAI Codex agents working on this repository.
 
 This file complements:
 
-- SKILL.md (entrypoint)
+- AGENTS.md (primary entrypoint)
+- SKILL.md (quick-start)
 - GEMINI.md (architecture and conventions)
-- AGENTS.md (workflow and PR format)
+- workflow and PR format from AGENTS.md
 - PAIR_ARCHITECTURE.md (framework architecture)
 
 Codex agents should follow these documents in that order.
 
-When the task is small, stop after `SKILL.md`, `AGENTS.md`, and `GEMINI.md` unless uncertainty remains.
+When the task is small, stop after `AGENTS.md`, `SKILL.md`, and `GEMINI.md` unless uncertainty remains.
 
 ---
 
