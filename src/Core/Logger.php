@@ -370,7 +370,38 @@ class Logger implements LoggerInterface {
 
 		}
 
-		return strtr($message, $replace);
+			return strtr($message, $replace);
+
+		}
+
+	/**
+	 * Normalize raw error codes coming from context or Throwable objects.
+	 *
+	 * PDO and other internal exceptions can expose SQLSTATE strings, while the logger internals
+	 * only need integer framework codes for threshold checks and DB-error skips.
+	 *
+	 * @param mixed $errorCode Raw error code.
+	 * @return int|null Integer code when safely convertible, null otherwise.
+	 */
+	private function normalizeErrorCode(mixed $errorCode): ?int {
+
+		if (is_int($errorCode)) {
+			return $errorCode;
+		}
+
+		if (is_string($errorCode)) {
+			$errorCode = trim($errorCode);
+
+			if ($errorCode === '') {
+				return null;
+			}
+
+			if (preg_match('/^-?\d+$/', $errorCode) === 1) {
+				return (int)$errorCode;
+			}
+		}
+
+		return null;
 
 	}
 
@@ -392,7 +423,7 @@ class Logger implements LoggerInterface {
 
 		// render the message with context values
 		$rendered = $this->interpolate((string)$message, $context);
-		$errorCode = $context['errorCode'] ?? null;
+		$errorCode = $this->normalizeErrorCode($context['errorCode'] ?? null);
 
 		// log the message in LogBar
 		if (in_array($level, [self::DEBUG, self::INFO, self::NOTICE], true)) {
@@ -427,12 +458,12 @@ class Logger implements LoggerInterface {
 	 * @param string	Description message of the error.
 	 * @param int		PSR-3 log level number equivalent.
 	 * @param array		Context array.
-	 * @param int|null	Optional error code to avoid logging certain errors.
+	 * @param int|string|null	Optional raw error code to avoid logging certain errors.
 	 */
-	private function process(int $level, string $description, array $context = [], ?int $errorCode = null): void {
+	private function process(int $level, string $description, array $context = [], int|string|null $errorCode = null): void {
 
-		// prefer explicit parameter, but allow fallback to context entry
-		$errorCode ??= $context['errorCode'] ?? null;
+		// normalize explicit and contextual error codes so SQLSTATE strings do not break typed flows
+		$errorCode = $this->normalizeErrorCode($errorCode ?? ($context['errorCode'] ?? null));
 
 		// register error in database only if not a DB connection error
 		$dbErrorCodes = [
