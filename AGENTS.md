@@ -125,6 +125,7 @@ Agents must follow these rules:
 - Do not modify unrelated files.
 - Add comments/docblocks to PHP and JS functions that are touched.
 - Add a short comment for non-trivial code paths that are introduced or changed.
+- Comments and docblocks in Pair framework code must always be written in English.
 - If a request is ambiguous, too broad, or risks an architectural or backward-compatibility mistake, ask for clarification before changing code.
 
 ---

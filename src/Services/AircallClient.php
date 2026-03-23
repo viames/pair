@@ -1101,8 +1101,29 @@ class AircallClient {
 			return $path;
 		}
 
+		$query = $this->normalizeQueryBooleans($query);
 		$separator = str_contains($path, '?') ? '&' : '?';
 		return $path . $separator . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
+
+	}
+
+	/**
+	 * Normalize boolean values in query parameters to `true`/`false` strings, as expected by Aircall API.
+	 *
+	 * @param array<string, mixed> $query Raw query parameters.
+	 * @return array<string, mixed> Query parameters with booleans converted to `true`/`false`.
+	 */
+	private function normalizeQueryBooleans(array $query): array {
+
+		array_walk_recursive($query, function (&$value): void {
+
+			if (is_bool($value)) {
+				$value = $value ? 'true' : 'false';
+			}
+
+		});
+
+		return $query;
 
 	}
 
