@@ -292,6 +292,20 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		}
 
+		// a declared property without a DB bind usually means the schema is behind the class definition.
+		if (property_exists(static::class, $name)) {
+			$columnName = static::getExpectedColumnName($name);
+			throw new PairException(
+				Translator::do(
+					'ACTIVE_RECORD_MISSING_DB_COLUMN',
+					[$columnName, static::TABLE_NAME],
+					false,
+					'Missing DB column “%s” in table “%s”. Apply the migration and reload the page.'
+				),
+				ErrorCodes::PROPERTY_NOT_FOUND
+			);
+		}
+
 		// property not found
 		throw new PairException('Property “' . $name . '” not found for class ' . get_called_class(), ErrorCodes::PROPERTY_NOT_FOUND);
 
@@ -1201,8 +1215,15 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 			// if property doesn’t exist in the class, it will be handled as dynamic property
 			if (!property_exists(static::class, $property)) {
-				throw new PairException('Property “' . $property . '” mapped to DB column “' . $col->Field .
-					'” does not exist in class ' . static::class, ErrorCodes::PROPERTY_NOT_FOUND);
+				throw new PairException(
+					Translator::do(
+						'ACTIVE_RECORD_MISSING_CLASS_PROPERTY',
+						[$property, static::class, $col->Field],
+						false,
+						'Missing property “%s” in class %s for DB column “%s”.'
+					),
+					ErrorCodes::PROPERTY_NOT_FOUND
+				);
 			} else {
 				$maps[$property] = $col->Field;
 			}
@@ -1210,6 +1231,17 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 
 		return $maps;
+
+	}
+
+	/**
+	 * Convert a class property name to the conventional snake_case DB column name.
+	 *
+	 * @param	string	$property	Property name to convert.
+	 */
+	protected static function getExpectedColumnName(string $property): string {
+
+		return strtolower((string)preg_replace('/(?<!^)[A-Z]/', '_$0', $property));
 
 	}
 

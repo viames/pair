@@ -37,6 +37,8 @@ class PairException extends \Exception {
 			throw new CriticalException($message, $code, $previous);
 		}
 
+		parent::__construct($message, $code, $previous);
+
 		// intercept any previous message and track it
 		$trackedMessage = ($previous and $previous->getMessage()) ? $previous->getMessage() : $message;
 		$logger = Logger::getInstance();
@@ -80,31 +82,29 @@ class PairException extends \Exception {
 	}
 
 	/**
-	 * Costruisce il messaggio tecnico completo da mostrare in ambienti non produttivi.
+	 * Build a concise technical message for non-production environments.
 	 */
 	protected static function buildThrowableDebugMessage(\Throwable $error): string {
 
 		$messages = [];
 		$currentError = $error;
+		$fallbackMessage = Translator::do('TECHNICAL_ERROR_WITHOUT_DETAILS', null, false, 'Technical error without details.');
 
 		do {
 			$message = trim((string)$currentError->getMessage());
 
 			if ('' === $message) {
-				$message = 'Eccezione senza messaggio';
+				$message = $fallbackMessage;
 			}
 
-			$messages[] = get_class($currentError) . ': '
-				. $message
-				. ' in '
-				. $currentError->getFile()
-				. ' line '
-				. $currentError->getLine();
+			if (!in_array($message, $messages, true)) {
+				$messages[] = $message;
+			}
 
 			$currentError = $currentError->getPrevious();
 		} while ($currentError);
 
-		return implode("\n\nCaused by:\n", $messages);
+		return end($messages) ?: $fallbackMessage;
 
 	}
 
