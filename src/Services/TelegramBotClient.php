@@ -182,13 +182,11 @@ class TelegramBotClient {
 
 		if (false === $response) {
 			$error = curl_error($curl);
-			curl_close($curl);
 
 			throw new PairException('Telegram file download error: ' . $error, ErrorCodes::TELEGRAM_FAILURE);
 		}
 
 		$httpCode = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
-		curl_close($curl);
 
 		if (200 !== $httpCode) {
 			throw new PairException('Telegram file download failed: HTTP ' . $httpCode, ErrorCodes::TELEGRAM_FAILURE);
@@ -797,13 +795,11 @@ class TelegramBotClient {
 
 		if (false === $response) {
 			$error = curl_error($curl);
-			curl_close($curl);
 
 			throw new PairException('Telegram API request failed: ' . $error, ErrorCodes::TELEGRAM_FAILURE);
 		}
 
 		$httpCode = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
-		curl_close($curl);
 
 		$decodedResponse = json_decode($response, true);
 

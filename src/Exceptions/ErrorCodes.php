@@ -299,4 +299,9 @@ class ErrorCodes {
 	 */
 	const GOOGLE_MAPS_ERROR = 1059;
 
+	/**
+	 * WhatsApp Cloud API error.
+	 */
+	const WHATSAPP_ERROR = 1060;
+
 }

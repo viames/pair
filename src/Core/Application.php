@@ -805,6 +805,12 @@ class Application {
 
 			// continue with apiCtl action
 
+		// Meta WhatsApp webhooks are authenticated with verify token and request signature,
+		// so they do not use Pair session IDs nor OAuth bearer tokens.
+		} else if ('whatsappWebhook' == $router->action and $apiCtl instanceof \Pair\Api\ApiController and method_exists($apiCtl, $action)) {
+
+			// continue with apiCtl action
+
 		// passkey login ceremony can start without sid, challenge is stored in PHP session
 		} else if ('passkey' == $router->action and !$sid) {
 

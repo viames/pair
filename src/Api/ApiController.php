@@ -5,8 +5,10 @@ namespace Pair\Api;
 use Pair\Core\Env;
 use Pair\Core\Application;
 use Pair\Core\Controller;
+use Pair\Exceptions\PairException;
 use Pair\Models\Session;
 use Pair\Models\User;
+use Pair\Services\WhatsAppCloudClient;
 
 /**
  * Abstract base class for API controllers. Extends the standard Controller
@@ -34,6 +36,11 @@ abstract class ApiController extends Controller {
 	 * The middleware pipeline.
 	 */
 	private MiddlewarePipeline $pipeline;
+
+	/**
+	 * Cached WhatsApp Cloud API client.
+	 */
+	private ?WhatsAppCloudClient $whatsAppCloudClient = null;
 
 	/**
 	 * Initialize the API controller with request and middleware pipeline.
@@ -152,6 +159,35 @@ abstract class ApiController extends Controller {
 	}
 
 	/**
+	 * Ready-to-use unauthenticated webhook endpoint for Meta WhatsApp Cloud API.
+	 *
+	 * Route:
+	 * - GET  /api/whatsappWebhook
+	 * - POST /api/whatsappWebhook
+	 *
+	 * GET validates the `hub.*` challenge and returns the plain-text challenge.
+	 * POST validates the webhook signature, decodes the payload, extracts normalized
+	 * events, and forwards them to handleWhatsAppWebhook().
+	 */
+	public function whatsappWebhookAction(): void {
+
+		$method = strtoupper($this->request->method());
+
+		if ('GET' === $method) {
+			$this->verifyWhatsAppWebhookChallenge();
+			return;
+		}
+
+		if ('POST' === $method) {
+			$this->receiveWhatsAppWebhook();
+			return;
+		}
+
+		ApiResponse::error('METHOD_NOT_ALLOWED', ['expected' => 'GET or POST', 'actual' => $method]);
+
+	}
+
+	/**
 	 * Register the default middleware stack for API controllers.
 	 */
 	protected function registerDefaultMiddleware(): void {
@@ -169,6 +205,24 @@ abstract class ApiController extends Controller {
 	}
 
 	/**
+	 * Override this hook in the application controller to process inbound WhatsApp events.
+	 *
+	 * The default implementation simply acknowledges receipt.
+	 *
+	 * @param	array	$events		Normalized events extracted from the Meta webhook payload.
+	 * @param	array	$payload	Original decoded webhook payload.
+	 * @return	array|\stdClass|null
+	 */
+	protected function handleWhatsAppWebhook(array $events, array $payload): \stdClass|array|null {
+
+		return [
+			'received' => true,
+			'events' => count($events),
+		];
+
+	}
+
+	/**
 	 * Run the middleware pipeline, then execute the destination callable.
 	 *
 	 * @param	callable	$destination	The final action to execute after all middleware.
@@ -178,6 +232,76 @@ abstract class ApiController extends Controller {
 		$this->pipeline->run($this->request, function () use ($destination) {
 			$destination();
 		});
+
+	}
+
+	/**
+	 * Return the lazily built WhatsApp Cloud API client.
+	 */
+	private function whatsAppCloudClient(): WhatsAppCloudClient {
+
+		if (!$this->whatsAppCloudClient) {
+			$this->whatsAppCloudClient = new WhatsAppCloudClient();
+		}
+
+		return $this->whatsAppCloudClient;
+
+	}
+
+	/**
+	 * Receive a POST webhook delivery from Meta, validate it, and dispatch normalized events.
+	 */
+	private function receiveWhatsAppWebhook(): void {
+
+		$client = $this->whatsAppCloudClient();
+
+		if (!$client->webhookAppSecretSet()) {
+			ApiResponse::error('INTERNAL_SERVER_ERROR', ['detail' => 'Missing WHATSAPP_CLOUD_APP_SECRET']);
+		}
+
+		$payload = $this->request->rawBody();
+
+		if ('' === trim($payload)) {
+			ApiResponse::error('BAD_REQUEST', ['detail' => 'Empty WhatsApp webhook payload']);
+		}
+
+		if (!$client->verifyWebhookSignature($payload)) {
+			ApiResponse::error('FORBIDDEN', ['detail' => 'Invalid WhatsApp webhook signature']);
+		}
+
+		try {
+			$decodedPayload = $client->decodeWebhookPayload($payload);
+		} catch (PairException $e) {
+			ApiResponse::error('BAD_REQUEST', ['detail' => $e->getMessage()]);
+		}
+
+		$events = $client->extractWebhookEvents($decodedPayload);
+		$responseData = $this->handleWhatsAppWebhook($events, $decodedPayload);
+
+		ApiResponse::respond($responseData);
+
+	}
+
+	/**
+	 * Return the challenge requested by Meta during webhook verification.
+	 */
+	private function verifyWhatsAppWebhookChallenge(): void {
+
+		$client = $this->whatsAppCloudClient();
+
+		if (!$client->webhookVerifyTokenSet()) {
+			ApiResponse::error('INTERNAL_SERVER_ERROR', ['detail' => 'Missing WHATSAPP_CLOUD_WEBHOOK_VERIFY_TOKEN']);
+		}
+
+		try {
+			$challenge = $client->verifyWebhookChallenge();
+		} catch (PairException $e) {
+			ApiResponse::error('FORBIDDEN', ['detail' => $e->getMessage()]);
+		}
+
+		http_response_code(200);
+		header('Content-Type: text/plain; charset=utf-8');
+		echo $challenge;
 
 	}
 
