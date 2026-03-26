@@ -49,9 +49,9 @@ class PushDispatcher {
 			$result = $this->sender->send($notification, $subscription);
 			$results[] = $result;
 
-			// if the subscription is no longer valid, delete it
+			// if the subscription is no longer valid, revoke it so it stays traceable
 			if ($result->shouldDeleteSubscription) {
-				$this->repository->deleteByEndpoint($result->endpoint);
+				$this->repository->revokeByEndpoint($result->endpoint);
 			}
 		}
 

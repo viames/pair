@@ -116,8 +116,8 @@ class WebPushSender {
 				$result->error = 'Push report not available.';
 			}
 
-			// determine if subscription should be deleted
-			if (in_array($result->statusCode, [404, 410], true)) {
+			// mark subscriptions that are no longer reusable so the dispatcher can revoke them
+			if ($this->shouldRevokeSubscription($result)) {
 				$result->shouldDeleteSubscription = true;
 			}
 
@@ -128,6 +128,29 @@ class WebPushSender {
 		}
 
 		return $result;
+
+	}
+
+	/**
+	 * Determines whether a failed delivery means the subscription is no longer reusable.
+	 *
+	 * @param DeliveryResult $result The delivery result to inspect.
+	 * @return bool True when the subscription must be revoked.
+	 */
+	private function shouldRevokeSubscription(DeliveryResult $result): bool {
+
+		// 404 and 410 mean the push service no longer accepts this endpoint.
+		if (in_array($result->statusCode, [404, 410], true)) {
+			return true;
+		}
+
+		// Apple returns a 400 with VapidPkHashMismatch when the subscription was created
+		// with a different VAPID key pair and cannot be reused anymore.
+		if ((int)$result->statusCode === 400 and is_string($result->error)) {
+			return str_contains($result->error, 'VapidPkHashMismatch');
+		}
+
+		return false;
 
 	}
 

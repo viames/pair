@@ -28,7 +28,8 @@ class DeliveryResult {
 	public string $endpoint;
 
 	/**
-	 * Whether the subscription should be deleted.
+	 * Whether the subscription should be removed from active deliveries.
+	 * The legacy property name is kept for backward compatibility.
 	 */
 	public bool $shouldDeleteSubscription = false;
 
@@ -39,7 +40,7 @@ class DeliveryResult {
 	 * @param bool $success Whether the delivery was successful.
 	 * @param int|null $statusCode The HTTP status code, if available.
 	 * @param string|null $error The error message, if any.
-	 * @param bool $shouldDeleteSubscription Whether the subscription should be deleted.
+	 * @param bool $shouldDeleteSubscription Whether the subscription should be removed from active deliveries.
 	 */
 	public function __construct(
 		string $endpoint,
