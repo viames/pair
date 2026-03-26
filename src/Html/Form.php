@@ -13,6 +13,7 @@ use Pair\Html\FormControls\Date;
 use Pair\Html\FormControls\Datetime;
 use Pair\Html\FormControls\Email;
 use Pair\Html\FormControls\File;
+use Pair\Html\FormControls\GoogleAddress;
 use Pair\Html\FormControls\Hidden;
 use Pair\Html\FormControls\Image;
 use Pair\Html\FormControls\Meter;
@@ -58,6 +59,22 @@ use Pair\Orm\Collection;
 class Form {
 
 	/**
+	 * Submission endpoint for this form.
+	 */
+	private ?string $action = null;
+
+	/**
+	 * Optional autocomplete setting for the form tag.
+	 */
+	private ?string $autocomplete = null;
+
+	/**
+	 * Additional attributes for the form tag.
+	 * @var array<string, ?string>
+	 */
+	private array $attributes = [];
+
+	/**
 	 * List of all controls added to this form.
 	 * @var FormControl[]
 	 */
@@ -70,9 +87,40 @@ class Form {
 	private array $controlClasses = [];
 
 	/**
+	 * Encoding type for submitted data.
+	 */
+	private ?string $enctype = null;
+
+	/**
+	 * CSS classes applied to the form tag.
+	 * @var string[]
+	 */
+	private array $formClasses = [];
+
+	/**
+	 * Form DOM identifier.
+	 */
+	private ?string $id = null;
+
+	/**
 	 * Class to add on each labels.
 	 */
 	private ?string $labelClasses = null;
+
+	/**
+	 * HTTP method used to submit this form.
+	 */
+	private string $method = 'post';
+
+	/**
+	 * Skip native browser validation when submitting this form.
+	 */
+	private bool $novalidate = false;
+
+	/**
+	 * Target browsing context for the response.
+	 */
+	private ?string $target = null;
 
 	/**
 	 * Add a FormControl object to controls list of this Form. Chainable method.
@@ -81,6 +129,19 @@ class Form {
 
 		$this->controls[$control->name] = $control;
 		return $control;
+
+	}
+
+	/**
+	 * Sets the form action URL. Chainable method.
+	 *
+	 * @param	string	Action URL.
+	 */
+	public function action(string $action): Form {
+
+		$this->action = $action;
+
+		return $this;
 
 	}
 
@@ -95,6 +156,62 @@ class Form {
 		$control = new Address($name, $attributes);
 		$this->add($control);
 		return $control;
+
+	}
+
+	/**
+	 * Adds a Google-enhanced address input object to this Form object. Chainable method.
+	 *
+	 * @param	string	Control name.
+	 * @param	array	List of attributes.
+	 */
+	public function googleAddress(string $name, array $attributes = []): GoogleAddress {
+
+		$control = new GoogleAddress($name, $attributes);
+		$this->add($control);
+		return $control;
+
+	}
+
+	/**
+	 * Sets or unsets browser autocomplete for this form. Chainable method.
+	 *
+	 * @param	bool	True to enable autocomplete, false to disable it.
+	 */
+	public function autocomplete(bool $autocomplete = true): Form {
+
+		$this->autocomplete = $autocomplete ? 'on' : 'off';
+
+		return $this;
+
+	}
+
+	/**
+	 * Adds a single attribute to the form tag. Chainable method.
+	 *
+	 * @param	string	Attribute name.
+	 * @param	string|null	Attribute value. Null creates a boolean attribute.
+	 */
+	public function attribute(string $name, ?string $value = null): Form {
+
+		$this->attributes[$name] = $value;
+
+		return $this;
+
+	}
+
+	/**
+	 * Adds multiple attributes to the form tag. Chainable method.
+	 *
+	 * @param	array<string, scalar|null>	List of attributes.
+	 */
+	public function attributes(array $attributes): Form {
+
+		foreach ($attributes as $name => $value) {
+			$this->attribute((string)$name, is_null($value) ? null : (string)$value);
+		}
+
+		return $this;
 
 	}
 
@@ -254,6 +371,15 @@ class Form {
 	}
 
 	/**
+	 * Returns the closing form tag.
+	 */
+	public function close(): string {
+
+		return '</form>';
+
+	}
+
+	/**
 	 * Adds a common CSS class to all controls of this form at render time. Chainable method.
 	 *
 	 * @param	string	CSS Class name.
@@ -261,6 +387,25 @@ class Form {
 	public function classForControls(string $class): Form {
 
 		$this->controlClasses[] = $class;
+
+		return $this;
+
+	}
+
+	/**
+	 * Adds one or more CSS classes to the form tag. Chainable method.
+	 *
+	 * @param	string	CSS class list.
+	 */
+	public function classForForm(string $class): Form {
+
+		$classes = preg_split('/\s+/', trim($class)) ?: [];
+
+		foreach ($classes as $singleClass) {
+			if ('' != $singleClass and !in_array($singleClass, $this->formClasses, true)) {
+				$this->formClasses[] = $singleClass;
+			}
+		}
 
 		return $this;
 
@@ -358,6 +503,23 @@ class Form {
 	}
 
 	/**
+	 * Sets the form encoding type. Chainable method.
+	 *
+	 * @param	string	Encoding type.
+	 */
+	public function enctype(string $type): Form {
+
+		if (!in_array($type, ['application/x-www-form-urlencoded', 'multipart/form-data', 'text/plain'], true)) {
+			throw new \InvalidArgumentException('Form enctype must be application/x-www-form-urlencoded, multipart/form-data or text/plain.');
+		}
+
+		$this->enctype = $type;
+
+		return $this;
+
+	}
+
+	/**
 	 * Adds an Email input object to this Form object. Chainable method.
 	 *
 	 * @param	string	Control name.
@@ -368,6 +530,32 @@ class Form {
 		$control = new Email($name, $attributes);
 		$this->add($control);
 		return $control;
+
+	}
+
+	/**
+	 * Assigns array or object values to controls with matching names.
+	 * This must be used after all controls have been defined.
+	 *
+	 * @param	array|object	Source values indexed by control name.
+	 */
+	public function fill(array|object $source): Form {
+
+		if ($source instanceof ActiveRecord) {
+			$values = $source->getAllProperties();
+		} else if (is_object($source)) {
+			$values = get_object_vars($source);
+		} else {
+			$values = $source;
+		}
+
+		foreach ($values as $name => $value) {
+			if (array_key_exists($name, $this->controls)) {
+				$this->controls[$name]->value($value);
+			}
+		}
+
+		return $this;
 
 	}
 
@@ -431,21 +619,24 @@ class Form {
 	}
 
 	/**
+	 * Sets the form ID. Chainable method.
+	 *
+	 * @param	string	Identifier used by controls and labels.
+	 */
+	public function id(string $id): Form {
+
+		$this->id = $id;
+
+		return $this;
+
+	}
+
+	/**
 	 * Validates all form field controls and returns a FormValidation result object.
 	 */
 	public function isValid(): bool {
 
-		$valid = true;
-
-		foreach ($this->controls as $control) {
-
-			if (!$control->validate()) {
-				$valid = false;
-			}
-
-		}
-
-		return $valid;
+		return 0 === count($this->collectInvalidControls());
 
 	}
 
@@ -471,6 +662,25 @@ class Form {
 		$control = new Month($name, $attributes);
 		$this->add($control);
 		return $control;
+
+	}
+
+	/**
+	 * Sets the form HTTP method. Chainable method.
+	 *
+	 * @param	string	HTTP method.
+	 */
+	public function method(string $method): Form {
+
+		$method = strtolower($method);
+
+		if (!in_array($method, ['get', 'post'], true)) {
+			throw new \InvalidArgumentException('Form method must be get or post.');
+		}
+
+		$this->method = $method;
+
+		return $this;
 
 	}
 
@@ -503,6 +713,73 @@ class Form {
 	}
 
 	/**
+	 * Enables or disables native browser validation. Chainable method.
+	 *
+	 * @param	bool	True to disable native validation, false to enable it.
+	 */
+	public function novalidate(bool $novalidate = true): Form {
+
+		$this->novalidate = $novalidate;
+
+		return $this;
+
+	}
+
+	/**
+	 * Returns the opening form tag.
+	 */
+	public function open(): string {
+
+		$attributes = [];
+		$enctype = $this->resolvedEnctype();
+
+		if (!is_null($this->action)) {
+			$attributes[] = 'action="' . htmlspecialchars($this->action) . '"';
+		}
+
+		$attributes[] = 'method="' . htmlspecialchars($this->method) . '"';
+
+		if (!is_null($this->id) and '' != $this->id) {
+			$attributes[] = 'id="' . htmlspecialchars($this->id) . '"';
+		}
+
+		if (!is_null($enctype)) {
+			$attributes[] = 'enctype="' . htmlspecialchars($enctype) . '"';
+		}
+
+		if (!is_null($this->target)) {
+			$attributes[] = 'target="' . htmlspecialchars($this->target) . '"';
+		}
+
+		if (!is_null($this->autocomplete)) {
+			$attributes[] = 'autocomplete="' . htmlspecialchars($this->autocomplete) . '"';
+		}
+
+		if ($this->novalidate) {
+			$attributes[] = 'novalidate';
+		}
+
+		if (count($this->formClasses)) {
+			$attributes[] = 'class="' . htmlspecialchars(implode(' ', $this->formClasses)) . '"';
+		}
+
+		foreach ($this->attributes as $name => $value) {
+
+			$attribute = htmlspecialchars((string)$name);
+
+			if (!is_null($value)) {
+				$attribute .= '="' . htmlspecialchars($value) . '"';
+			}
+
+			$attributes[] = $attribute;
+
+		}
+
+		return '<form ' . implode(' ', $attributes) . '>';
+
+	}
+
+	/**
 	 * Print the HTML code of a form control by its name.
 	 *
 	 * @param	string	HTML name of the wanted control.
@@ -510,6 +787,15 @@ class Form {
 	public function printControl(string $name): void {
 
 		print $this->renderControl($name);
+
+	}
+
+	/**
+	 * Print the closing form tag.
+	 */
+	public function printClose(): void {
+
+		print $this->close();
 
 	}
 
@@ -529,6 +815,24 @@ class Form {
 			}
 			$control->printLabel();
 		}
+
+	}
+
+	/**
+	 * Print the opening form tag.
+	 */
+	public function printOpen(): void {
+
+		print $this->open();
+
+	}
+
+	/**
+	 * Print the entire form markup with all registered controls.
+	 */
+	public function print(): void {
+
+		print $this->render();
 
 	}
 
@@ -574,6 +878,15 @@ class Form {
 	}
 
 	/**
+	 * Returns the full form HTML including all registered controls.
+	 */
+	public function render(): string {
+
+		return $this->open() . $this->renderControls() . $this->close();
+
+	}
+
+	/**
 	 * Creates an HTML form control getting its object by its name.
 	 *
 	 * @param	string	HTML name for this control.
@@ -597,6 +910,21 @@ class Form {
 			return '';
 
 		}
+
+	}
+
+	/**
+	 * Returns the HTML code of all registered controls in insertion order.
+	 */
+	public function renderControls(): string {
+
+		$html = '';
+
+		foreach (array_keys($this->controls) as $controlName) {
+			$html .= $this->renderControl($controlName);
+		}
+
+		return $html;
 
 	}
 
@@ -626,6 +954,23 @@ class Form {
 		$control = new Select($name, $attributes);
 		$this->add($control);
 		return $control;
+
+	}
+
+	/**
+	 * Sets the form response target. Chainable method.
+	 *
+	 * @param	string	Target name.
+	 */
+	public function target(string $target): Form {
+
+		if (!in_array($target, ['_blank', '_self', '_parent', '_top'], true) and preg_match('/\s/', $target)) {
+			throw new \InvalidArgumentException('Form target must be _blank, _self, _parent, _top or a valid framename.');
+		}
+
+		$this->target = $target;
+
+		return $this;
 
 	}
 
@@ -709,17 +1054,7 @@ class Form {
 	 */
 	public function unvalidControls(): array {
 
-		$unvalids = [];
-
-		foreach ($this->controls as $control) {
-
-			if (!$control->validate()) {
-				$unvalids[] = $control;
-			}
-
-		}
-
-		return $unvalids;
+		return $this->collectInvalidControls();
 
 	}
 
@@ -756,18 +1091,55 @@ class Form {
 	 */
 	public function values(ActiveRecord $object): void {
 
-		if (is_object($object) and is_subclass_of($object, 'Pair\Orm\ActiveRecord')) {
+		$this->fill($object);
 
-			$properties = $object->getAllProperties();
+	}
 
-			foreach ($properties as $name=>$value) {
-				if (array_key_exists($name, $this->controls)) {
-					$control = $this->control($name);
-					$control->value($value);
-				}
+	/**
+	 * Collects the controls that fail validation.
+	 *
+	 * @return FormControl[]
+	 */
+	private function collectInvalidControls(): array {
+
+		$invalidControls = [];
+
+		foreach ($this->controls as $control) {
+			if (!$control->validate()) {
+				$invalidControls[] = $control;
 			}
-
 		}
+
+		return $invalidControls;
+
+	}
+
+	/**
+	 * Checks whether the form contains at least one file control.
+	 */
+	private function hasFileControls(): bool {
+
+		foreach ($this->controls as $control) {
+			if ($control instanceof File) {
+				return true;
+			}
+		}
+
+		return false;
+
+	}
+
+	/**
+	 * Resolves the form encoding type, automatically enabling multipart submissions for file controls.
+	 */
+	private function resolvedEnctype(): ?string {
+
+		if (!is_null($this->enctype)) {
+			return $this->enctype;
+		}
+
+		// File controls require multipart encoding to preserve current HTML expectations.
+		return $this->hasFileControls() ? 'multipart/form-data' : null;
 
 	}
 

@@ -267,7 +267,8 @@ class Router {
 
 	/**
 	 * Proxy method to get the current URL with a different order value. If null param, will
-	 * reset ordering.
+	 * reset ordering. When the requested order differs from the current one, pagination is
+	 * removed from the generated URL so the list restarts from the first page.
 	 *
 	 * @param	int|null	Optional order value to build the URL with.
 	 */
@@ -275,11 +276,20 @@ class Router {
 
 		// save current order val
 		$tmp = $this->order;
+		$tmpPage = $this->page;
+
+		$currentOrder = (int)($tmp ?? 0);
+		$targetOrder = (int)($val ?? 0);
 
 		// build url with order value in param
 		$this->order = $val;
+		if ($currentOrder !== $targetOrder) {
+			// A different order must always start from the first page.
+			$this->page = null;
+		}
 		$url = $this->getUrl();
 		$this->order = $tmp;
+		$this->page = $tmpPage;
 
 		return $url;
 
@@ -522,32 +532,35 @@ class Router {
 				// assign params to vars array and set page, order and log
 				foreach ($params as $pos => $value) {
 
+					// Keep custom-route parameters normalized like standard routes.
+					$param = urldecode($value);
+
 					// flag to not send back log (useful for AJAX)
-					if ('noLog' == $value) {
+					if ('noLog' == $param) {
 
 						$this->sendLog = false;
 
 					// ordering
-					} else if ('order-' == substr($value, 0, 6)) {
+					} else if ('order-' == substr($param, 0, 6)) {
 
-						$nr = intval(substr($value, 6));
+						$nr = intval(substr($param, 6));
 						if ($nr) $this->setOrder($nr);
 
 					// pagination
-					} else if ('page-' == substr($value, 0, 5)) {
+					} else if ('page-' == substr($param, 0, 5)) {
 
-						$nr = intval(substr($value, 5));
+						$nr = intval(substr($param, 5));
 						$this->setPage($nr);
 
 					// create a var with parsed name
 					} else if (isset($variables[$pos]) and $variables[$pos]) {
 
-						$this->vars[$variables[$pos]] = $value;
+						$this->vars[$variables[$pos]] = $param;
 
 					// otherwise assign the param by its index position
 					} else {
 
-						$this->vars[$pos] = $value;
+						$this->vars[$pos] = $param;
 
 					}
 
@@ -766,12 +779,13 @@ class Router {
 	
 		$this->order = $order;
 
-		// Check if referer contains an order number and reset pagination if different
+		// Reset persisted pagination when the request switches to a different order.
 		if (isset($_SERVER['HTTP_REFERER'])) {
 			if (preg_match('/\/order-(\d+)/', $_SERVER['HTTP_REFERER'], $matches)) {
 				$oldOrder = (int)$matches[1];
 				if ($oldOrder !== $order) {
 					$this->orderChanged = true;
+					$this->resetPage();
 				}
 			}
 		}
@@ -779,13 +793,20 @@ class Router {
 	}
 
 	/**
-	 * Set a persistent state as current pagination index.
+	 * Set a persistent state as current pagination index unless a previous order change already
+	 * reset the current list to page 1.
 	 *
 	 * @param int $number Page number.
 	 */
 	public function setPage(int $number): void {
 
 		$number = (int)$number;
+
+		if ($this->orderChanged) {
+			// Ignore stale page values carried over by URLs generated before the order change.
+			$this->resetPage();
+			return;
+		}
 
 		$this->page = $number;
 

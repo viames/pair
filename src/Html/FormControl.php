@@ -503,11 +503,12 @@ abstract class FormControl {
 	}
 
 	/**
-	 * Print the control’s label tag even with required-field class.
+	 * Returns the control’s label tag, including the required marker when needed.
 	 */
-	public function printLabel(): void {
+	public function renderLabel(): string {
 
-		$label = '<label for="' . htmlspecialchars($this->name) . '"';
+		$labelFor = $this->id ?: $this->name;
+		$label = '<label for="' . htmlspecialchars($labelFor) . '"';
 
 		if (isset($this->labelClass) and $this->labelClass) {
 			$label .= ' class="' . $this->labelClass . '"';
@@ -526,7 +527,16 @@ abstract class FormControl {
 
 		$label .= '</label>';
 
-		print $label;
+		return $label;
+
+	}
+
+	/**
+	 * Print the control’s label tag even with required-field class.
+	 */
+	public function printLabel(): void {
+
+		print $this->renderLabel();
 
 	}
 
