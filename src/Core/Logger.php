@@ -15,7 +15,7 @@ use Pair\Services\AmazonSes;
 use Pair\Services\InsightHub;
 use Pair\Services\Sendmail;
 use Pair\Services\SmtpMailer;
-use Pair\Services\TelegramSender;
+use Pair\Services\TelegramBotClient;
 
 use Psr\Log\LoggerInterface;
 
@@ -502,14 +502,15 @@ class Logger implements LoggerInterface {
 		if ($errorCode !== ErrorCodes::TELEGRAM_FAILURE and $this->telegramThreshold >= $level and $this->telegramBotToken and count($this->telegramChatIds)) {
 
 			try {
-				$sender = new TelegramSender($this->telegramBotToken);
+				$sender = new TelegramBotClient($this->telegramBotToken);
 
 				$message = $levelDescription . ' level in ' . Env::get('APP_NAME') . ' ' . Env::get('APP_VERSION') . ' ' . Application::getEnvironment() . ' at ' . date('Y-m-d H:i:s');
 				$message .= "\n\n" . $description;
 
 				foreach ($this->telegramChatIds as $chatId) {
-					if ($chatId > 0) {
-						$sender->message($chatId, $message);
+					// Telegram groups and channels can use negative chat IDs, so only zero is invalid.
+					if (0 !== $chatId) {
+						$sender->sendMessage($chatId, $message);
 					}
 				}
 			} catch (\Throwable $e) {

@@ -60,7 +60,7 @@ $filesWithDatabaseConstants = [];
 $filesWithPairJson = [];
 $filesWithOauth2 = [];
 $filesWithChartJs = [];
-$filesWithTelegramNotifier = [];
+$filesWithTelegramLegacyClass = [];
 $filesWithTemplateParse = [];
 $filesWithTemplatePhp = [];
 $filesWithPrintStyles = [];
@@ -113,9 +113,11 @@ foreach ($files as $file) {
 	$content = str_replace('Pair\\Services\\ChartJsDataset', 'Pair\\Helpers\\ChartJsDataset', $content);
 	$content = str_replace('Pair\\Services\\ChartJs', 'Pair\\Helpers\\ChartJs', $content);
 
-	// TelegramNotifier renamed to TelegramSender
-	$content = str_replace('Pair\\Services\\TelegramNotifier', 'Pair\\Services\\TelegramSender', $content);
-	$content = preg_replace('/\bTelegramNotifier\b/', 'TelegramSender', $content);
+	// Telegram legacy classes now use TelegramBotClient
+	$content = str_replace('Pair\\Services\\TelegramNotifier', 'Pair\\Services\\TelegramBotClient', $content);
+	$content = str_replace('Pair\\Services\\TelegramSender', 'Pair\\Services\\TelegramBotClient', $content);
+	$content = preg_replace('/\bTelegramNotifier\b/', 'TelegramBotClient', $content);
+	$content = preg_replace('/\bTelegramSender\b/', 'TelegramBotClient', $content);
 
 	// Template parser moved to TemplateRenderer
 	$content = str_replace('Pair\\Models\\Template::parse(', '\\Pair\\Html\\TemplateRenderer::parse(', $content);
@@ -199,8 +201,8 @@ foreach ($files as $file) {
 	if (preg_match('/\bPair\\\\Services\\\\ChartJs(Dataset)?\b/', $content)) {
 		$filesWithChartJs[] = $file->getPathname();
 	}
-	if (preg_match('/\bTelegramNotifier\b/', $content)) {
-		$filesWithTelegramNotifier[] = $file->getPathname();
+	if (preg_match('/\b(TelegramNotifier|TelegramSender)\b/', $content)) {
+		$filesWithTelegramLegacyClass[] = $file->getPathname();
 	}
 	if (preg_match('/\bTemplate::parse\s*\(/', $content)) {
 		$filesWithTemplateParse[] = $file->getPathname();
@@ -263,9 +265,9 @@ if (count($filesWithChartJs)) {
 		print "- $path\n";
 	}
 }
-if (count($filesWithTelegramNotifier)) {
-	print "Warning: TelegramNotifier still referenced in:\n";
-	foreach ($filesWithTelegramNotifier as $path) {
+if (count($filesWithTelegramLegacyClass)) {
+	print "Warning: legacy Telegram classes still referenced in:\n";
+	foreach ($filesWithTelegramLegacyClass as $path) {
 		print "- $path\n";
 	}
 }
