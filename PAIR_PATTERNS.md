@@ -2,10 +2,11 @@
 
 This document describes **idiomatic coding patterns** for the Pair PHP framework.
 Read it when you already know where to change code and need to match Pair’s implementation style.
+Workflow and change-hygiene rules stay in `AGENTS.md`; technical conventions stay in `GEMINI.md`.
 
 ---
 
-## Fast pattern guide
+## Fast Pattern Guide
 
 Use these defaults unless nearby code shows a different established pattern:
 
@@ -14,23 +15,6 @@ Use these defaults unless nearby code shows a different established pattern:
 - Views stay simple and contain minimal logic.
 - Frontend behavior stays progressive and lightweight.
 - Prefer existing framework helpers over custom abstractions.
-- Comment PHP and JS functions, and annotate non-trivial logic.
-
----
-
-# General principles
-
-Pair favors:
-
-- simplicity
-- readability
-- minimal abstractions
-- server-rendered logic
-- progressive enhancement
-
-Avoid clever or over-engineered solutions.
-
-Prefer **clear, predictable code**.
 
 ---
 
@@ -214,18 +198,6 @@ Agents should follow existing request helpers.
 
 ---
 
-# Logging
-
-Use existing logging utilities when available.
-
-Avoid logging:
-
-- passwords
-- tokens
-- personal sensitive data
-
----
-
 ## Pattern selection rule
 
 If multiple patterns seem possible:
@@ -233,21 +205,6 @@ If multiple patterns seem possible:
 1. prefer the one already used in the same namespace or component
 2. prefer the one with the smaller diff
 3. prefer the one that preserves current public behavior most directly
-
----
-
-# Performance guidelines
-
-Avoid:
-
-- N+1 queries
-- repeated database calls inside loops
-- unnecessary allocations
-
-Prefer:
-
-- ORM collections
-- caching when appropriate
 
 ---
 

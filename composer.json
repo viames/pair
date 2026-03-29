@@ -13,15 +13,9 @@
 		"php": "^8.3||^8.4||^8.5",
 		"psr/log": "^1.1|^2.0|^3.0"
 	},
-	"repositories": [
-		{
-			"type": "composer",
-			"url" : "https://packagist.org/packages/viames/pair"
-		},{
-			"type": "vcs",
-			"url": "https://github.com/viames/pair"
-		}
-	],
+	"require-dev": {
+		"phpunit/phpunit": "^12.0"
+	},
 	"license": "MIT",
 	"keywords": [
 		"pair",
@@ -33,9 +27,10 @@
 		"rest-api"
 	],
 	"scripts": {
-        "upgrade-to-v2": "php scripts/upgrade-to-v2.php",
+		"test": "phpunit -c phpunit.xml.dist",
+		"upgrade-to-v2": "php scripts/upgrade-to-v2.php",
 		"upgrade-to-v3": "php scripts/upgrade-to-v3.php"
-    },
+	},
 	"autoload": {
 		"psr-4": {
 			"Pair\\": "src/",
@@ -47,6 +42,11 @@
 			"Pair\\Api\\OpenApi\\": "src/Api/OpenApi",
 			"Pair\\Services\\": "src/Services",
 			"Pair\\Helpers\\": "src/Helpers"
+		}
+	},
+	"autoload-dev": {
+		"psr-4": {
+			"Pair\\Tests\\": "tests/"
 		}
 	},
 	"support": {

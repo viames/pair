@@ -8,6 +8,8 @@
 /CODEX.md export-ignore
 /GEMINI.md export-ignore
 /SKILL.md export-ignore
+/phpunit.xml.dist export-ignore
+/tests export-ignore
 /.cursorrules export-ignore
 /.cursor export-ignore
 /.windsurfrules export-ignore

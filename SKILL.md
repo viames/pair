@@ -2,7 +2,7 @@
 name: "Pair Framework"
 slug: "pair"
 version: "3.3"
-description: "Entry skill for assistants working on the Pair framework repository."
+description: "Entry skill for assistants working on the Pair v3 framework repository."
 tags:
   - php
   - pair
@@ -11,12 +11,13 @@ tags:
 language: "en"
 ---
 
-# Pair Framework — SKILL
+# Pair Framework v3 — SKILL
 
 Use this file as the **compact quick-start companion** to `AGENTS.md`.
 
 Read `AGENTS.md` first.
 Then use this file to move quickly through the repository without losing the main workflow and output rules.
+This quick-start assumes Pair v3. The authoritative version-scope note lives in `AGENTS.md`.
 
 ---
 
@@ -31,34 +32,17 @@ Framework development in this repository:
 
 The goal is to produce **safe, minimal, reviewable changes**.
 
-Backward compatibility must be preserved unless explicitly requested otherwise.
-
 ---
 
-## Core rules
+## Quick Guardrails
 
-These are the fast-path guardrails to keep in mind while applying `AGENTS.md` and `GEMINI.md`:
+Use this file for navigation, not as a second source of truth.
 
-- Keep diffs minimal and focused on the requested task.
-- Preserve backward compatibility unless the task explicitly requires otherwise.
-- Reuse existing framework patterns before introducing new helpers or abstractions.
-- Do not weaken validation, escaping, CSRF, session, or query safety.
+- Workflow, change hygiene, clarification rules, and final output format are owned by `AGENTS.md`.
+- Technical conventions, comments/docblocks, security, and testing guidance are owned by `GEMINI.md`.
+- Reuse existing framework patterns before introducing helpers or abstractions.
 - Prefer additive changes over rewrites.
-- Do not introduce heavy dependencies or jQuery.
-- Do not modify unrelated files.
-- Always add docblocks/comments to PHP and JS functions.
-- Add a short comment for non-trivial code paths.
-
-Before coding:
-
-1. Inspect `/src` to understand the relevant namespace.
-2. Find the closest existing component solving a similar problem.
-3. Read at least one full class in that component.
-4. Check whether a utility already exists before creating a new helper.
-5. Inspect `/tests` if present.
-6. Verify public API usage before changing framework internals.
-
-If a task is ambiguous, too broad, or may cause a backward-compatibility or architecture mistake, stop and ask for clarification before editing code.
+- Use the smallest set of documents needed for the current task.
 
 ---
 
@@ -73,14 +57,23 @@ Use this decision guide to avoid reading too much documentation:
 - For larger features, refactors, migrations, or performance work: read `PAIR_TASKS.md`.
 - In Codex environments: read `CODEX.md`.
 
-Default reading order for most tasks:
+Start with `AGENTS.md`, `SKILL.md`, and `GEMINI.md`, then stop unless the task still needs deeper context.
 
-1. `AGENTS.md`
-2. `SKILL.md`
-3. `GEMINI.md`
-4. One task-specific document from the list above
+---
 
-If the task is small and local, stop after step 3 unless you hit uncertainty.
+## Official Docs Shortcuts
+
+Use the official Pair v3 wiki when the task touches one of these areas:
+
+- Routing, URL params, ordering, and pagination state: `Router`
+- Controller lifecycle, `_init()`, model/view loading, and PRG flows: `Controller`
+- View responsibility, `render()`, assigned variables, and layout behavior: `View`
+- Table-mapped entities, request population, persistence, and relations: `ActiveRecord`
+- Control rendering, CSRF, generated forms, and select conventions: `Form`
+- Progressive enhancement with `data-*` directives and lightweight helpers: `PairUI.js`
+- Runtime configuration or new environment keys: `.env configuration`
+
+Prefer these official docs over generic framework assumptions when behavior is unclear.
 
 ---
 
@@ -137,7 +130,6 @@ Before editing, confirm these high-risk assumptions:
 - ORM helpers are not being bypassed without a concrete reason.
 - Server-rendered behavior is preserved unless the task explicitly moves logic client-side.
 - Security behavior is not weakened.
-- PHP and JS functions keep explicit comments/docblocks.
 
 ---
 
@@ -159,7 +151,6 @@ Use these default flows for common tasks.
 2. Reuse an existing pattern in the same namespace.
 3. Prefer additive behavior over changing an existing public contract.
 4. Keep frontend behavior progressive and lightweight.
-5. Add comments/docblocks to touched PHP and JS functions.
 
 ### Local refactor
 
@@ -196,55 +187,15 @@ Agents should reuse existing framework components instead of reimplementing simi
 
 ## Documentation map
 
-Read the following files only as needed after the primary entrypoint (`AGENTS.md`):
+Document ownership and conflict resolution are defined in `AGENTS.md`.
 
-1. AGENTS.md  
-   Primary entrypoint, workflow, review hygiene, document ownership, and expected final output.
+Use deeper docs only for their narrow role:
 
-2. GEMINI.md  
-   Technical conventions, architecture summary, and coding guardrails.
-
-3. CODEX.md  
-   Additional guidelines for Codex agents.
-
-4. PAIR_ARCHITECTURE.md  
-   Framework architecture and design philosophy.
-
-5. PAIR_CONTEXT.md  
-   Strategic context for understanding what Pair is and what it is not.
-
-6. PAIR_PATTERNS.md  
-   Idiomatic coding patterns for Pair framework components.
-
-7. PAIR_TASKS.md  
-   Guidelines for handling complex tasks (features, bugfixes, refactors, migrations).
+- `GEMINI.md`: technical conventions and framework-level guardrails
+- `CODEX.md`: Codex-specific notes that do not restate shared rules
+- `PAIR_ARCHITECTURE.md`: framework internals and request flow
+- `PAIR_CONTEXT.md`: anti-import guardrails
+- `PAIR_PATTERNS.md`: idiomatic code shape and examples
+- `PAIR_TASKS.md`: extra guidance for broader or higher-risk tasks
 
 Read the minimum set needed for the task. More documentation is not automatically better if it delays a safe, pattern-consistent change.
-
-## Conflict resolution order
-
-If guidance conflicts:
-
-1. Existing repository code
-2. Tests
-3. AGENTS.md
-4. SKILL.md
-5. GEMINI.md
-6. CODEX.md
-7. PAIR_ARCHITECTURE.md
-8. PAIR_CONTEXT.md
-9. PAIR_PATTERNS.md
-10. PAIR_TASKS.md
-
----
-
-## Minimal runbook
-
-1. Read `AGENTS.md`.
-2. Read `SKILL.md`.
-3. Read `GEMINI.md`.
-4. Read `CODEX.md` when working in Codex environments.
-5. Read deeper documents only if the task needs architectural or pattern-specific context.
-6. Explore the repository structure.
-7. Implement the smallest viable change.
-8. Provide output using the format defined in `AGENTS.md`.

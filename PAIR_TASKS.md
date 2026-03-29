@@ -22,36 +22,40 @@ Agents should consult this document when implementing:
 
 ---
 
-# General task strategy
+# When to Use This File
 
-When working on a task:
+Open this document only when the task is not obviously local and low-risk.
+For routine work, follow `AGENTS.md`, `SKILL.md`, and `GEMINI.md` first.
 
-1. Understand the goal of the change.
-2. Inspect existing components related to the feature.
-3. Follow established patterns.
-4. Implement the **smallest safe change** that solves the task.
-5. Avoid introducing new architectural concepts.
-6. Maintain backward compatibility unless explicitly instructed otherwise.
-
-Use this file mainly for tasks that are not obviously local and low-risk. Small fixes should usually be handled by following `SKILL.md`, `AGENTS.md`, and `GEMINI.md` first.
+This file adds task-shaping guidance for work that crosses layers, carries rollout risk, or needs broader verification.
 
 ---
 
-# Bug fix tasks
+## Cross-Cutting Checklist
+
+Before implementing a larger task:
+
+1. Define the affected layers and public surfaces.
+2. Identify compatibility, rollout, and documentation risk.
+3. Split the work into the smallest reviewable slices.
+4. Decide the verification path before editing.
+5. Update wiki or contract docs in the same change when public behavior moves.
+
+---
+
+## Bug Fix Tasks
 
 When fixing a bug:
 
 1. Identify the root cause.
 2. Reproduce the problem if possible.
-3. Inspect related components.
-4. Implement the minimal fix.
+3. Check adjacent behavior and likely regression surface.
+4. Prefer a root-cause fix over defensive patching around symptoms.
 5. Verify that existing behavior remains unchanged.
-
-Prefer targeted fixes instead of broad refactors.
 
 ---
 
-# Feature implementation tasks
+## Feature Tasks
 
 When adding a feature:
 
@@ -65,31 +69,23 @@ When adding a feature:
 
 3. Reuse existing utilities where possible.
 
-4. Implement the feature in a way that:
-   - does not break existing APIs
-   - follows Pair patterns
-   - remains simple and readable.
+4. Prefer additive hooks, optional behavior, or narrow extensions over contract changes.
+5. Keep new config keys, docs, and public examples in the same diff.
 
 ---
 
-# Refactoring tasks
+## Refactor Tasks
 
 When refactoring code:
 
 1. Confirm that the refactor does not change external behavior.
 2. Prefer small localized refactors.
 3. Avoid refactoring unrelated files.
-4. Preserve public APIs whenever possible.
-
-Refactors should focus on:
-
-- clarity
-- maintainability
-- removing duplication.
+4. Remove duplication only where it improves the owner component instead of creating a new abstraction by reflex.
 
 ---
 
-# Performance tasks
+## Performance Tasks
 
 When optimizing performance:
 
@@ -101,66 +97,37 @@ When optimizing performance:
    - repeated allocations
    - unnecessary ORM calls.
 
-Prefer improving existing logic instead of rewriting components.
+4. Prefer improving existing logic instead of rewriting components.
 
 ---
 
-# Migration tasks
+## Migration and Upgrade Tasks
 
 When implementing migrations or framework upgrades:
 
-1. Preserve backward compatibility whenever possible.
-2. Document behavior changes clearly.
-3. Avoid removing existing APIs unless explicitly required.
-4. Prefer deprecation over immediate removal.
+1. Separate schema risk, data risk, and rollout risk in your reasoning.
+2. Check downstream models, forms, APIs, jobs, and exports before finalizing the change.
+3. Prefer additive changes or deprecation paths over immediate removal.
+4. Document rollback and deployment-order constraints clearly.
 
 ---
 
-# Documentation tasks
+## Documentation Tasks
 
 When updating documentation:
 
 1. Ensure examples match the current framework behavior.
-2. Keep documentation concise.
-3. Prefer practical examples.
-4. Avoid duplicating information across files.
-5. Preserve the role of each document instead of turning every file into a general source of truth.
+2. Update only the file that owns the topic.
+3. Remove duplication instead of copying rules into multiple files.
+4. Prefer practical examples only where they clarify the owning document.
 
 ---
 
-# Safety checks before finishing a task
+## Before Finishing a Larger Task
 
 Agents should verify:
 
-- The change follows Pair conventions.
-- The change does not break backward compatibility.
-- No secrets or sensitive data were introduced.
-- No heavy dependencies were added.
-- Code remains readable and simple.
-
----
-
-# When to request clarification
-
-Agents should request clarification only when:
-
-- the task conflicts with existing architecture
-- a change may break public APIs
-- multiple design approaches exist with significant impact
-- a new subsystem would be required
-
-Otherwise prefer implementing a minimal safe solution.
-
----
-
-# Summary
-
-For any task, agents should:
-
-1. Study the existing code.
-2. Follow framework patterns.
-3. Implement minimal changes.
-4. Preserve compatibility.
-5. Avoid unnecessary complexity.
-
-Pair prioritizes **clarity, stability, and maintainability** over clever solutions.
+- affected layers were all checked explicitly
+- compatibility and rollout risk were documented
+- verification matched the real risk of the task
+- related docs were updated when public behavior changed

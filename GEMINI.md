@@ -1,6 +1,6 @@
-# GEMINI.md — Pair Framework Technical Reference
+# GEMINI.md — Pair Framework v3 Technical Reference
 
-Technical context, conventions, and guardrails for AI assistants working on the Pair framework.
+Technical context, conventions, and guardrails for AI assistants working on the Pair v3 framework.
 
 Read `AGENTS.md` first for the primary workflow and operating contract.
 Read `SKILL.md` next for the compact quick-start and repository map.
@@ -8,14 +8,10 @@ Use this file as the main technical reference after the entrypoint.
 
 ---
 
-# Operating principles
+# Scope
 
-- **Minimal diff:** change only what the task requires.
-- **No breaking changes:** maintain backward compatibility unless explicitly requested.
-- **Security first:** never weaken validation or security mechanisms.
-- **Follow existing patterns:** reuse architecture already present in the framework.
-
-This file expands on those principles with technical detail. It should not duplicate workflow rules owned by `AGENTS.md`.
+This file owns technical conventions and framework-level behavior.
+Workflow, change scope, document ownership, and output format remain in `AGENTS.md`.
 
 ---
 
@@ -29,8 +25,6 @@ These are the conventions most likely to affect implementation accuracy:
 - Prefer readable multi-line code over compact clever code.
 - Prefer existing ORM relation helpers over manual joins when possible.
 - Keep frontend behavior lightweight and progressively enhanced.
-- Add comments/docblocks to PHP and JS functions.
-- Add a short explanatory comment for non-trivial logic.
 
 ---
 
@@ -77,10 +71,6 @@ Core classes are under:
 Pair\
 
 PSR‑4 autoloading.
-
-One class per file.
-
-Filename must match class name.
 
 ---
 

@@ -2,6 +2,7 @@
 
 This document explains the architectural philosophy and internal structure of the **Pair PHP framework**.
 Read it when a task touches framework internals or requires architectural decisions.
+Use `GEMINI.md` for technical conventions and `AGENTS.md` for workflow and safety rules.
 
 ---
 
@@ -111,45 +112,5 @@ Main directives:
 - data-each
 
 Agents should prefer these directives instead of introducing heavy frontend frameworks.
-
----
-
-# Security model
-
-Framework code must remain **secure by default**.
-
-Critical areas:
-
-- input validation
-- output encoding
-- CSRF protection
-- session management
-- database queries
-
-Agents must never weaken these protections.
-
----
-
-# Performance considerations
-
-Agents should avoid:
-
-- N+1 queries
-- unnecessary loops
-- repeated database calls
-- excessive allocations
-
-Prefer reuse of cached results and collections.
-
----
-
-# When uncertainty exists
-
-If architecture decisions are unclear:
-
-1. Prefer a minimal safe implementation
-2. Document assumptions
-3. Avoid breaking compatibility
-4. Ask for clarification only when a change would introduce a new subsystem or break public APIs
 
 ---
