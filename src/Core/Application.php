@@ -12,6 +12,7 @@ use Pair\Helpers\Translator;
 use Pair\Helpers\Utilities;
 use Pair\Html\IziToast;
 use Pair\Html\SweetAlert;
+use Pair\Html\SweetToast;
 use Pair\Html\TemplateRenderer;
 use Pair\Html\Widget;
 use Pair\Models\Audit;
@@ -105,7 +106,7 @@ class Application {
 
 	/**
 	 * Toast notifications, to be shown on page load.
-	 * @var IziToast[]
+	 * @var array<IziToast|SweetToast>
 	 */
 	private array $toasts = [];
 
@@ -118,6 +119,17 @@ class Application {
 	 * Currently connected user.
 	 */
 	private ?User $currentUser = null;
+
+	/**
+	 * Configured toast driver name.
+	 */
+	private string $toastDriver = 'izitoast';
+
+	/**
+	 * Configured toast position shared by server-side and client-side helpers.
+	 * When null, the active driver default is used.
+	 */
+	private ?string $toastPosition = null;
 
 	/**
 	 * Current session object.
@@ -164,7 +176,10 @@ class Application {
 	 */
 	const RESERVED_COOKIE_NAMES = [
 		'Modal' => 'Pair\Html\SweetAlert',
-		'ToastNotifications' => 'Pair\Html\IziToast'
+		'ToastNotifications' => [
+			'Pair\Html\IziToast',
+			'Pair\Html\SweetToast'
+		]
 	];
 
 	/**
@@ -447,6 +462,24 @@ class Application {
 	}
 
 	/**
+	 * Returns the normalized toast driver name.
+	 */
+	public function getToastDriver(): string {
+
+		return $this->toastDriver;
+
+	}
+
+	/**
+	 * Returns the normalized toast position alias or null when the driver default is used.
+	 */
+	public function getToastPosition(): ?string {
+
+		return $this->toastPosition;
+
+	}
+
+	/**
 	 * Builds the full cookie name for a given state name using the application prefix.
 	 *
 	 * @param	string	State variable name.
@@ -590,9 +623,12 @@ class Application {
 		} else if (array_key_exists($cookieName, $_COOKIE)) {
 
 			// for security reasons, unserialize only allowed classes
-			$allowedClasses = array_key_exists($stateName, static::RESERVED_COOKIE_NAMES)
-				? [self::RESERVED_COOKIE_NAMES[$stateName]]
-				: [];
+			$allowedClasses = [];
+
+			if (array_key_exists($stateName, static::RESERVED_COOKIE_NAMES)) {
+				$allowed = static::RESERVED_COOKIE_NAMES[$stateName];
+				$allowedClasses = is_array($allowed) ? $allowed : [$allowed];
+			}
 
 			// as of PHP 8.4.0 supports throw_on_error
 			if (version_compare(PHP_VERSION, '8.4.0', '>=')) {
@@ -692,6 +728,15 @@ class Application {
 		}
 
 		return $script;
+
+	}
+
+	/**
+	 * Returns true when the provided value is a supported toast notification object.
+	 */
+	private function isToastNotification(mixed $notification): bool {
+
+		return is_a($notification, IziToast::class) or is_a($notification, SweetToast::class);
 
 	}
 
@@ -1350,7 +1395,7 @@ class Application {
 		if (is_array($persistentToasts)) {
 			$this->unsetPersistentState('ToastNotifications');
 			foreach ($persistentToasts as $toast) {
-				if (is_a($toast, 'Pair\Html\IziToast')) {
+				if ($this->isToastNotification($toast)) {
 					$this->toasts[]= $toast;
 				}
 			}
@@ -1574,6 +1619,29 @@ class Application {
 	}
 
 	/**
+	 * Updates the toast driver used by helper methods and exposed to client-side code.
+	 *
+	 * Supported values are izitoast and sweetalert, with a few common aliases accepted.
+	 */
+	public function setToastDriver(string $driver): void {
+
+		$this->toastDriver = $this->normalizeToastDriver($driver);
+
+	}
+
+	/**
+	 * Updates the default toast position used by helper methods and exposed to client-side code.
+	 *
+	 * Supported values are Pair aliases such as topRight and bottomLeft, plus
+	 * SweetAlert2 aliases such as top-end and bottom-start.
+	 */
+	public function setToastPosition(string $position): void {
+
+		$this->toastPosition = $this->normalizeToastPosition($position);
+
+	}
+
+	/**
 	 * Allow to set a custom User class that inherits from Pair\Models\User.
 	 */
 	public function setUserClass(string $class): void {
@@ -1588,6 +1656,15 @@ class Application {
 	final public function scripts(): string {
 
 		$pageScripts = '';
+		$toastConfig = [
+			'driver' => $this->toastDriver
+		];
+
+		if (null !== $this->toastPosition) {
+			$toastConfig['position'] = $this->toastPosition;
+		}
+
+		$pageScripts .= '<script>window.PairToastConfig = ' . json_encode($toastConfig, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ';</script>' . "\n";
 
 		// collect script files
 		foreach ($this->scriptFiles as $file) {
@@ -1668,9 +1745,16 @@ class Application {
 	 * @param	string	Error message.
 	 * @param	string	Type of the toast (info|success|warning|error|question|progress), default info.
 	 */
-	public function toast(string $title, string $message = '', ?string $type = null): IziToast {
+	public function toast(string $title, string $message = '', ?string $type = null): IziToast|SweetToast {
 
-		$toast = new IziToast($title, $message, $type);
+		$toast = 'sweetalert' === $this->toastDriver
+			? new SweetToast($title, $message, $type)
+			: new IziToast($title, $message, $type);
+
+		if (null !== $this->toastPosition) {
+			$toast->position($this->toastPosition);
+		}
+
 		$this->toasts[] = $toast;
 		return $toast;
 
@@ -1682,7 +1766,7 @@ class Application {
 	 * @param	string	Toast title (bold).
 	 * @param	string	Error message.
 	 */
-	public function toastError(string $title, string $message = ''): IziToast {
+	public function toastError(string $title, string $message = ''): IziToast|SweetToast {
 
 		return $this->toast($title, $message, 'error');
 
@@ -1715,6 +1799,41 @@ class Application {
 		$this->toast($title, $message, 'success');
 		$this->makeToastNotificationsPersistent();
 		$this->redirect($url);
+
+	}
+
+	/**
+	 * Returns the normalized internal toast driver identifier.
+	 */
+	private function normalizeToastDriver(string $driver): string {
+
+		$normalized = strtolower(trim($driver));
+
+		return match ($normalized) {
+			'sweetalert', 'sweetalert2', 'swal' => 'sweetalert',
+			default => 'izitoast'
+		};
+
+	}
+
+	/**
+	 * Returns the normalized internal toast position alias.
+	 */
+	private function normalizeToastPosition(string $position): string {
+
+		$normalized = strtolower(trim($position));
+		$normalized = str_replace(['_', ' '], '-', $normalized);
+
+		return match ($normalized) {
+			'topright', 'top-right', 'topend', 'top-end' => 'topRight',
+			'topleft', 'top-left', 'topstart', 'top-start' => 'topLeft',
+			'topcenter', 'top-center', 'top' => 'topCenter',
+			'bottomright', 'bottom-right', 'bottomend', 'bottom-end' => 'bottomRight',
+			'bottomleft', 'bottom-left', 'bottomstart', 'bottom-start' => 'bottomLeft',
+			'bottomcenter', 'bottom-center', 'bottom' => 'bottomCenter',
+			'center' => 'center',
+			default => 'topRight'
+		};
 
 	}
 

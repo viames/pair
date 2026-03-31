@@ -53,7 +53,7 @@ class IziToast {
 	private string $message;
 
 	/**
-	 * Position of the toast notification.
+	 * Position of the toast notification. When null, the iziToast default is used.
 	 */
 	private ?string $position = null;
 
@@ -228,7 +228,7 @@ class IziToast {
 
 	/**
 	 * Available positions are: bottomRight, bottomLeft, topRight, topLeft, topCenter, bottomCenter,
-	 * center. Default is bottomRight. Chainable method.
+	 * center. When unset, the iziToast default is used. Chainable method.
 	 */
 	public function position(string $position): self {
 

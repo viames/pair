@@ -5,6 +5,7 @@ namespace Pair\Traits;
 use Pair\Core\Application;
 use Pair\Html\IziToast;
 use Pair\Html\SweetAlert;
+use Pair\Html\SweetToast;
 
 /**
  * Convenience trait that exposes shortcuts to the Application singleton.
@@ -113,6 +114,25 @@ trait AppTrait {
 	}
 
 	/**
+	 * Returns the configured toast driver.
+	 * Proxy to Application::getToastDriver().
+	 */
+	public function getToastDriver(): string {
+
+		return Application::getInstance()->getToastDriver();
+
+	}
+
+	/**
+	 * Proxy to Application::getToastPosition().
+	 */
+	public function getToastPosition(): ?string {
+
+		return Application::getInstance()->getToastPosition();
+
+	}
+
+	/**
 	 * Sets the URL of the currently selected menu item.
 	 * Proxy to Application::menuUrl().
 	 *
@@ -206,13 +226,13 @@ trait AppTrait {
 	 * @param string      $title   Toast title (bold).
 	 * @param string      $message Toast message text.
 	 * @param string|null $type    Toast type (info|success|warning|error|question|progress).
-	 * @return IziToast
+	 * @return IziToast|SweetToast
 	 */
-    public function toast(string $title, string $message = '', ?string $type = null): IziToast {
+	public function toast(string $title, string $message = '', ?string $type = null): IziToast|SweetToast {
 
-        return Application::getInstance()->toast($title, $message, $type);
+		return Application::getInstance()->toast($title, $message, $type);
 
-    }
+	}
 
 	/**
 	 * Queues an error toast notification.
@@ -220,9 +240,9 @@ trait AppTrait {
 	 *
 	 * @param string $title   Toast title (bold).
 	 * @param string $message Error message text.
-	 * @return IziToast
+	 * @return IziToast|SweetToast
 	 */
-	public function toastError(string $title, string $message = ''): IziToast {
+	public function toastError(string $title, string $message = ''): IziToast|SweetToast {
 
 		return Application::getInstance()->toastError($title, $message);
 
@@ -243,6 +263,26 @@ trait AppTrait {
 	}
 
 	/**
+	 * Sets the toast driver used by PHP helpers and by PairUI client-side notifications.
+	 * Proxy to Application::setToastDriver().
+	 */
+	public function setToastDriver(string $driver): void {
+
+		Application::getInstance()->setToastDriver($driver);
+
+	}
+
+	/**
+	 * Sets the default toast position used by PHP helpers and by PairUI client-side notifications.
+	 * Proxy to Application::setToastPosition().
+	 */
+	public function setToastPosition(string $position): void {
+
+		Application::getInstance()->setToastPosition($position);
+
+	}
+
+	/**
 	 * Queues a success toast notification and then redirects.
 	 * Proxy to Application::toastRedirect().
 	 *
@@ -250,11 +290,11 @@ trait AppTrait {
 	 * @param string      $message Message text.
 	 * @param string|null $url     Redirect URL, optional.
 	 */
-    public function toastRedirect(string $title, string $message = '', ?string $url = null): void {
+	public function toastRedirect(string $title, string $message = '', ?string $url = null): void {
 
 		Application::getInstance()->toastRedirect($title, $message, $url);
 
-    }
+	}
 
 	/**
 	 * Removes a persistent state value from cookies.

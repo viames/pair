@@ -15,7 +15,7 @@
   "use strict";
 
   const PairUI = {};
-  PairUI.version = "0.4.0";
+  PairUI.version = "0.4.1";
 
   // expose under both window.PairUI and window.Pair.UI
   global.Pair = global.Pair || {};
@@ -268,6 +268,384 @@
     const globalConfig = isPlainObject(global.PairUIPersistConfig) ? global.PairUIPersistConfig : {};
     return { ...persistConfig, ...globalConfig, ...(options || {}) };
   }
+
+  const VALID_TOAST_TYPES = ["info", "success", "warning", "error", "question", "progress"];
+  const toastDefaults = {
+    close: true,
+    closeOnEscape: true,
+    driver: "izitoast",
+    progressBar: true,
+    timeout: 5000,
+  };
+
+  /**
+   * Returns the normalized toast driver identifier.
+   * @param {*} driver
+   * @returns {string}
+   */
+  function normalizeToastDriver(driver) {
+    const normalized = String(driver ?? "").trim().toLowerCase();
+
+    if (["sweetalert", "sweetalert2", "swal"].includes(normalized)) {
+      return "sweetalert";
+    }
+
+    return "izitoast";
+  }
+
+  /**
+   * Returns the normalized toast type.
+   * @param {*} type
+   * @returns {string}
+   */
+  function normalizeToastType(type) {
+    const normalized = String(type ?? "").trim().toLowerCase();
+    return VALID_TOAST_TYPES.includes(normalized) ? normalized : "info";
+  }
+
+  /**
+   * Returns the merged toast configuration exposed by the server.
+   * @returns {Object}
+   */
+  function getToastSettings() {
+    const globalConfig = isPlainObject(global.PairToastConfig) ? global.PairToastConfig : {};
+    return {
+      ...toastDefaults,
+      ...globalConfig,
+      driver: normalizeToastDriver(globalConfig.driver ?? toastDefaults.driver),
+    };
+  }
+
+  /**
+   * Maps all supported toast position aliases to a canonical Pair value.
+   * @param {*} position
+   * @returns {string}
+   */
+  function getCanonicalToastPosition(position) {
+    const normalized = String(position ?? "")
+      .trim()
+      .toLowerCase()
+      .replaceAll("_", "-")
+      .replaceAll(" ", "-");
+
+    switch (normalized) {
+      case "top-left":
+      case "topleft":
+      case "top-start":
+      case "topstart":
+        return "topLeft";
+      case "top-center":
+      case "topcenter":
+      case "top":
+        return "topCenter";
+      case "bottom-left":
+      case "bottomleft":
+      case "bottom-start":
+      case "bottomstart":
+        return "bottomLeft";
+      case "bottom-center":
+      case "bottomcenter":
+      case "bottom":
+        return "bottomCenter";
+      case "center":
+        return "center";
+      default:
+        return "topRight";
+    }
+  }
+
+  /**
+   * Returns the driver-specific position token for the provided toast position.
+   * @param {*} position
+   * @param {string} driver
+   * @returns {string}
+   */
+  function normalizeToastPosition(position, driver) {
+    const canonical = getCanonicalToastPosition(position);
+
+    if (normalizeToastDriver(driver) === "sweetalert") {
+      switch (canonical) {
+        case "topLeft":
+          return "top-start";
+        case "topCenter":
+          return "top";
+        case "bottomLeft":
+          return "bottom-start";
+        case "bottomCenter":
+          return "bottom";
+        case "center":
+          return "center";
+        default:
+          return "top-end";
+      }
+    }
+
+    switch (canonical) {
+      case "topLeft":
+        return "topLeft";
+      case "topCenter":
+        return "topCenter";
+      case "bottomLeft":
+        return "bottomLeft";
+      case "bottomCenter":
+        return "bottomCenter";
+      case "center":
+        return "center";
+      default:
+        return "topRight";
+    }
+  }
+
+  /**
+   * Returns the normalized timeout value.
+   * @param {*} timeout
+   * @param {*} fallback
+   * @returns {number|boolean}
+   */
+  function normalizeToastTimeout(timeout, fallback) {
+    if (timeout === false) {
+      return false;
+    }
+
+    const parsed = Number(timeout);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+  }
+
+  /**
+   * Removes keys with undefined values from a plain object.
+   * @param {Object} payload
+   * @returns {Object}
+   */
+  function compactObject(payload) {
+    const out = {};
+
+    Object.keys(payload || {}).forEach((key) => {
+      if (payload[key] !== undefined) {
+        out[key] = payload[key];
+      }
+    });
+
+    return out;
+  }
+
+  /**
+   * Normalizes toast options shared by both supported client drivers.
+   * @param {*} options
+   * @returns {Object}
+   */
+  function normalizeToastOptions(options = {}) {
+    const settings = getToastSettings();
+    const rawOptions = isPlainObject(options) ? options : {};
+    const rawIcon = typeof rawOptions.icon === "string" ? rawOptions.icon.trim() : "";
+    const standardIcon = VALID_TOAST_TYPES.includes(rawIcon.toLowerCase()) ? rawIcon.toLowerCase() : "";
+
+    return {
+      balloon: typeof rawOptions.balloon === "boolean" ? rawOptions.balloon : undefined,
+      className: typeof rawOptions.class === "string" && rawOptions.class.trim()
+        ? rawOptions.class.trim()
+        : (typeof rawOptions.className === "string" && rawOptions.className.trim() ? rawOptions.className.trim() : undefined),
+      close: typeof rawOptions.close === "boolean"
+        ? rawOptions.close
+        : (typeof rawOptions.showCloseButton === "boolean" ? rawOptions.showCloseButton : !!settings.close),
+      closeOnEscape: typeof rawOptions.closeOnEscape === "boolean"
+        ? rawOptions.closeOnEscape
+        : !!settings.closeOnEscape,
+      customIcon: rawIcon && !standardIcon ? rawIcon : "",
+      displayMode: Number.isFinite(Number(rawOptions.displayMode)) ? Number(rawOptions.displayMode) : undefined,
+      driver: normalizeToastDriver(rawOptions.driver ?? settings.driver),
+      id: typeof rawOptions.id === "string" && rawOptions.id.trim() ? rawOptions.id.trim() : undefined,
+      image: typeof rawOptions.image === "string" && rawOptions.image.trim()
+        ? rawOptions.image.trim()
+        : (typeof rawOptions.imageUrl === "string" && rawOptions.imageUrl.trim() ? rawOptions.imageUrl.trim() : undefined),
+      layout: Number.isFinite(Number(rawOptions.layout)) ? Number(rawOptions.layout) : undefined,
+      maxWidth: rawOptions.maxWidth ?? rawOptions.width,
+      message: String(rawOptions.message ?? rawOptions.text ?? ""),
+      overlay: typeof rawOptions.overlay === "boolean" ? rawOptions.overlay : undefined,
+      position: typeof rawOptions.position === "string" && rawOptions.position.trim()
+        ? rawOptions.position.trim()
+        : (typeof settings.position === "string" && settings.position.trim() ? settings.position.trim() : undefined),
+      progressBar: typeof rawOptions.progressBar === "boolean"
+        ? rawOptions.progressBar
+        : (typeof rawOptions.timerProgressBar === "boolean" ? rawOptions.timerProgressBar : !!settings.progressBar),
+      theme: typeof rawOptions.theme === "string" && rawOptions.theme.trim() ? rawOptions.theme.trim() : undefined,
+      timeout: normalizeToastTimeout(rawOptions.timeout ?? rawOptions.timer, settings.timeout),
+      title: String(rawOptions.title ?? ""),
+      type: normalizeToastType(rawOptions.type ?? standardIcon),
+    };
+  }
+
+  /**
+   * Shows a toast through iziToast when the library is available.
+   * @param {Object} options
+   * @returns {boolean}
+   */
+  function showIziToast(options) {
+    if (!global.iziToast || typeof global.iziToast.show !== "function") {
+      return false;
+    }
+
+    const method = typeof global.iziToast[options.type] === "function"
+      ? global.iziToast[options.type].bind(global.iziToast)
+      : global.iziToast.show.bind(global.iziToast);
+
+    method(compactObject({
+      balloon: options.balloon,
+      class: options.className,
+      close: options.close,
+      closeOnEscape: options.closeOnEscape,
+      displayMode: options.displayMode,
+      icon: options.customIcon || undefined,
+      id: options.id,
+      image: options.image,
+      layout: options.layout,
+      maxWidth: options.maxWidth,
+      message: options.message,
+      overlay: options.overlay,
+      position: typeof options.position === "string" && options.position.trim()
+        ? normalizeToastPosition(options.position, "izitoast")
+        : undefined,
+      progressBar: options.progressBar,
+      theme: options.theme,
+      timeout: options.timeout,
+      title: options.title,
+    }));
+
+    return true;
+  }
+
+  /**
+   * Shows a toast through SweetAlert2 when the library is available.
+   * @param {Object} options
+   * @returns {boolean}
+   */
+  function showSweetAlertToast(options) {
+    if (!global.Swal || typeof global.Swal.fire !== "function") {
+      return false;
+    }
+
+    const payload = compactObject({
+      allowEscapeKey: options.closeOnEscape,
+      customClass: options.className ? { popup: options.className } : undefined,
+      icon: options.customIcon ? undefined : (options.type === "progress" ? "info" : options.type),
+      iconHtml: options.customIcon ? `<i class="${PairUI.escapeHtml(options.customIcon)}"></i>` : undefined,
+      imageUrl: options.image,
+      position: typeof options.position === "string" && options.position.trim()
+        ? normalizeToastPosition(options.position, "sweetalert")
+        : undefined,
+      showCloseButton: options.close,
+      showConfirmButton: false,
+      text: options.message,
+      timer: options.timeout === false ? undefined : options.timeout,
+      timerProgressBar: options.progressBar,
+      title: options.title,
+      toast: true,
+      width: options.maxWidth,
+    });
+
+    if (options.id) {
+      payload.didOpen = (toastNode) => {
+        if (toastNode) {
+          toastNode.id = options.id;
+        }
+      };
+    }
+
+    global.Swal.fire(payload);
+    return true;
+  }
+
+  /**
+   * Renders a toast notification using the configured driver, with a graceful fallback.
+   * @param {*} options
+   * @returns {boolean}
+   */
+  function renderToast(options) {
+    const normalized = normalizeToastOptions(options);
+    const preferredDriver = normalized.driver;
+    const fallbackDriver = preferredDriver === "sweetalert" ? "izitoast" : "sweetalert";
+    const renderers = {
+      izitoast: showIziToast,
+      sweetalert: showSweetAlertToast,
+    };
+
+    if (renderers[preferredDriver](normalized)) {
+      return true;
+    }
+
+    if (renderers[fallbackDriver](normalized)) {
+      return true;
+    }
+
+    console.error("No supported toast library is available for PairUI.toast().");
+    return false;
+  }
+
+  /**
+   * Builds driver-agnostic toast options from the shorthand helper signatures.
+   * @param {string} type
+   * @param {*} titleOrOptions
+   * @param {*} message
+   * @param {*} options
+   * @returns {Object}
+   */
+  function buildToastHelperPayload(type, titleOrOptions, message = "", options = {}) {
+    if (isPlainObject(titleOrOptions)) {
+      return { type, ...titleOrOptions };
+    }
+
+    return {
+      ...(isPlainObject(options) ? options : {}),
+      message,
+      title: titleOrOptions,
+      type,
+    };
+  }
+
+  /**
+   * Driver-aware toast helpers shared across the application.
+   */
+  PairUI.toast = {
+    configure(options = {}) {
+      global.PairToastConfig = {
+        ...getToastSettings(),
+        ...(isPlainObject(options) ? options : {}),
+      };
+      global.PairToastConfig.driver = normalizeToastDriver(global.PairToastConfig.driver);
+      return this;
+    },
+
+    error(titleOrOptions, message = "", options = {}) {
+      return renderToast(buildToastHelperPayload("error", titleOrOptions, message, options));
+    },
+
+    getConfig() {
+      return { ...getToastSettings() };
+    },
+
+    getDriver() {
+      return getToastSettings().driver;
+    },
+
+    info(titleOrOptions, message = "", options = {}) {
+      return renderToast(buildToastHelperPayload("info", titleOrOptions, message, options));
+    },
+
+    question(titleOrOptions, message = "", options = {}) {
+      return renderToast(buildToastHelperPayload("question", titleOrOptions, message, options));
+    },
+
+    show(options = {}) {
+      return renderToast(options);
+    },
+
+    success(titleOrOptions, message = "", options = {}) {
+      return renderToast(buildToastHelperPayload("success", titleOrOptions, message, options));
+    },
+
+    warning(titleOrOptions, message = "", options = {}) {
+      return renderToast(buildToastHelperPayload("warning", titleOrOptions, message, options));
+    },
+  };
 
   /**
    * Mark an interpolation as already-safe HTML for PairUI.html templates.
