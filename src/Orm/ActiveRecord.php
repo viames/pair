@@ -2579,6 +2579,14 @@ abstract class ActiveRecord implements \JsonSerializable {
 					break;
 
 				case 'float':
+					if (is_null($this->__get($prop))) {
+						throw new PairException(
+							'Non-nullable float property “' . $prop . '” is null for class ' . static::class .
+							' (column “' . $field . '” in table “' . static::TABLE_NAME . '”). Initialize it before store().',
+							ErrorCodes::ERROR_INVALID_DATA
+						);
+					}
+
 					$curr = setlocale(LC_NUMERIC, 0);
 					setlocale(LC_NUMERIC, 'en_US');
 					$ret = (string)$this->__get($prop);
