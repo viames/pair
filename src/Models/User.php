@@ -431,12 +431,12 @@ class User extends ActiveRecord {
 		}
 
 		// keep only one remember-me token per user
-		Database::run('DELETE FROM `users_remembers` WHERE `user_id` = ? AND `remember_me` != ?', [$this->id, $ur->rememberMe]);
+		Database::run('DELETE FROM `user_remembers` WHERE `user_id` = ? AND `remember_me` != ?', [$this->id, $ur->rememberMe]);
 
 		try {
 			$content = self::buildRememberMeCookiePayload($dateTimeZone->getName(), $rememberMe);
 		} catch (\Throwable $e) {
-			Database::run('DELETE FROM `users_remembers` WHERE `user_id` = ? AND `remember_me` = ?', [$this->id, $ur->rememberMe]);
+			Database::run('DELETE FROM `user_remembers` WHERE `user_id` = ? AND `remember_me` = ?', [$this->id, $ur->rememberMe]);
 			return false;
 		}
 
@@ -1317,7 +1317,7 @@ class User extends ActiveRecord {
 
 		// rotate remember-me token and keep compatibility with legacy plain-text storage
 		$updated = Database::run(
-			'UPDATE `users_remembers` SET `remember_me` = ?, `created_at` = NOW() WHERE `user_id` = ? AND (`remember_me` = ? OR `remember_me` = ?)',
+			'UPDATE `user_remembers` SET `remember_me` = ?, `created_at` = NOW() WHERE `user_id` = ? AND (`remember_me` = ? OR `remember_me` = ?)',
 			[$newRememberMeHash, $this->id, $currentRememberMeHash, $cookieContent->rememberMe]
 		);
 
@@ -1326,7 +1326,7 @@ class User extends ActiveRecord {
 			return false;
 		}
 
-		Database::run('DELETE FROM `users_remembers` WHERE `user_id` = ? AND `remember_me` != ?', [$this->id, $newRememberMeHash]);
+		Database::run('DELETE FROM `user_remembers` WHERE `user_id` = ? AND `remember_me` != ?', [$this->id, $newRememberMeHash]);
 
 		try {
 			$content = self::buildRememberMeCookiePayload($cookieContent->timezone, $newRememberMe);
@@ -1388,7 +1388,7 @@ class User extends ActiveRecord {
 
 		// check if cookie exists
 		if (is_null($cookieContent)) {
-			Database::run('DELETE FROM `users_remembers` WHERE `user_id` = ?', [$this->id]);
+			Database::run('DELETE FROM `user_remembers` WHERE `user_id` = ?', [$this->id]);
 			return setcookie($cookieName, '', Application::getCookieParams(-1));
 		}
 
@@ -1399,7 +1399,7 @@ class User extends ActiveRecord {
 		$currentRememberMeHash = self::getRememberMeTokenHash($cookieContent->rememberMe);
 
 		Database::run(
-			'DELETE FROM `users_remembers` WHERE `user_id` = ? AND (`remember_me` = ? OR `remember_me` = ?)',
+			'DELETE FROM `user_remembers` WHERE `user_id` = ? AND (`remember_me` = ? OR `remember_me` = ?)',
 			[$this->id, $currentRememberMeHash, $cookieContent->rememberMe]
 		);
 

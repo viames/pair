@@ -168,7 +168,7 @@ abstract class PasskeyController extends CrudController {
 
 		$query =
 			'SELECT *
-			FROM `users_passkeys`
+			FROM `user_passkeys`
 			WHERE `user_id` = ?
 			AND `revoked_at` IS NULL
 			ORDER BY `created_at` DESC';

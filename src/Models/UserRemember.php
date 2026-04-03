@@ -28,7 +28,7 @@ class UserRemember extends ActiveRecord {
 	 * Name of related db table.
 	 * @var string
 	 */
-	const TABLE_NAME = 'users_remembers';
+	const TABLE_NAME = 'user_remembers';
 
 	/**
 	 * Name of primary key db field.
@@ -60,14 +60,14 @@ class UserRemember extends ActiveRecord {
 	public static function getUserByRememberMe(string $rememberMe): ?User {
 
 		// delete older remember-me DB records
-		Database::run('DELETE FROM `users_remembers` WHERE `created_at` < DATE_SUB(NOW(), INTERVAL 1 MONTH)');
+		Database::run('DELETE FROM `user_remembers` WHERE `created_at` < DATE_SUB(NOW(), INTERVAL 1 MONTH)');
 
 		$rememberMeHash = User::getRememberMeTokenHash($rememberMe);
 
 		$query =
 			'SELECT u.*
 			FROM `users` AS u
-			INNER JOIN `users_remembers` AS ur ON u.`id` = ur.`user_id`
+			INNER JOIN `user_remembers` AS ur ON u.`id` = ur.`user_id`
 			WHERE (ur.`remember_me` = ? OR ur.`remember_me` = ?)
 			ORDER BY ur.`created_at` DESC
 			LIMIT 1';

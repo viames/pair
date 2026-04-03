@@ -71,7 +71,7 @@ class UserPasskey extends ActiveRecord {
 	/**
 	 * Name of related db table.
 	 */
-	const TABLE_NAME = 'users_passkeys';
+	const TABLE_NAME = 'user_passkeys';
 
 	/**
 	 * Name of primary key db field.
