@@ -556,6 +556,37 @@ class Application {
 	}
 
 	/**
+	 * Returns true when a persistent state is expected to be mutated directly by the UI.
+	 *
+	 * Filter selects rely on client-side cookie updates when the user changes or clears
+	 * the control, so their cookies must stay readable and writable from JavaScript.
+	 */
+	private static function isClientMutablePersistentState(string $stateName): bool {
+
+		return str_ends_with($stateName, 'Filter');
+
+	}
+
+	/**
+	 * Returns cookie parameters for a specific persistent state.
+	 *
+	 * UI-managed filters intentionally use non-HttpOnly cookies so shared Select2 helpers
+	 * can clear or replace them without requiring a dedicated controller round-trip.
+	 */
+	private function getPersistentStateCookieParams(string $stateName, int $expires): array {
+
+		$params = self::getCookieParams($expires);
+
+		if (self::isClientMutablePersistentState($stateName)) {
+			$params['httponly'] = false;
+			$params['samesite'] = 'Strict';
+		}
+
+		return $params;
+
+	}
+
+	/**
 	 * Return a cookie prefix based on product name, like ProductName.
 	 */
 	public static function getCookiePrefix(): string {
@@ -1597,7 +1628,7 @@ class Application {
 		$this->persistentState[$stateName] = $value;
 
 		// cookie lifetime is 30 days
-		$params = self::getCookieParams(time() + 2592000);
+		$params = $this->getPersistentStateCookieParams($stateName, time() + 2592000);
 		$cookieName = $this->getCookieName($stateName);
 
 		if (!setcookie($cookieName, serialize($value), $params)) {
@@ -1862,7 +1893,7 @@ class Application {
 		unset($this->persistentState[$stateName]);
 
 		if (isset($_COOKIE[$cookieName])) {
-			setcookie($cookieName, '', self::getCookieParams(-1));
+			setcookie($cookieName, '', $this->getPersistentStateCookieParams($stateName, -1));
 			unset($_COOKIE[$cookieName]);
 		}
 
