@@ -290,11 +290,6 @@ class ErrorCodes {
 	const STRIPE_ERROR = 1057;
 
 	/**
-	 * Aircall error.
-	 */
-	const AIRCALL_ERROR = 1058;
-
-	/**
 	 * Google Maps error.
 	 */
 	const GOOGLE_MAPS_ERROR = 1059;

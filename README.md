@@ -9,7 +9,7 @@
 [![PHP Version Require](https://poser.pugx.org/viames/pair/require/php)](https://packagist.org/packages/viames/pair)
 
 Pair is a lightweight PHP framework for server-rendered web applications.
-It focuses on fast setup, clear MVC routing, practical ORM features, and optional integrations (Aircall, S3, SES, Sentry, Telegram, Push, Passkey) without heavy tooling.
+It focuses on fast setup, clear MVC routing, practical ORM features, and optional integrations (S3, SES, Sentry, Telegram, Push, Passkey) without heavy tooling.
 
 ## What's New
 
@@ -137,7 +137,6 @@ This enables:
 ## Third-Party Integrations
 
 Pair includes optional support for services such as:
-- [Aircall](https://developer.aircall.io/)
 - [Amazon S3](https://aws.amazon.com/s3/)
 - [Amazon SES](https://aws.amazon.com/ses/)
 - [ELK Stack](https://www.elastic.co/what-is/elk-stack)
