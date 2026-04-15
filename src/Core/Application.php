@@ -1064,24 +1064,53 @@ class Application {
 			$this->redirect($landing->module . '/' . $landing->action);
 		}
 
-		// aggiunge l’action solo se definita (non vuota e non null)
+		// Append the action only when it is actually defined.
 		$resource = $router->module . ($router->action ? '/' . $router->action : '');
 
 		// access denied
 		if (!$this->currentUser->canAccess((string)$router->module, $router->action)) {
 
-			$this->toastError(Translator::do('ERROR'), 'Access denied to ' . $resource);
-
-			$landing = $user->landing();
-
-			// avoid infinite loop
-			if ($resource != $landing->module . '/' . $landing->action) {
-				$this->redirect($landing->module . '/' . $landing->action);
-			} else {
-				$this->redirect('user/logout');
-			}
+			$this->toastError(Translator::do('ERROR'), Translator::do('YOU_CANNOT_ACCESS_RESOURCE', $resource));
+			$this->redirect($this->accessDeniedRedirectUrl($user, $resource, $this->session));
 
 			}
+
+	}
+
+	/**
+	 * Returns the recovery URL for an access denied event without ending an active impersonation.
+	 *
+	 * When the user's landing page differs from the denied resource, the landing page is used as
+	 * the primary fallback. When the landing page matches and the session is impersonated, the
+	 * fallback goes to the user profile instead of `user/logout`, which would stop impersonation.
+	 */
+	public function accessDeniedRedirectUrl(User $user, string $resource, ?Session $session = null): string {
+
+		$landing = $user->landing();
+		$landingUrl = is_a($landing, '\stdClass')
+			? $this->resourceUrl((string)($landing->module ?? ''), $landing->action ?? null)
+			: '';
+
+		if ('' !== $landingUrl and $resource !== $landingUrl) {
+			return $landingUrl;
+		}
+
+		$activeSession = $session ?? Session::current();
+
+		if ($activeSession?->getFormerUser()) {
+			return 'user/profile';
+		}
+
+		return 'user/logout';
+
+	}
+
+	/**
+	 * Normalizes module and action into a router-style resource URL.
+	 */
+	private function resourceUrl(string $module, ?string $action = null): string {
+
+		return $module . ($action ? '/' . $action : '');
 
 	}
 
