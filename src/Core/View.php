@@ -36,6 +36,11 @@ abstract class View {
 	private array $vars = [];
 
 	/**
+	 * Typed state object exposed to the layout.
+	 */
+	protected ?object $state = null;
+
+	/**
 	 * Pagination variable.
 	 */
 	private Pagination $pagination;
@@ -170,6 +175,15 @@ abstract class View {
 	public function assign($name, $val): void {
 
 		$this->vars[$name] = $val;
+
+	}
+
+	/**
+	 * Assigns the typed state object exposed to the layout.
+	 */
+	public function assignState(object $state): void {
+
+		$this->state = $state;
 
 	}
 
