@@ -1139,8 +1139,10 @@ class User extends ActiveRecord {
 	public function isDeletable(): bool {
 
 		$app = Application::getInstance();
+		$currentUser = $app->currentUser;
 
-		if ($this->id == $app->currentUser->id) {
+		// Typed properties may be uninitialized in headless or partially-bootstrapped contexts.
+		if (isset($this->id) and $currentUser instanceof self and isset($currentUser->id) and $this->id == $currentUser->id) {
 			return false;
 		}
 
