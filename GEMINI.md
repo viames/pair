@@ -1,6 +1,6 @@
-# GEMINI.md — Pair Framework v3 Technical Reference
+# GEMINI.md — Pair Framework v4 Technical Reference
 
-Technical context, conventions, and guardrails for AI assistants working on the Pair v3 framework.
+Technical context, conventions, and guardrails for AI assistants working on the Pair v4 framework.
 
 Read `AGENTS.md` first for the primary workflow and operating contract.
 Read `SKILL.md` next for the compact quick-start and repository map.

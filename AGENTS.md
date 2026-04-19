@@ -1,4 +1,4 @@
-# AGENTS.md — Pair Framework v3
+# AGENTS.md — Pair Framework v4
 
 Guide for automated agents (LLMs, code assistants, review bots) working on this repository.
 
@@ -22,13 +22,13 @@ After this file:
 
 > Version scope
 >
-> This repository documents and implements Pair v3. Guidance in this repository targets Pair v3 and may not apply, or may apply only partially, to products based on Pair v1 or Pair v2.
+> The default branch of this repository documents and implements Pair v4 in alpha state. Use the `v3` branch for the stable Pair v3 line. Guidance in this branch targets Pair v4 and may not apply, or may apply only partially, to products based on earlier major versions.
 
 ---
 
 ## Mission
 
-Help improve the **Pair v3 framework** with **small, safe, reviewable changes** that respect existing architecture and conventions.
+Help improve the **Pair v4 framework** with **small, safe, reviewable changes** that respect existing architecture and conventions.
 
 When instructions conflict, prefer the smallest safe change aligned with existing Pair patterns and backward compatibility.
 

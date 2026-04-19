@@ -13,7 +13,8 @@ It focuses on fast setup, clear MVC routing, practical ORM features, and optiona
 
 ## What's New
 
-Pair v3 is currently in alpha and includes breaking changes compared to previous major versions.
+Pair v4 is currently in alpha and may include breaking changes while the next major version is under development.
+Pair v3 is the current stable release line on the `v3` branch and through the `^3.0` tags.
 
 ## Quick Start
 
@@ -157,7 +158,7 @@ composer run upgrade-to-v2
 composer run upgrade-to-v3
 ```
 
-To test unreleased code from `main`:
+To test unreleased Pair 4 development code from `main`:
 
 ```sh
 composer require viames/pair dev-main

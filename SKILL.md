@@ -1,8 +1,8 @@
 ---
 name: "Pair Framework"
 slug: "pair"
-version: "3.3"
-description: "Entry skill for assistants working on the Pair v3 framework repository."
+version: "4.0-alpha"
+description: "Entry skill for assistants working on the Pair v4 framework repository."
 tags:
   - php
   - pair
@@ -11,13 +11,13 @@ tags:
 language: "en"
 ---
 
-# Pair Framework v3 — SKILL
+# Pair Framework v4 — SKILL
 
 Use this file as the **compact quick-start companion** to `AGENTS.md`.
 
 Read `AGENTS.md` first.
 Then use this file to move quickly through the repository without losing the main workflow and output rules.
-This quick-start assumes Pair v3. The authoritative version-scope note lives in `AGENTS.md`.
+This quick-start assumes Pair v4 on the default branch. The authoritative version-scope note lives in `AGENTS.md`.
 
 ---
 
@@ -63,7 +63,7 @@ Start with `AGENTS.md`, `SKILL.md`, and `GEMINI.md`, then stop unless the task s
 
 ## Official Docs Shortcuts
 
-Use the official Pair v3 wiki when the task touches one of these areas:
+Use the official Pair wiki when the task touches one of these areas:
 
 - Routing, URL params, ordering, and pagination state: `Router`
 - Controller lifecycle, `_init()`, model/view loading, and PRG flows: `Controller`

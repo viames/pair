@@ -1,4 +1,4 @@
-# CODEX.md — Pair Framework v3
+# CODEX.md — Pair Framework v4
 
 Codex-specific note for this repository.
 
