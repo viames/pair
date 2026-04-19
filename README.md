@@ -166,6 +166,7 @@ composer require viames/pair dev-main
 ## Documentation
 
 Main docs live in the [Wiki](https://github.com/viames/pair/wiki).
+The release and branching workflow for the v3 stable / v4 dev transition is documented in [RELEASING.md](RELEASING.md).
 
 Useful pages:
 - [Application](https://github.com/viames/pair/wiki/Application)
@@ -200,7 +201,7 @@ Start from [pair_boilerplate](https://github.com/viames/pair_boilerplate) to boo
 
 - Issues: [github.com/viames/pair/issues](https://github.com/viames/pair/issues)
 - Wiki: [github.com/viames/pair/wiki](https://github.com/viames/pair/wiki)
-- Source: [github.com/viames/pair/tree/master/src](https://github.com/viames/pair/tree/master/src)
+- Source: [github.com/viames/pair/tree/main/src](https://github.com/viames/pair/tree/main/src)
 - Homepage: [viames.github.io/pair](https://viames.github.io/pair/)
 
 ## Changelog
