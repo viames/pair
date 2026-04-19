@@ -13,7 +13,7 @@ It focuses on fast setup, clear MVC routing, practical ORM features, and optiona
 
 ## What's New
 
-Pair v3 is currently in alpha and includes breaking changes compared to previous major versions.
+Pair v3 is the current stable release line.
 
 ## Quick Start
 
@@ -157,10 +157,10 @@ composer run upgrade-to-v2
 composer run upgrade-to-v3
 ```
 
-To test unreleased code from `main`:
+To test unreleased Pair 3 maintenance code from `v3`:
 
 ```sh
-composer require viames/pair dev-main
+composer require viames/pair dev-v3
 ```
 
 ## Documentation
@@ -201,7 +201,7 @@ Start from [pair_boilerplate](https://github.com/viames/pair_boilerplate) to boo
 
 - Issues: [github.com/viames/pair/issues](https://github.com/viames/pair/issues)
 - Wiki: [github.com/viames/pair/wiki](https://github.com/viames/pair/wiki)
-- Source: [github.com/viames/pair/tree/main/src](https://github.com/viames/pair/tree/main/src)
+- Source: [github.com/viames/pair/tree/v3/src](https://github.com/viames/pair/tree/v3/src)
 - Homepage: [viames.github.io/pair](https://viames.github.io/pair/)
 
 ## Changelog

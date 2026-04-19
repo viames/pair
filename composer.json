@@ -52,7 +52,7 @@
 	"support": {
 		"issues": "https://github.com/viames/pair/issues",
 		"wiki": "https://github.com/viames/pair/wiki",
-		"source": "https://github.com/viames/pair/tree/main/src"
+		"source": "https://github.com/viames/pair/tree/v3/src"
 	},
 	"homepage": "https://viames.github.io/pair/",
 	"authors": [
@@ -63,7 +63,7 @@
 	],
 	"extra": {
 		"branch-alias": {
-			"dev-main": "3.x-dev"
+			"dev-v3": "3.x-dev"
 		}
 	},
 	"config": {
