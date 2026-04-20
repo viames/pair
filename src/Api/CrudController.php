@@ -4,6 +4,7 @@ namespace Pair\Api;
 
 use Pair\Core\Logger;
 use Pair\Core\Router;
+use Pair\Data\RecordMapper;
 use Pair\Orm\ActiveRecord;
 use Pair\Orm\Database;
 
@@ -288,8 +289,8 @@ abstract class CrudController extends ApiController {
 	}
 
 	/**
-	 * Transform a single ActiveRecord object for API output using the configured Resource
-	 * class, or falling back to toArray() with optional field filtering.
+	 * Transform a single ActiveRecord object for API output using an explicit read-model
+	 * or a legacy resource adapter with optional field filtering.
 	 *
 	 * @param	ActiveRecord	$object		The object to transform.
 	 * @param	array			$config		Resource config.
@@ -299,14 +300,17 @@ abstract class CrudController extends ApiController {
 	 */
 	private function transformResource(ActiveRecord $object, array $config, ?array $fields = null, array $includes = []): array {
 
+		$readModelClass = $config['readModel'] ?? null;
 		$resourceClass = $config['resource'] ?? null;
 
-		// use Resource class if configured
-		if ($resourceClass and class_exists($resourceClass)) {
+		// Prefer the explicit read-model path in Pair v4.
+		if ($readModelClass) {
+			$data = RecordMapper::map($object, $readModelClass)->toArray();
+		} else if ($resourceClass and class_exists($resourceClass)) {
 			$resource = new $resourceClass($object);
 			$data = $resource->toArray();
 		} else {
-			$data = $object->toArray();
+			throw new \LogicException('CRUD resource "' . get_class($object) . '" requires an explicit readModel or resource configuration');
 		}
 
 		// apply sparse fieldsets
@@ -348,14 +352,82 @@ abstract class CrudController extends ApiController {
 			if (is_null($related)) {
 				$data[$include] = null;
 			} else if ($related instanceof \Pair\Orm\Collection) {
-				$data[$include] = $related->toArray();
+				$data[$include] = $this->transformIncludedCollection($related, $config, $include);
 			} else if ($related instanceof ActiveRecord) {
-				$data[$include] = $related->toArray();
+				$data[$include] = $this->transformIncludedRecord($related, $config, $include);
 			}
 
 		}
 
 		return $data;
+
+	}
+
+	/**
+	 * Transform an included collection through explicit include mapping.
+	 *
+	 * @param	\Pair\Orm\Collection	$collection	Loaded relation collection.
+	 * @param	array					$config		Resource config.
+	 * @param	string					$include	Include name.
+	 * @return	array<int|string, array<string, mixed>>
+	 */
+	private function transformIncludedCollection(\Pair\Orm\Collection $collection, array $config, string $include): array {
+
+		$data = [];
+
+		foreach ($collection as $key => $item) {
+
+			if (!$item instanceof ActiveRecord) {
+				continue;
+			}
+
+			// Preserve record identifiers as collection keys when available.
+			$recordKey = $item->getId();
+			$data[is_null($recordKey) ? $key : $recordKey] = $this->transformIncludedRecord($item, $config, $include);
+
+		}
+
+		return $data;
+
+	}
+
+	/**
+	 * Transform an included relation through explicit mapping rules.
+	 *
+	 * @param	array<string, mixed>	$config	Resource config.
+	 * @return	array<string, mixed>
+	 */
+	private function transformIncludedRecord(ActiveRecord $record, array $config, string $include): array {
+
+		$includeReadModels = $config['includeReadModels'] ?? [];
+
+		if (isset($includeReadModels[$include])) {
+			return RecordMapper::map($record, $includeReadModels[$include])->toArray();
+		}
+
+		$includeResources = $config['includeResources'] ?? [];
+
+		if (isset($includeResources[$include]) and class_exists($includeResources[$include])) {
+			$resourceClass = $includeResources[$include];
+			return (new $resourceClass($record))->toArray();
+		}
+
+		if (method_exists($record::class, 'getApiConfig')) {
+
+			$relatedConfig = $record::getApiConfig();
+
+			if (!empty($relatedConfig['readModel'])) {
+				return RecordMapper::map($record, $relatedConfig['readModel'])->toArray();
+			}
+
+			if (!empty($relatedConfig['resource']) and class_exists($relatedConfig['resource'])) {
+				$resourceClass = $relatedConfig['resource'];
+				return (new $resourceClass($record))->toArray();
+			}
+
+		}
+
+		throw new \LogicException('Include "' . $include . '" requires an explicit readModel or resource mapping');
 
 	}
 

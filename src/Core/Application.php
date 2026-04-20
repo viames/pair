@@ -20,6 +20,8 @@ use Pair\Models\OAuth2Token;
 use Pair\Models\Session;
 use Pair\Models\Template;
 use Pair\Models\User;
+use Pair\Http\ResponseInterface;
+use Pair\Web\PageResponse;
 use Pair\Orm\ActiveRecord;
 use Pair\Orm\Database;
 
@@ -160,6 +162,11 @@ class Application {
 	 * Contains the LogBar rendered output for the current request, or null if LogBar is disabled.
 	 */
 	protected ?LogBar $logBar = null;
+
+	/**
+	 * Tracks whether the current explicit response still needs template wrapping.
+	 */
+	private bool $shouldWrapResponseInTemplate = true;
 
 	/**
 	 * Class for application user object.
@@ -362,16 +369,22 @@ class Application {
 	private function defineConstants(): void {
 
 		// Pair folder
-		define('PAIR_FOLDER', substr(dirname(dirname(__FILE__)), strlen(APPLICATION_PATH)+1));
+		if (!defined('PAIR_FOLDER')) {
+			define('PAIR_FOLDER', substr(dirname(dirname(__FILE__)), strlen(APPLICATION_PATH)+1));
+		}
 
 		// path to temporary folder
-		define('TEMP_PATH', APPLICATION_PATH . '/temp/');
+		if (!defined('TEMP_PATH')) {
+			define('TEMP_PATH', APPLICATION_PATH . '/temp/');
+		}
 
 		// force php server date to UTC
 		if (Env::get('UTC_DATE')) {
 			ini_set('date.timezone', 'UTC');
-			define('BASE_TIMEZONE', 'UTC');
-		} else {
+			if (!defined('BASE_TIMEZONE')) {
+				define('BASE_TIMEZONE', 'UTC');
+			}
+		} else if (!defined('BASE_TIMEZONE')) {
 			define('BASE_TIMEZONE', (date_default_timezone_get() ?? 'UTC'));
 		}
 
@@ -385,9 +398,13 @@ class Application {
 			$baseHref = isset($_SERVER['HTTP_HOST']) ? $protocol . $_SERVER['HTTP_HOST'] . $urlPath . '/' : null;
 		}
 
-		define('URL_PATH', $urlPath);
+		if (!defined('URL_PATH')) {
+			define('URL_PATH', $urlPath);
+		}
 
-		define('BASE_HREF', $baseHref);
+		if (!defined('BASE_HREF')) {
+			define('BASE_HREF', $baseHref);
+		}
 
 	}
 
@@ -933,13 +950,20 @@ class Application {
 
 		try {
 
+			$response = null;
+
 			// run middleware pipeline for ApiController subclasses
 			if ($apiCtl instanceof \Pair\Api\ApiController) {
-				$apiCtl->runMiddleware(function () use ($apiCtl, $action) {
-					$apiCtl->$action();
+				$apiCtl->runMiddleware(function () use ($apiCtl, $action, &$response) {
+					$response = $apiCtl->$action();
 				});
 			} else {
-				$apiCtl->$action();
+				$response = $apiCtl->$action();
+			}
+
+			if ($response instanceof ResponseInterface) {
+				$response->send();
+				exit();
 			}
 
 		} catch (\Throwable $e) {
@@ -1508,6 +1532,12 @@ class Application {
 			return;
 		}
 
+		if (!$this->shouldWrapResponseInTemplate) {
+			$this->pageContent = ob_get_clean();
+			print $this->pageContent;
+			return;
+		}
+
 		$template = $this->template;
 		if (!$template || !$template->areKeysPopulated()) {
 			$template = $this->getTemplate();
@@ -1535,6 +1565,7 @@ class Application {
 	private function runController(): void {
 
 		$router	= Router::getInstance();
+		$this->shouldWrapResponseInTemplate = true;
 
 		// make sure to have a template set
 		$this->getTemplate();
@@ -1590,18 +1621,34 @@ class Application {
 
 			if (method_exists($controller, $action)) {
 				try {
-					$controller->$action();
+					$response = $controller->$action();
 				} catch (\Throwable $e) {
 					PairException::frontEnd($e);
 				}
 			} else {
 				$logger = Logger::getInstance();
 				$logger->info('Method ' . $controllerName . '->' . $action . '() not found');
+				$response = null;
+			}
+
+			if ($response instanceof ResponseInterface) {
+				// Non-page responses already own the full body and must bypass template wrapping.
+				$this->shouldWrapResponseInTemplate = $response instanceof PageResponse;
+				$response->send();
+				$this->logBar = LogBar::getInstance();
+				return;
 			}
 
 			// raw calls will jump controller->display, ob and log
 			if ($this->headless) {
 				return;
+			}
+
+			if (!method_exists($controller, 'renderView')) {
+				throw new CriticalException(
+					'Controller ' . $controllerName . ' must return a Pair\Http\ResponseInterface or implement renderView()',
+					ErrorCodes::CONTROLLER_CONFIG_ERROR
+				);
 			}
 
 			// invoke view rendering

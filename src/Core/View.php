@@ -13,7 +13,9 @@ use Pair\Html\Pagination;
 use Pair\Orm\ActiveRecord;
 
 /**
- * Base abstract class to manage the HTML layout layer.
+ * Legacy MVC view kept only as a Pair v4 migration bridge.
+ *
+ * @deprecated Pair v4 prefers typed page state rendered from Pair\Web\Controller.
  */
 abstract class View {
 
@@ -84,6 +86,7 @@ abstract class View {
 		$this->app = Application::getInstance();
 		$router	= Router::getInstance();
 		$this->translator = Translator::getInstance();
+		LegacyMvc::emitViewDeprecation(static::class);
 
 		// sets view name and default layout
 		$class = get_called_class();

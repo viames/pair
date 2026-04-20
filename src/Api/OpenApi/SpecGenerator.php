@@ -584,9 +584,10 @@ class SpecGenerator {
 			$schemaName = $this->slugToSchemaName($slug);
 			$class = $resource['class'];
 			$config = $resource['config'];
+			$responseClass = $this->resolveResponseSchemaClass($class, $config);
 
-			// main schema
-			$schemas[$schemaName] = $this->schemaGenerator->generate($class);
+			// The response schema must follow the explicit read contract when available.
+			$schemas[$schemaName] = $this->schemaGenerator->generate($responseClass);
 
 			// create schema
 			$createRules = $config['rules']['create'] ?? [];
@@ -599,6 +600,30 @@ class SpecGenerator {
 		}
 
 		return $schemas;
+
+	}
+
+	/**
+	 * Resolve the class that defines the public response schema for a CRUD resource.
+	 *
+	 * @param	string				$modelClass	Persistence model class.
+	 * @param	array<string, mixed>	$config		CRUD resource configuration.
+	 */
+	private function resolveResponseSchemaClass(string $modelClass, array $config): string {
+
+		$readModelClass = $config['readModel'] ?? null;
+
+		if (is_string($readModelClass) and class_exists($readModelClass)) {
+			return $readModelClass;
+		}
+
+		$resourceClass = $config['resource'] ?? null;
+
+		if (is_string($resourceClass) and class_exists($resourceClass) and is_callable([$resourceClass, 'openApiSchema'])) {
+			return $resourceClass;
+		}
+
+		return $modelClass;
 
 	}
 

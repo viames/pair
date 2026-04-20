@@ -16,6 +16,19 @@ It focuses on fast setup, clear MVC routing, practical ORM features, and optiona
 Pair v4 is currently in alpha and may include breaking changes while the next major version is under development.
 Pair v3 is the current stable release line on the `v3` branch and through the `^3.0` tags.
 
+Pair v4 now has an explicit core path built around:
+
+- `Pair\Http\Input` for immutable request input
+- `Pair\Data\ReadModel` for reusable HTML/API read contracts
+- `Pair\Web\Controller` + `Pair\Web\PageResponse` for server-rendered actions
+- `Pair\Http\JsonResponse` for explicit JSON endpoints
+- `Pair\Api\ApiExposable::readModel` for CRUD output contracts
+
+OpenAPI generation for CRUD resources now follows the explicit response contract too: when a resource defines `readModel`, the generated response schema is built from that read model instead of the persistence class.
+`Pair\Core\Controller` and `Pair\Core\View` now remain only as legacy MVC bridges in Pair v4 and emit deprecation notices in development or staging environments.
+The Pair v3 to v4 upgrader is conservative on purpose: it rewrites only the low-risk patterns automatically and reports legacy controller/view flows that still need a manual migration.
+For classic MVC modules it now also generates readonly `*PageState` skeletons from legacy `View::assign()` usage, so migration work starts from concrete typed-state files instead of ad-hoc arrays or magic view variables.
+
 ## Quick Start
 
 ### 1) Install with Composer
@@ -70,11 +83,39 @@ Default route format (after base path):
 Example: `example.com/user/login`
 
 - module: `/modules/user`
-- controller: `/modules/user/controller.php` (extends `Pair/Core/Controller.php`)
+- controller legacy path: `/modules/user/controller.php` (extends `Pair/Core/Controller.php`, legacy bridge in v4)
 - action: `loginAction()` when present
-- auto-loaded by convention: `model.php`, `viewLogin.php` (`UserViewLogin`), and `/modules/user/layouts/login.php`
+- auto-loaded by the legacy MVC bridge: `model.php`, `viewLogin.php` (`UserViewLogin`), and `/modules/user/layouts/login.php`
 
 Docs: [Router](https://github.com/viames/pair/wiki/Router)
+
+### Pair v4 Controller Path
+
+Pair v4 prefers explicit responses over hidden controller/view bootstrapping:
+
+```php
+<?php
+
+use Pair\Web\Controller;
+use Pair\Web\PageResponse;
+
+final class UserController extends Controller {
+
+	public function defaultAction(): PageResponse {
+
+		$state = new class ('Hello Pair v4') {
+			public function __construct(public string $message) {}
+		};
+
+		return $this->page('default', $state, 'User');
+
+	}
+
+}
+```
+
+For reusable output contracts, Pair v4 prefers `ReadModel` objects built explicitly from persistence records.
+Legacy `Pair\Core\Controller` and `Pair\Core\View` remain available only as a migration path and should not be used for new Pair v4 modules.
 
 ### Log Bar and Debugging
 
@@ -156,6 +197,8 @@ If you are upgrading between major versions:
 ```sh
 composer run upgrade-to-v2
 composer run upgrade-to-v3
+composer run upgrade-to-v4 -- --dry-run
+composer run upgrade-to-v4 -- --write
 ```
 
 To test unreleased Pair 4 development code from `main`:
@@ -163,6 +206,11 @@ To test unreleased Pair 4 development code from `main`:
 ```sh
 composer require viames/pair dev-main
 ```
+
+Additional migration and design docs:
+
+- [PAIR_V4_DESIGN.md](PAIR_V4_DESIGN.md)
+- [UPGRADE_V4.md](UPGRADE_V4.md)
 
 ## Documentation
 
@@ -173,6 +221,8 @@ Useful pages:
 - [Application](https://github.com/viames/pair/wiki/Application)
 - [Controller](https://github.com/viames/pair/wiki/Controller)
 - [View](https://github.com/viames/pair/wiki/View)
+- [ApiExposable](https://github.com/viames/pair/wiki/ApiExposable)
+- [CrudController](https://github.com/viames/pair/wiki/CrudController)
 - [Form](https://github.com/viames/pair/wiki/Form)
 - [Collection](https://github.com/viames/pair/wiki/Collection)
 - [Push notifications](https://github.com/viames/pair/wiki/Push-notifications)
@@ -197,6 +247,22 @@ Runtime notes:
 ## Example Project
 
 Start from [pair_boilerplate](https://github.com/viames/pair_boilerplate) to bootstrap a new app quickly.
+
+## Benchmarks
+
+The repository includes a lightweight benchmark harness for the new v4 path:
+
+```sh
+composer run benchmark-v4
+```
+
+It measures:
+
+- minimal request bootstrap primitives
+- simple server-rendered page rendering
+- simple JSON endpoint payload preparation
+- record-to-read-model mapping cost
+- response serialization cost
 
 ## Support
 

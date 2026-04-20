@@ -12,11 +12,12 @@ namespace Pair\Api;
  *
  *       public static function apiConfig(): array {
  *           return [
- *               'resource'   => FaqResource::class,
+ *               'readModel'  => FaqReadModel::class,
  *               'searchable' => ['question', 'answer'],
  *               'sortable'   => ['createdAt', 'position'],
  *               'filterable' => ['category', 'isPublished'],
  *               'includes'   => ['author'],
+ *               'includeReadModels' => ['author' => AuthorReadModel::class],
  *               'perPage'    => 20,
  *               'maxPerPage' => 100,
  *               'rules'      => [
@@ -33,11 +34,14 @@ trait ApiExposable {
 	 * Return the API configuration for this model. Override in each model class.
 	 *
 	 * Supported keys:
-	 *   - resource:    (string) Resource class for response transformation.
+	 *   - readModel:   (string) Read-model class for explicit response transformation.
+	 *   - resource:    (string) Legacy Resource class kept as a migration bridge.
 	 *   - searchable:  (string[]) Property names searchable via ?search= parameter.
 	 *   - sortable:    (string[]) Property names sortable via ?sort= parameter.
 	 *   - filterable:  (string[]) Property names filterable via ?filter[prop]= parameter.
 	 *   - includes:    (string[]) Allowed relationship names for ?include= parameter.
+	 *   - includeReadModels: (array<string, string>) Explicit read models for included relations.
+	 *   - includeResources:  (array<string, string>) Legacy resources for included relations.
 	 *   - perPage:     (int) Default items per page (default 20).
 	 *   - maxPerPage:  (int) Maximum items per page (default 100).
 	 *   - rules:       (array) Validation rules keyed by 'create' and 'update'.
@@ -59,11 +63,14 @@ trait ApiExposable {
 	public static function getApiConfig(): array {
 
 		$defaults = [
+			'readModel'   => null,
 			'resource'    => null,
 			'searchable'  => [],
 			'sortable'    => [],
 			'filterable'  => [],
 			'includes'    => [],
+			'includeReadModels' => [],
+			'includeResources' => [],
 			'perPage'     => 20,
 			'maxPerPage'  => 100,
 			'rules'       => ['create' => [], 'update' => []],

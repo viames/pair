@@ -9,6 +9,11 @@ use Pair\Helpers\Translator;
 use Pair\Helpers\Utilities;
 use Pair\Orm\ActiveRecord;
 
+/**
+ * Legacy MVC controller kept only as a Pair v4 migration bridge.
+ *
+ * @deprecated Pair v4 prefers Pair\Web\Controller with explicit response objects.
+ */
 abstract class Controller {
 
 	use \Pair\Traits\AppTrait;
@@ -58,6 +63,7 @@ abstract class Controller {
 		$this->app = Application::getInstance();
 		$this->router = Router::getInstance();
 		$this->translator = Translator::getInstance();
+		LegacyMvc::emitControllerDeprecation(static::class);
 
 		// set controller’s name
 		$class = get_called_class();

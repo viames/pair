@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace Pair\Tests\Unit\Api\OpenApi;
 
 use Pair\Api\OpenApi\SpecGenerator;
+use Pair\Tests\Support\FakeCrudReadModel;
+use Pair\Tests\Support\FakeCrudRecord;
 use Pair\Tests\Support\FakeSchemaGenerator;
+use Pair\Tests\Support\TrackingSchemaGenerator;
 use Pair\Tests\Support\TestCase;
 
 /**
@@ -60,6 +63,40 @@ class SpecGeneratorTest extends TestCase {
 		$this->assertArrayHasKey('User', $spec['components']['schemas']);
 		$this->assertArrayHasKey('UserCreate', $spec['components']['schemas']);
 		$this->assertArrayHasKey('UserUpdate', $spec['components']['schemas']);
+
+	}
+
+	/**
+	 * Verify Pair v4 resources document the explicit read model as the response schema source.
+	 */
+	public function testBuildUsesReadModelForResponseSchemaAndModelForWriteSchemas(): void {
+
+		$generator = new SpecGenerator('Pair Test API', '1.2.3');
+		$schemaGenerator = new TrackingSchemaGenerator();
+
+		$this->setInaccessibleProperty($generator, 'schemaGenerator', $schemaGenerator);
+		$this->setInaccessibleProperty($generator, 'resources', [
+			'users' => [
+				'class' => FakeCrudRecord::class,
+				'config' => [
+					'readModel' => FakeCrudReadModel::class,
+					'rules' => [
+						'create' => ['name' => 'required|string'],
+						'update' => ['name' => 'string'],
+					],
+				],
+				'basePath' => '/api',
+			],
+		]);
+
+		$spec = $generator->build();
+
+		$this->assertSame([FakeCrudReadModel::class], $schemaGenerator->generatedClasses);
+		$this->assertSame(FakeCrudRecord::class, $schemaGenerator->createSchemaCalls[0]['class']);
+		$this->assertSame(FakeCrudRecord::class, $schemaGenerator->updateSchemaCalls[0]['class']);
+		$this->assertSame(FakeCrudReadModel::class, $spec['components']['schemas']['User']['x-class']);
+		$this->assertSame(FakeCrudRecord::class, $spec['components']['schemas']['UserCreate']['x-class']);
+		$this->assertSame(FakeCrudRecord::class, $spec['components']['schemas']['UserUpdate']['x-class']);
 
 	}
 

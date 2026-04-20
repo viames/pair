@@ -6,6 +6,8 @@ namespace Pair\Tests\Unit\Api;
 
 use Pair\Tests\Support\FakeCrudController;
 use Pair\Tests\Support\FakeCrudExposeableModel;
+use Pair\Tests\Support\FakeCrudIncludeReadModel;
+use Pair\Tests\Support\FakeCrudReadModel;
 use Pair\Tests\Support\FakeCrudRecord;
 use Pair\Tests\Support\FakeCrudResource;
 use Pair\Tests\Support\TestCase;
@@ -28,11 +30,13 @@ class CrudControllerTest extends TestCase {
 
 		$this->assertSame(['users'], $controller->getRegisteredResources());
 		$this->assertSame(FakeCrudExposeableModel::class, $config['class']);
-		$this->assertSame(FakeCrudResource::class, $config['config']['resource']);
+		$this->assertSame(FakeCrudReadModel::class, $config['config']['readModel']);
 		$this->assertSame(['name'], $config['config']['searchable']);
 		$this->assertSame(['createdAt'], $config['config']['sortable']);
 		$this->assertSame(['status'], $config['config']['filterable']);
 		$this->assertSame(['group', 'tags'], $config['config']['includes']);
+		$this->assertSame(FakeCrudIncludeReadModel::class, $config['config']['includeReadModels']['group']);
+		$this->assertSame(FakeCrudIncludeReadModel::class, $config['config']['includeReadModels']['tags']);
 		$this->assertSame(15, $config['config']['perPage']);
 		$this->assertSame(30, $config['config']['maxPerPage']);
 		$this->assertSame('-createdAt', $config['config']['defaultSort']);
@@ -42,9 +46,9 @@ class CrudControllerTest extends TestCase {
 	}
 
 	/**
-	 * Verify transformResource uses the configured Resource class, sparse fields, and singular includes.
+	 * Verify transformResource uses the configured read model, sparse fields, and singular includes.
 	 */
-	public function testTransformResourceUsesResourceFieldsAndIncludes(): void {
+	public function testTransformResourceUsesReadModelFieldsAndIncludes(): void {
 
 		$controller = $this->newCrudController();
 		$group = $this->newCrudRecord()->seed(['id' => 10, 'name' => 'Admins']);
@@ -58,7 +62,10 @@ class CrudControllerTest extends TestCase {
 
 		$data = $this->invokeInaccessibleMethod($controller, 'transformResource', [
 			$record,
-			['resource' => FakeCrudResource::class],
+			[
+				'readModel' => FakeCrudReadModel::class,
+				'includeReadModels' => ['group' => FakeCrudIncludeReadModel::class],
+			],
 			['identifier'],
 			['group'],
 		]);
@@ -74,9 +81,9 @@ class CrudControllerTest extends TestCase {
 	}
 
 	/**
-	 * Verify transformCollection applies the configured Resource to every item in the array.
+	 * Verify transformCollection applies the configured read model to every item in the array.
 	 */
-	public function testTransformCollectionUsesResourceForEveryItem(): void {
+	public function testTransformCollectionUsesReadModelForEveryItem(): void {
 
 		$controller = $this->newCrudController();
 		$records = [
@@ -86,7 +93,7 @@ class CrudControllerTest extends TestCase {
 
 		$data = $this->invokeInaccessibleMethod($controller, 'transformCollection', [
 			$records,
-			['resource' => FakeCrudResource::class],
+			['readModel' => FakeCrudReadModel::class],
 			['identifier', 'label'],
 			[],
 		]);
@@ -118,7 +125,10 @@ class CrudControllerTest extends TestCase {
 		$data = $this->invokeInaccessibleMethod($controller, 'loadIncludes', [
 			$record,
 			['id' => 7],
-			['includes' => ['tags']],
+			[
+				'includes' => ['tags'],
+				'includeReadModels' => ['tags' => FakeCrudIncludeReadModel::class],
+			],
 			['tags'],
 		]);
 
@@ -129,6 +139,51 @@ class CrudControllerTest extends TestCase {
 				21 => ['id' => 21, 'name' => 'Two'],
 			],
 		], $data);
+
+	}
+
+	/**
+	 * Verify legacy Resource adapters still work as an explicit migration bridge.
+	 */
+	public function testTransformResourceStillSupportsLegacyResourceAdapters(): void {
+
+		$controller = $this->newCrudController();
+		$record = $this->newCrudRecord()->seed([
+			'id' => 7,
+			'name' => 'Alice',
+			'email' => 'alice@example.test',
+		]);
+
+		$data = $this->invokeInaccessibleMethod($controller, 'transformResource', [
+			$record,
+			['resource' => FakeCrudResource::class],
+		]);
+
+		$this->assertSame([
+			'identifier' => 7,
+			'label' => 'ALICE',
+			'email' => 'alice@example.test',
+		], $data);
+
+	}
+
+	/**
+	 * Verify missing explicit transformers no longer fall back to ActiveRecord::toArray().
+	 */
+	public function testTransformResourceRejectsImplicitActiveRecordSerialization(): void {
+
+		$controller = $this->newCrudController();
+		$record = $this->newCrudRecord()->seed([
+			'id' => 7,
+			'name' => 'Alice',
+		]);
+
+		$this->expectException(\LogicException::class);
+
+		$this->invokeInaccessibleMethod($controller, 'transformResource', [
+			$record,
+			[],
+		]);
 
 	}
 

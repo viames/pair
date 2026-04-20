@@ -6,9 +6,8 @@ use Pair\Orm\ActiveRecord;
 use Pair\Orm\Database;
 
 /**
- * Generates OpenAPI 3.1 schema objects from ActiveRecord model classes.
- * Reads table structure, property types, and validation rules to produce
- * accurate JSON Schema definitions.
+ * Generates OpenAPI 3.1 schema objects from ActiveRecord classes and typed
+ * read-model/data-transfer classes.
  */
 class SchemaGenerator {
 
@@ -51,12 +50,37 @@ class SchemaGenerator {
 	];
 
 	/**
-	 * Generate the full OpenAPI schema for a model class.
+	 * Generate the full OpenAPI schema for a persistence model or read-model class.
+	 *
+	 * @param	string	$modelClass	Fully qualified class name.
+	 * @return	array	OpenAPI schema object.
+	 */
+	public function generate(string $modelClass): array {
+
+		if (!class_exists($modelClass)) {
+			throw new \InvalidArgumentException('Class ' . $modelClass . ' was not found');
+		}
+
+		// Allow explicit schema overrides for response models that need full control.
+		if (is_callable([$modelClass, 'openApiSchema'])) {
+			return $modelClass::openApiSchema();
+		}
+
+		if (!is_subclass_of($modelClass, ActiveRecord::class)) {
+			return $this->generateTypedObjectSchema($modelClass);
+		}
+
+		return $this->generateActiveRecordSchema($modelClass);
+
+	}
+
+	/**
+	 * Generate the full OpenAPI schema for an ActiveRecord class.
 	 *
 	 * @param	string	$modelClass	Fully qualified ActiveRecord class name.
 	 * @return	array	OpenAPI schema object.
 	 */
-	public function generate(string $modelClass): array {
+	private function generateActiveRecordSchema(string $modelClass): array {
 
 		$db = Database::getInstance();
 		$columns = $db->describeTable($modelClass::TABLE_NAME);
@@ -111,9 +135,12 @@ class SchemaGenerator {
 	 */
 	public function generateCreateSchema(string $modelClass, array $rules = []): array {
 
-		$schema = $this->generate($modelClass);
-		$tableKey = (array)$modelClass::TABLE_KEY;
-		$db = Database::getInstance();
+		$isActiveRecord = is_subclass_of($modelClass, ActiveRecord::class);
+		$schema = $isActiveRecord
+			? $this->generateActiveRecordSchema($modelClass)
+			: $this->generate($modelClass);
+		$tableKey = $isActiveRecord ? (array)$modelClass::TABLE_KEY : [];
+		$db = $isActiveRecord ? Database::getInstance() : null;
 
 		// remove auto-increment keys and auto-populated fields
 		$autoFields = ['createdAt', 'createdBy', 'updatedAt', 'updatedBy'];
@@ -123,7 +150,7 @@ class SchemaGenerator {
 		}
 
 		// remove auto-increment primary key
-		if ($db->isAutoIncrement($modelClass::TABLE_NAME)) {
+		if ($db and $db->isAutoIncrement($modelClass::TABLE_NAME)) {
 			$binds = $modelClass::getBinds();
 			foreach ($tableKey as $keyField) {
 				$property = array_search($keyField, $binds);
@@ -284,6 +311,196 @@ class SchemaGenerator {
 		}
 
 		return $default;
+
+	}
+
+	/**
+	 * Generate a schema by reading the public typed properties of a plain PHP class.
+	 *
+	 * @param	string	$className	Fully qualified class name.
+	 * @return	array	OpenAPI schema object.
+	 */
+	private function generateTypedObjectSchema(string $className): array {
+
+		$reflection = new \ReflectionClass($className);
+		$properties = [];
+		$required = [];
+
+		foreach ($reflection->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
+
+			if ($property->isStatic()) {
+				continue;
+			}
+
+			$properties[$property->getName()] = $this->reflectionTypeToSchema($property->getType());
+
+			if (!$property->getType()?->allowsNull()) {
+				$required[] = $property->getName();
+			}
+
+		}
+
+		$schema = [
+			'type' => 'object',
+			'properties' => $properties,
+		];
+
+		if (count($required)) {
+			$schema['required'] = $required;
+		}
+
+		return $schema;
+
+	}
+
+	/**
+	 * Convert a reflection type into an OpenAPI schema fragment.
+	 */
+	private function reflectionTypeToSchema(?\ReflectionType $type): array|\stdClass {
+
+		if (is_null($type)) {
+			return new \stdClass();
+		}
+
+		if ($type instanceof \ReflectionUnionType) {
+			return $this->reflectionUnionTypeToSchema($type);
+		}
+
+		if (!$type instanceof \ReflectionNamedType) {
+			return new \stdClass();
+		}
+
+		$schema = $this->namedReflectionTypeToSchema($type);
+
+		if ($type->allowsNull()) {
+			return $this->makeSchemaNullable($schema);
+		}
+
+		return $schema;
+
+	}
+
+	/**
+	 * Convert a named reflection type into an OpenAPI schema fragment.
+	 */
+	private function namedReflectionTypeToSchema(\ReflectionNamedType $type): array|\stdClass {
+
+		if ($type->isBuiltin()) {
+			return match ($type->getName()) {
+				'int' => ['type' => 'integer'],
+				'float' => ['type' => 'number'],
+				'string' => ['type' => 'string'],
+				'bool' => ['type' => 'boolean'],
+				'array' => ['type' => 'array', 'items' => new \stdClass()],
+				'object' => ['type' => 'object'],
+				'mixed' => new \stdClass(),
+				default => ['type' => 'string'],
+			};
+		}
+
+		$typeName = $type->getName();
+
+		if (is_a($typeName, \DateTimeInterface::class, true)) {
+			return ['type' => 'string', 'format' => 'date-time'];
+		}
+
+		if (enum_exists($typeName)) {
+			return $this->enumToSchema($typeName);
+		}
+
+		// Inline nested typed objects to keep documentation aligned with the explicit read contract.
+		return $this->generate($typeName);
+
+	}
+
+	/**
+	 * Convert a union reflection type into an OpenAPI schema fragment.
+	 */
+	private function reflectionUnionTypeToSchema(\ReflectionUnionType $type): array {
+
+		$schemas = [];
+		$nullable = false;
+
+		foreach ($type->getTypes() as $namedType) {
+
+			if ($namedType instanceof \ReflectionNamedType and $namedType->getName() === 'null') {
+				$nullable = true;
+				continue;
+			}
+
+			$schemas[] = $this->namedReflectionTypeToSchema($namedType);
+
+		}
+
+		if (!count($schemas)) {
+			return ['type' => 'null'];
+		}
+
+		if (count($schemas) === 1) {
+			return $nullable ? $this->makeSchemaNullable($schemas[0]) : $schemas[0];
+		}
+
+		if ($nullable) {
+			$schemas[] = ['type' => 'null'];
+		}
+
+		return ['anyOf' => $schemas];
+
+	}
+
+	/**
+	 * Make a schema fragment nullable while preserving its main structure.
+	 */
+	private function makeSchemaNullable(array|\stdClass $schema): array {
+
+		if ($schema instanceof \stdClass) {
+			return ['anyOf' => [$schema, ['type' => 'null']]];
+		}
+
+		if (isset($schema['type']) and is_string($schema['type'])) {
+			$schema['type'] = [$schema['type'], 'null'];
+			return $schema;
+		}
+
+		if (isset($schema['anyOf']) and is_array($schema['anyOf'])) {
+			$schema['anyOf'][] = ['type' => 'null'];
+			return $schema;
+		}
+
+		return ['anyOf' => [$schema, ['type' => 'null']]];
+
+	}
+
+	/**
+	 * Convert a PHP enum class into an OpenAPI schema fragment.
+	 *
+	 * @param	class-string	$enumClass	Fully qualified enum class name.
+	 */
+	private function enumToSchema(string $enumClass): array {
+
+		$reflection = new \ReflectionEnum($enumClass);
+		$cases = $enumClass::cases();
+
+		if ($reflection->isBacked()) {
+
+			$backingType = $reflection->getBackingType()?->getName() ?? 'string';
+			$values = array_map(static function(\BackedEnum $case): string|int {
+				return $case->value;
+			}, $cases);
+
+			return [
+				'type' => $backingType === 'int' ? 'integer' : 'string',
+				'enum' => $values,
+			];
+
+		}
+
+		return [
+			'type' => 'string',
+			'enum' => array_map(static function(\UnitEnum $case): string {
+				return $case->name;
+			}, $cases),
+		];
 
 	}
 

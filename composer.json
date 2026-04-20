@@ -29,7 +29,9 @@
 	"scripts": {
 		"test": "phpunit -c phpunit.xml.dist",
 		"upgrade-to-v2": "php scripts/upgrade-to-v2.php",
-		"upgrade-to-v3": "php scripts/upgrade-to-v3.php"
+		"upgrade-to-v3": "php scripts/upgrade-to-v3.php",
+		"upgrade-to-v4": "php scripts/upgrade-to-v4.php",
+		"benchmark-v4": "php scripts/benchmark-v4.php"
 	},
 	"autoload": {
 		"psr-4": {

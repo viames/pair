@@ -21,11 +21,15 @@ class FakeCrudExposeableModel {
 	public static function apiConfig(): array {
 
 		return [
-			'resource' => FakeCrudResource::class,
+			'readModel' => FakeCrudReadModel::class,
 			'searchable' => ['name'],
 			'sortable' => ['createdAt'],
 			'filterable' => ['status'],
 			'includes' => ['group', 'tags'],
+			'includeReadModels' => [
+				'group' => FakeCrudIncludeReadModel::class,
+				'tags' => FakeCrudIncludeReadModel::class,
+			],
 			'perPage' => 15,
 			'maxPerPage' => 30,
 			'rules' => [
