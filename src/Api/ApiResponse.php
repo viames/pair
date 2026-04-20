@@ -2,7 +2,7 @@
 
 namespace Pair\Api;
 
-use Pair\Helpers\Utilities;
+use Pair\Http\JsonResponse;
 
 /**
  * Standard API response builder with extensible error registry.
@@ -149,36 +149,25 @@ class ApiResponse {
 	}
 
 	/**
+	 * Build an explicit API error response from the registered error vocabulary.
+	 *
+	 * @param	array<string, mixed>	$extra	Additional payload fields merged into the response body.
+	 */
+	public static function errorResponse(string $errorCode, array $extra = []): ApiErrorResponse {
+
+		$error = self::resolveErrorDefinition($errorCode);
+
+		return new ApiErrorResponse($errorCode, $error['message'], $error['httpCode'], $extra);
+
+	}
+
+	/**
 	 * Send an error JSON response. Looks up the error code in custom errors first,
 	 * then built-in errors, falling back to INTERNAL_SERVER_ERROR.
 	 */
 	public static function error(string $errorCode, array $extra = []): void {
 
-		// custom errors take precedence
-		if (array_key_exists($errorCode, self::$customErrors)) {
-
-			$error = self::$customErrors[$errorCode];
-
-		// fall back to built-in errors
-		} else {
-
-			// use INTERNAL_SERVER_ERROR if the code is not recognized
-			if (!array_key_exists($errorCode, self::ERRORS)) {
-				$errorCode = 'INTERNAL_SERVER_ERROR';
-			}
-
-			$error = self::ERRORS[$errorCode];
-
-		}
-
-		// sanitize extra keys to strings only
-		foreach (array_keys($extra) as $key) {
-			if (!is_string($key)) {
-				unset($extra[$key]);
-			}
-		}
-
-		Utilities::jsonError($errorCode, $error['message'], $error['httpCode'], $extra);
+		self::errorResponse($errorCode, $extra)->send();
 
 	}
 
@@ -187,7 +176,16 @@ class ApiResponse {
 	 */
 	public static function respond(\stdClass|array|null $data, int $httpCode = 200): void {
 
-		Utilities::jsonResponse($data, $httpCode);
+		self::jsonResponse($data, $httpCode)->send();
+
+	}
+
+	/**
+	 * Build an explicit JSON response object for the given payload.
+	 */
+	public static function jsonResponse(\stdClass|array|null $data, int $httpCode = 200): JsonResponse {
+
+		return new JsonResponse($data, $httpCode);
 
 	}
 
@@ -196,8 +194,18 @@ class ApiResponse {
 	 */
 	public static function success(?string $message = null): void {
 
+		self::successResponse($message)->send();
+
+	}
+
+	/**
+	 * Build an explicit JSON success response with an optional message payload.
+	 */
+	public static function successResponse(?string $message = null): JsonResponse {
+
 		$data = $message ? ['message' => $message] : null;
-		Utilities::jsonResponse($data);
+
+		return self::jsonResponse($data);
 
 	}
 
@@ -206,9 +214,18 @@ class ApiResponse {
 	 */
 	public static function paginated(array $data, int $page, int $perPage, int $total): void {
 
+		self::paginatedResponse($data, $page, $perPage, $total)->send();
+
+	}
+
+	/**
+	 * Build an explicit paginated JSON response with the standard data/meta envelope.
+	 */
+	public static function paginatedResponse(array $data, int $page, int $perPage, int $total): JsonResponse {
+
 		$lastPage = $perPage > 0 ? (int)ceil($total / $perPage) : 1;
 
-		Utilities::jsonResponse([
+		return self::jsonResponse([
 			'data' => $data,
 			'meta' => [
 				'page'		=> $page,
@@ -217,6 +234,35 @@ class ApiResponse {
 				'lastPage'	=> $lastPage,
 			]
 		]);
+
+	}
+
+	/**
+	 * Resolve one error definition from custom or built-in registries.
+	 *
+	 * @return	array{httpCode: int, message: string}
+	 */
+	private static function resolveErrorDefinition(string &$errorCode): array {
+
+		if (array_key_exists($errorCode, self::$customErrors)) {
+			$error = self::$customErrors[$errorCode];
+
+			return [
+				'httpCode' => intval($error['httpCode'] ?? 500),
+				'message' => (string)($error['message'] ?? 'Internal server error'),
+			];
+		}
+
+		if (!array_key_exists($errorCode, self::ERRORS)) {
+			$errorCode = 'INTERNAL_SERVER_ERROR';
+		}
+
+		$error = self::ERRORS[$errorCode];
+
+		return [
+			'httpCode' => intval($error['httpCode'] ?? 500),
+			'message' => (string)($error['message'] ?? 'Internal server error'),
+		];
 
 	}
 

@@ -51,4 +51,49 @@ class InputTest extends TestCase {
 
 	}
 
+	/**
+	 * Verify has() and only() keep falsy values that are still explicitly present in the merged input.
+	 */
+	public function testHasAndOnlyTreatFalsyValuesAsPresent(): void {
+
+		$input = new Input(
+			'POST',
+			['page' => '0'],
+			['featured' => false, 'title' => '', 'missing' => null]
+		);
+
+		$this->assertTrue($input->has('page'));
+		$this->assertTrue($input->has('featured'));
+		$this->assertTrue($input->has('title'));
+		$this->assertFalse($input->has('missing'));
+		$this->assertSame([
+			'page' => '0',
+			'featured' => false,
+			'title' => '',
+		], $input->only(['page', 'featured', 'title', 'missing']));
+
+	}
+
+	/**
+	 * Verify fromGlobals() preserves form POST data and falls back to an empty body for invalid JSON.
+	 */
+	public function testFromGlobalsPreservesPostBodyAndIgnoresInvalidJson(): void {
+
+		$_SERVER['REQUEST_METHOD'] = 'POST';
+		$_SERVER['CONTENT_TYPE'] = 'application/json';
+		$_POST = ['name' => 'Form value'];
+
+		$formInput = Input::fromGlobals('{"name":"Json value"}');
+
+		$this->assertSame('Form value', $formInput->string('name'));
+
+		$_POST = [];
+
+		$invalidJsonInput = Input::fromGlobals('{"name":');
+
+		$this->assertSame([], $invalidJsonInput->body());
+		$this->assertSame([], $invalidJsonInput->all());
+
+	}
+
 }

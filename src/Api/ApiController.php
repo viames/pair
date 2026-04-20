@@ -6,6 +6,9 @@ use Pair\Core\Env;
 use Pair\Core\Application;
 use Pair\Core\Controller;
 use Pair\Exceptions\PairException;
+use Pair\Http\JsonResponse;
+use Pair\Http\ResponseInterface;
+use Pair\Http\TextResponse;
 use Pair\Models\Session;
 use Pair\Models\User;
 use Pair\Services\WhatsAppCloudClient;
@@ -169,21 +172,19 @@ abstract class ApiController extends Controller {
 	 * POST validates the webhook signature, decodes the payload, extracts normalized
 	 * events, and forwards them to handleWhatsAppWebhook().
 	 */
-	public function whatsappWebhookAction(): void {
+	public function whatsappWebhookAction(): ResponseInterface {
 
 		$method = strtoupper($this->request->method());
 
 		if ('GET' === $method) {
-			$this->verifyWhatsAppWebhookChallenge();
-			return;
+			return $this->verifyWhatsAppWebhookChallenge();
 		}
 
 		if ('POST' === $method) {
-			$this->receiveWhatsAppWebhook();
-			return;
+			return $this->receiveWhatsAppWebhook();
 		}
 
-		ApiResponse::error('METHOD_NOT_ALLOWED', ['expected' => 'GET or POST', 'actual' => $method]);
+		return $this->errorResponse('METHOD_NOT_ALLOWED', ['expected' => 'GET or POST', 'actual' => $method]);
 
 	}
 
@@ -226,12 +227,47 @@ abstract class ApiController extends Controller {
 	 * Run the middleware pipeline, then execute the destination callable.
 	 *
 	 * @param	callable	$destination	The final action to execute after all middleware.
+	 * @return	mixed		The value returned by the destination when the pipeline reaches it.
 	 */
-	public function runMiddleware(callable $destination): void {
+	public function runMiddleware(callable $destination): mixed {
 
-		$this->pipeline->run($this->request, function () use ($destination) {
-			$destination();
+		$response = null;
+
+		// Capture the destination result outside the middleware stack so explicit responses can bubble back to the runtime.
+		$this->pipeline->run($this->request, function () use ($destination, &$response): void {
+			$response = $destination();
 		});
+
+		return $response;
+
+	}
+
+	/**
+	 * Build an explicit API error response from the shared error registry.
+	 *
+	 * @param	array<string, mixed>	$extra	Additional payload fields merged into the error body.
+	 */
+	protected function errorResponse(string $errorCode, array $extra = []): ApiErrorResponse {
+
+		return ApiResponse::errorResponse($errorCode, $extra);
+
+	}
+
+	/**
+	 * Build an explicit JSON response for API actions.
+	 */
+	protected function jsonResponse(\stdClass|array|null $payload, int $httpCode = 200): JsonResponse {
+
+		return new JsonResponse($payload, $httpCode);
+
+	}
+
+	/**
+	 * Build an explicit text response for non-JSON API endpoints such as webhook challenges.
+	 */
+	protected function textResponse(string $content, int $httpCode = 200, string $contentType = 'text/plain; charset=utf-8'): TextResponse {
+
+		return new TextResponse($content, $httpCode, $contentType);
 
 	}
 
@@ -249,68 +285,66 @@ abstract class ApiController extends Controller {
 	}
 
 	/**
-	 * Receive a POST webhook delivery from Meta, validate it, and dispatch normalized events.
+	 * Receive a POST webhook delivery from Meta, validate it, and return the normalized response.
 	 */
-	private function receiveWhatsAppWebhook(): void {
+	private function receiveWhatsAppWebhook(): ResponseInterface {
 
 		$client = $this->whatsAppCloudClient();
 
 		if (!$client->webhookAppSecretSet()) {
-			ApiResponse::error('INTERNAL_SERVER_ERROR', ['detail' => 'Missing WHATSAPP_CLOUD_APP_SECRET']);
+			return $this->errorResponse('INTERNAL_SERVER_ERROR', ['detail' => 'Missing WHATSAPP_CLOUD_APP_SECRET']);
 		}
 
 		$payload = $this->request->rawBody();
 
 		if ('' === trim($payload)) {
-			ApiResponse::error('BAD_REQUEST', ['detail' => 'Empty WhatsApp webhook payload']);
+			return $this->errorResponse('BAD_REQUEST', ['detail' => 'Empty WhatsApp webhook payload']);
 		}
 
 		if (!$client->verifyWebhookSignature($payload)) {
-			ApiResponse::error('FORBIDDEN', ['detail' => 'Invalid WhatsApp webhook signature']);
+			return $this->errorResponse('FORBIDDEN', ['detail' => 'Invalid WhatsApp webhook signature']);
 		}
 
 		try {
 			$decodedPayload = $client->decodeWebhookPayload($payload);
 		} catch (PairException $e) {
-			ApiResponse::error('BAD_REQUEST', ['detail' => $e->getMessage()]);
+			return $this->errorResponse('BAD_REQUEST', ['detail' => $e->getMessage()]);
 		}
 
 		$events = $client->extractWebhookEvents($decodedPayload);
 		$responseData = $this->handleWhatsAppWebhook($events, $decodedPayload);
 
-		ApiResponse::respond($responseData);
+		return $this->jsonResponse($responseData);
 
 	}
 
 	/**
-	 * Return the challenge requested by Meta during webhook verification.
+	 * Return the challenge requested by Meta during webhook verification as an explicit text response.
 	 */
-	private function verifyWhatsAppWebhookChallenge(): void {
+	private function verifyWhatsAppWebhookChallenge(): ResponseInterface {
 
 		$client = $this->whatsAppCloudClient();
 
 		if (!$client->webhookVerifyTokenSet()) {
-			ApiResponse::error('INTERNAL_SERVER_ERROR', ['detail' => 'Missing WHATSAPP_CLOUD_WEBHOOK_VERIFY_TOKEN']);
+			return $this->errorResponse('INTERNAL_SERVER_ERROR', ['detail' => 'Missing WHATSAPP_CLOUD_WEBHOOK_VERIFY_TOKEN']);
 		}
 
 		try {
 			$challenge = $client->verifyWebhookChallenge();
 		} catch (PairException $e) {
-			ApiResponse::error('FORBIDDEN', ['detail' => $e->getMessage()]);
+			return $this->errorResponse('FORBIDDEN', ['detail' => $e->getMessage()]);
 		}
 
-		http_response_code(200);
-		header('Content-Type: text/plain; charset=utf-8');
-		echo $challenge;
+		return $this->textResponse($challenge);
 
 	}
 
 	/**
-	 * Catch-all for missing action methods. Sends a 404 error.
+	 * Catch-all for missing action methods. Returns an explicit 404 API error response.
 	 */
-	public function __call(mixed $name, mixed $arguments): void {
+	public function __call(mixed $name, mixed $arguments): mixed {
 
-		ApiResponse::error('NOT_FOUND', ['action' => str_replace('Action', '', $name)]);
+		return $this->errorResponse('NOT_FOUND', ['action' => str_replace('Action', '', $name)]);
 
 	}
 

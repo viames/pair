@@ -38,9 +38,90 @@ class ApplicationApiResponseDispatchTest extends TestCase {
 	}
 
 	/**
-	 * Create a minimal application tree for the API runtime fixture.
+	 * Verify the API runtime preserves a response returned through ApiController::runMiddleware().
 	 */
-	private function createFixtureApplication(): string {
+	public function testApiJsonResponseReturnedFromRunMiddlewareIsDispatched(): void {
+
+		$applicationPath = $this->createFixtureApplication(<<<'PHP'
+<?php
+
+use Pair\Api\Middleware;
+use Pair\Api\Request;
+use Pair\Http\JsonResponse;
+
+/**
+ * Fixture API controller used to verify middleware-returned responses in the runtime dispatch path.
+ */
+final class apiController extends \Pair\Api\ApiController {
+
+	/**
+	 * Register one pass-through middleware so the runtime crosses the controller pipeline.
+	 */
+	protected function _init(): void {
+
+		parent::_init();
+		$this->middleware(new class implements Middleware {
+
+			/**
+			 * Pass the request to the next pipeline stage without altering it.
+			 *
+			 * @param	Request		$request	Current API request.
+			 * @param	callable	$next		Next middleware or destination.
+			 */
+			public function handle(Request $request, callable $next): void {
+
+				$next($request);
+
+			}
+
+		});
+
+	}
+
+	/**
+	 * Return the response object from inside runMiddleware() instead of sending it immediately.
+	 */
+	public function passkeyAction(): JsonResponse {
+
+		return $this->runMiddleware(function (): JsonResponse {
+
+			return new JsonResponse([
+				'status' => 'ok',
+				'channel' => 'middleware',
+			], 206);
+
+		});
+
+	}
+
+}
+PHP);
+
+		try {
+			$result = $this->runFixtureApplication($applicationPath);
+		} finally {
+			$this->removeDirectory($applicationPath);
+		}
+
+		$this->assertSame(0, $result['exitCode']);
+		$this->assertSame(206, $this->extractReportedStatusCode($result['stderr']));
+		$this->assertSame([45], $this->extractSessionCleanupArguments($result['stderr']));
+		$this->assertJsonStringEqualsJsonString(
+			json_encode([
+				'status' => 'ok',
+				'channel' => 'middleware',
+			], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+			$result['stdout']
+		);
+
+	}
+
+	/**
+	 * Create a minimal application tree for the API runtime fixture.
+	 *
+	 * @param	string|null	$controllerSource	Optional custom API controller source for one focused runtime scenario.
+	 */
+	private function createFixtureApplication(?string $controllerSource = null): string {
 
 		$applicationPath = sys_get_temp_dir() . '/pair-api-runtime-' . bin2hex(random_bytes(6));
 
@@ -54,9 +135,8 @@ class ApplicationApiResponseDispatchTest extends TestCase {
 			'PAIR_API_RATE_LIMIT_ENABLED=false',
 		]));
 
-		file_put_contents(
-			$applicationPath . '/modules/api/controller.php',
-			<<<'PHP'
+		if (is_null($controllerSource)) {
+			$controllerSource = <<<'PHP'
 <?php
 
 use Pair\Http\JsonResponse;
@@ -79,7 +159,12 @@ final class apiController extends \Pair\Api\ApiController {
 	}
 
 }
-PHP
+PHP;
+		}
+
+		file_put_contents(
+			$applicationPath . '/modules/api/controller.php',
+			$controllerSource
 		);
 
 		file_put_contents(

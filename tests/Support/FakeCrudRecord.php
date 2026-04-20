@@ -6,6 +6,7 @@ namespace Pair\Tests\Support;
 
 use Pair\Orm\ActiveRecord;
 use Pair\Orm\Collection;
+use Pair\Orm\Database;
 
 /**
  * ActiveRecord test double used to cover CrudController transformation paths without the database.
@@ -52,6 +53,13 @@ class FakeCrudRecord extends ActiveRecord {
 	private array $relations = [];
 
 	/**
+	 * Records returned by the overridden find() helper during focused controller tests.
+	 *
+	 * @var	array<string, self|null>
+	 */
+	private static array $findResults = [];
+
+	/**
 	 * Return a stable property-to-column map when tests need a bind list.
 	 *
 	 * @return	array<string, string>
@@ -67,6 +75,27 @@ class FakeCrudRecord extends ActiveRecord {
 	}
 
 	/**
+	 * Seed the static find() result map used by CrudController tests.
+	 *
+	 * @param	int|string	$id		Primary key value to resolve.
+	 * @param	self|null	$record	Record returned when CrudController requests this identifier.
+	 */
+	public static function seedFindResult(int|string $id, ?self $record): void {
+
+		self::$findResults[(string)$id] = $record;
+
+	}
+
+	/**
+	 * Reset the static find() map between tests.
+	 */
+	public static function resetFindResults(): void {
+
+		self::$findResults = [];
+
+	}
+
+	/**
 	 * Seed the fake record with scalar data and optional relation values.
 	 *
 	 * @param	array<string, mixed>	$payload	Scalar payload returned by toArray().
@@ -74,6 +103,7 @@ class FakeCrudRecord extends ActiveRecord {
 	 */
 	public function seed(array $payload, array $relations = []): static {
 
+		$this->db = Database::getInstance();
 		$this->payload = $payload;
 		$this->relations = $relations;
 		$this->keyProperties = ['id'];
@@ -86,13 +116,34 @@ class FakeCrudRecord extends ActiveRecord {
 	}
 
 	/**
+	 * Return the seeded record configured for the requested identifier.
+	 *
+	 * @param	int|string|array	$primaryKey	Primary key requested by CrudController.
+	 */
+	public static function find(int|string|array $primaryKey): ?static {
+
+		if (is_array($primaryKey)) {
+			return null;
+		}
+
+		$record = self::$findResults[(string)$primaryKey] ?? null;
+
+		return $record instanceof static ? $record : null;
+
+	}
+
+	/**
 	 * Return the seeded scalar payload.
 	 *
 	 * @return	array<string, mixed>
 	 */
 	public function toArray(): array {
 
-		return $this->payload;
+		return array_merge($this->payload, [
+			'id' => $this->id,
+			'name' => $this->name,
+			'email' => $this->email,
+		]);
 
 	}
 

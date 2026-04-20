@@ -5,6 +5,7 @@ namespace Pair\Api;
 use Pair\Core\Logger;
 use Pair\Core\Router;
 use Pair\Data\RecordMapper;
+use Pair\Http\JsonResponse;
 use Pair\Orm\ActiveRecord;
 use Pair\Orm\Database;
 
@@ -48,7 +49,7 @@ abstract class CrudController extends ApiController {
 	 *
 	 * @param	array	$resource	Resource configuration.
 	 */
-	private function createResource(array $resource): void {
+	private function createResource(array $resource): JsonResponse {
 
 		$class = $resource['class'];
 		$config = $resource['config'];
@@ -91,7 +92,7 @@ abstract class CrudController extends ApiController {
 		// return the created resource
 		$responseData = $this->transformResource($object, $config);
 
-		ApiResponse::respond($responseData, 201);
+		return ApiResponse::jsonResponse($responseData, 201);
 
 	}
 
@@ -124,7 +125,7 @@ abstract class CrudController extends ApiController {
 	 * @param	array		$resource	Resource configuration.
 	 * @param	string|int	$id			Primary key value.
 	 */
-	private function deleteResource(array $resource, string|int $id): void {
+	private function deleteResource(array $resource, string|int $id): JsonResponse {
 
 		$class = $resource['class'];
 		$object = $class::find($id);
@@ -142,7 +143,7 @@ abstract class CrudController extends ApiController {
 			ApiResponse::error('INTERNAL_SERVER_ERROR', ['detail' => 'Failed to delete resource']);
 		}
 
-		ApiResponse::respond(null, 204);
+		return ApiResponse::jsonResponse(null, 204);
 
 	}
 
@@ -173,13 +174,15 @@ abstract class CrudController extends ApiController {
 	 * Route a CRUD action to the appropriate handler based on HTTP method and URL params.
 	 *
 	 * @param	string	$slug	The resource slug that matched.
+	 * @return	mixed	Explicit response objects when a migrated branch returns one.
 	 */
-	private function handleCrudAction(string $slug): void {
+	private function handleCrudAction(string $slug): mixed {
 
 		$resource = $this->resources[$slug];
 		$id = Router::get(0);
 
-		match ($this->request->method()) {
+		// Let migrated response objects bubble up while legacy static emitters keep the existing behavior.
+		return match ($this->request->method()) {
 			'GET'    => $id ? $this->showResource($resource, $id) : $this->listResources($resource),
 			'POST'   => $this->createResource($resource),
 			'PUT',
@@ -195,7 +198,7 @@ abstract class CrudController extends ApiController {
 	 *
 	 * @param	array	$resource	Resource configuration.
 	 */
-	private function listResources(array $resource): void {
+	private function listResources(array $resource): JsonResponse {
 
 		$class = $resource['class'];
 		$config = $resource['config'];
@@ -225,7 +228,7 @@ abstract class CrudController extends ApiController {
 		// transform through Resource class or convert to array
 		$data = $this->transformCollection($objects, $config, $fields, $includes);
 
-		ApiResponse::paginated($data, $page, $perPage, $total);
+		return ApiResponse::paginatedResponse($data, $page, $perPage, $total);
 
 	}
 
@@ -235,7 +238,7 @@ abstract class CrudController extends ApiController {
 	 * @param	array		$resource	Resource configuration.
 	 * @param	string|int	$id			Primary key value.
 	 */
-	private function showResource(array $resource, string|int $id): void {
+	private function showResource(array $resource, string|int $id): JsonResponse {
 
 		$class = $resource['class'];
 		$config = $resource['config'];
@@ -261,7 +264,7 @@ abstract class CrudController extends ApiController {
 
 		$data = $this->transformResource($object, $config, $fields, $includes);
 
-		ApiResponse::respond($data);
+		return ApiResponse::jsonResponse($data);
 
 	}
 
@@ -438,7 +441,7 @@ abstract class CrudController extends ApiController {
 	 * @param	array		$resource	Resource configuration.
 	 * @param	string|int	$id			Primary key value.
 	 */
-	private function updateResource(array $resource, string|int $id): void {
+	private function updateResource(array $resource, string|int $id): JsonResponse {
 
 		$class = $resource['class'];
 		$config = $resource['config'];
@@ -484,7 +487,7 @@ abstract class CrudController extends ApiController {
 		// return the updated resource
 		$responseData = $this->transformResource($object, $config);
 
-		ApiResponse::respond($responseData);
+		return ApiResponse::jsonResponse($responseData);
 
 	}
 
@@ -492,16 +495,15 @@ abstract class CrudController extends ApiController {
 	 * Intercept calls to undefined action methods and check if they match a registered
 	 * CRUD resource. Falls back to parent's 404 handler if no match.
 	 */
-	public function __call(mixed $name, mixed $arguments): void {
+	public function __call(mixed $name, mixed $arguments): mixed {
 
 		$action = str_replace('Action', '', $name);
 
 		if (isset($this->resources[$action])) {
-			$this->handleCrudAction($action);
-			return;
+			return $this->handleCrudAction($action);
 		}
 
-		parent::__call($name, $arguments);
+		return parent::__call($name, $arguments);
 
 	}
 

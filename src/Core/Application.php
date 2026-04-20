@@ -956,8 +956,8 @@ class Application {
 
 			// run middleware pipeline for ApiController subclasses
 			if ($apiCtl instanceof \Pair\Api\ApiController) {
-				$apiCtl->runMiddleware(function () use ($apiCtl, $action, &$response) {
-					$response = $apiCtl->$action();
+				$response = $apiCtl->runMiddleware(function () use ($apiCtl, $action) {
+					return $apiCtl->$action();
 				});
 			} else {
 				$response = $apiCtl->$action();

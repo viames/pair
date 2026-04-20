@@ -4,14 +4,20 @@ declare(strict_types=1);
 
 namespace Pair\Tests\Unit\Api;
 
+use Pair\Api\ApiErrorResponse;
 use Pair\Api\ApiController;
 use Pair\Api\Middleware;
 use Pair\Api\MiddlewarePipeline;
 use Pair\Api\Request;
 use Pair\Api\ThrottleMiddleware;
 use Pair\Core\Application;
+use Pair\Exceptions\PairException;
+use Pair\Http\JsonResponse;
+use Pair\Http\ResponseInterface;
+use Pair\Http\TextResponse;
 use Pair\Models\User;
 use Pair\Orm\ActiveRecord;
+use Pair\Services\WhatsAppCloudClient;
 use Pair\Tests\Support\TestCase;
 
 /**
@@ -124,7 +130,7 @@ class ApiControllerTest extends TestCase {
 	}
 
 	/**
-	 * Verify middleware() and runMiddleware() cooperate so controller-level middleware wraps the destination.
+	 * Verify middleware() and runMiddleware() cooperate so controller-level middleware wraps the destination and preserves its return value.
 	 */
 	public function testMiddlewareAndRunMiddlewareUseControllerPipeline(): void {
 
@@ -167,9 +173,10 @@ class ApiControllerTest extends TestCase {
 
 		});
 
-		$controller->runMiddleware(function () use ($trace): void {
+		$result = $controller->runMiddleware(function () use ($trace): string {
 
 			$trace[] = 'destination';
+			return 'response-from-destination';
 
 		});
 
@@ -178,6 +185,7 @@ class ApiControllerTest extends TestCase {
 			'destination',
 			'middleware:after',
 		], $trace->getArrayCopy());
+		$this->assertSame('response-from-destination', $result);
 
 	}
 
@@ -206,6 +214,89 @@ class ApiControllerTest extends TestCase {
 		$disabledController->exposeRegisterDefaultMiddleware();
 
 		$this->assertSame([], $this->readPipelineMiddlewares($disabledController));
+
+	}
+
+	/**
+	 * Verify missing actions return an explicit 404 API error response instead of sending output immediately.
+	 */
+	public function testCallReturnsExplicitNotFoundErrorResponse(): void {
+
+		$controller = $this->newApiController();
+
+		$response = $controller->missingAction();
+
+		$this->assertInstanceOf(ResponseInterface::class, $response);
+		$this->assertInstanceOf(ApiErrorResponse::class, $response);
+
+	}
+
+	/**
+	 * Verify the WhatsApp GET webhook branch now returns an explicit text response.
+	 */
+	public function testWhatsAppWebhookActionReturnsTextResponseForGetChallenge(): void {
+
+		$_SERVER['REQUEST_METHOD'] = 'GET';
+
+		$controller = $this->newApiController();
+		$this->primeController($controller, new Request());
+		$this->setPrivateProperty($controller, ApiController::class, 'whatsAppCloudClient', new FakeWhatsAppCloudClient(challenge: 'challenge-token'));
+
+		$response = $controller->whatsappWebhookAction();
+
+		$this->assertInstanceOf(TextResponse::class, $response);
+
+		ob_start();
+		$response->send();
+		$output = ob_get_clean();
+
+		$this->assertSame(200, http_response_code());
+		$this->assertSame('challenge-token', $output);
+
+	}
+
+	/**
+	 * Verify the WhatsApp POST webhook branch returns an explicit JSON response after validation succeeds.
+	 */
+	public function testWhatsAppWebhookActionReturnsJsonResponseForValidPostPayload(): void {
+
+		$_SERVER['REQUEST_METHOD'] = 'POST';
+
+		$controller = $this->newApiController();
+		$request = $this->newRequestWithRawBody('{"entry":[]}');
+		$this->primeController($controller, $request);
+		$this->setPrivateProperty($controller, ApiController::class, 'whatsAppCloudClient', new FakeWhatsAppCloudClient(
+			decodedPayload: ['entry' => []],
+			events: [
+				['event' => 'message'],
+				['event' => 'status'],
+			]
+		));
+
+		$response = $controller->whatsappWebhookAction();
+
+		$this->assertInstanceOf(JsonResponse::class, $response);
+		$this->assertSame(200, $this->readPrivateProperty($response, JsonResponse::class, 'httpCode'));
+		$this->assertSame([
+			'received' => true,
+			'events' => 2,
+		], $this->readPrivateProperty($response, JsonResponse::class, 'payload'));
+
+	}
+
+	/**
+	 * Verify unsupported WhatsApp webhook methods return an explicit API error response.
+	 */
+	public function testWhatsAppWebhookActionReturnsErrorResponseForUnsupportedMethod(): void {
+
+		$_SERVER['REQUEST_METHOD'] = 'DELETE';
+
+		$controller = $this->newApiController();
+		$this->primeController($controller, new Request());
+
+		$response = $controller->whatsappWebhookAction();
+
+		$this->assertInstanceOf(ApiErrorResponse::class, $response);
 
 	}
 
@@ -242,6 +333,20 @@ class ApiControllerTest extends TestCase {
 
 		$request = new Request();
 		$this->setPrivateProperty($request, Request::class, 'rawBody', json_encode($payload));
+
+		return $request;
+
+	}
+
+	/**
+	 * Create a Request instance backed by a configurable raw body.
+	 *
+	 * @param	string	$rawBody	Raw request body to expose through Request::rawBody().
+	 */
+	private function newRequestWithRawBody(string $rawBody): Request {
+
+		$request = new Request();
+		$this->setPrivateProperty($request, Request::class, 'rawBody', $rawBody);
 
 		return $request;
 
@@ -385,6 +490,152 @@ final class TestApiController extends ApiController {
 	public function exposeRegisterDefaultMiddleware(): void {
 
 		$this->registerDefaultMiddleware();
+
+	}
+
+}
+
+/**
+ * Lightweight WhatsApp Cloud client stub used to isolate webhook branches inside ApiController.
+ */
+final class FakeWhatsAppCloudClient extends WhatsAppCloudClient {
+
+	/**
+	 * Whether the app secret is considered configured.
+	 */
+	public bool $appSecretConfigured;
+
+	/**
+	 * Challenge string returned by verifyWebhookChallenge().
+	 */
+	public string $challenge;
+
+	/**
+	 * Optional exception thrown by verifyWebhookChallenge().
+	 */
+	public ?PairException $challengeException;
+
+	/**
+	 * Decoded webhook payload returned by decodeWebhookPayload().
+	 *
+	 * @var	array<string, mixed>
+	 */
+	public array $decodedPayload;
+
+	/**
+	 * Optional exception thrown by decodeWebhookPayload().
+	 */
+	public ?PairException $decodeException;
+
+	/**
+	 * Extracted normalized webhook events.
+	 *
+	 * @var	list<array<string, mixed>>
+	 */
+	public array $events;
+
+	/**
+	 * Whether verifyWebhookSignature() should accept the payload.
+	 */
+	public bool $signatureIsValid;
+
+	/**
+	 * Whether the webhook verify token is considered configured.
+	 */
+	public bool $verifyTokenConfigured;
+
+	/**
+	 * Seed the fake client with deterministic webhook behavior.
+	 *
+	 * @param	array<string, mixed>	$decodedPayload	Decoded payload returned by decodeWebhookPayload().
+	 * @param	list<array<string, mixed>>	$events		Normalized events returned by extractWebhookEvents().
+	 */
+	public function __construct(
+		bool $appSecretConfigured = true,
+		bool $verifyTokenConfigured = true,
+		bool $signatureIsValid = true,
+		string $challenge = 'challenge',
+		array $decodedPayload = [],
+		array $events = [],
+		?PairException $challengeException = null,
+		?PairException $decodeException = null
+	) {
+
+		$this->appSecretConfigured = $appSecretConfigured;
+		$this->verifyTokenConfigured = $verifyTokenConfigured;
+		$this->signatureIsValid = $signatureIsValid;
+		$this->challenge = $challenge;
+		$this->decodedPayload = $decodedPayload;
+		$this->events = $events;
+		$this->challengeException = $challengeException;
+		$this->decodeException = $decodeException;
+
+	}
+
+	/**
+	 * Return whether the fake webhook app secret is configured.
+	 */
+	public function webhookAppSecretSet(): bool {
+
+		return $this->appSecretConfigured;
+
+	}
+
+	/**
+	 * Return whether the fake webhook verify token is configured.
+	 */
+	public function webhookVerifyTokenSet(): bool {
+
+		return $this->verifyTokenConfigured;
+
+	}
+
+	/**
+	 * Return the configured challenge or throw the seeded exception.
+	 */
+	public function verifyWebhookChallenge(?string $mode = null, ?string $verifyToken = null, ?string $challenge = null): string {
+
+		if ($this->challengeException instanceof PairException) {
+			throw $this->challengeException;
+		}
+
+		return $this->challenge;
+
+	}
+
+	/**
+	 * Return the configured signature-validation result.
+	 */
+	public function verifyWebhookSignature(string $payload, ?string $signatureHeader = null): bool {
+
+		return $this->signatureIsValid;
+
+	}
+
+	/**
+	 * Return the configured decoded payload or throw the seeded exception.
+	 *
+	 * @return	array<string, mixed>
+	 */
+	public function decodeWebhookPayload(string $payload): array {
+
+		if ($this->decodeException instanceof PairException) {
+			throw $this->decodeException;
+		}
+
+		return $this->decodedPayload;
+
+	}
+
+	/**
+	 * Return the configured normalized event list.
+	 *
+	 * @param	array<string, mixed>	$payload	Decoded webhook payload.
+	 * @return	list<array<string, mixed>>
+	 */
+	public function extractWebhookEvents(array $payload): array {
+
+		return $this->events;
 
 	}
 

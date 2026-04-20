@@ -4,6 +4,7 @@ namespace Pair\Api;
 
 use Pair\Core\Application;
 use Pair\Core\Env;
+use Pair\Http\JsonResponse;
 use Pair\Models\User;
 use Pair\Models\UserPasskey;
 use Pair\Orm\Database;
@@ -31,45 +32,39 @@ abstract class PasskeyController extends CrudController {
 	private ?PasskeyAuth $passkeyAuth = null;
 
 	/**
-	 * Handle all passkey endpoints by URL params.
+	 * Handle all passkey endpoints by URL params and bubble explicit responses when available.
 	 */
-	public function passkeyAction(): void {
+	public function passkeyAction(): mixed {
 
 		$resource = strtolower((string)$this->router->getParam(0));
 		$operation = strtolower((string)$this->router->getParam(1));
 		$method = strtoupper($this->request->method());
 
 		if ('login' == $resource and 'options' == $operation and 'POST' == $method) {
-			$this->passkeyLoginOptions();
-			return;
+			return $this->passkeyLoginOptions();
 		}
 
 		if ('login' == $resource and 'verify' == $operation and 'POST' == $method) {
-			$this->passkeyLoginVerify();
-			return;
+			return $this->passkeyLoginVerify();
 		}
 
 		if ('register' == $resource and 'options' == $operation and 'POST' == $method) {
-			$this->passkeyRegisterOptions();
-			return;
+			return $this->passkeyRegisterOptions();
 		}
 
 		if ('register' == $resource and 'verify' == $operation and 'POST' == $method) {
-			$this->passkeyRegisterVerify();
-			return;
+			return $this->passkeyRegisterVerify();
 		}
 
 		if ('list' == $resource and 'GET' == $method) {
-			$this->passkeyList();
-			return;
+			return $this->passkeyList();
 		}
 
 		if ('revoke' == $resource and 'DELETE' == $method) {
-			$this->passkeyRevoke();
-			return;
+			return $this->passkeyRevoke();
 		}
 
-		ApiResponse::error('NOT_FOUND', [
+		return $this->errorResponse('NOT_FOUND', [
 			'action' => 'passkey',
 			'resource' => $resource,
 			'operation' => $operation
@@ -159,9 +154,10 @@ abstract class PasskeyController extends CrudController {
 	}
 
 	/**
-	 * Endpoint: GET /api/passkey/list
+	 * Endpoint: GET /api/passkey/list.
+	 * Returns an explicit JSON response containing the authenticated user's active passkeys.
 	 */
-	private function passkeyList(): void {
+	private function passkeyList(): JsonResponse {
 
 		$user = $this->requireAuth();
 		$data = [];
@@ -195,14 +191,15 @@ abstract class PasskeyController extends CrudController {
 			];
 		}
 
-		ApiResponse::respond($data);
+		return ApiResponse::jsonResponse($data);
 
 	}
 
 	/**
-	 * Endpoint: POST /api/passkey/login/options
+	 * Endpoint: POST /api/passkey/login/options.
+	 * Returns an explicit JSON response containing the WebAuthn publicKey options payload.
 	 */
-	private function passkeyLoginOptions(): void {
+	private function passkeyLoginOptions(): JsonResponse {
 
 		$body = $this->optionalJsonPost();
 		$identifier = trim((string)($body['username'] ?? ''));
@@ -210,14 +207,15 @@ abstract class PasskeyController extends CrudController {
 
 		$options = $this->passkey()->beginAuthentication($user);
 
-		ApiResponse::respond(['publicKey' => $options]);
+		return ApiResponse::jsonResponse(['publicKey' => $options]);
 
 	}
 
 	/**
-	 * Endpoint: POST /api/passkey/login/verify
+	 * Endpoint: POST /api/passkey/login/verify.
+	 * Returns an explicit JSON response when the passkey assertion is verified successfully.
 	 */
-	private function passkeyLoginVerify(): void {
+	private function passkeyLoginVerify(): JsonResponse {
 
 		$body = $this->optionalJsonPost();
 		$credential = (isset($body['credential']) and is_array($body['credential'])) ? $body['credential'] : null;
@@ -257,7 +255,7 @@ abstract class PasskeyController extends CrudController {
 			$destinationUrl = 'user/profile';
 		}
 
-		ApiResponse::respond([
+		return ApiResponse::jsonResponse([
 			'message' => 'Authenticated',
 			'userId' => $result->userId,
 			'sessionId' => $result->sessionId,
@@ -267,9 +265,10 @@ abstract class PasskeyController extends CrudController {
 	}
 
 	/**
-	 * Endpoint: POST /api/passkey/register/options
+	 * Endpoint: POST /api/passkey/register/options.
+	 * Returns an explicit JSON response containing the WebAuthn publicKey options payload.
 	 */
-	private function passkeyRegisterOptions(): void {
+	private function passkeyRegisterOptions(): JsonResponse {
 
 		$user = $this->requireAuth();
 		$body = $this->optionalJsonPost();
@@ -277,14 +276,15 @@ abstract class PasskeyController extends CrudController {
 
 		$options = $this->passkey()->beginRegistration($user, ('' === $displayName ? null : $displayName));
 
-		ApiResponse::respond(['publicKey' => $options]);
+		return ApiResponse::jsonResponse(['publicKey' => $options]);
 
 	}
 
 	/**
-	 * Endpoint: POST /api/passkey/register/verify
+	 * Endpoint: POST /api/passkey/register/verify.
+	 * Returns an explicit JSON response when the passkey registration succeeds.
 	 */
-	private function passkeyRegisterVerify(): void {
+	private function passkeyRegisterVerify(): JsonResponse {
 
 		$user = $this->requireAuth();
 		$body = $this->optionalJsonPost();
@@ -297,7 +297,7 @@ abstract class PasskeyController extends CrudController {
 		$label = trim((string)($body['label'] ?? ''));
 		$passkey = $this->passkey()->registerCredential($user, $credential, ('' === $label ? null : $label));
 
-		ApiResponse::respond([
+		return ApiResponse::jsonResponse([
 			'message' => 'Passkey registered',
 			'passkey' => [
 				'id' => $passkey->id,
@@ -310,9 +310,10 @@ abstract class PasskeyController extends CrudController {
 	}
 
 	/**
-	 * Endpoint: DELETE /api/passkey/revoke/{id}
+	 * Endpoint: DELETE /api/passkey/revoke/{id}.
+	 * Returns an explicit JSON response with HTTP 204 when the passkey is revoked successfully.
 	 */
-	private function passkeyRevoke(): void {
+	private function passkeyRevoke(): JsonResponse {
 
 		$user = $this->requireAuth();
 		$passkeyId = intval((string)$this->router->getParam(1));
@@ -331,7 +332,7 @@ abstract class PasskeyController extends CrudController {
 			ApiResponse::error('INTERNAL_SERVER_ERROR', ['detail' => 'Unable to revoke passkey']);
 		}
 
-		ApiResponse::respond(null, 204);
+		return ApiResponse::jsonResponse(null, 204);
 
 	}
 
