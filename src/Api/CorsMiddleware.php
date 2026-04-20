@@ -47,7 +47,7 @@ class CorsMiddleware implements Middleware {
 	 * Handle the request by setting CORS headers. Responds to OPTIONS preflight
 	 * with 204 No Content. Passes other requests to the next handler.
 	 */
-	public function handle(Request $request, callable $next): void {
+	public function handle(Request $request, callable $next): mixed {
 
 		$this->setCorsHeaders($request);
 
@@ -57,7 +57,7 @@ class CorsMiddleware implements Middleware {
 			exit();
 		}
 
-		$next($request);
+		return $next($request);
 
 	}
 

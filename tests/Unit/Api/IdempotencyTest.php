@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Pair\Tests\Unit\Api;
 
+use Pair\Api\ApiErrorResponse;
 use Pair\Api\Idempotency;
 use Pair\Api\Request;
+use Pair\Http\JsonResponse;
+use Pair\Http\ResponseInterface;
 use Pair\Tests\Support\TestCase;
 
 /**
@@ -32,6 +35,108 @@ class IdempotencyTest extends TestCase {
 		$this->removeDirectory(TEMP_PATH . 'idempotency');
 
 		parent::tearDown();
+
+	}
+
+	/**
+	 * Verify duplicateResponse() returns null for a new key and creates the processing row.
+	 */
+	public function testDuplicateResponseCreatesProcessingRowAndReturnsNullForNewKey(): void {
+
+		$request = $this->newRequest(
+			method: 'POST',
+			uri: '/api/orders',
+			rawBody: '{"amount":10}',
+			idempotencyKey: 'order-create-explicit-1'
+		);
+
+		$response = Idempotency::duplicateResponse($request, 'orders', 90);
+		$rows = $this->readIdempotencyRows();
+
+		$this->assertNull($response);
+		$this->assertCount(1, $rows);
+		$this->assertSame('processing', $rows[0]['status'] ?? null);
+
+	}
+
+	/**
+	 * Verify duplicateResponse() returns an explicit replay response with the stored payload and HTTP status.
+	 */
+	public function testDuplicateResponseReturnsExplicitReplayResponse(): void {
+
+		$request = $this->newRequest(
+			method: 'POST',
+			uri: '/api/orders',
+			rawBody: '{"amount":15}',
+			idempotencyKey: 'order-create-explicit-2'
+		);
+
+		Idempotency::storeResponse($request, 'orders', [
+			'id' => 10,
+			'status' => 'stored',
+		], 201, 300);
+
+		$response = Idempotency::duplicateResponse($request, 'orders');
+
+		$this->assertInstanceOf(JsonResponse::class, $response);
+		$this->assertSame([
+			'id' => 10,
+			'status' => 'stored',
+		], $this->readJsonResponseProperty($response, 'payload'));
+		$this->assertSame(201, $this->readJsonResponseProperty($response, 'httpCode'));
+
+	}
+
+	/**
+	 * Verify duplicateResponse() still returns a replay response object when the cached payload is scalar JSON.
+	 */
+	public function testDuplicateResponseSupportsScalarReplayPayloads(): void {
+
+		$request = $this->newRequest(
+			method: 'POST',
+			uri: '/api/orders',
+			rawBody: '{"amount":16}',
+			idempotencyKey: 'order-create-explicit-4'
+		);
+
+		Idempotency::storeResponse($request, 'orders', 'stored', 200, 300);
+
+		$response = Idempotency::duplicateResponse($request, 'orders');
+
+		$this->assertInstanceOf(ResponseInterface::class, $response);
+		$this->assertNotInstanceOf(JsonResponse::class, $response);
+		$this->assertNotInstanceOf(ApiErrorResponse::class, $response);
+
+	}
+
+	/**
+	 * Verify duplicateResponse() returns an explicit conflict response when the same key is reused with a different payload.
+	 */
+	public function testDuplicateResponseReturnsExplicitConflictResponseForDifferentPayload(): void {
+
+		$initial = $this->newRequest(
+			method: 'POST',
+			uri: '/api/orders',
+			rawBody: '{"amount":15}',
+			idempotencyKey: 'order-create-explicit-3'
+		);
+
+		Idempotency::storeResponse($initial, 'orders', [
+			'id' => 11,
+		], 201, 300);
+
+		$duplicate = $this->newRequest(
+			method: 'POST',
+			uri: '/api/orders',
+			rawBody: '{"amount":99}',
+			idempotencyKey: 'order-create-explicit-3'
+		);
+
+		$response = Idempotency::duplicateResponse($duplicate, 'orders');
+
+		$this->assertInstanceOf(ApiErrorResponse::class, $response);
+		$this->assertSame('CONFLICT', $this->readPrivateProperty($response, ApiErrorResponse::class, 'errorCode'));
+		$this->assertSame(409, $this->readPrivateProperty($response, ApiErrorResponse::class, 'httpCode'));
 
 	}
 
@@ -228,6 +333,32 @@ PHP);
 		}
 
 		return (int)$matches[1];
+
+	}
+
+	/**
+	 * Read one private JsonResponse property for focused assertions on explicit idempotency responses.
+	 */
+	private function readJsonResponseProperty(JsonResponse $response, string $name): mixed {
+
+		$property = new \ReflectionProperty($response, $name);
+
+		return $property->getValue($response);
+
+	}
+
+	/**
+	 * Read one private property from an arbitrary object for focused assertions.
+	 *
+	 * @param	object	$object	Object under test.
+	 * @param	string	$class	Declaring class of the property.
+	 * @param	string	$name	Property name.
+	 */
+	private function readPrivateProperty(object $object, string $class, string $name): mixed {
+
+		$property = new \ReflectionProperty($class, $name);
+
+		return $property->getValue($object);
 
 	}
 

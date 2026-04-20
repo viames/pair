@@ -29,11 +29,13 @@ class MiddlewarePipeline {
 	 *
 	 * @param	Request		$request		The current HTTP request.
 	 * @param	callable	$destination	The final action to execute after all middleware.
+	 * @return	mixed		The value returned by the middleware chain or final destination.
 	 */
-	public function run(Request $request, callable $destination): void {
+	public function run(Request $request, callable $destination): mixed {
 
 		$pipeline = $this->buildPipeline($destination);
-		$pipeline($request);
+
+		return $pipeline($request);
 
 	}
 
@@ -48,7 +50,7 @@ class MiddlewarePipeline {
 		// build from last to first so execution order is FIFO
 		foreach (array_reverse($this->middlewares) as $middleware) {
 			$next = function (Request $request) use ($middleware, $next) {
-				$middleware->handle($request, $next);
+				return $middleware->handle($request, $next);
 			};
 		}
 

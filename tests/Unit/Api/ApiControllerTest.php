@@ -89,6 +89,23 @@ class ApiControllerTest extends TestCase {
 	}
 
 	/**
+	 * Verify requireAuthOrResponse() returns an explicit UNAUTHORIZED response when no user is authenticated.
+	 */
+	public function testRequireAuthOrResponseReturnsExplicitErrorWhenUserIsMissing(): void {
+
+		$controller = $this->newApiController();
+
+		$this->setApplicationCurrentUser(null);
+
+		$result = $controller->exposeRequireAuthOrResponse();
+
+		$this->assertInstanceOf(ApiErrorResponse::class, $result);
+		$this->assertSame('UNAUTHORIZED', $this->readPrivateProperty($result, ApiErrorResponse::class, 'errorCode'));
+		$this->assertSame(401, $this->readPrivateProperty($result, ApiErrorResponse::class, 'httpCode'));
+
+	}
+
+	/**
 	 * Verify requireBearer() returns the configured token when one has been assigned already.
 	 */
 	public function testRequireBearerReturnsConfiguredToken(): void {
@@ -97,6 +114,21 @@ class ApiControllerTest extends TestCase {
 		$this->setPrivateProperty($controller, ApiController::class, 'bearerToken', 'top-secret-token');
 
 		$this->assertSame('top-secret-token', $controller->exposeRequireBearer());
+
+	}
+
+	/**
+	 * Verify requireBearerOrResponse() returns an explicit AUTH_TOKEN_MISSING response when no token is assigned.
+	 */
+	public function testRequireBearerOrResponseReturnsExplicitErrorWhenTokenIsMissing(): void {
+
+		$controller = $this->newApiController();
+
+		$result = $controller->exposeRequireBearerOrResponse();
+
+		$this->assertInstanceOf(ApiErrorResponse::class, $result);
+		$this->assertSame('AUTH_TOKEN_MISSING', $this->readPrivateProperty($result, ApiErrorResponse::class, 'errorCode'));
+		$this->assertSame(401, $this->readPrivateProperty($result, ApiErrorResponse::class, 'httpCode'));
 
 	}
 
@@ -163,11 +195,13 @@ class ApiControllerTest extends TestCase {
 			 * @param	Request		$request	Current request.
 			 * @param	callable	$next		Next middleware or destination.
 			 */
-			public function handle(Request $request, callable $next): void {
+			public function handle(Request $request, callable $next): mixed {
 
 				$this->trace[] = 'middleware:before';
-				$next($request);
+				$result = $next($request);
 				$this->trace[] = 'middleware:after';
+
+				return $result;
 
 			}
 
@@ -186,6 +220,38 @@ class ApiControllerTest extends TestCase {
 			'middleware:after',
 		], $trace->getArrayCopy());
 		$this->assertSame('response-from-destination', $result);
+
+	}
+
+	/**
+	 * Verify runMiddleware() can return an explicit response object produced by a blocking middleware.
+	 */
+	public function testRunMiddlewareReturnsMiddlewareResponseWhenChainShortCircuits(): void {
+
+		$controller = $this->newApiController();
+		$this->primeController($controller, new Request());
+		$controller->middleware(new class implements Middleware {
+
+			/**
+			 * Stop the chain with an explicit API error response.
+			 */
+			public function handle(Request $request, callable $next): mixed {
+
+				return new ApiErrorResponse('TOO_MANY_REQUESTS', 'Too many requests', 429, [
+					'retryAfter' => 15,
+				]);
+
+			}
+
+		});
+
+		$result = $controller->runMiddleware(function (): string {
+
+			return 'destination';
+
+		});
+
+		$this->assertInstanceOf(ApiErrorResponse::class, $result);
 
 	}
 
@@ -467,11 +533,29 @@ final class TestApiController extends ApiController {
 	}
 
 	/**
+	 * Expose the explicit authenticated-user guard for focused unit tests.
+	 */
+	public function exposeRequireAuthOrResponse(): User|ApiErrorResponse {
+
+		return $this->requireAuthOrResponse();
+
+	}
+
+	/**
 	 * Expose the bearer-token helper for focused unit tests.
 	 */
 	public function exposeRequireBearer(): string {
 
 		return $this->requireBearer();
+
+	}
+
+	/**
+	 * Expose the explicit bearer-token guard for focused unit tests.
+	 */
+	public function exposeRequireBearerOrResponse(): string|ApiErrorResponse {
+
+		return $this->requireBearerOrResponse();
 
 	}
 

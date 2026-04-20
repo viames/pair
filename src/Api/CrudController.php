@@ -6,6 +6,7 @@ use Pair\Core\Logger;
 use Pair\Core\Router;
 use Pair\Data\RecordMapper;
 use Pair\Http\JsonResponse;
+use Pair\Http\ResponseInterface;
 use Pair\Orm\ActiveRecord;
 use Pair\Orm\Database;
 
@@ -49,7 +50,7 @@ abstract class CrudController extends ApiController {
 	 *
 	 * @param	array	$resource	Resource configuration.
 	 */
-	private function createResource(array $resource): JsonResponse {
+	private function createResource(array $resource): ResponseInterface {
 
 		$class = $resource['class'];
 		$config = $resource['config'];
@@ -70,7 +71,12 @@ abstract class CrudController extends ApiController {
 		$rules = $config['rules']['create'] ?? [];
 
 		if (count($rules)) {
-			$data = $this->request->validate($rules);
+			$data = $this->request->validateOrResponse($rules);
+
+			// Let validation failures bubble back as explicit responses on the migrated v4 path.
+			if ($data instanceof ApiErrorResponse) {
+				return $data;
+			}
 		}
 
 		// create the object
@@ -441,7 +447,7 @@ abstract class CrudController extends ApiController {
 	 * @param	array		$resource	Resource configuration.
 	 * @param	string|int	$id			Primary key value.
 	 */
-	private function updateResource(array $resource, string|int $id): JsonResponse {
+	private function updateResource(array $resource, string|int $id): ResponseInterface {
 
 		$class = $resource['class'];
 		$config = $resource['config'];
@@ -466,7 +472,12 @@ abstract class CrudController extends ApiController {
 		$rules = $config['rules']['update'] ?? [];
 
 		if (count($rules)) {
-			$data = $this->request->validate($rules);
+			$data = $this->request->validateOrResponse($rules);
+
+			// Let validation failures bubble back as explicit responses on the migrated v4 path.
+			if ($data instanceof ApiErrorResponse) {
+				return $data;
+			}
 		}
 
 		// update properties

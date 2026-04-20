@@ -351,6 +351,29 @@ PHP);
 	}
 
 	/**
+	 * Verify passkeyAction() returns an explicit UNAUTHORIZED response for list when no authenticated user is available.
+	 */
+	public function testPasskeyActionReturnsExplicitUnauthorizedResponseForListWithoutUser(): void {
+
+		$_SERVER['REQUEST_METHOD'] = 'GET';
+
+		$controller = $this->newPasskeyController();
+		$router = Router::getInstance();
+
+		$this->setApplicationCurrentUser(null);
+		$this->primeController($controller, new Request());
+		$this->setPrivateProperty($controller, \Pair\Core\Controller::class, 'router', $router);
+		$this->setPrivateProperty($router, Router::class, 'vars', [0 => 'list']);
+
+		$response = $controller->passkeyAction();
+
+		$this->assertInstanceOf(ApiErrorResponse::class, $response);
+		$this->assertSame('UNAUTHORIZED', $this->readPrivateProperty($response, ApiErrorResponse::class, 'errorCode'));
+		$this->assertSame(401, $this->readPrivateProperty($response, ApiErrorResponse::class, 'httpCode'));
+
+	}
+
+	/**
 	 * Verify passkeyAction() returns an explicit JsonResponse for login/options when the passkey service succeeds.
 	 */
 	public function testPasskeyActionReturnsExplicitLoginOptionsResponse(): void {

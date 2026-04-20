@@ -5,6 +5,7 @@ namespace Pair\Api;
 use Pair\Core\Application;
 use Pair\Core\Env;
 use Pair\Http\JsonResponse;
+use Pair\Http\ResponseInterface;
 use Pair\Models\User;
 use Pair\Models\UserPasskey;
 use Pair\Orm\Database;
@@ -157,9 +158,15 @@ abstract class PasskeyController extends CrudController {
 	 * Endpoint: GET /api/passkey/list.
 	 * Returns an explicit JSON response containing the authenticated user's active passkeys.
 	 */
-	private function passkeyList(): JsonResponse {
+	private function passkeyList(): ResponseInterface {
 
-		$user = $this->requireAuth();
+		$user = $this->requireAuthOrResponse();
+
+		// Bubble the auth guard as an explicit response on the migrated v4 passkey path.
+		if ($user instanceof ApiErrorResponse) {
+			return $user;
+		}
+
 		$data = [];
 
 		$query =
@@ -268,9 +275,15 @@ abstract class PasskeyController extends CrudController {
 	 * Endpoint: POST /api/passkey/register/options.
 	 * Returns an explicit JSON response containing the WebAuthn publicKey options payload.
 	 */
-	private function passkeyRegisterOptions(): JsonResponse {
+	private function passkeyRegisterOptions(): ResponseInterface {
 
-		$user = $this->requireAuth();
+		$user = $this->requireAuthOrResponse();
+
+		// Bubble the auth guard as an explicit response on the migrated v4 passkey path.
+		if ($user instanceof ApiErrorResponse) {
+			return $user;
+		}
+
 		$body = $this->optionalJsonPost();
 		$displayName = trim((string)($body['displayName'] ?? ''));
 
@@ -284,9 +297,15 @@ abstract class PasskeyController extends CrudController {
 	 * Endpoint: POST /api/passkey/register/verify.
 	 * Returns an explicit JSON response when the passkey registration succeeds.
 	 */
-	private function passkeyRegisterVerify(): JsonResponse {
+	private function passkeyRegisterVerify(): ResponseInterface {
 
-		$user = $this->requireAuth();
+		$user = $this->requireAuthOrResponse();
+
+		// Bubble the auth guard as an explicit response on the migrated v4 passkey path.
+		if ($user instanceof ApiErrorResponse) {
+			return $user;
+		}
+
 		$body = $this->optionalJsonPost();
 		$credential = (isset($body['credential']) and is_array($body['credential'])) ? $body['credential'] : null;
 
@@ -313,9 +332,15 @@ abstract class PasskeyController extends CrudController {
 	 * Endpoint: DELETE /api/passkey/revoke/{id}.
 	 * Returns an explicit JSON response with HTTP 204 when the passkey is revoked successfully.
 	 */
-	private function passkeyRevoke(): JsonResponse {
+	private function passkeyRevoke(): ResponseInterface {
 
-		$user = $this->requireAuth();
+		$user = $this->requireAuthOrResponse();
+
+		// Bubble the auth guard as an explicit response on the migrated v4 passkey path.
+		if ($user instanceof ApiErrorResponse) {
+			return $user;
+		}
+
 		$passkeyId = intval((string)$this->router->getParam(1));
 
 		if ($passkeyId < 1) {

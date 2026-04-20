@@ -47,11 +47,13 @@ class MiddlewarePipelineTest extends TestCase {
 			 * @param	Request		$request	Current request.
 			 * @param	callable	$next		Next middleware.
 			 */
-			public function handle(Request $request, callable $next): void {
+			public function handle(Request $request, callable $next): mixed {
 
 				$this->trace[] = 'first:before';
-				$next($request);
+				$result = $next($request);
 				$this->trace[] = 'first:after';
+
+				return $result;
 
 			}
 
@@ -81,11 +83,13 @@ class MiddlewarePipelineTest extends TestCase {
 			 * @param	Request		$request	Current request.
 			 * @param	callable	$next		Next middleware.
 			 */
-			public function handle(Request $request, callable $next): void {
+			public function handle(Request $request, callable $next): mixed {
 
 				$this->trace[] = 'second:before';
-				$next($request);
+				$result = $next($request);
 				$this->trace[] = 'second:after';
+
+				return $result;
 
 			}
 
@@ -140,9 +144,10 @@ class MiddlewarePipelineTest extends TestCase {
 			 * @param	Request		$request	Current request.
 			 * @param	callable	$next		Next middleware.
 			 */
-			public function handle(Request $request, callable $next): void {
+			public function handle(Request $request, callable $next): mixed {
 
 				$this->trace[] = 'blocked';
+				return null;
 
 			}
 

@@ -92,17 +92,47 @@ abstract class ApiController extends Controller {
 	}
 
 	/**
-	 * Require an authenticated user. Sends 401 error if not authenticated.
+	 * Require an authenticated user and return either the user or an explicit UNAUTHORIZED response.
 	 */
-	public function requireAuth(): User {
+	public function requireAuthOrResponse(): User|ApiErrorResponse {
 
 		$user = $this->getUser();
 
 		if (!$user) {
-			ApiResponse::error('UNAUTHORIZED');
+			return $this->errorResponse('UNAUTHORIZED');
 		}
 
 		return $user;
+
+	}
+
+	/**
+	 * Require an authenticated user. Sends 401 error if not authenticated.
+	 */
+	public function requireAuth(): User {
+
+		$result = $this->requireAuthOrResponse();
+
+		// Preserve the legacy terminate-on-error contract for existing callers.
+		if ($result instanceof ApiErrorResponse) {
+			$result->send();
+			throw new \LogicException('ApiController::requireAuth() expected ApiErrorResponse::send() to terminate the request.');
+		}
+
+		return $result;
+
+	}
+
+	/**
+	 * Require a valid Bearer token and return either the token or an explicit AUTH_TOKEN_MISSING response.
+	 */
+	public function requireBearerOrResponse(): string|ApiErrorResponse {
+
+		if (!$this->bearerToken) {
+			return $this->errorResponse('AUTH_TOKEN_MISSING');
+		}
+
+		return $this->bearerToken;
 
 	}
 
@@ -111,11 +141,15 @@ abstract class ApiController extends Controller {
 	 */
 	public function requireBearer(): string {
 
-		if (!$this->bearerToken) {
-			ApiResponse::error('AUTH_TOKEN_MISSING');
+		$result = $this->requireBearerOrResponse();
+
+		// Preserve the legacy terminate-on-error contract for existing callers.
+		if ($result instanceof ApiErrorResponse) {
+			$result->send();
+			throw new \LogicException('ApiController::requireBearer() expected ApiErrorResponse::send() to terminate the request.');
 		}
 
-		return $this->bearerToken;
+		return $result;
 
 	}
 
@@ -227,18 +261,13 @@ abstract class ApiController extends Controller {
 	 * Run the middleware pipeline, then execute the destination callable.
 	 *
 	 * @param	callable	$destination	The final action to execute after all middleware.
-	 * @return	mixed		The value returned by the destination when the pipeline reaches it.
+	 * @return	mixed		The value returned by the middleware chain or destination when the pipeline reaches it.
 	 */
 	public function runMiddleware(callable $destination): mixed {
 
-		$response = null;
-
-		// Capture the destination result outside the middleware stack so explicit responses can bubble back to the runtime.
-		$this->pipeline->run($this->request, function () use ($destination, &$response): void {
-			$response = $destination();
+		return $this->pipeline->run($this->request, function (Request $request) use ($destination): mixed {
+			return $destination();
 		});
-
-		return $response;
 
 	}
 

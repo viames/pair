@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Pair\Tests\Unit\Api;
 
+use Pair\Api\ApiErrorResponse;
 use Pair\Api\Request;
 use Pair\Core\Application;
 use Pair\Core\Logger;
@@ -376,6 +377,40 @@ class CrudControllerTest extends TestCase {
 	}
 
 	/**
+	 * Verify the migrated create-resource path returns an explicit INVALID_FIELDS error response on validation failure.
+	 */
+	public function testCrudActionReturnsExplicitCreateValidationErrorResponse(): void {
+
+		$_SERVER['REQUEST_METHOD'] = 'POST';
+		$_SERVER['CONTENT_TYPE'] = 'application/json';
+
+		$controller = $this->newCrudController();
+
+		$controller->registerCrudResource('users', FakeCrudRecord::class, [
+			'rules' => [
+				'create' => [
+					'email' => 'required|email',
+				],
+			],
+		]);
+		$this->setInaccessibleProperty($controller, 'request', $this->newJsonRequest([
+			'email' => 'not-an-email',
+		]));
+
+		$response = $controller->usersAction();
+
+		$this->assertInstanceOf(ApiErrorResponse::class, $response);
+		$this->assertSame('INVALID_FIELDS', $this->readApiErrorResponseProperty($response, 'errorCode'));
+		$this->assertSame(400, $this->readApiErrorResponseProperty($response, 'httpCode'));
+		$this->assertSame([
+			'errors' => [
+				'email' => 'The field email must be a valid email address',
+			],
+		], $this->readApiErrorResponseProperty($response, 'extra'));
+
+	}
+
+	/**
 	 * Verify the migrated update-resource path returns an explicit JsonResponse and uses the fake database update bridge.
 	 */
 	public function testCrudActionReturnsExplicitUpdateResponse(): void {
@@ -416,6 +451,49 @@ class CrudControllerTest extends TestCase {
 		$this->assertSame('Bob', $database->updatedObjects[0]['object']->name);
 		$this->assertSame('bob@example.test', $database->updatedObjects[0]['object']->email);
 		$this->assertSame(7, $database->updatedObjects[0]['key']->id);
+
+	}
+
+	/**
+	 * Verify the migrated update-resource path returns an explicit INVALID_FIELDS error response on validation failure.
+	 */
+	public function testCrudActionReturnsExplicitUpdateValidationErrorResponse(): void {
+
+		$_SERVER['REQUEST_METHOD'] = 'PUT';
+		$_SERVER['CONTENT_TYPE'] = 'application/json';
+
+		$controller = $this->newCrudController();
+		$record = $this->newCrudRecord()->seed([
+			'id' => 7,
+			'name' => 'Before',
+			'email' => 'before@example.test',
+		]);
+		$router = \Pair\Core\Router::getInstance();
+
+		FakeCrudRecord::seedFindResult(7, $record);
+		$controller->registerCrudResource('users', FakeCrudRecord::class, [
+			'rules' => [
+				'update' => [
+					'email' => 'required|email',
+				],
+			],
+		]);
+		$this->setInaccessibleProperty($controller, 'request', $this->newJsonRequest([
+			'email' => 'not-an-email',
+		]));
+		$this->setInaccessibleProperty($router, 'vars', [0 => '7']);
+
+		$response = $controller->usersAction();
+
+		$this->assertInstanceOf(ApiErrorResponse::class, $response);
+		$this->assertSame('INVALID_FIELDS', $this->readApiErrorResponseProperty($response, 'errorCode'));
+		$this->assertSame(400, $this->readApiErrorResponseProperty($response, 'httpCode'));
+		$this->assertSame([
+			'errors' => [
+				'email' => 'The field email must be a valid email address',
+			],
+		], $this->readApiErrorResponseProperty($response, 'extra'));
+		$this->assertSame('before@example.test', $record->email);
 
 	}
 
@@ -519,6 +597,17 @@ class CrudControllerTest extends TestCase {
 	 * Read one private JsonResponse property for focused assertions on explicit CRUD responses.
 	 */
 	private function readJsonResponseProperty(JsonResponse $response, string $name): mixed {
+
+		$property = new \ReflectionProperty($response, $name);
+
+		return $property->getValue($response);
+
+	}
+
+	/**
+	 * Read one private ApiErrorResponse property for focused assertions on explicit CRUD validation errors.
+	 */
+	private function readApiErrorResponseProperty(ApiErrorResponse $response, string $name): mixed {
 
 		$property = new \ReflectionProperty($response, $name);
 

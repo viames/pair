@@ -30,23 +30,23 @@ class ThrottleMiddleware implements Middleware {
 	/**
 	 * Handle the request. Checks rate limit by the best available client identity:
 	 * session, bearer token, authenticated user, and finally client IP.
-	 * If the limit is exceeded, sends a 429 error. Otherwise, records the hit
-	 * and passes the request to the next handler.
+	 * If the limit is exceeded, returns an explicit 429 error response. Otherwise,
+	 * records the hit and passes the request to the next handler.
 	 */
-	public function handle(Request $request, callable $next): void {
+	public function handle(Request $request, callable $next): mixed {
 
 		$key = $this->resolveKey($request);
 		$result = $this->limiter->attempt($key);
 		$result->applyHeaders();
 
 		if (!$result->allowed) {
-			ApiResponse::error('TOO_MANY_REQUESTS', [
+			return ApiResponse::errorResponse('TOO_MANY_REQUESTS', [
 				'retryAfter' => $result->retryAfter,
 				'resetAt' => $result->resetAt,
 			]);
 		}
 
-		$next($request);
+		return $next($request);
 
 	}
 

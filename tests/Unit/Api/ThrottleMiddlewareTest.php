@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Pair\Tests\Unit\Api;
 
+use Pair\Api\ApiErrorResponse;
 use Pair\Api\RateLimitResult;
 use Pair\Api\RateLimiter;
 use Pair\Api\Request;
@@ -124,6 +125,29 @@ class ThrottleMiddlewareTest extends TestCase {
 		$middleware->handle(new Request(), function (Request $request): void {});
 
 		$this->assertSame('throttle:ip:203.0.113.23', $limiter->lastKey);
+
+	}
+
+	/**
+	 * Verify blocked requests now return an explicit API error response instead of sending output immediately.
+	 */
+	public function testHandleReturnsExplicitErrorResponseWhenBlocked(): void {
+
+		$_SERVER['REMOTE_ADDR'] = '203.0.113.24';
+
+		$limiter = new TrackingRateLimiter(new RateLimitResult(false, 60, 0, time() + 15, 15, 'file'));
+		$middleware = $this->newThrottleMiddlewareWithLimiter($limiter);
+		$nextCalled = false;
+
+		$response = $middleware->handle(new Request(), function (Request $request) use (&$nextCalled): void {
+
+			$nextCalled = true;
+
+		});
+
+		$this->assertInstanceOf(ApiErrorResponse::class, $response);
+		$this->assertFalse($nextCalled);
+		$this->assertSame('throttle:ip:203.0.113.24', $limiter->lastKey);
 
 	}
 

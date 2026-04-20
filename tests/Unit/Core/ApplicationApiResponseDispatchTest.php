@@ -68,9 +68,9 @@ final class apiController extends \Pair\Api\ApiController {
 			 * @param	Request		$request	Current API request.
 			 * @param	callable	$next		Next middleware or destination.
 			 */
-			public function handle(Request $request, callable $next): void {
+			public function handle(Request $request, callable $next): mixed {
 
-				$next($request);
+				return $next($request);
 
 			}
 
@@ -110,6 +110,89 @@ PHP);
 			json_encode([
 				'status' => 'ok',
 				'channel' => 'middleware',
+			], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+			$result['stdout']
+		);
+
+	}
+
+	/**
+	 * Verify the API runtime dispatches an explicit error response returned by a blocking middleware.
+	 */
+	public function testApiErrorResponseReturnedFromMiddlewareIsDispatched(): void {
+
+		$applicationPath = $this->createFixtureApplication(<<<'PHP'
+<?php
+
+use Pair\Api\ApiErrorResponse;
+use Pair\Api\Middleware;
+use Pair\Api\Request;
+use Pair\Http\JsonResponse;
+
+/**
+ * Fixture API controller used to verify middleware short-circuit responses in the runtime dispatch path.
+ */
+final class apiController extends \Pair\Api\ApiController {
+
+	/**
+	 * Register one blocking middleware that returns an explicit API error response.
+	 */
+	protected function _init(): void {
+
+		parent::_init();
+		$this->middleware(new class implements Middleware {
+
+			/**
+			 * Stop the chain before the destination is reached.
+			 *
+			 * @param	Request		$request	Current API request.
+			 * @param	callable	$next		Next middleware or destination.
+			 */
+			public function handle(Request $request, callable $next): mixed {
+
+				return new ApiErrorResponse('TOO_MANY_REQUESTS', 'Too many requests', 429, [
+					'retryAfter' => 15,
+				]);
+
+			}
+
+		});
+
+	}
+
+	/**
+	 * Return the middleware result instead of sending JSON directly.
+	 */
+	public function passkeyAction(): JsonResponse|\Pair\Api\ApiErrorResponse {
+
+		return $this->runMiddleware(function (): JsonResponse {
+
+			return new JsonResponse([
+				'status' => 'ok',
+				'channel' => 'destination',
+			], 206);
+
+		});
+
+	}
+
+}
+PHP);
+
+		try {
+			$result = $this->runFixtureApplication($applicationPath);
+		} finally {
+			$this->removeDirectory($applicationPath);
+		}
+
+		$this->assertSame(0, $result['exitCode']);
+		$this->assertSame(429, $this->extractReportedStatusCode($result['stderr']));
+		$this->assertSame([45], $this->extractSessionCleanupArguments($result['stderr']));
+		$this->assertJsonStringEqualsJsonString(
+			json_encode([
+				'code' => 'TOO_MANY_REQUESTS',
+				'error' => 'Too many requests',
+				'retryAfter' => 15,
 			], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
 			$result['stdout']
 		);

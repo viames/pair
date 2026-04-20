@@ -153,6 +153,27 @@ class Request {
 	}
 
 	/**
+	 * Validate request data against a set of rules and return either the validated
+	 * data array or an explicit INVALID_FIELDS response.
+	 *
+	 * Supported rules (pipe-separated): required, string, int, numeric, email, min:N, max:N, bool.
+	 *
+	 * @param	array	$rules	Associative array of field => 'rule1|rule2|...'
+	 * @return	array|ApiErrorResponse
+	 */
+	public function validateOrResponse(array $rules): array|ApiErrorResponse {
+
+		$result = $this->collectValidationResult($rules);
+
+		if (!empty($result['errors'])) {
+			return ApiResponse::errorResponse('INVALID_FIELDS', ['errors' => $result['errors']]);
+		}
+
+		return $result['validated'];
+
+	}
+
+	/**
 	 * Validate request data against a set of rules. Returns the validated data array
 	 * or sends a 400 error response on failure.
 	 *
@@ -162,58 +183,15 @@ class Request {
 	 */
 	public function validate(array $rules): array {
 
-		$data = $this->all();
-		$validated = [];
-		$errors = [];
+		$result = $this->validateOrResponse($rules);
 
-		foreach ($rules as $field => $ruleString) {
-
-			$fieldRules = explode('|', $ruleString);
-			$value = $data[$field] ?? null;
-			$isRequired = in_array('required', $fieldRules);
-
-			// check required
-			if ($isRequired and (is_null($value) or $value === '')) {
-				$errors[$field] = 'The field ' . $field . ' is required';
-				continue;
-			}
-
-			// skip further validation if field is not present and not required
-			if (is_null($value) and !$isRequired) {
-				continue;
-			}
-
-			// validate each rule
-			foreach ($fieldRules as $rule) {
-
-				if ($rule === 'required') {
-					continue;
-				}
-
-				$ruleParts = explode(':', $rule, 2);
-				$ruleName = $ruleParts[0];
-				$ruleParam = $ruleParts[1] ?? null;
-
-				$error = $this->validateRule($field, $value, $ruleName, $ruleParam);
-
-				if ($error) {
-					$errors[$field] = $error;
-					break;
-				}
-
-			}
-
-			if (!isset($errors[$field])) {
-				$validated[$field] = $value;
-			}
-
+		// Preserve the legacy terminate-on-error contract for existing callers.
+		if ($result instanceof ApiErrorResponse) {
+			$result->send();
+			return [];
 		}
 
-		if (!empty($errors)) {
-			ApiResponse::error('INVALID_FIELDS', ['errors' => $errors]);
-		}
-
-		return $validated;
+		return $result;
 
 	}
 
@@ -291,6 +269,67 @@ class Request {
 				$this->jsonData = $decoded;
 			}
 		}
+
+	}
+
+	/**
+	 * Collect the validated request data and field-level validation errors.
+	 *
+	 * @param	array<string, string>	$rules	Associative array of field => 'rule1|rule2|...'
+	 * @return	array{validated: array<string, mixed>, errors: array<string, string>}
+	 */
+	private function collectValidationResult(array $rules): array {
+
+		$data = $this->all();
+		$validated = [];
+		$errors = [];
+
+		foreach ($rules as $field => $ruleString) {
+
+			$fieldRules = explode('|', $ruleString);
+			$value = $data[$field] ?? null;
+			$isRequired = in_array('required', $fieldRules);
+
+			// Keep required-field failures deterministic before running the remaining validators.
+			if ($isRequired and (is_null($value) or $value === '')) {
+				$errors[$field] = 'The field ' . $field . ' is required';
+				continue;
+			}
+
+			// Missing optional fields are intentionally ignored by the lightweight validator.
+			if (is_null($value) and !$isRequired) {
+				continue;
+			}
+
+			foreach ($fieldRules as $rule) {
+
+				if ($rule === 'required') {
+					continue;
+				}
+
+				$ruleParts = explode(':', $rule, 2);
+				$ruleName = $ruleParts[0];
+				$ruleParam = $ruleParts[1] ?? null;
+
+				$error = $this->validateRule($field, $value, $ruleName, $ruleParam);
+
+				if ($error) {
+					$errors[$field] = $error;
+					break;
+				}
+
+			}
+
+			if (!isset($errors[$field])) {
+				$validated[$field] = $value;
+			}
+
+		}
+
+		return [
+			'validated' => $validated,
+			'errors' => $errors,
+		];
 
 	}
 

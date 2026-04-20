@@ -2,28 +2,29 @@
 
 namespace Pair\Api;
 
-use Pair\Helpers\Utilities;
+use Pair\Http\JsonResponse;
+use Pair\Http\ResponseInterface;
 
 /**
  * File-based idempotency helper for API endpoints.
  *
  * Usage:
- * 1) Call respondIfDuplicate() at the beginning of a mutating action.
- * 2) Call storeResponse() before sending ApiResponse::respond().
+ * 1) Call duplicateResponse() or respondIfDuplicate() at the beginning of a mutating action.
+ * 2) Call storeResponse() before sending ApiResponse::respond() or returning ApiResponse::jsonResponse().
  * 3) Optionally call clearProcessing() in catch/failure paths.
  */
 class Idempotency {
 
 	/**
-	 * Reads and responds with cached result for duplicate requests, or marks key as processing.
-	 * Returns true only when no key is provided and execution should continue without idempotency.
+	 * Returns an explicit response for duplicate requests, or marks the key as processing
+	 * and returns null when the caller should continue normal execution.
 	 */
-	public static function respondIfDuplicate(Request $request, string $scope, int $ttlSeconds = 86400): bool {
+	public static function duplicateResponse(Request $request, string $scope, int $ttlSeconds = 86400): ResponseInterface|null {
 
 		$key = $request->idempotencyKey();
 
 		if (is_null($key) or !strlen($key)) {
-			return true;
+			return null;
 		}
 
 		$hash = static::requestHash($request);
@@ -42,17 +43,17 @@ class Idempotency {
 		if (is_array($row)) {
 
 			if (isset($row['requestHash']) and $row['requestHash'] !== $hash) {
-				ApiResponse::error('CONFLICT', ['detail' => 'Idempotency key already used with different payload']);
+				return ApiResponse::errorResponse('CONFLICT', ['detail' => 'Idempotency key already used with different payload']);
 			}
 
 			if (($row['status'] ?? '') === 'done') {
 				$httpCode = isset($row['httpCode']) ? intval($row['httpCode']) : 200;
 				$data = $row['data'] ?? null;
-				Utilities::jsonResponse($data, $httpCode);
+				return static::replayResponse($data, $httpCode);
 			}
 
 			if (($row['status'] ?? '') === 'processing') {
-				ApiResponse::error('CONFLICT', ['detail' => 'A request with this idempotency key is already processing']);
+				return ApiResponse::errorResponse('CONFLICT', ['detail' => 'A request with this idempotency key is already processing']);
 			}
 
 		}
@@ -65,6 +66,22 @@ class Idempotency {
 			'expiresAt' => time() + max(1, $ttlSeconds),
 			'requestHash' => $hash,
 		]);
+
+		return null;
+
+	}
+
+	/**
+	 * Reads and responds with cached result for duplicate requests, or marks key as processing.
+	 * Returns true when execution should continue without an immediate replay/conflict response.
+	 */
+	public static function respondIfDuplicate(Request $request, string $scope, int $ttlSeconds = 86400): bool {
+
+		$response = static::duplicateResponse($request, $scope, $ttlSeconds);
+
+		if ($response) {
+			$response->send();
+		}
 
 		return true;
 
@@ -156,6 +173,44 @@ class Idempotency {
 		$data = json_decode($json, true);
 
 		return is_array($data) ? $data : null;
+
+	}
+
+	/**
+	 * Build an explicit replay response while preserving legacy support for scalar JSON payloads.
+	 */
+	private static function replayResponse(mixed $data, int $httpCode): ResponseInterface {
+
+		if (is_array($data) or $data instanceof \stdClass or is_null($data)) {
+			return ApiResponse::jsonResponse($data, $httpCode);
+		}
+
+		// Preserve legacy scalar payload replays without forcing callers onto a new response type.
+		return new class($data, $httpCode) implements ResponseInterface {
+
+			/**
+			 * Store the cached payload and HTTP status for replay.
+			 */
+			public function __construct(
+				private mixed $payload,
+				private int $httpCode
+			) {}
+
+			/**
+			 * Send the cached payload as raw JSON.
+			 */
+			public function send(): void {
+
+				header('Content-Type: application/json', true);
+
+				$httpCode = empty($this->payload) ? 204 : $this->httpCode;
+				http_response_code($httpCode);
+				print json_encode($this->payload);
+				exit();
+
+			}
+
+		};
 
 	}
 

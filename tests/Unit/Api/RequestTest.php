@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Pair\Tests\Unit\Api;
 
+use Pair\Api\ApiErrorResponse;
 use Pair\Api\Request;
 use Pair\Tests\Support\TestCase;
 
@@ -80,6 +81,32 @@ class RequestTest extends TestCase {
 	}
 
 	/**
+	 * Verify the explicit validation helper returns an ApiErrorResponse instead of terminating immediately.
+	 */
+	public function testValidateOrResponseReturnsExplicitErrorResponse(): void {
+
+		$request = $this->requestWithJsonBody([
+			'email' => 'not-an-email',
+		]);
+
+		$result = $request->validateOrResponse([
+			'email' => 'required|email',
+			'name' => 'required|string',
+		]);
+
+		$this->assertInstanceOf(ApiErrorResponse::class, $result);
+		$this->assertSame('INVALID_FIELDS', $this->readApiErrorResponseProperty($result, 'errorCode'));
+		$this->assertSame(400, $this->readApiErrorResponseProperty($result, 'httpCode'));
+		$this->assertSame([
+			'errors' => [
+				'email' => 'The field email must be a valid email address',
+				'name' => 'The field name is required',
+			],
+		], $this->readApiErrorResponseProperty($result, 'extra'));
+
+	}
+
+	/**
 	 * Verify proxy-aware IP resolution and replay/idempotency headers.
 	 */
 	public function testTrustedProxyReplayAndIdempotencyHelpers(): void {
@@ -112,6 +139,17 @@ class RequestTest extends TestCase {
 		$this->setInaccessibleProperty($request, 'rawBody', json_encode($payload));
 
 		return $request;
+
+	}
+
+	/**
+	 * Read one private ApiErrorResponse property for focused assertions on explicit validation errors.
+	 */
+	private function readApiErrorResponseProperty(ApiErrorResponse $response, string $name): mixed {
+
+		$property = new \ReflectionProperty($response, $name);
+
+		return $property->getValue($response);
 
 	}
 

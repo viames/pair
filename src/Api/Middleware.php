@@ -13,7 +13,8 @@ interface Middleware {
 	 *
 	 * @param	Request		$request	The current HTTP request.
 	 * @param	callable	$next		The next middleware or final action.
+	 * @return	mixed				An explicit response object or the result of the next pipeline stage.
 	 */
-	public function handle(Request $request, callable $next): void;
+	public function handle(Request $request, callable $next): mixed;
 
 }
