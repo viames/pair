@@ -8,6 +8,7 @@ use Pair\Core\Logger;
 use Pair\Core\Router;
 use Pair\Exceptions\PairException;
 use Pair\Html\FormControls\File;
+use Pair\Html\UiTheme;
 use Pair\Orm\Collection;
 
 /**
@@ -1309,7 +1310,7 @@ class Utilities {
 
 		Router::exceedingPaginationFallback();
 
-		?><div class="alert alert-primary" role="alert"><?php print ($customMessage ? $customMessage : Translator::do('NO_DATA')) ?></div><?php
+		?><div class="<?php print UiTheme::alertClass('primary') ?>" role="alert"><?php print ($customMessage ? $customMessage : Translator::do('NO_DATA')) ?></div><?php
 
 	}
 

@@ -156,8 +156,7 @@ $record->seed([
 	'email' => 'alice@example.test',
 ]);
 
-$templateFile = sys_get_temp_dir() . '/pair-benchmark-layout.php';
-file_put_contents($templateFile, '<?php print htmlspecialchars($state->message, ENT_QUOTES, "UTF-8"); ?>');
+$templateFile = createBenchmarkTemplate();
 
 $scenarios = [
 	'bootstrap_minimal_v4_input' => [
@@ -214,7 +213,9 @@ foreach ($scenarios as $name => $scenario) {
 
 }
 
-unlink($templateFile);
+if (file_exists($templateFile)) {
+	unlink($templateFile);
+}
 
 /**
  * Benchmark a closure for a fixed number of iterations.
@@ -237,5 +238,22 @@ function benchmark(int $iterations, callable $callback): array {
 		'avgUs' => $averageMicroseconds,
 		'totalMs' => $totalMilliseconds,
 	];
+
+}
+
+/**
+ * Create the temporary PHP layout file used by the page-response benchmark.
+ */
+function createBenchmarkTemplate(): string {
+
+	$templateFile = tempnam(sys_get_temp_dir(), 'pair-benchmark-layout-');
+
+	if (false === $templateFile) {
+		throw new RuntimeException('Unable to allocate a temporary layout for benchmark-v4.');
+	}
+
+	file_put_contents($templateFile, '<?php print htmlspecialchars($state->message, ENT_QUOTES, "UTF-8"); ?>');
+
+	return $templateFile;
 
 }

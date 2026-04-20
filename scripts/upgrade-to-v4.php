@@ -238,16 +238,12 @@ function transformPhpFile(string $filePath, string $content): array {
 	}
 
 	if ($isLegacyView) {
-		$warnings[] = 'legacy View class detected; convert render()/assign() logic into typed page state manually';
+		$warnings[] = 'legacy View class detected; convert render() logic and layout state wiring into typed page state manually';
 		$warnings = array_merge($warnings, buildLegacyViewMigrationWarnings($content));
 
 		[$plannedFiles, $planningWarnings] = planLegacyViewArtifacts($filePath, $content);
 		$generatedFiles = array_merge($generatedFiles, $plannedFiles);
 		$warnings = array_merge($warnings, $planningWarnings);
-	}
-
-	if (preg_match('/->assign(State)?\s*\(/', $updated) === 1) {
-		$warnings[] = 'legacy view assignment detected; convert assigned values into a typed page state object';
 	}
 
 	if (preg_match('/->html\s*\(/', $updated) === 1) {
@@ -679,7 +675,33 @@ function buildLegacyViewMigrationWarnings(string $content): array {
 		$warnings[] = 'legacy View still loads data from $this->model; move record loading and mapping into the controller';
 	}
 
+	if (legacyViewUsesAssign($content)) {
+		$warnings[] = 'legacy view assignments detected; convert assigned values into a typed page state object';
+	}
+
+	if (legacyViewUsesAssignState($content)) {
+		$warnings[] = 'legacy View already uses assignState(); move typed state construction into the controller and return PageResponse directly';
+	}
+
 	return $warnings;
+
+}
+
+/**
+ * Detect whether the legacy view still assigns loose layout variables.
+ */
+function legacyViewUsesAssign(string $content): bool {
+
+	return preg_match('/->assign\s*\(/', $content) === 1;
+
+}
+
+/**
+ * Detect whether the legacy view already assigns one explicit state object.
+ */
+function legacyViewUsesAssignState(string $content): bool {
+
+	return preg_match('/->assignState\s*\(/', $content) === 1;
 
 }
 
@@ -785,8 +807,11 @@ function injectPayloadReadModel(string $content): array {
  */
 function wrapImplicitJsonPayloads(string $content): array {
 
+	// Keep the upgrader tolerant of the repo's readable multiline call style.
+	$pattern = '#(ApiResponse::respond|Utilities::jsonResponse)\(\s*([\s\S]*?->toArray\(\))(\s*(?:,\s*[\s\S]*?)?)\s*\);#';
+
 	$updated = preg_replace_callback(
-		'/(ApiResponse::respond|Utilities::jsonResponse)\(\s*([^\n;]+?->toArray\(\))(\s*(?:,\s*[^;]+?)?)\s*\);/',
+		$pattern,
 		function(array $matches): string {
 
 			if (str_contains($matches[2], 'Payload::fromArray(')) {

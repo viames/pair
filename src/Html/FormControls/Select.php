@@ -8,6 +8,7 @@ use Pair\Exceptions\PairException;
 use Pair\Helpers\Post;
 use Pair\Helpers\Translator;
 use Pair\Html\FormControl;
+use Pair\Html\UiTheme;
 use Pair\Orm\Collection;
 
 class Select extends FormControl {
@@ -147,12 +148,14 @@ class Select extends FormControl {
 	 */
 	public function render(): string {
 
+		$options = $this->list;
+
 		// add an initial line to the options of this select
 		if (isset($this->emptyOption) and !is_null($this->emptyOption)) {
 			$option			= new \stdClass();
 			$option->value	= '';
 			$option->text	= ($this->disabled or $this->readonly) ? '' : $this->emptyOption;
-			$this->list = array_merge([$option], $this->list);
+			$options = array_merge([$option], $options);
 		}
 
 		$ret = '<select ' . $this->nameProperty();
@@ -164,7 +167,7 @@ class Select extends FormControl {
 		$ret .= $this->processProperties() . ">\n";
 
 		// build each option
-		foreach ($this->list as $item) {
+		foreach ($options as $item) {
 
 			// recognize optgroup
 			if (isset($item->list) and is_array($item->list) and count($item->list)) {
@@ -184,6 +187,13 @@ class Select extends FormControl {
 		}
 
 		$ret .= "</select>\n";
+
+		$wrapperClasses = UiTheme::selectWrapperClasses($this->multiple);
+
+		if ($wrapperClasses) {
+			return '<div class="' . htmlspecialchars($wrapperClasses) . '">' . $ret . '</div>';
+		}
+
 		return $ret;
 
 	}

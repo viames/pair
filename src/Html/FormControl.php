@@ -509,9 +509,10 @@ abstract class FormControl {
 
 		$labelFor = $this->id ?: $this->name;
 		$label = '<label for="' . htmlspecialchars($labelFor) . '"';
+		$labelClasses = UiTheme::labelClasses($this->labelClass);
 
-		if (isset($this->labelClass) and $this->labelClass) {
-			$label .= ' class="' . $this->labelClass . '"';
+		if (!is_null($labelClasses)) {
+			$label .= ' class="' . htmlspecialchars($labelClasses) . '"';
 		}
 
 		$label .= '>';
@@ -546,6 +547,12 @@ abstract class FormControl {
 	protected function processProperties(): string {
 
 		$ret = '';
+
+		// Theme classes are injected here so direct control rendering keeps matching
+		// the active UI theme even when the control is not rendered through Form.
+		foreach (UiTheme::controlClasses($this) as $className) {
+			$this->class($className);
+		}
 
 		if (!is_null($this->id) and '' != $this->id) {
 			$ret .= ' id="' . $this->id . '"';

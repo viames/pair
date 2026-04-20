@@ -130,6 +130,8 @@ Agents must follow these rules:
 - Add comments/docblocks to PHP and JS functions that are touched.
 - Add a short comment for non-trivial code paths that are introduced or changed.
 - Comments and docblocks in Pair framework code must always be written in English.
+- Comments and docblocks are non-authoritative documentation only; removing them must never change runtime behavior.
+- Do not encode required behavior, configuration, or migration-critical instructions exclusively in comments or docblocks.
 - If a request is ambiguous, too broad, or risks an architectural or backward-compatibility mistake, ask for clarification before changing code.
 
 ---

@@ -14,6 +14,7 @@ use Pair\Html\IziToast;
 use Pair\Html\SweetAlert;
 use Pair\Html\SweetToast;
 use Pair\Html\TemplateRenderer;
+use Pair\Html\UiTheme;
 use Pair\Html\Widget;
 use Pair\Models\Audit;
 use Pair\Models\OAuth2Token;
@@ -845,10 +846,11 @@ class Application {
 			exit();
 		}
 
+		// API controllers must skip legacy view bootstrapping from the moment they are instantiated.
+		$this->headless(true);
+
 		// new API Controller instance
 		$apiCtl = new $ctlName();
-
-		$this->headless(true);
 
 		// normalize session lifetime and cleanup stale sessions also for API traffic.
 		$sessionTime = max(1, (int)Options::get('session_time'));
@@ -1335,6 +1337,22 @@ class Application {
 	}
 
 	/**
+	 * Select the UI framework used by Pair HTML helpers for the current runtime.
+	 *
+	 * Supported values currently include bootstrap and bulma.
+	 *
+	 * @param	string	$framework	UI framework identifier.
+	 * @throws	\InvalidArgumentException	If the framework is not supported.
+	 */
+	public function uiFramework(string $framework): static {
+
+		UiTheme::setCurrent($framework);
+
+		return $this;
+
+	}
+
+	/**
 	 * Queues a persistent alert modal to be shown on the next page load.
 	 *
 	 * @param string $title   Modal title.
@@ -1787,12 +1805,6 @@ class Application {
 			// add each script
 			$pageScripts .= '<script' . $attribsRender . '></script>' . "\n";
 
-		}
-
-		// add Insight Hub script for error tracking and performance monitoring
-		if (Env::get('INSIGHT_HUB_API_KEY') and Env::get('INSIGHT_HUB_PERFORMANCE')) {
-			$pageScripts .= '<script src="https://cdn.jsdelivr.net/npm/bugsnag-js" crossorigin="anonymous"></script>' . "\n";
-			$pageScripts .= '<script type="module">import BugsnagPerformance from "//d2wy8f7a9ursnm.cloudfront.net/v1/bugsnag-performance.min.js";BugsnagPerformance.start({apiKey:"' . Env::get('INSIGHT_HUB_API_KEY') .'"})</script>' . "\n";
 		}
 
 		// collect plain text scripts

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Pair\Tests\Unit\Html;
 
 use Pair\Html\Form;
+use Pair\Html\FormControls\Text;
+use Pair\Html\UiTheme;
 use Pair\Tests\Support\TestCase;
 
 /**
@@ -53,6 +55,46 @@ class FormTest extends TestCase {
 		$form = (new Form())->classForForm('stacked compact compact');
 
 		$this->assertStringContainsString('class="stacked compact"', $form->open());
+
+	}
+
+	/**
+	 * Verify Bulma theme classes are injected automatically on supported controls.
+	 */
+	public function testBulmaThemeAddsControlAndLabelClasses(): void {
+
+		UiTheme::setCurrent('bulma');
+
+		$form = new Form();
+		$form->text('displayName')->label('Display name');
+		$form->textarea('bio')->label('Biography');
+		$form->button('save')->caption('Save');
+		$form->select('status')->options([
+			'draft' => 'Draft',
+			'live' => 'Live',
+		]);
+
+		$labelsHtml = $form->control('displayName')->renderLabel();
+		$controlsHtml = $form->renderControls();
+
+		$this->assertStringContainsString('class="label"', $labelsHtml);
+		$this->assertStringContainsString('class="input"', $controlsHtml);
+		$this->assertStringContainsString('class="textarea"', $controlsHtml);
+		$this->assertStringContainsString('class="button"', $controlsHtml);
+		$this->assertStringContainsString('<div class="select">', $controlsHtml);
+
+	}
+
+	/**
+	 * Verify standalone controls outside Form still inherit Bulma classes.
+	 */
+	public function testStandaloneControlRenderUsesActiveThemeDefaults(): void {
+
+		UiTheme::setCurrent('bulma');
+
+		$control = (new Text('title'))->placeholder('Title');
+
+		$this->assertStringContainsString('class="input"', $control->render());
 
 	}
 

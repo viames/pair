@@ -91,6 +91,10 @@ class Pagination {
 			return '';
 		}
 
+		if (UiTheme::isBulma()) {
+			return $this->renderBulma($router, $pages);
+		}
+
 		// start main pagination DOM object
 		$render = '<div class="pagination"><nav aria-label="Page navigation"><ul class="pagination">';
 
@@ -129,6 +133,54 @@ class Pagination {
 
 		// close the bar
 		$render .= '</ul></nav></div>';
+
+		return $render;
+
+	}
+
+	/**
+	 * Render pagination markup compatible with Bulma.
+	 *
+	 * @param	Router	$router	Router used to generate URLs.
+	 * @param	int		$pages	Total number of pages.
+	 */
+	private function renderBulma(Router $router, int $pages): string {
+
+		$render = '<nav class="pagination" role="navigation" aria-label="pagination">';
+
+		if ($this->page > 1) {
+			$render .= '<a class="pagination-previous" href="' . $router->getPageUrl(1) . '" aria-label="Go to the first page">«</a>';
+		}
+
+		if ($this->page < $pages) {
+			$render .= '<a class="pagination-next" href="' . $router->getPageUrl($pages) . '" aria-label="Go to the last page">»</a>';
+		}
+
+		$render .= '<ul class="pagination-list">';
+
+		if ($this->page > 5 and $this->page + 5 > $pages) {
+			$max = $pages;
+			$min = ($max - 10) > 0 ? $max - 10 : 1;
+		} else if ($this->page <= 5) {
+			$min = 1;
+			$max = $pages < 10 ? $pages : 10;
+		} else {
+			$min = ($this->page - 5) > 0 ? $this->page - 5 : 1;
+			$max = ($this->page + 5 <= $pages) ? $this->page + 5 : $pages;
+		}
+
+		for ($i = $min; $i <= $max; $i++) {
+
+			$linkClass = ($i == $this->page) ? 'pagination-link is-current' : 'pagination-link';
+			$aria = ($i == $this->page)
+				? ' aria-label="Page ' . $i . '" aria-current="page"'
+				: ' aria-label="Go to page ' . $i . '"';
+
+			$render .= '<li><a class="' . $linkClass . '"' . $aria . ' href="' . $router->getPageUrl($i) . '">' . $i . '</a></li>';
+
+		}
+
+		$render .= '</ul></nav>';
 
 		return $render;
 

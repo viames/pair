@@ -12,22 +12,16 @@ use Pair\Helpers\Utilities;
 use Pair\Models\ErrorLog;
 use Pair\Orm\Database;
 use Pair\Services\AmazonSes;
-use Pair\Services\InsightHub;
 use Pair\Services\Sendmail;
 use Pair\Services\SmtpMailer;
 use Pair\Services\TelegramBotClient;
 
 use Psr\Log\LoggerInterface;
 
-use \Sentry\captureLastError as sentryCaptureLastError;
-use \Sentry\init as sentryInit;
-
 /**
  * Singleton object for managing internal logger functions. It can log errors in the database,
  * send e-mail and Telegram notifications, and log messages in LogBar.
  * It also provides custom error and exception handlers.
- * Requires Sentry SDK for error tracking: composer require sentry/sdk
- * Requires Insight Hub SDK (formerly Bugsnag) for error tracking: composer require bugsnag/bugsnag
  */
 class Logger implements LoggerInterface {
 
@@ -275,16 +269,7 @@ class Logger implements LoggerInterface {
 		$self = Logger::getInstance();
 		$self->error($fullMsg, $context);
 
-		// send the error to Sentry if enabled
-		if (Env::get('SENTRY_DSN')) {
-			sentryInit(['dsn' => Env::get('SENTRY_DSN'),'environment'=>Application::getEnvironment()]);
-			sentryCaptureLastError();
-		}
-
-		// send the error to Insight Hub if enabled
-		InsightHub::handle($errstr, $errno);
-
-		 // in debug mode, allows the PHP internal error handler to run and display the error
+		// In debug mode, allow the PHP internal error handler to render the notice too.
 		if (Env::get('APP_DEBUG')) {
 			return false;
 		}
@@ -306,18 +291,9 @@ class Logger implements LoggerInterface {
 	}
 
 	/**
-	 * Handle uncaught exceptions; optionally forward to Sentry/InsightHub and log internally.
+	 * Handle uncaught exceptions and log them through the internal logger pipeline.
 	 */
 	public static function exceptionHandler(\Throwable $e): void {
-
-		// send the error to Sentry if enabled
-		if (Env::get('SENTRY_DSN') and function_exists('\\Sentry\\init') and function_exists('\\Sentry\\captureLastError')) {
-			sentryInit(['dsn' => Env::get('SENTRY_DSN'),'environment'=>Application::getEnvironment()]);
-			sentryCaptureLastError();
-		}
-
-		// send the error to Insight Hub if enabled
-		InsightHub::exception($e);
 
 		// log the error internally
 		$context = [
@@ -634,15 +610,6 @@ class Logger implements LoggerInterface {
 		$fullMsg = 'Fatal error [{type}]: {message} in {file} line {line}';
 		$self = Logger::getInstance();
 		$self->error($fullMsg, $context);
-
-		// send the error to Sentry if enabled
-		if (Env::get('SENTRY_DSN')) {
-			sentryInit(['dsn' => Env::get('SENTRY_DSN'),'environment'=>Application::getEnvironment()]);
-			sentryCaptureLastError();
-		}
-
-		// send the error to Insight Hub if enabled
-		InsightHub::error(InsightHub::PHP_ERRORS[$error['type']] ?? 'FatalError', $error['message'] ?? 'Unknown error');
 
 	}
 

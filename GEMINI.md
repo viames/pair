@@ -159,6 +159,9 @@ Use parentheses when needed due to precedence differences.
 - PHP functions should include a docblock or function comment.
 - JS functions should include a docblock or function comment.
 - Non-trivial code should include a short explanatory comment.
+- Comments and docblocks are explanatory only and must never be required for runtime behavior.
+- Deleting comments must not change how the framework executes.
+- Layout files should stay mostly HTML; optional preambles such as `declare(strict_types=1)` or `/** @var FooPageState $state */` are editor and static-analysis hints only, not part of the runtime contract.
 
 ---
 

@@ -12,6 +12,11 @@
     display: none;
 }
 
+.float-end,
+.float-right {
+    float: right;
+}
+
 /* LogBar */
 
 /* Adds fa-caret-down icon */
@@ -43,7 +48,7 @@
 }
 
 #logbar .head .item {
-    border-right: var(--bs-card-border-width) solid var(--bs-card-border-color);
+    border-right: var(--bs-card-border-width, 1px) solid var(--bs-card-border-color, #dbdbdb);
     padding: 0 14px;
     text-align: center;
     text-overflow: ellipsis;
@@ -122,7 +127,7 @@
 }
 
 #logbar .events {
-    border-top: var(--bs-card-border-width) solid var(--bs-card-border-color);
+    border-top: var(--bs-card-border-width, 1px) solid var(--bs-card-border-color, #dbdbdb);
     font-family: monospace;
     font-size: 0.75rem;
     line-height: 1.6rem;

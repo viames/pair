@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Pair\Tests\Support;
 
 use Pair\Core\Env;
+use Pair\Html\UiTheme;
 use PHPUnit\Framework\TestCase as PhpUnitTestCase;
 
 /**
@@ -63,6 +64,9 @@ abstract class TestCase extends PhpUnitTestCase {
 		$_POST = [];
 		$_SERVER = ['REQUEST_METHOD' => 'GET'];
 
+		// Reset the global UI framework override so tests stay isolated.
+		UiTheme::reset();
+
 		$this->removeEnvFile();
 		$this->removeDirectory(TEMP_PATH . 'rate_limits');
 
@@ -82,6 +86,8 @@ abstract class TestCase extends PhpUnitTestCase {
 		$_GET = $this->getBackup;
 		$_POST = $this->postBackup;
 		$_SERVER = $this->serverBackup;
+
+		UiTheme::reset();
 
 		parent::tearDown();
 

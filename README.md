@@ -9,7 +9,7 @@
 [![PHP Version Require](https://poser.pugx.org/viames/pair/require/php)](https://packagist.org/packages/viames/pair)
 
 Pair is a lightweight PHP framework for server-rendered web applications.
-It focuses on fast setup, clear MVC routing, practical ORM features, and optional integrations (S3, SES, Sentry, Telegram, Push, Passkey) without heavy tooling.
+It focuses on fast setup, clear MVC routing, practical ORM features, and optional integrations (S3, SES, Telegram, Stripe, Push, Passkey) without heavy tooling.
 
 ## What's New
 
@@ -115,6 +115,16 @@ final class UserController extends Controller {
 ```
 
 For reusable output contracts, Pair v4 prefers `ReadModel` objects built explicitly from persistence records.
+Layout files in the v4 path should remain mostly HTML. Optional file-level preambles such as `declare(strict_types=1)` or `/** @var UserPageState $state */` are only IDE/static-analysis hints and are not part of the runtime contract.
+
+Minimal layout example:
+
+```php
+<main class="user-page">
+	<h1><?= htmlspecialchars($state->message, ENT_QUOTES, 'UTF-8') ?></h1>
+</main>
+```
+
 Legacy `Pair\Core\Controller` and `Pair\Core\View` remain available only as a migration path and should not be used for new Pair v4 modules.
 
 ### Log Bar and Debugging
@@ -181,9 +191,6 @@ This enables:
 Pair includes optional support for services such as:
 - [Amazon S3](https://aws.amazon.com/s3/)
 - [Amazon SES](https://aws.amazon.com/ses/)
-- [ELK Stack](https://www.elastic.co/what-is/elk-stack)
-- [InsightHub](https://insighthub.smartbear.com/)
-- [Sentry](https://sentry.io/)
 - [Telegram Bot API](https://core.telegram.org/bots/api)
 - [OneSignal](https://onesignal.com/)
 - [Stripe](https://stripe.com/docs)

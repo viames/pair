@@ -34,6 +34,7 @@ composer run upgrade-to-v4 -- --write
 - `ApiExposable::apiConfig()` blocks that still lack both `readModel` and `resource`
 - common `ApiResponse::respond($object->toArray())` and `Utilities::jsonResponse($object->toArray())` patterns by wrapping them through `Pair\Data\Payload`
 - readonly `*PageState` skeleton classes inside `modules/*/classes/` for legacy `View` files that assign layout variables through `assign()`
+- dedicated warnings for legacy `View::assignState()` usage so existing typed state wiring is moved into the controller without generating redundant skeletons
 
 ### What the Upgrader Reports but Does Not Rewrite Blindly
 

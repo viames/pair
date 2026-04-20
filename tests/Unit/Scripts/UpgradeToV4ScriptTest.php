@@ -47,6 +47,8 @@ class UpgradeToV4ScriptTest extends TestCase {
 		$this->assertStringContainsString('legacy View class detected', $result['stdout']);
 		$this->assertStringContainsString('legacy View still owns controller-side responsibilities', $result['stdout']);
 		$this->assertStringContainsString('legacy View still loads data from $this->model', $result['stdout']);
+		$this->assertStringContainsString('legacy View already uses assignState(); move typed state construction into the controller and return PageResponse directly', $result['stdout']);
+		$this->assertStringNotContainsString('modules/stateful/classes/StatefulDefaultPageState.php', $result['stdout']);
 		$this->assertStringContainsString('controller still depends on the legacy MVC flow', $result['stdout']);
 		$this->assertSame($originalController, file_get_contents($controllerPath));
 		$this->assertSame($originalStatusController, file_get_contents($statusControllerPath));
@@ -92,6 +94,15 @@ class UpgradeToV4ScriptTest extends TestCase {
 
 		$apiControllerContent = file_get_contents($this->fixtureTargetPath() . '/modules/api/controller.php');
 		$this->assertStringContainsString('ApiResponse::respond(\Pair\Data\Payload::fromArray($user->toArray())->toArray(), 201);', (string)$apiControllerContent);
+
+		$jsonHelperContent = file_get_contents($this->fixtureTargetPath() . '/modules/api/jsonHelper.php');
+		$this->assertStringContainsString('Utilities::jsonResponse(', (string)$jsonHelperContent);
+		$this->assertStringContainsString('\Pair\Data\Payload::fromArray($user', (string)$jsonHelperContent);
+		$this->assertStringContainsString('->toArray())->toArray(),', (string)$jsonHelperContent);
+		$this->assertStringContainsString('202', (string)$jsonHelperContent);
+
+		$this->assertStringContainsString('legacy View already uses assignState(); move typed state construction into the controller and return PageResponse directly', $result['stdout']);
+		$this->assertFileDoesNotExist($this->fixtureTargetPath() . '/modules/stateful/classes/StatefulDefaultPageState.php');
 
 		$secondResult = $this->runUpgradeScript(['--write', '--path=' . $this->fixtureTargetPath()]);
 		$this->assertSame(0, $secondResult['exitCode']);
