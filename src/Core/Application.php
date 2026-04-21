@@ -49,6 +49,11 @@ class Application {
 	private array $apiModules = ['api'];
 
 	/**
+	 * Runtime adapter registry, created lazily for tests and lightweight bootstraps.
+	 */
+	private ?AdapterRegistry $adapterRegistry = null;
+
+	/**
 	 * List of modules [name => [actions]] that can run with no authentication required.
 	 */
 	private array $guestModules = ['oauth2' => []];
@@ -821,9 +826,10 @@ class Application {
 	private function handleApiRequest(string $name = 'api'): void {
 
 		$router = Router::getInstance();
+		$controllerFile = $this->getModuleControllerFile($name);
 
 		// check if API has been called
-		if (!trim($name) or $name != $router->module or !file_exists(APPLICATION_PATH . '/' . MODULE_PATH . 'controller.php')) {
+		if (!trim($name) or $name != $router->module or !$controllerFile) {
 			return;
 		}
 
@@ -831,7 +837,7 @@ class Application {
 		$this->logBar->disable();
 
 		// require controller file
-		require (APPLICATION_PATH . '/' . MODULE_PATH . 'controller.php');
+		require $controllerFile;
 
 		// get SID via GET
 		$sid = Router::get('sid');
@@ -873,7 +879,7 @@ class Application {
 
 		} else if ('auth' == $router->action) {
 
-			$param = $router->getParam(0);
+			$param = $router->getParam('operation') ?: $router->getParam(0);
 
 			if ('login' == $param) {
 
@@ -887,6 +893,12 @@ class Application {
 
 				// destroy the current session
 				Session::destroy();
+
+			} else if ('refresh' == $param) {
+
+				// Ensure refresh flows can renew a session from a token without requiring a bearer first.
+				Session::destroy();
+				session_start();
 
 			} else {
 
@@ -904,6 +916,11 @@ class Application {
 		// Meta WhatsApp webhooks are authenticated with verify token and request signature,
 		// so they do not use Pair session IDs nor OAuth bearer tokens.
 		} else if ('whatsappWebhook' == $router->action and $apiCtl instanceof \Pair\Api\ApiController and method_exists($apiCtl, $action)) {
+
+			// continue with apiCtl action
+
+		// Application controllers may explicitly expose safe read-only API actions before authentication.
+		} else if ($apiCtl instanceof \Pair\Api\ApiController and $apiCtl->allowsUnauthenticatedAction((string)$router->action, $action)) {
 
 			// continue with apiCtl action
 
@@ -955,14 +972,23 @@ class Application {
 
 			$response = null;
 
-			// run middleware pipeline for ApiController subclasses
-			if ($apiCtl instanceof \Pair\Api\ApiController) {
-				$response = $apiCtl->runMiddleware(function () use ($apiCtl, $action) {
-					return $apiCtl->$action();
-				});
-			} else {
-				$response = $apiCtl->$action();
-			}
+			// Trace API action dispatch without changing the explicit response contract.
+			$response = Observability::trace('api.controller', function () use ($apiCtl, $action): mixed {
+
+				// run middleware pipeline for ApiController subclasses
+				if ($apiCtl instanceof \Pair\Api\ApiController) {
+					// Preserve middleware ownership of the final action call.
+					return $apiCtl->runMiddleware(function () use ($apiCtl, $action): mixed {
+						return $apiCtl->$action();
+					});
+				}
+
+				return $apiCtl->$action();
+
+			}, [
+				'module' => $name,
+				'action' => str_replace('Action', '', $action),
+			]);
 
 			if ($response instanceof ResponseInterface) {
 				$response->send();
@@ -974,6 +1000,19 @@ class Application {
 		}
 
 		exit();
+
+	}
+
+	/**
+	 * Return a module controller file path when it exists.
+	 *
+	 * @param	string	$module	Module name.
+	 */
+	private function getModuleControllerFile(string $module): ?string {
+
+		$controllerFile = APPLICATION_PATH . '/modules/' . $module . '/controller.php';
+
+		return FilesystemMetadata::fileExists($controllerFile) ? $controllerFile : null;
 
 	}
 
@@ -1351,6 +1390,62 @@ class Application {
 	}
 
 	/**
+	 * Return the runtime adapter registry.
+	 */
+	public function adapters(): AdapterRegistry {
+
+		if (!$this->adapterRegistry) {
+			$this->adapterRegistry = new AdapterRegistry();
+		}
+
+		return $this->adapterRegistry;
+
+	}
+
+	/**
+	 * Return one registered adapter from the runtime registry.
+	 *
+	 * @param	string		$name			Capability name.
+	 * @param	string|null	$expectedType	Optional class or interface the adapter must implement.
+	 */
+	public function adapter(string $name, ?string $expectedType = null): ?object {
+
+		return $this->adapters()->get($name, $expectedType);
+
+	}
+
+	/**
+	 * Return whether an adapter has been registered for a capability.
+	 */
+	public function hasAdapter(string $name): bool {
+
+		return $this->adapters()->has($name);
+
+	}
+
+	/**
+	 * Register a runtime plugin explicitly.
+	 */
+	public function registerPlugin(PluginInterface $plugin): static {
+
+		$plugin->register($this);
+
+		return $this;
+
+	}
+
+	/**
+	 * Register or replace one adapter for a capability.
+	 */
+	public function setAdapter(string $name, object $adapter): static {
+
+		$this->adapters()->set($name, $adapter);
+
+		return $this;
+
+	}
+
+	/**
 	 * Select the UI framework used by Pair HTML helpers for the current runtime.
 	 *
 	 * Native HTML rendering is the default. Supported explicit values currently
@@ -1527,8 +1622,12 @@ class Application {
 	 * handles API requests if applicable, and runs the MVC pattern to render the page.
 	 */
 	final public function run(): void {
-		$this->initializeController();
-		$this->renderTemplate();
+
+		// Trace the full non-terminating request lifecycle when instrumentation is enabled.
+		Observability::trace('app.run', function (): void {
+			$this->initializeController();
+			$this->renderTemplate();
+		});
 
 	}
 
@@ -1603,10 +1702,10 @@ class Application {
 		// make sure to have a template set
 		$this->getTemplate();
 
-		$controllerFile = APPLICATION_PATH . '/modules/' . $router->module . '/controller.php';
+		$controllerFile = $this->getModuleControllerFile((string)$router->module);
 
 		// check controller file existence
-		if (!file_exists($controllerFile) or '404' == $router->url) {
+		if (!$controllerFile or '404' == $router->url) {
 
 			$this->modal(Translator::do('ERROR'), Translator::do('RESOURCE_NOT_FOUND', $router->url));
 			$this->style = '404';
@@ -1615,7 +1714,7 @@ class Application {
 
 		} else {
 
-			require ($controllerFile);
+			require $controllerFile;
 
 			// build controller object
 			$controllerName = ucfirst($router->module) . 'Controller';
@@ -1654,7 +1753,13 @@ class Application {
 
 			if (method_exists($controller, $action)) {
 				try {
-					$response = $controller->$action();
+					// Trace the web controller action before legacy or explicit rendering starts.
+					$response = Observability::trace('web.controller', function () use ($controller, $action): mixed {
+						return $controller->$action();
+					}, [
+						'module' => (string)$router->module,
+						'action' => str_replace('Action', '', $action),
+					]);
 				} catch (\Throwable $e) {
 					PairException::frontEnd($e);
 				}

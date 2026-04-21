@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Pair\Tests\Unit\Api;
 
 use Pair\Api\CrudResourceConfig;
+use Pair\Tests\Support\FakeCrudIncludePreloader;
 use Pair\Tests\Support\FakeCrudReadModel;
 use Pair\Tests\Support\FakeCrudResource;
 use Pair\Tests\Support\TestCase;
@@ -29,6 +30,7 @@ class CrudResourceConfigTest extends TestCase {
 		$this->assertSame([], $config->includes());
 		$this->assertSame([], $config->includeReadModels());
 		$this->assertSame([], $config->includeResources());
+		$this->assertNull($config->includePreloader());
 		$this->assertSame(20, $config->perPage());
 		$this->assertSame(100, $config->maxPerPage());
 		$this->assertSame(['create' => [], 'update' => []], $config->rules());
@@ -50,6 +52,7 @@ class CrudResourceConfigTest extends TestCase {
 			'includes' => ['group'],
 			'includeReadModels' => ['group' => FakeCrudReadModel::class],
 			'includeResources' => ['group' => FakeCrudResource::class],
+			'includePreloader' => FakeCrudIncludePreloader::class,
 			'perPage' => 15,
 			'maxPerPage' => 30,
 			'rules' => [
@@ -67,6 +70,7 @@ class CrudResourceConfigTest extends TestCase {
 		$this->assertSame(['group'], $config->includes());
 		$this->assertSame(['group' => FakeCrudReadModel::class], $config->includeReadModels());
 		$this->assertSame(['group' => FakeCrudResource::class], $config->includeResources());
+		$this->assertSame(FakeCrudIncludePreloader::class, $config->includePreloader());
 		$this->assertSame(15, $config->perPage());
 		$this->assertSame(30, $config->maxPerPage());
 		$this->assertSame(['name' => 'required|string'], $config->createRules());
@@ -107,6 +111,7 @@ class CrudResourceConfigTest extends TestCase {
 			'includes' => [],
 			'includeReadModels' => [],
 			'includeResources' => [],
+			'includePreloader' => null,
 			'perPage' => 20,
 			'maxPerPage' => 100,
 			'rules' => [

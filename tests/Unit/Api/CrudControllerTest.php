@@ -13,6 +13,7 @@ use Pair\Http\JsonResponse;
 use Pair\Tests\Support\FakeCrudController;
 use Pair\Tests\Support\FakeCrudDatabase;
 use Pair\Tests\Support\FakeCrudDeletableRecord;
+use Pair\Tests\Support\FakeCrudIncludePreloader;
 use Pair\Tests\Support\FakeCrudExposeableModel;
 use Pair\Tests\Support\FakeCrudIncludeReadModel;
 use Pair\Tests\Support\FakeCrudReadModel;
@@ -57,6 +58,7 @@ class CrudControllerTest extends TestCase {
 
 		FakeCrudRecord::resetFindResults();
 		FakeCrudDeletableRecord::resetFindResult();
+		FakeCrudIncludePreloader::reset();
 		$this->setInaccessibleProperty(\Pair\Core\Router::getInstance(), 'vars', []);
 		$_GET = [];
 		unset($_SERVER['CONTENT_TYPE'], $_SERVER['REQUEST_METHOD']);
@@ -172,6 +174,140 @@ class CrudControllerTest extends TestCase {
 			['identifier' => 1, 'label' => 'ALICE'],
 			['identifier' => 2, 'label' => 'BOB'],
 		], $data);
+
+	}
+
+	/**
+	 * Verify collection includes can be bulk-preloaded once before per-record transformation.
+	 */
+	public function testTransformCollectionUsesConfiguredIncludePreloader(): void {
+
+		$controller = $this->newCrudController();
+		$group = $this->newCrudRecord()->seed(['id' => 10, 'name' => 'Admins']);
+		$record = $this->newCrudRecord()->seed([
+			'id' => 7,
+			'name' => 'Alice',
+			'email' => 'alice@example.test',
+		]);
+
+		FakeCrudIncludePreloader::seed('group', 7, $group);
+
+		$data = $this->invokeInaccessibleMethod($controller, 'transformCollection', [
+			[$record],
+			[
+				'readModel' => FakeCrudReadModel::class,
+				'includes' => ['group'],
+				'includeReadModels' => ['group' => FakeCrudIncludeReadModel::class],
+				'includePreloader' => FakeCrudIncludePreloader::class,
+			],
+			null,
+			['group'],
+		]);
+
+		$this->assertSame(1, FakeCrudIncludePreloader::$calls);
+		$this->assertSame(['group'], FakeCrudIncludePreloader::$lastIncludes);
+		$this->assertSame([7], FakeCrudIncludePreloader::$lastParentIds);
+		$this->assertSame([
+			[
+				'identifier' => 7,
+				'label' => 'ALICE',
+				'email' => 'alice@example.test',
+				'group' => [
+					'id' => 10,
+					'name' => 'Admins',
+				],
+			],
+		], $data);
+
+	}
+
+	/**
+	 * Verify a configured preloader can return collection relations without changing output shape.
+	 */
+	public function testTransformCollectionUsesPreloadedCollectionIncludes(): void {
+
+		$controller = $this->newCrudController();
+		$record = $this->newCrudRecord()->seed([
+			'id' => 7,
+			'name' => 'Alice',
+			'email' => 'alice@example.test',
+		]);
+		$tags = new Collection([
+			$this->newCrudRecord()->seed(['id' => 20, 'name' => 'One']),
+			$this->newCrudRecord()->seed(['id' => 21, 'name' => 'Two']),
+		]);
+
+		FakeCrudIncludePreloader::seed('tags', 7, $tags);
+
+		$data = $this->invokeInaccessibleMethod($controller, 'transformCollection', [
+			[$record],
+			[
+				'readModel' => FakeCrudReadModel::class,
+				'includes' => ['tags'],
+				'includeReadModels' => ['tags' => FakeCrudIncludeReadModel::class],
+				'includePreloader' => FakeCrudIncludePreloader::class,
+			],
+			null,
+			['tags'],
+		]);
+
+		$this->assertSame([
+			[
+				'identifier' => 7,
+				'label' => 'ALICE',
+				'email' => 'alice@example.test',
+				'tags' => [
+					20 => ['id' => 20, 'name' => 'One'],
+					21 => ['id' => 21, 'name' => 'Two'],
+				],
+			],
+		], $data);
+
+	}
+
+	/**
+	 * Verify an invalid preloader class fails explicitly.
+	 */
+	public function testTransformCollectionRejectsMissingIncludePreloader(): void {
+
+		$controller = $this->newCrudController();
+		$record = $this->newCrudRecord()->seed(['id' => 7, 'name' => 'Alice']);
+
+		$this->expectException(\LogicException::class);
+		$this->expectExceptionMessage('CRUD include preloader "MissingCrudIncludePreloader" does not exist');
+
+		$this->invokeInaccessibleMethod($controller, 'transformCollection', [
+			[$record],
+			[
+				'readModel' => FakeCrudReadModel::class,
+				'includePreloader' => 'MissingCrudIncludePreloader',
+			],
+			null,
+			['group'],
+		]);
+
+	}
+
+	/**
+	 * Verify configured preloader classes must implement the public contract.
+	 */
+	public function testTransformCollectionRejectsInvalidIncludePreloaderContract(): void {
+
+		$controller = $this->newCrudController();
+		$record = $this->newCrudRecord()->seed(['id' => 7, 'name' => 'Alice']);
+
+		$this->expectException(\LogicException::class);
+		$this->expectExceptionMessage('must implement ' . \Pair\Api\CrudIncludePreloader::class);
+
+		$this->invokeInaccessibleMethod($controller, 'transformCollection', [
+			[$record],
+			[
+				'readModel' => FakeCrudReadModel::class,
+				'includePreloader' => \stdClass::class,
+			],
+			null,
+			['group'],
+		]);
 
 	}
 

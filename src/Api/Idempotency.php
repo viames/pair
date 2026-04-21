@@ -2,10 +2,12 @@
 
 namespace Pair\Api;
 
+use Pair\Cache\CacheStore;
+use Pair\Cache\FileCacheStore;
 use Pair\Http\ResponseInterface;
 
 /**
- * File-based idempotency helper for API endpoints.
+ * Cache-backed idempotency helper for API endpoints.
  *
  * Usage:
  * 1) Call duplicateResponse() or respondIfDuplicate() at the beginning of a mutating action.
@@ -13,6 +15,20 @@ use Pair\Http\ResponseInterface;
  * 3) Optionally call clearProcessing() in catch/failure paths.
  */
 class Idempotency {
+
+	/**
+	 * Cache store used to persist idempotency rows for the current PHP process.
+	 */
+	private static ?CacheStore $store = null;
+
+	/**
+	 * Clear the configured cache store so the default file store is resolved again.
+	 */
+	public static function clearStore(): void {
+
+		self::$store = null;
+
+	}
 
 	/**
 	 * Returns an explicit response for duplicate requests, or marks the key as processing
@@ -27,13 +43,13 @@ class Idempotency {
 		}
 
 		$hash = static::requestHash($request);
-		$file = static::filePath($scope, $key);
-		$row = static::readRow($file);
+		$cacheKey = static::cacheKey($scope, $key);
+		$row = static::readRow($cacheKey);
 
 		if (is_array($row)) {
 
 			if (isset($row['expiresAt']) and time() > intval($row['expiresAt'])) {
-				static::deleteRow($file);
+				static::deleteRow($cacheKey);
 				$row = null;
 			}
 
@@ -57,14 +73,14 @@ class Idempotency {
 
 		}
 
-		static::writeRow($file, [
+		static::writeRow($cacheKey, [
 			'key' => $key,
 			'scope' => $scope,
 			'status' => 'processing',
 			'createdAt' => time(),
 			'expiresAt' => time() + max(1, $ttlSeconds),
 			'requestHash' => $hash,
-		]);
+		], $ttlSeconds);
 
 		return null;
 
@@ -98,10 +114,10 @@ class Idempotency {
 			return false;
 		}
 
-		$file = static::filePath($scope, $key);
+		$cacheKey = static::cacheKey($scope, $key);
 		$hash = static::requestHash($request);
 
-		return static::writeRow($file, [
+		return static::writeRow($cacheKey, [
 			'key' => $key,
 			'scope' => $scope,
 			'status' => 'done',
@@ -110,7 +126,7 @@ class Idempotency {
 			'requestHash' => $hash,
 			'httpCode' => $httpCode,
 			'data' => $data,
-		]);
+		], $ttlSeconds);
 
 	}
 
@@ -125,54 +141,62 @@ class Idempotency {
 			return false;
 		}
 
-		$file = static::filePath($scope, $key);
-		return static::deleteRow($file);
+		return static::deleteRow(static::cacheKey($scope, $key));
 
 	}
 
 	/**
-	 * Deletes row file.
+	 * Set the cache store used by idempotency rows.
 	 */
-	private static function deleteRow(string $file): bool {
+	public static function setStore(CacheStore $store): void {
 
-		if (!file_exists($file)) {
-			return true;
+		self::$store = $store;
+
+	}
+
+	/**
+	 * Build a stable cache key for a scope/key pair without exposing raw client keys to shared stores.
+	 */
+	private static function cacheKey(string $scope, string $key): string {
+
+		return 'idempotency:' . hash('sha256', trim($scope) . '|' . trim($key));
+
+	}
+
+	/**
+	 * Deletes one idempotency row.
+	 */
+	private static function deleteRow(string $cacheKey): bool {
+
+		return static::store()->delete($cacheKey);
+
+	}
+
+	/**
+	 * Return the configured cache store, defaulting to file-backed idempotency storage.
+	 */
+	private static function store(): CacheStore {
+
+		if (!self::$store) {
+			self::$store = new FileCacheStore(static::storageFolder(), 'idempotency');
 		}
 
-		return unlink($file);
+		return self::$store;
 
 	}
 
 	/**
-	 * Returns row file path for a scope/key pair.
+	 * Reads a row as associative array from the configured cache store.
 	 */
-	private static function filePath(string $scope, string $key): string {
+	private static function readRow(string $cacheKey): ?array {
 
-		$folder = static::storageFolder();
-		$hash = hash('sha256', trim($scope) . '|' . trim($key));
+		$row = static::store()->get($cacheKey);
 
-		return $folder . '/' . $hash . '.json';
-
-	}
-
-	/**
-	 * Reads a row as associative array.
-	 */
-	private static function readRow(string $file): ?array {
-
-		if (!file_exists($file)) {
+		if (!is_array($row)) {
 			return null;
 		}
 
-		$json = file_get_contents($file);
-
-		if (!is_string($json) or !strlen($json)) {
-			return null;
-		}
-
-		$data = json_decode($json, true);
-
-		return is_array($data) ? $data : null;
+		return $row;
 
 	}
 
@@ -219,17 +243,11 @@ class Idempotency {
 	}
 
 	/**
-	 * Writes a row file as JSON.
+	 * Writes an idempotency row through the configured cache store.
 	 */
-	private static function writeRow(string $file, array $row): bool {
+	private static function writeRow(string $cacheKey, array $row, int $ttlSeconds): bool {
 
-		$json = json_encode($row, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
-
-		if (!is_string($json)) {
-			return false;
-		}
-
-		return (false !== file_put_contents($file, $json, LOCK_EX));
+		return static::store()->set($cacheKey, $row, max(1, $ttlSeconds));
 
 	}
 

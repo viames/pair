@@ -7,6 +7,7 @@ namespace Pair\Tests\Unit\Api;
 use Pair\Api\Middleware;
 use Pair\Api\MiddlewarePipeline;
 use Pair\Api\Request;
+use Pair\Core\Observability;
 use Pair\Tests\Support\TestCase;
 
 /**
@@ -160,6 +161,29 @@ class MiddlewarePipelineTest extends TestCase {
 		});
 
 		$this->assertSame(['blocked'], $trace->getArrayCopy());
+
+	}
+
+	/**
+	 * Verify middleware execution emits a safe observability span when instrumentation is enabled.
+	 */
+	public function testRunEmitsObservabilitySpanWhenEnabled(): void {
+
+		Observability::enable();
+
+		$pipeline = new MiddlewarePipeline();
+		$request = new Request();
+
+		$result = $pipeline->run($request, function (Request $request): string {
+			return 'ok';
+		});
+
+		$spans = Observability::spans();
+
+		$this->assertSame('ok', $result);
+		$this->assertCount(1, $spans);
+		$this->assertSame('api.middleware', $spans[0]->name());
+		$this->assertSame(0, $spans[0]->attributes()['middlewareCount']);
 
 	}
 

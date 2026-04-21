@@ -4,7 +4,12 @@ declare(strict_types=1);
 
 namespace Pair\Tests\Support;
 
+use Pair\Api\CrudResourceMetadata;
+use Pair\Api\Idempotency;
+use Pair\Cache\Cache;
 use Pair\Core\Env;
+use Pair\Core\FilesystemMetadata;
+use Pair\Core\Observability;
 use Pair\Html\UiTheme;
 use PHPUnit\Framework\TestCase as PhpUnitTestCase;
 
@@ -67,7 +72,22 @@ abstract class TestCase extends PhpUnitTestCase {
 		// Reset the global UI framework override so tests stay isolated.
 		UiTheme::reset();
 
+		// Reset process-local metadata caches before fixtures change.
+		Cache::clearStore();
+		CrudResourceMetadata::clear();
+		Idempotency::clearStore();
+		FilesystemMetadata::clear();
+		Observability::clear();
+		Env::clearCache();
 		$this->removeEnvFile();
+		Cache::clearStore();
+		CrudResourceMetadata::clear();
+		Idempotency::clearStore();
+		FilesystemMetadata::clear();
+		Observability::clear();
+		Env::clearCache();
+
+		$this->removeDirectory(TEMP_PATH . 'cache');
 		$this->removeDirectory(TEMP_PATH . 'rate_limits');
 
 	}
@@ -77,7 +97,22 @@ abstract class TestCase extends PhpUnitTestCase {
 	 */
 	protected function tearDown(): void {
 
+		// Reset process-local metadata caches before restoring global state.
+		Cache::clearStore();
+		CrudResourceMetadata::clear();
+		Idempotency::clearStore();
+		FilesystemMetadata::clear();
+		Observability::clear();
+		Env::clearCache();
 		$this->removeEnvFile();
+		Cache::clearStore();
+		CrudResourceMetadata::clear();
+		Idempotency::clearStore();
+		FilesystemMetadata::clear();
+		Observability::clear();
+		Env::clearCache();
+
+		$this->removeDirectory(TEMP_PATH . 'cache');
 		$this->removeDirectory(TEMP_PATH . 'rate_limits');
 
 		$_COOKIE = $this->cookieBackup;

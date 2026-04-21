@@ -24,6 +24,7 @@ final class CrudResourceConfig {
 		'includes'    => [],
 		'includeReadModels' => [],
 		'includeResources' => [],
+		'includePreloader' => null,
 		'perPage'     => 20,
 		'maxPerPage'  => 100,
 		'rules'       => ['create' => [], 'update' => []],
@@ -79,6 +80,7 @@ final class CrudResourceConfig {
 		$merged['includes'] = self::normalizeStringList($merged['includes']);
 		$merged['includeReadModels'] = self::normalizeStringMap($merged['includeReadModels']);
 		$merged['includeResources'] = self::normalizeStringMap($merged['includeResources']);
+		$merged['includePreloader'] = is_string($merged['includePreloader']) ? $merged['includePreloader'] : null;
 		$merged['perPage'] = max(1, (int)$merged['perPage']);
 		$merged['maxPerPage'] = max(1, (int)$merged['maxPerPage']);
 		$merged['rules'] = self::normalizeRules($merged['rules']);
@@ -149,6 +151,15 @@ final class CrudResourceConfig {
 	public function includeResources(): array {
 
 		return $this->config['includeResources'];
+
+	}
+
+	/**
+	 * Return the optional bulk include preloader class.
+	 */
+	public function includePreloader(): ?string {
+
+		return $this->config['includePreloader'];
 
 	}
 

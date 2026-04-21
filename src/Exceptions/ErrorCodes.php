@@ -299,4 +299,9 @@ class ErrorCodes {
 	 */
 	const WHATSAPP_ERROR = 1060;
 
+	/**
+	 * OpenAI API error.
+	 */
+	const OPENAI_ERROR = 1061;
+
 }

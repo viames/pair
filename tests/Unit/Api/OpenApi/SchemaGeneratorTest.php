@@ -35,4 +35,99 @@ class SchemaGeneratorTest extends TestCase {
 
 	}
 
+	/**
+	 * Verify full schemas are cached until the source class is explicitly invalidated.
+	 */
+	public function testGenerateCachesSchemasUntilCleared(): void {
+
+		CachedOpenApiSchemaFixture::reset();
+
+		$generator = new SchemaGenerator();
+
+		$first = $generator->generate(CachedOpenApiSchemaFixture::class);
+		$second = $generator->generate(CachedOpenApiSchemaFixture::class);
+
+		$this->assertSame($first, $second);
+		$this->assertSame(1, CachedOpenApiSchemaFixture::$schemaCalls);
+		$this->assertSame(1, $second['x-generation']);
+
+		$generator->clearCache(CachedOpenApiSchemaFixture::class);
+
+		$third = $generator->generate(CachedOpenApiSchemaFixture::class);
+
+		$this->assertSame(2, CachedOpenApiSchemaFixture::$schemaCalls);
+		$this->assertSame(2, $third['x-generation']);
+
+	}
+
+	/**
+	 * Verify create request schemas are cached by class and validation rules.
+	 */
+	public function testGenerateCreateSchemaCachesRuleSpecificSchemasUntilCleared(): void {
+
+		CachedOpenApiSchemaFixture::reset();
+
+		$generator = new SchemaGenerator();
+		$rules = ['name' => 'required|string'];
+
+		$first = $generator->generateCreateSchema(CachedOpenApiSchemaFixture::class, $rules);
+		$second = $generator->generateCreateSchema(CachedOpenApiSchemaFixture::class, $rules);
+
+		$this->assertSame($first, $second);
+		$this->assertSame(1, CachedOpenApiSchemaFixture::$schemaCalls);
+		$this->assertSame(['name'], $second['required']);
+		$this->assertArrayHasKey('name', $second['properties']);
+		$this->assertArrayNotHasKey('email', $second['properties']);
+
+		$generator->clearCache(CachedOpenApiSchemaFixture::class);
+
+		$third = $generator->generateCreateSchema(CachedOpenApiSchemaFixture::class, $rules);
+
+		$this->assertSame(2, CachedOpenApiSchemaFixture::$schemaCalls);
+		$this->assertSame(2, $third['x-generation']);
+
+	}
+
+}
+
+/**
+ * Fixture with explicit OpenAPI schema override used to verify schema caching.
+ */
+final class CachedOpenApiSchemaFixture {
+
+	/**
+	 * Number of times openApiSchema() has been evaluated.
+	 */
+	public static int $schemaCalls = 0;
+
+	/**
+	 * Return an explicit schema and record the generation count.
+	 *
+	 * @return	array<string, mixed>
+	 */
+	public static function openApiSchema(): array {
+
+		self::$schemaCalls++;
+
+		return [
+			'type' => 'object',
+			'x-generation' => self::$schemaCalls,
+			'properties' => [
+				'name' => ['type' => 'string'],
+				'email' => ['type' => 'string'],
+			],
+			'required' => ['name', 'email'],
+		];
+
+	}
+
+	/**
+	 * Reset call counters before a focused cache test.
+	 */
+	public static function reset(): void {
+
+		self::$schemaCalls = 0;
+
+	}
+
 }

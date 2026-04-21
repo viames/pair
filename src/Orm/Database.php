@@ -4,6 +4,8 @@ namespace Pair\Orm;
 
 use Pair\Core\Env;
 use Pair\Core\Logger;
+use Pair\Core\Observability;
+use Pair\Core\ObservabilitySpan;
 use Pair\Exceptions\CriticalException;
 use Pair\Exceptions\ErrorCodes;
 use Pair\Exceptions\PairException;
@@ -198,13 +200,20 @@ class Database {
 		$this->openConnection();
 
 		$this->query = $query;
+		$span = self::startQuerySpan($this->query);
 		$stat = $this->handler->prepare($this->query);
 
-		$stat->execute($params);
+		try {
+			$stat->execute($params);
+		} catch (\Throwable $e) {
+			self::finishQuerySpan($span, 0, 'error', $e);
+			throw $e;
+		}
 
 		$affected = $stat->rowCount();
 		$stat->closeCursor();
 		$this->logParamQuery($this->query, $affected, $params);
+		self::finishQuerySpan($span, $affected);
 
 		return $affected;
 
@@ -428,6 +437,7 @@ class Database {
 		$self->openConnection();
 		$self->castParams($params);
 
+		$span = self::startQuerySpan($query, $option);
 		$stat = $self->handler->prepare($query);
 
 		try {
@@ -435,6 +445,8 @@ class Database {
 			$stat->execute($params);
 
 		} catch (\PDOException $e) {
+
+			self::finishQuerySpan($span, 0, 'error', $e);
 
 			// choose the right exception based on MySQL error code
 			switch ($e->getCode()) {
@@ -518,6 +530,7 @@ class Database {
 		$self->logParamQuery($query, $count, $params);
 
 		$stat->closeCursor();
+		self::finishQuerySpan($span, (int)$count);
 
 		return $res;
 
@@ -537,6 +550,7 @@ class Database {
 		$self->openConnection();
 		$self->castParams($params);
 
+		$span = self::startQuerySpan($query, self::DICTIONARY);
 		$stat = $self->handler->prepare($query);
 
 		try {
@@ -544,6 +558,8 @@ class Database {
 			$stat->execute($params);
 
 		} catch (\PDOException $e) {
+
+			self::finishQuerySpan($span, 0, 'error', $e);
 
 			// choose the right exception based on MySQL error code
 			switch ($e->getCode()) {
@@ -598,6 +614,7 @@ class Database {
 
 			$self->logParamQuery($query, $count, $params);
 			$stat->closeCursor();
+			self::finishQuerySpan($span, $count);
 
 		}
 
@@ -614,11 +631,13 @@ class Database {
 		$this->openConnection();
 
 		$res = 0;
+		$span = self::startQuerySpan($this->query, self::COUNT);
 		$stat = $this->handler->prepare($this->query);
 
 		try {
 			$stat->execute($params);
 		} catch (\PDOException $e) {
+			self::finishQuerySpan($span, 0, 'error', $e);
 			throw new PairException($e->getMessage(), ErrorCodes::DB_QUERY_FAILED, $e);
 		}
 
@@ -626,6 +645,7 @@ class Database {
 		$res = (int)$stat->fetch(\PDO::FETCH_COLUMN);
 
 		$stat->closeCursor();
+		self::finishQuerySpan($span, $res);
 
 		return $res;
 
@@ -644,11 +664,13 @@ class Database {
 
 		$this->openConnection();
 
+		$span = self::startQuerySpan($this->query, self::OBJECT_LIST);
 		$stat = $this->handler->prepare($this->query);
 
 		try {
 			$stat->execute($params);
 		} catch (\PDOException $e) {
+			self::finishQuerySpan($span, 0, 'error', $e);
 			throw new PairException($e->getMessage(), ErrorCodes::DB_QUERY_FAILED, $e);
 		}
 
@@ -658,6 +680,7 @@ class Database {
 		$this->logParamQuery($this->query, count($ret), $params);
 
 		$stat->closeCursor();
+		self::finishQuerySpan($span, count($ret));
 
 		return $ret;
 
@@ -674,11 +697,13 @@ class Database {
 		$this->openConnection();
 
 		$res = null;
+		$span = self::startQuerySpan($this->query, self::RESULT);
 		$stat = $this->handler->prepare($this->query);
 
 		try {
 			$stat->execute((array)$params);
 		} catch (\PDOException $e) {
+			self::finishQuerySpan($span, 0, 'error', $e);
 			throw new PairException($e->getMessage(), ErrorCodes::DB_QUERY_FAILED, $e);
 		}
 
@@ -689,8 +714,26 @@ class Database {
 		$this->logParamQuery($this->query, $count, $params);
 
 		$stat->closeCursor();
+		self::finishQuerySpan($span, (int)$count);
 
 		return $res;
+
+	}
+
+	/**
+	 * Finish an observability span for one database query without exposing SQL parameters.
+	 */
+	private static function finishQuerySpan(ObservabilitySpan $span, int $rows, string $status = 'ok', ?\Throwable $exception = null): void {
+
+		$attributes = [
+			'rows' => $rows,
+		];
+
+		if ($exception) {
+			$attributes['exception'] = get_class($exception);
+		}
+
+		Observability::finish($span, $attributes, $status);
 
 	}
 
@@ -746,6 +789,36 @@ class Database {
 		$subtext = (int)$result . ' ' . (1==$result ? 'row' : 'rows');
 
 		LogBar::event($query, 'query', $subtext);
+
+	}
+
+	/**
+	 * Return the leading SQL operation without storing the query text or bound parameters.
+	 */
+	private static function queryOperation(string $query): string {
+
+		if (preg_match('/^\s*([A-Za-z]+)/', $query, $matches)) {
+			return strtoupper($matches[1]);
+		}
+
+		return 'UNKNOWN';
+
+	}
+
+	/**
+	 * Start an observability span for one database query using only safe metadata.
+	 */
+	private static function startQuerySpan(string $query, ?int $option = null): ObservabilitySpan {
+
+		$attributes = [
+			'operation' => self::queryOperation($query),
+		];
+
+		if (!is_null($option)) {
+			$attributes['resultMode'] = $option;
+		}
+
+		return Observability::start('db.query', $attributes);
 
 	}
 
@@ -817,11 +890,13 @@ class Database {
 		$self = static::getInstance();
 		$self->openConnection();
 
+		$span = self::startQuerySpan($query);
 		$stat = $self->handler->prepare($query);
 
 		try {
 			$stat->execute((array)$params);
 		} catch (\PDOException $e) {
+			self::finishQuerySpan($span, 0, 'error', $e);
 			throw new PairException($e->getMessage(), ErrorCodes::DB_QUERY_FAILED, $e);
 		}
 
@@ -830,6 +905,7 @@ class Database {
 
 		$stat->closeCursor();
 		$self->logParamQuery($query, $affected, $params);
+		self::finishQuerySpan($span, $affected);
 
 		return $affected;
 

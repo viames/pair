@@ -18,6 +18,7 @@ namespace Pair\Api;
  *               'filterable' => ['category', 'isPublished'],
  *               'includes'   => ['author'],
  *               'includeReadModels' => ['author' => AuthorReadModel::class],
+ *               'includePreloader'  => FaqIncludePreloader::class,
  *               'perPage'    => 20,
  *               'maxPerPage' => 100,
  *               'rules'      => [
@@ -42,6 +43,7 @@ trait ApiExposable {
 	 *   - includes:    (string[]) Allowed relationship names for ?include= parameter.
 	 *   - includeReadModels: (array<string, string>) Explicit read models for included relations.
 	 *   - includeResources:  (array<string, string>) Legacy resources for included relations.
+	 *   - includePreloader:  (string) Optional CrudIncludePreloader class for bulk includes.
 	 *   - perPage:     (int) Default items per page (default 20).
 	 *   - maxPerPage:  (int) Maximum items per page (default 100).
 	 *   - rules:       (array) Validation rules keyed by 'create' and 'update'.
@@ -71,7 +73,7 @@ trait ApiExposable {
 	 */
 	public static function getCrudResourceConfig(): CrudResourceConfig {
 
-		return CrudResourceConfig::fromArray(static::apiConfig());
+		return CrudResourceMetadata::configFor(static::class);
 
 	}
 

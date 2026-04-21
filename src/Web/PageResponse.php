@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Pair\Web;
 
 use Pair\Core\Application;
+use Pair\Core\Observability;
 use Pair\Exceptions\CriticalException;
 use Pair\Exceptions\ErrorCodes;
 use Pair\Http\ResponseInterface;
@@ -39,7 +40,12 @@ final readonly class PageResponse implements ResponseInterface {
 		// Expose only the typed state object to keep the layout contract explicit.
 		$state = $this->state;
 
-		include $this->templateFile;
+		Observability::trace('page.response', function () use ($state): void {
+			include $this->templateFile;
+		}, [
+			'template' => basename($this->templateFile),
+			'state' => $state::class,
+		]);
 
 	}
 

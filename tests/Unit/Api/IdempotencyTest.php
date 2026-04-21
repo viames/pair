@@ -51,11 +51,11 @@ class IdempotencyTest extends TestCase {
 		);
 
 		$response = Idempotency::duplicateResponse($request, 'orders', 90);
-		$rows = $this->readIdempotencyRows();
+		$duplicate = Idempotency::duplicateResponse($request, 'orders', 90);
 
 		$this->assertNull($response);
-		$this->assertCount(1, $rows);
-		$this->assertSame('processing', $rows[0]['status'] ?? null);
+		$this->assertInstanceOf(ApiErrorResponse::class, $duplicate);
+		$this->assertSame('CONFLICT', $this->readPrivateProperty($duplicate, ApiErrorResponse::class, 'errorCode'));
 
 	}
 
@@ -176,7 +176,7 @@ class IdempotencyTest extends TestCase {
 		);
 
 		$this->assertTrue(Idempotency::respondIfDuplicate($request, 'orders'));
-		$this->assertSame([], $this->readIdempotencyRows());
+		$this->assertFalse(is_dir(TEMP_PATH . 'idempotency'));
 
 	}
 
@@ -194,15 +194,13 @@ class IdempotencyTest extends TestCase {
 
 		$this->assertTrue(Idempotency::respondIfDuplicate($request, 'orders', 90));
 
-		$rows = $this->readIdempotencyRows();
+		$duplicate = Idempotency::duplicateResponse($request, 'orders', 90);
 
-		$this->assertCount(1, $rows);
-		$this->assertSame('processing', $rows[0]['status'] ?? null);
-		$this->assertSame('orders', $rows[0]['scope'] ?? null);
-		$this->assertSame('order-create-1', $rows[0]['key'] ?? null);
+		$this->assertInstanceOf(ApiErrorResponse::class, $duplicate);
+		$this->assertSame('CONFLICT', $this->readPrivateProperty($duplicate, ApiErrorResponse::class, 'errorCode'));
 
 		$this->assertTrue(Idempotency::clearProcessing($request, 'orders'));
-		$this->assertSame([], $this->readIdempotencyRows());
+		$this->assertNull(Idempotency::duplicateResponse($request, 'orders', 90));
 
 	}
 
@@ -313,34 +311,6 @@ PHP);
 		$this->setInaccessibleProperty($request, 'rawBody', $rawBody);
 
 		return $request;
-
-	}
-
-	/**
-	 * Read every stored idempotency row currently present in the temporary storage folder.
-	 *
-	 * @return	list<array<string, mixed>>
-	 */
-	private function readIdempotencyRows(): array {
-
-		$folder = TEMP_PATH . 'idempotency';
-
-		if (!is_dir($folder)) {
-			return [];
-		}
-
-		$rows = [];
-
-		foreach (glob($folder . '/*.json') ?: [] as $file) {
-			$content = file_get_contents($file);
-			$decoded = is_string($content) ? json_decode($content, true) : null;
-
-			if (is_array($decoded)) {
-				$rows[] = $decoded;
-			}
-		}
-
-		return $rows;
 
 	}
 

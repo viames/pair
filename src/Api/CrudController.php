@@ -8,6 +8,7 @@ use Pair\Data\RecordMapper;
 use Pair\Http\JsonResponse;
 use Pair\Http\ResponseInterface;
 use Pair\Orm\ActiveRecord;
+use Pair\Orm\Collection;
 use Pair\Orm\Database;
 
 /**
@@ -312,11 +313,11 @@ abstract class CrudController extends ApiController {
 	private function transformCollection(array $objects, array|CrudResourceConfig $config, ?array $fields = null, array $includes = []): array {
 
 		$config = CrudResourceConfig::from($config);
-
 		$data = [];
+		$preloadedIncludes = $this->preloadIncludes($objects, $config, $includes);
 
-		foreach ($objects as $object) {
-			$data[] = $this->transformResource($object, $config, $fields, $includes);
+		foreach ($objects as $key => $object) {
+			$data[] = $this->transformResource($object, $config, $fields, $includes, $preloadedIncludes, $key);
 		}
 
 		return $data;
@@ -331,9 +332,11 @@ abstract class CrudController extends ApiController {
 	 * @param	array<string, mixed>|CrudResourceConfig	$config	Resource config.
 	 * @param	string[]|null	$fields		Sparse fieldset (null for all fields).
 	 * @param	string[]		$includes	Relationship includes.
+	 * @param	array			$preloadedIncludes	Preloaded include values grouped by include and parent key.
+	 * @param	int|string|null	$collectionKey	Original collection key for this object.
 	 * @return	array
 	 */
-	private function transformResource(ActiveRecord $object, array|CrudResourceConfig $config, ?array $fields = null, array $includes = []): array {
+	private function transformResource(ActiveRecord $object, array|CrudResourceConfig $config, ?array $fields = null, array $includes = [], array $preloadedIncludes = [], int|string|null $collectionKey = null): array {
 
 		$config = CrudResourceConfig::from($config);
 		$readModelClass = $config->readModel();
@@ -356,7 +359,7 @@ abstract class CrudController extends ApiController {
 
 		// load and attach includes
 		if (count($includes)) {
-			$data = $this->loadIncludes($object, $data, $config, $includes);
+			$data = $this->loadIncludes($object, $data, $config, $includes, $preloadedIncludes, $collectionKey);
 		}
 
 		return $data;
@@ -370,26 +373,34 @@ abstract class CrudController extends ApiController {
 	 * @param	array			$data		The transformed data array.
 	 * @param	array<string, mixed>|CrudResourceConfig	$config	Resource config.
 	 * @param	string[]		$includes	Relationship names to include.
+	 * @param	array			$preloadedIncludes	Preloaded include values grouped by include and parent key.
+	 * @param	int|string|null	$collectionKey	Original collection key for this object.
 	 * @return	array			Data with includes attached.
 	 */
-	private function loadIncludes(ActiveRecord $object, array $data, array|CrudResourceConfig $config, array $includes): array {
+	private function loadIncludes(ActiveRecord $object, array $data, array|CrudResourceConfig $config, array $includes, array $preloadedIncludes = [], int|string|null $collectionKey = null): array {
 
 		$config = CrudResourceConfig::from($config);
 
 		foreach ($includes as $include) {
 
-			$methodName = 'get' . ucfirst($include);
+			$related = null;
 
-			try {
-				$related = $object->$methodName();
-			} catch (\Exception $e) {
-				Logger::getInstance()->warning('Failed to load include "' . $include . '": ' . $e->getMessage());
-				continue;
+			if (!$this->findPreloadedInclude($object, $include, $preloadedIncludes, $collectionKey, $related)) {
+
+				$methodName = 'get' . ucfirst($include);
+
+				try {
+					$related = $object->$methodName();
+				} catch (\Exception $e) {
+					Logger::getInstance()->warning('Failed to load include "' . $include . '": ' . $e->getMessage());
+					continue;
+				}
+
 			}
 
 			if (is_null($related)) {
 				$data[$include] = null;
-			} else if ($related instanceof \Pair\Orm\Collection) {
+			} else if ($related instanceof Collection) {
 				$data[$include] = $this->transformIncludedCollection($related, $config, $include);
 			} else if ($related instanceof ActiveRecord) {
 				$data[$include] = $this->transformIncludedRecord($related, $config, $include);
@@ -409,7 +420,7 @@ abstract class CrudController extends ApiController {
 	 * @param	string					$include	Include name.
 	 * @return	array<int|string, array<string, mixed>>
 	 */
-	private function transformIncludedCollection(\Pair\Orm\Collection $collection, CrudResourceConfig $config, string $include): array {
+	private function transformIncludedCollection(Collection $collection, CrudResourceConfig $config, string $include): array {
 
 		$data = [];
 
@@ -426,6 +437,92 @@ abstract class CrudController extends ApiController {
 		}
 
 		return $data;
+
+	}
+
+	/**
+	 * Return true and assign the relation when a preloaded include exists for this object.
+	 *
+	 * @param	ActiveRecord	$object				Parent object.
+	 * @param	string			$include			Include name.
+	 * @param	array			$preloadedIncludes	Preloaded include map.
+	 * @param	int|string|null	$collectionKey		Original collection key for this object.
+	 * @param	mixed			$related			Resolved relation value.
+	 */
+	private function findPreloadedInclude(ActiveRecord $object, string $include, array $preloadedIncludes, int|string|null $collectionKey, mixed &$related): bool {
+
+		if (!isset($preloadedIncludes[$include]) or !is_array($preloadedIncludes[$include])) {
+			return false;
+		}
+
+		foreach ($this->preloadLookupKeys($object, $collectionKey) as $key) {
+
+			if (array_key_exists($key, $preloadedIncludes[$include])) {
+				$related = $preloadedIncludes[$include][$key];
+				return true;
+			}
+
+		}
+
+		return false;
+
+	}
+
+	/**
+	 * Return lookup keys accepted for preloaded include maps.
+	 *
+	 * @param	ActiveRecord	$object			Parent object.
+	 * @param	int|string|null	$collectionKey	Original collection key for this object.
+	 * @return	array<int, int|string>
+	 */
+	private function preloadLookupKeys(ActiveRecord $object, int|string|null $collectionKey): array {
+
+		$keys = [];
+
+		if (is_int($collectionKey) or is_string($collectionKey)) {
+			$keys[] = $collectionKey;
+		}
+
+		$id = $object->getId();
+
+		if (is_int($id) or is_string($id)) {
+			$keys[] = $id;
+		}
+
+		$keys[] = spl_object_id($object);
+
+		return array_values(array_unique($keys, SORT_REGULAR));
+
+	}
+
+	/**
+	 * Bulk-load includes through an optional resource-level preloader.
+	 *
+	 * @param	ActiveRecord[]		$objects	Parent objects being transformed.
+	 * @param	CrudResourceConfig	$config		Resource config.
+	 * @param	string[]			$includes	Requested includes.
+	 * @return	array<string, array<int|string, mixed>>
+	 */
+	private function preloadIncludes(array $objects, CrudResourceConfig $config, array $includes): array {
+
+		$preloaderClass = $config->includePreloader();
+
+		if (!count($objects) or !count($includes) or !$preloaderClass) {
+			return [];
+		}
+
+		if (!class_exists($preloaderClass)) {
+			throw new \LogicException('CRUD include preloader "' . $preloaderClass . '" does not exist');
+		}
+
+		$preloader = new $preloaderClass();
+
+		if (!$preloader instanceof CrudIncludePreloader) {
+			throw new \LogicException('CRUD include preloader "' . $preloaderClass . '" must implement ' . CrudIncludePreloader::class);
+		}
+
+		// Keep the accepted relation map limited to includes requested and allowed for this response.
+		return array_intersect_key($preloader->preload($objects, $includes, $config), array_flip($includes));
 
 	}
 

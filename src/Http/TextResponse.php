@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Pair\Http;
 
+use Pair\Core\Observability;
+
 /**
  * Explicit plain-text response for endpoints that must not emit JSON or HTML.
  */
@@ -24,8 +26,20 @@ final readonly class TextResponse implements ResponseInterface {
 	public function send(): void {
 
 		header('Content-Type: ' . $this->contentType, true);
+		$this->sendObservabilityHeaders();
 		http_response_code($this->httpCode);
 		print $this->content;
+
+	}
+
+	/**
+	 * Send optional debug observability headers for explicit text responses.
+	 */
+	private function sendObservabilityHeaders(): void {
+
+		foreach (Observability::debugHeaders() as $name => $value) {
+			header($name . ': ' . $value, true);
+		}
 
 	}
 

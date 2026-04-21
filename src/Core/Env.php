@@ -43,8 +43,30 @@ class Env {
 		'REDIS_PASSWORD' => '',
 		'REDIS_DB' => 0,
 		'REDIS_TIMEOUT' => 1,
+		'PAIR_CACHE_DRIVER' => 'file',
+		'PAIR_CACHE_PATH' => '',
+		'PAIR_CACHE_PREFIX' => 'pair',
+		'PAIR_CACHE_REDIS_PREFIX' => 'pair:cache:',
+		'PAIR_OBSERVABILITY_ENABLED' => false,
+		'PAIR_OBSERVABILITY_DEBUG_HEADERS' => true,
+		'STRIPE_SECRET_KEY' => '',
+		'STRIPE_WEBHOOK_SECRET' => '',
+		'STRIPE_API_VERSION' => '',
+		'OPENAI_API_KEY' => '',
+		'OPENAI_API_BASE_URL' => 'https://api.openai.com/v1',
+		'OPENAI_RESPONSES_MODEL' => 'gpt-5.4-mini',
+		'OPENAI_EMBEDDINGS_MODEL' => 'text-embedding-3-small',
+		'OPENAI_REALTIME_MODEL' => 'gpt-realtime',
+		'OPENAI_TIMEOUT' => 30,
+		'OPENAI_CONNECT_TIMEOUT' => 5,
+		'OPENAI_STORE_RESPONSES' => false,
 		'UTC_DATE' => true
 	];
+
+	/**
+	 * Tracks whether environment values have already been loaded for this process.
+	 */
+	private static bool $loaded = false;
 
 	/**
 	 * Returns the default value of the specified key.
@@ -62,7 +84,17 @@ class Env {
 	 */
 	public static function fileExists(): bool {
 
-		return file_exists(self::FILE);
+		return FilesystemMetadata::fileExists(self::FILE);
+
+	}
+
+	/**
+	 * Clear cached environment metadata so the next load can inspect the filesystem again.
+	 */
+	public static function clearCache(): void {
+
+		self::$loaded = false;
+		FilesystemMetadata::clear(self::FILE);
 
 	}
 
@@ -81,17 +113,27 @@ class Env {
 	 * Load values from file to the environment variables. String values are trimmed.
 	 * Boolean values are converted to PHP true or false. Integer values are converted to PHP
 	 * integer. Float values are converted to PHP float.
+	 *
+	 * @param	bool	$force	When true, clear process-local cache before loading.
 	 */
-	public static function load(): void {
+	public static function load(bool $force = false): void {
+
+		if ($force) {
+			self::clearCache();
+		}
+
+		if (self::$loaded) {
+			return;
+		}
 
 		if (!self::fileExists()) {
 
-			//throw new CriticalException('Error loading .env file', ErrorCodes::LOADING_ENV_FILE);
-
-			// load all defaults as fallback
+			// Load all defaults as fallback.
 			foreach (self::DEFAULTS as $key => $value) {
 				$_ENV[$key] = $value;
 			}
+
+			self::$loaded = true;
 
 			return;
 
@@ -138,6 +180,8 @@ class Env {
 			$_ENV[$key] = $value ?? null;
 
 		}
+
+		self::$loaded = true;
 
 	}
 

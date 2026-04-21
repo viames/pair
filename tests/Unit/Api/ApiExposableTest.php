@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Pair\Tests\Unit\Api;
 
 use Pair\Api\ApiExposable;
+use Pair\Api\CrudResourceMetadata;
 use Pair\Api\CrudResourceConfig;
 use Pair\Tests\Support\FakeCrudExposeableModel;
 use Pair\Tests\Support\TestCase;
@@ -76,6 +77,29 @@ class ApiExposableTest extends TestCase {
 	}
 
 	/**
+	 * Verify normalized CRUD metadata is cached per model class until explicitly cleared.
+	 */
+	public function testGetCrudResourceConfigCachesModelMetadataUntilCleared(): void {
+
+		CountingApiExposableFixture::reset();
+
+		$first = CountingApiExposableFixture::getCrudResourceConfig();
+		$second = CountingApiExposableFixture::getCrudResourceConfig();
+
+		$this->assertSame($first, $second);
+		$this->assertSame(1, CountingApiExposableFixture::$apiConfigCalls);
+		$this->assertSame(['name'], $second->searchable());
+
+		CrudResourceMetadata::clear(CountingApiExposableFixture::class);
+
+		$third = CountingApiExposableFixture::getCrudResourceConfig();
+
+		$this->assertNotSame($first, $third);
+		$this->assertSame(2, CountingApiExposableFixture::$apiConfigCalls);
+
+	}
+
+	/**
 	 * Verify the trait defaults stay conservative when a model does not override apiConfig().
 	 */
 	public function testGetApiConfigReturnsConservativeDefaultsWhenNotOverridden(): void {
@@ -109,5 +133,44 @@ class ApiExposableTest extends TestCase {
 final class ApiExposableDefaultsFixture {
 
 	use ApiExposable;
+
+}
+
+/**
+ * Fixture that counts apiConfig() calls to verify metadata caching.
+ */
+final class CountingApiExposableFixture {
+
+	use ApiExposable;
+
+	/**
+	 * Number of times apiConfig() has been evaluated.
+	 */
+	public static int $apiConfigCalls = 0;
+
+	/**
+	 * Return a deterministic config while recording calls.
+	 *
+	 * @return	array<string, mixed>
+	 */
+	public static function apiConfig(): array {
+
+		self::$apiConfigCalls++;
+
+		return [
+			'searchable' => ['name'],
+		];
+
+	}
+
+	/**
+	 * Reset call counters and cached metadata for this fixture.
+	 */
+	public static function reset(): void {
+
+		self::$apiConfigCalls = 0;
+		CrudResourceMetadata::clear(self::class);
+
+	}
 
 }

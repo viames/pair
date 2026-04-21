@@ -4,7 +4,6 @@ namespace Pair\Api;
 
 use Pair\Core\Env;
 use Pair\Core\Application;
-use Pair\Core\Controller;
 use Pair\Exceptions\PairException;
 use Pair\Http\JsonResponse;
 use Pair\Http\ResponseInterface;
@@ -12,10 +11,11 @@ use Pair\Http\TextResponse;
 use Pair\Models\Session;
 use Pair\Models\User;
 use Pair\Services\WhatsAppCloudClient;
+use Pair\Web\Controller;
 
 /**
- * Abstract base class for API controllers. Extends the standard Controller
- * with API-specific features: authentication helpers, JSON request handling,
+ * Abstract base class for API controllers. Extends the explicit Pair v4 web
+ * controller with API-specific authentication helpers, JSON request handling,
  * and middleware pipeline support.
  */
 abstract class ApiController extends Controller {
@@ -46,13 +46,22 @@ abstract class ApiController extends Controller {
 	private ?WhatsAppCloudClient $whatsAppCloudClient = null;
 
 	/**
+	 * Bootstrap the API controller without falling back to the legacy MVC bridge.
+	 */
+	protected function boot(): void {
+
+		$this->request = new Request();
+		$this->pipeline = new MiddlewarePipeline();
+		$this->_init();
+
+	}
+
+	/**
 	 * Initialize the API controller with request and middleware pipeline.
 	 * Subclasses that override _init() must call parent::_init().
 	 */
 	protected function _init(): void {
 
-		$this->request = new Request();
-		$this->pipeline = new MiddlewarePipeline();
 		$this->registerDefaultMiddleware();
 
 	}
@@ -271,6 +280,15 @@ abstract class ApiController extends Controller {
 			'received' => true,
 			'events' => count($events),
 		];
+
+	}
+
+	/**
+	 * Return true when an API action may run before bearer or session authentication.
+	 */
+	public function allowsUnauthenticatedAction(string $routerAction, string $methodName): bool {
+
+		return false;
 
 	}
 

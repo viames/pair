@@ -3,6 +3,7 @@
 namespace Pair\Html;
 
 use Pair\Core\Application;
+use Pair\Core\Observability;
 
 /**
  * Responsible for rendering HTML templates with dynamic content.
@@ -13,6 +14,19 @@ class TemplateRenderer {
 	 * Parses the template style file and replaces placeholders with HTML code.
 	 */
 	public static function parse(string $styleFile): void {
+
+		Observability::trace('template.render', function () use ($styleFile): void {
+			self::renderStyleFile($styleFile);
+		}, [
+			'template' => basename($styleFile),
+		]);
+
+	}
+
+	/**
+	 * Render the template style file and replace placeholders with HTML code.
+	 */
+	private static function renderStyleFile(string $styleFile): void {
 
 		$app = Application::getInstance();
 

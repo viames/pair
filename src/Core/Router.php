@@ -465,8 +465,8 @@ class Router {
 	 */
 	private function parseCustomRoutes(array $params, string $routesFile, bool $moduleRoute = false): bool {
 
-		// check if controller file exists
-		if (!file_exists($routesFile)) {
+		// Skip route imports quickly when the file was already found missing.
+		if (!FilesystemMetadata::fileExists($routesFile)) {
 			return false;
 		}
 
@@ -586,28 +586,49 @@ class Router {
 	 */
 	public function parseRoutes(): void {
 
-		// parse, add and remove from URL any CGI param after question mark
-		$this->parseCgiParameters();
+		$span = Observability::start('router.parse');
 
-		// remove special prefixes and return parameters
-		$params = $this->getParameters();
+		try {
 
-		// try matches in /root/routes.php file
-		$routeMatches1 = $this->parseCustomRoutes($params, APPLICATION_PATH . '/routes.php');
+			// parse, add and remove from URL any CGI param after question mark
+			$this->parseCgiParameters();
 
-		// set module and define the MODULE_PATH constant
-		if (!defined('MODULE_PATH') and isset($params[0])) {
-			$this->setModule(urldecode($params[0]));
-		}
+			// remove special prefixes and return parameters
+			$params = $this->getParameters();
 
-		// try matches in module specifics routes.php file
-		if (defined('MODULE_PATH')) {
-			$routeMatches2 = $this->parseCustomRoutes($params, APPLICATION_PATH . '/' . MODULE_PATH . 'routes.php', true);
-		}
+			// try matches in /root/routes.php file
+			$routeMatches1 = $this->parseCustomRoutes($params, APPLICATION_PATH . '/routes.php');
 
-		// if custom routes don't match, go for standard
-		if (!$routeMatches1 and !$routeMatches2) {
-			$this->parseStandardRoutes($params);
+			// set module and define the MODULE_PATH constant
+			if (!defined('MODULE_PATH') and isset($params[0])) {
+				$this->setModule(urldecode($params[0]));
+			}
+
+			$routeMatches2 = false;
+
+			// try matches in module specifics routes.php file
+			if (defined('MODULE_PATH')) {
+				$routeMatches2 = $this->parseCustomRoutes($params, APPLICATION_PATH . '/' . MODULE_PATH . 'routes.php', true);
+			}
+
+			// if custom routes don't match, go for standard
+			if (!$routeMatches1 and !$routeMatches2) {
+				$this->parseStandardRoutes($params);
+			}
+
+			Observability::finish($span, [
+				'module' => $this->module,
+				'action' => $this->action,
+				'customRoute' => $routeMatches1 || $routeMatches2,
+			]);
+
+		} catch (\Throwable $e) {
+
+			Observability::finish($span, [
+				'exception' => get_class($e),
+			], 'error');
+			throw $e;
+
 		}
 
 	}

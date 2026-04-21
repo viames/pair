@@ -78,6 +78,7 @@
 	},
 	"suggest": {
 		"ext-redis": "*",
-		"ext-xdebug": "*"
+		"ext-xdebug": "*",
+		"stripe/stripe-php": "Required by Pair\\Services\\StripeGateway for Stripe payments."
 	}
 }

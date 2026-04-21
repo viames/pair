@@ -2,6 +2,8 @@
 
 namespace Pair\Api;
 
+use Pair\Core\Observability;
+
 /**
  * Executes a stack of Middleware instances in FIFO order.
  * Each middleware receives the request and a callable to the next handler.
@@ -35,7 +37,11 @@ class MiddlewarePipeline {
 
 		$pipeline = $this->buildPipeline($destination);
 
-		return $pipeline($request);
+		return Observability::trace('api.middleware', function () use ($pipeline, $request): mixed {
+			return $pipeline($request);
+		}, [
+			'middlewareCount' => count($this->middlewares),
+		]);
 
 	}
 

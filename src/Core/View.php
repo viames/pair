@@ -202,7 +202,11 @@ abstract class View {
 
 		try {
 
-			$this->render();
+			Observability::trace('view.render', function (): void {
+				$this->render();
+			}, [
+				'view' => static::class,
+			]);
 
 		} catch (\Throwable $e) {
 
@@ -227,7 +231,12 @@ abstract class View {
 		}
 
 		// includes layout file
-		include $file;
+		Observability::trace('view.layout', function () use ($file): void {
+			include $file;
+		}, [
+			'view' => static::class,
+			'layout' => basename($file),
+		]);
 
 	}
 

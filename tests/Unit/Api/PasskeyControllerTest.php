@@ -342,7 +342,7 @@ PHP);
 
 		$this->setApplicationCurrentUser($user);
 		$this->primeController($controller, new Request());
-		$this->setPrivateProperty($controller, \Pair\Core\Controller::class, 'router', $router);
+		$this->setPrivateProperty($controller, \Pair\Web\Controller::class, 'router', $router);
 		$this->setPrivateProperty($router, Router::class, 'vars', [0 => 'list']);
 
 		$response = $controller->passkeyAction();
@@ -382,7 +382,7 @@ PHP);
 
 		$this->setApplicationCurrentUser(null);
 		$this->primeController($controller, new Request());
-		$this->setPrivateProperty($controller, \Pair\Core\Controller::class, 'router', $router);
+		$this->setPrivateProperty($controller, \Pair\Web\Controller::class, 'router', $router);
 		$this->setPrivateProperty($router, Router::class, 'vars', [0 => 'list']);
 
 		$response = $controller->passkeyAction();
@@ -412,7 +412,7 @@ PHP);
 		];
 
 		$this->primeController($controller, $request);
-		$this->setPrivateProperty($controller, \Pair\Core\Controller::class, 'router', $router);
+		$this->setPrivateProperty($controller, \Pair\Web\Controller::class, 'router', $router);
 		$this->setPrivateProperty($router, Router::class, 'vars', [0 => 'login', 1 => 'options']);
 		$this->setPrivateProperty($controller, PasskeyController::class, 'passkeyAuth', $passkeyAuth);
 
@@ -443,7 +443,7 @@ PHP);
 		$router = Router::getInstance();
 
 		$this->primeController($controller, $request);
-		$this->setPrivateProperty($controller, \Pair\Core\Controller::class, 'router', $router);
+		$this->setPrivateProperty($controller, \Pair\Web\Controller::class, 'router', $router);
 		$this->setPrivateProperty($router, Router::class, 'vars', [0 => 'login', 1 => 'verify']);
 
 		$response = $controller->passkeyAction();
@@ -473,7 +473,7 @@ PHP);
 		$passkeyAuth->authenticationResult = $result;
 
 		$this->primeController($controller, $request);
-		$this->setPrivateProperty($controller, \Pair\Core\Controller::class, 'router', $router);
+		$this->setPrivateProperty($controller, \Pair\Web\Controller::class, 'router', $router);
 		$this->setPrivateProperty($router, Router::class, 'vars', [0 => 'login', 1 => 'verify']);
 		$this->setPrivateProperty($controller, PasskeyController::class, 'passkeyAuth', $passkeyAuth);
 
@@ -508,7 +508,7 @@ PHP);
 
 		$this->setApplicationCurrentUser($user);
 		$this->primeController($controller, $request);
-		$this->setPrivateProperty($controller, \Pair\Core\Controller::class, 'router', $router);
+		$this->setPrivateProperty($controller, \Pair\Web\Controller::class, 'router', $router);
 		$this->setPrivateProperty($router, Router::class, 'vars', [0 => 'register', 1 => 'options']);
 		$this->setPrivateProperty($controller, PasskeyController::class, 'passkeyAuth', $passkeyAuth);
 
@@ -551,7 +551,7 @@ PHP);
 		$passkeyAuth->authenticationResult = $result;
 
 		$this->primeController($controller, $request);
-		$this->setPrivateProperty($controller, \Pair\Core\Controller::class, 'router', $router);
+		$this->setPrivateProperty($controller, \Pair\Web\Controller::class, 'router', $router);
 		$this->setPrivateProperty($router, Router::class, 'vars', [0 => 'login', 1 => 'verify']);
 		$this->setPrivateProperty($controller, PasskeyController::class, 'passkeyAuth', $passkeyAuth);
 
@@ -595,7 +595,7 @@ PHP);
 
 		$this->setApplicationCurrentUser($user);
 		$this->primeController($controller, $request);
-		$this->setPrivateProperty($controller, \Pair\Core\Controller::class, 'router', $router);
+		$this->setPrivateProperty($controller, \Pair\Web\Controller::class, 'router', $router);
 		$this->setPrivateProperty($router, Router::class, 'vars', [0 => 'register', 1 => 'verify']);
 		$this->setPrivateProperty($controller, PasskeyController::class, 'passkeyAuth', $passkeyAuth);
 
@@ -650,7 +650,7 @@ PHP);
 
 		$this->setApplicationCurrentUser($user);
 		$this->primeController($controller, new Request());
-		$this->setPrivateProperty($controller, \Pair\Core\Controller::class, 'router', $router);
+		$this->setPrivateProperty($controller, \Pair\Web\Controller::class, 'router', $router);
 		$this->setPrivateProperty($router, Router::class, 'vars', [0 => 'revoke', 1 => '5']);
 
 		$response = $controller->passkeyAction();
@@ -678,7 +678,7 @@ PHP);
 
 		$this->setApplicationCurrentUser($user);
 		$this->primeController($controller, new Request());
-		$this->setPrivateProperty($controller, \Pair\Core\Controller::class, 'router', $router);
+		$this->setPrivateProperty($controller, \Pair\Web\Controller::class, 'router', $router);
 		$this->setPrivateProperty($router, Router::class, 'vars', [0 => 'revoke', 1 => '0']);
 
 		$response = $controller->passkeyAction();
@@ -700,7 +700,7 @@ PHP);
 		$router = Router::getInstance();
 
 		$this->primeController($controller, new Request());
-		$this->setPrivateProperty($controller, \Pair\Core\Controller::class, 'router', $router);
+		$this->setPrivateProperty($controller, \Pair\Web\Controller::class, 'router', $router);
 		$this->setPrivateProperty($router, Router::class, 'vars', [0 => 'unknown', 1 => 'route']);
 
 		$response = $controller->passkeyAction();

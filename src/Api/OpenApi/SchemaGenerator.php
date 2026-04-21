@@ -50,6 +50,47 @@ class SchemaGenerator {
 	];
 
 	/**
+	 * Cached full schemas keyed by source class name.
+	 *
+	 * @var array<string, array>
+	 */
+	private array $schemaCache = [];
+
+	/**
+	 * Cached create request schemas keyed by source class and rule hash.
+	 *
+	 * @var array<string, array>
+	 */
+	private array $createSchemaCache = [];
+
+	/**
+	 * Cached update request schemas keyed by source class and rule hash.
+	 *
+	 * @var array<string, array>
+	 */
+	private array $updateSchemaCache = [];
+
+	/**
+	 * Clear generated schema caches, optionally for one source class.
+	 *
+	 * @param	string|null	$modelClass	Optional class to invalidate.
+	 */
+	public function clearCache(?string $modelClass = null): void {
+
+		if (null === $modelClass) {
+			$this->schemaCache = [];
+			$this->createSchemaCache = [];
+			$this->updateSchemaCache = [];
+			return;
+		}
+
+		unset($this->schemaCache[$modelClass]);
+		$this->clearRequestSchemaCacheFor($this->createSchemaCache, $modelClass);
+		$this->clearRequestSchemaCacheFor($this->updateSchemaCache, $modelClass);
+
+	}
+
+	/**
 	 * Generate the full OpenAPI schema for a persistence model or read-model class.
 	 *
 	 * @param	string	$modelClass	Fully qualified class name.
@@ -61,16 +102,24 @@ class SchemaGenerator {
 			throw new \InvalidArgumentException('Class ' . $modelClass . ' was not found');
 		}
 
+		if (array_key_exists($modelClass, $this->schemaCache)) {
+			return $this->schemaCache[$modelClass];
+		}
+
 		// Allow explicit schema overrides for response models that need full control.
 		if (is_callable([$modelClass, 'openApiSchema'])) {
-			return $modelClass::openApiSchema();
+			$this->schemaCache[$modelClass] = $modelClass::openApiSchema();
+			return $this->schemaCache[$modelClass];
 		}
 
 		if (!is_subclass_of($modelClass, ActiveRecord::class)) {
-			return $this->generateTypedObjectSchema($modelClass);
+			$this->schemaCache[$modelClass] = $this->generateTypedObjectSchema($modelClass);
+			return $this->schemaCache[$modelClass];
 		}
 
-		return $this->generateActiveRecordSchema($modelClass);
+		$this->schemaCache[$modelClass] = $this->generateActiveRecordSchema($modelClass);
+
+		return $this->schemaCache[$modelClass];
 
 	}
 
@@ -135,6 +184,12 @@ class SchemaGenerator {
 	 */
 	public function generateCreateSchema(string $modelClass, array $rules = []): array {
 
+		$cacheKey = $this->requestSchemaCacheKey($modelClass, $rules);
+
+		if (array_key_exists($cacheKey, $this->createSchemaCache)) {
+			return $this->createSchemaCache[$cacheKey];
+		}
+
 		$isActiveRecord = is_subclass_of($modelClass, ActiveRecord::class);
 		$schema = $isActiveRecord
 			? $this->generateActiveRecordSchema($modelClass)
@@ -179,7 +234,9 @@ class SchemaGenerator {
 			);
 		}
 
-		return $schema;
+		$this->createSchemaCache[$cacheKey] = $schema;
+
+		return $this->createSchemaCache[$cacheKey];
 
 	}
 
@@ -192,12 +249,50 @@ class SchemaGenerator {
 	 */
 	public function generateUpdateSchema(string $modelClass, array $rules = []): array {
 
+		$cacheKey = $this->requestSchemaCacheKey($modelClass, $rules);
+
+		if (array_key_exists($cacheKey, $this->updateSchemaCache)) {
+			return $this->updateSchemaCache[$cacheKey];
+		}
+
 		$schema = $this->generateCreateSchema($modelClass, $rules);
 
 		// all fields optional on update
 		unset($schema['required']);
 
-		return $schema;
+		$this->updateSchemaCache[$cacheKey] = $schema;
+
+		return $this->updateSchemaCache[$cacheKey];
+
+	}
+
+	/**
+	 * Remove request schema cache entries for one source class.
+	 *
+	 * @param	array<string, array>	$cache		Request schema cache passed by reference.
+	 * @param	string					$modelClass	Source class name to invalidate.
+	 */
+	private function clearRequestSchemaCacheFor(array &$cache, string $modelClass): void {
+
+		$prefix = $modelClass . "\0";
+
+		foreach (array_keys($cache) as $key) {
+			if (str_starts_with($key, $prefix)) {
+				unset($cache[$key]);
+			}
+		}
+
+	}
+
+	/**
+	 * Build a stable cache key for request schemas with validation rules.
+	 *
+	 * @param	string	$modelClass	Source class name.
+	 * @param	array	$rules		Validation rules.
+	 */
+	private function requestSchemaCacheKey(string $modelClass, array $rules): string {
+
+		return $modelClass . "\0" . sha1(serialize($rules));
 
 	}
 
