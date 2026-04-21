@@ -3,6 +3,7 @@
 namespace Pair\Api\OpenApi;
 
 use Pair\Api\CrudController;
+use Pair\Api\CrudResourceConfig;
 
 /**
  * Generates a complete OpenAPI 3.1 specification from registered CRUD resources
@@ -55,7 +56,7 @@ class SpecGenerator {
 	/**
 	 * CRUD resources to document.
 	 *
-	 * @var array<string, array{class: string, config: array}>
+	 * @var array<string, array{class: string, config: CrudResourceConfig|array, basePath?: string}>
 	 */
 	private array $resources = [];
 
@@ -147,7 +148,7 @@ class SpecGenerator {
 			if ($config) {
 				$this->resources[$slug] = [
 					'class'    => $config['class'],
-					'config'   => $config['config'],
+					'config'   => CrudResourceConfig::from($config['config']),
 					'basePath' => $basePath,
 				];
 			}
@@ -290,7 +291,7 @@ class SpecGenerator {
 	private function buildCrudPaths(string $slug, array $resource): array {
 
 		$basePath = $resource['basePath'];
-		$config = $resource['config'];
+		$config = CrudResourceConfig::from($resource['config']);
 		$schemaName = $this->slugToSchemaName($slug);
 		$tag = ucfirst($slug);
 
@@ -482,10 +483,10 @@ class SpecGenerator {
 	/**
 	 * Build query parameters for list endpoints from the resource config.
 	 *
-	 * @param	array	$config	API config from the model.
+	 * @param	CrudResourceConfig	$config	API config from the model.
 	 * @return	array	List of OpenAPI parameter objects.
 	 */
-	private function buildListParameters(array $config): array {
+	private function buildListParameters(CrudResourceConfig $config): array {
 
 		$params = [];
 
@@ -502,15 +503,15 @@ class SpecGenerator {
 			'in'          => 'query',
 			'schema'      => [
 				'type'    => 'integer',
-				'default' => $config['perPage'] ?? 20,
+				'default' => $config->perPage(),
 				'minimum' => 1,
-				'maximum' => $config['maxPerPage'] ?? 100,
+				'maximum' => $config->maxPerPage(),
 			],
 			'description' => 'Items per page',
 		];
 
 		// sort
-		$sortable = $config['sortable'] ?? [];
+		$sortable = $config->sortable();
 
 		if (count($sortable)) {
 			$params[] = [
@@ -523,7 +524,7 @@ class SpecGenerator {
 		}
 
 		// search
-		$searchable = $config['searchable'] ?? [];
+		$searchable = $config->searchable();
 
 		if (count($searchable)) {
 			$params[] = [
@@ -543,7 +544,7 @@ class SpecGenerator {
 		];
 
 		// includes
-		$includes = $config['includes'] ?? [];
+		$includes = $config->includes();
 
 		if (count($includes)) {
 			$params[] = [
@@ -555,7 +556,7 @@ class SpecGenerator {
 		}
 
 		// filter parameters
-		$filterable = $config['filterable'] ?? [];
+		$filterable = $config->filterable();
 
 		foreach ($filterable as $field) {
 			$params[] = [
@@ -583,18 +584,18 @@ class SpecGenerator {
 
 			$schemaName = $this->slugToSchemaName($slug);
 			$class = $resource['class'];
-			$config = $resource['config'];
+			$config = CrudResourceConfig::from($resource['config']);
 			$responseClass = $this->resolveResponseSchemaClass($class, $config);
 
 			// The response schema must follow the explicit read contract when available.
 			$schemas[$schemaName] = $this->schemaGenerator->generate($responseClass);
 
 			// create schema
-			$createRules = $config['rules']['create'] ?? [];
+			$createRules = $config->createRules();
 			$schemas[$schemaName . 'Create'] = $this->schemaGenerator->generateCreateSchema($class, $createRules);
 
 			// update schema
-			$updateRules = $config['rules']['update'] ?? [];
+			$updateRules = $config->updateRules();
 			$schemas[$schemaName . 'Update'] = $this->schemaGenerator->generateUpdateSchema($class, $updateRules);
 
 		}
@@ -607,17 +608,17 @@ class SpecGenerator {
 	 * Resolve the class that defines the public response schema for a CRUD resource.
 	 *
 	 * @param	string				$modelClass	Persistence model class.
-	 * @param	array<string, mixed>	$config		CRUD resource configuration.
+	 * @param	CrudResourceConfig	$config		CRUD resource configuration.
 	 */
-	private function resolveResponseSchemaClass(string $modelClass, array $config): string {
+	private function resolveResponseSchemaClass(string $modelClass, CrudResourceConfig $config): string {
 
-		$readModelClass = $config['readModel'] ?? null;
+		$readModelClass = $config->readModel();
 
 		if (is_string($readModelClass) and class_exists($readModelClass)) {
 			return $readModelClass;
 		}
 
-		$resourceClass = $config['resource'] ?? null;
+		$resourceClass = $config->resource();
 
 		if (is_string($resourceClass) and class_exists($resourceClass) and is_callable([$resourceClass, 'openApiSchema'])) {
 			return $resourceClass;

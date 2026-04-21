@@ -116,7 +116,7 @@ abstract class ApiController extends Controller {
 		// Preserve the legacy terminate-on-error contract for existing callers.
 		if ($result instanceof ApiErrorResponse) {
 			$result->send();
-			throw new \LogicException('ApiController::requireAuth() expected ApiErrorResponse::send() to terminate the request.');
+			exit();
 		}
 
 		return $result;
@@ -146,7 +146,7 @@ abstract class ApiController extends Controller {
 		// Preserve the legacy terminate-on-error contract for existing callers.
 		if ($result instanceof ApiErrorResponse) {
 			$result->send();
-			throw new \LogicException('ApiController::requireBearer() expected ApiErrorResponse::send() to terminate the request.');
+			exit();
 		}
 
 		return $result;
@@ -196,7 +196,7 @@ abstract class ApiController extends Controller {
 		// Preserve the legacy terminate-on-error contract for existing callers.
 		if ($result instanceof ApiErrorResponse) {
 			$result->send();
-			throw new \LogicException('ApiController::requireJsonPost() expected ApiErrorResponse::send() to terminate the request.');
+			exit();
 		}
 
 		return $result;

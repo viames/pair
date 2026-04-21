@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Pair\Tests\Unit\Api;
 
 use Pair\Api\ApiErrorResponse;
+use Pair\Api\CrudResourceConfig;
 use Pair\Api\Request;
 use Pair\Core\Application;
 use Pair\Core\Logger;
@@ -91,6 +92,26 @@ class CrudControllerTest extends TestCase {
 		$this->assertSame('-createdAt', $config['config']['defaultSort']);
 		$this->assertSame(['name' => 'required|string'], $config['config']['rules']['create']);
 		$this->assertSame(['name' => 'string'], $config['config']['rules']['update']);
+
+	}
+
+	/**
+	 * Verify resource registration accepts a typed config while keeping public config inspection array-compatible.
+	 */
+	public function testRegisterCrudResourceAcceptsTypedConfig(): void {
+
+		$controller = $this->newCrudController();
+		$controller->registerCrudResource('users', FakeCrudRecord::class, CrudResourceConfig::fromArray([
+			'readModel' => FakeCrudReadModel::class,
+			'perPage' => 12,
+		]));
+
+		$config = $controller->getResourceConfig('users');
+
+		$this->assertSame(FakeCrudRecord::class, $config['class']);
+		$this->assertSame(FakeCrudReadModel::class, $config['config']['readModel']);
+		$this->assertSame(12, $config['config']['perPage']);
+		$this->assertSame(100, $config['config']['maxPerPage']);
 
 	}
 

@@ -4,7 +4,7 @@ namespace Pair\Api;
 
 /**
  * Interface for API middleware. Middleware can inspect and modify the request,
- * short-circuit by sending a response, or pass control to the next handler.
+ * short-circuit by returning a response, or pass control to the next handler.
  */
 interface Middleware {
 

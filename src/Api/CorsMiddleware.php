@@ -2,6 +2,8 @@
 
 namespace Pair\Api;
 
+use Pair\Http\TextResponse;
+
 /**
  * Middleware for handling Cross-Origin Resource Sharing (CORS).
  * Manages preflight OPTIONS requests and sets appropriate CORS headers.
@@ -45,7 +47,7 @@ class CorsMiddleware implements Middleware {
 
 	/**
 	 * Handle the request by setting CORS headers. Responds to OPTIONS preflight
-	 * with 204 No Content. Passes other requests to the next handler.
+	 * with an explicit 204 No Content response. Passes other requests to the next handler.
 	 */
 	public function handle(Request $request, callable $next): mixed {
 
@@ -53,8 +55,7 @@ class CorsMiddleware implements Middleware {
 
 		// handle preflight request
 		if ($request->method() === 'OPTIONS') {
-			http_response_code(204);
-			exit();
+			return new TextResponse('', 204);
 		}
 
 		return $next($request);

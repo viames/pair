@@ -2,6 +2,7 @@
 
 namespace Pair\Core;
 
+use Pair\Api\ApiErrorResponse;
 use Pair\Exceptions\AppException;
 use Pair\Exceptions\CriticalException;
 use Pair\Exceptions\ErrorCodes;
@@ -889,7 +890,7 @@ class Application {
 
 			} else {
 
-				Utilities::jsonError('BAD_REQUEST','Path not found',400,[
+				$this->sendApiError('BAD_REQUEST','Path not found',400,[
 					'path' => $router->getUrl()
 				]);
 
@@ -922,14 +923,14 @@ class Application {
 
 			// check if sid is valid
 			if (!$session->isLoaded()) {
-				Utilities::jsonError('SESSION_NOT_FOUND','Session not found');
+				$this->sendApiError('SESSION_NOT_FOUND','Session not found');
 			}
 
 			// reject and remove expired API sessions before extending timeout
 			if ($session->isExpired($sessionTime)) {
 				Audit::sessionExpired($session);
 				$session->delete();
-				Utilities::jsonError('AUTH_SESSION_EXPIRED','User session expired',401);
+				$this->sendApiError('AUTH_SESSION_EXPIRED','User session expired',401);
 			}
 
 			// if session exists, extend session timeout
@@ -969,9 +970,22 @@ class Application {
 			}
 
 		} catch (\Throwable $e) {
-			Utilities::jsonError('INTERNAL_SERVER_ERROR',$e->getMessage(),500);
+			$this->sendApiError('INTERNAL_SERVER_ERROR',$e->getMessage(),500);
 		}
 
+		exit();
+
+	}
+
+	/**
+	 * Send a standardized API error response and finish the current API request.
+	 *
+	 * @param	array<string, mixed>	$extra	Additional payload fields merged into the response body.
+	 */
+	private function sendApiError(string $errorCode, string $errorMessage, int $httpCode = 400, array $extra = []): void {
+
+		$response = new ApiErrorResponse($errorCode, $errorMessage, $httpCode, $extra);
+		$response->send();
 		exit();
 
 	}
@@ -993,7 +1007,7 @@ class Application {
 		// sends js message about session expired
 		if ($this->headless) {
 
-			Utilities::jsonError('AUTH_SESSION_EXPIRED','User session expired',401);
+			$this->sendApiError('AUTH_SESSION_EXPIRED','User session expired',401);
 
 		// redirects to login page
 		} else {

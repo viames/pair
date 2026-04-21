@@ -200,6 +200,33 @@ PHP);
 	}
 
 	/**
+	 * Verify API bootstrap errors use the explicit API error response object.
+	 */
+	public function testApiAuthPathErrorUsesExplicitApiErrorResponse(): void {
+
+		$applicationPath = $this->createFixtureApplication();
+
+		try {
+			$result = $this->runFixtureApplication($applicationPath, action: 'auth', vars: [0 => 'unknown']);
+		} finally {
+			$this->removeDirectory($applicationPath);
+		}
+
+		$this->assertSame(0, $result['exitCode']);
+		$this->assertSame(400, $this->extractReportedStatusCode($result['stderr']));
+		$this->assertSame([45], $this->extractSessionCleanupArguments($result['stderr']));
+		$this->assertJsonStringEqualsJsonString(
+			json_encode([
+				'code' => 'BAD_REQUEST',
+				'error' => 'Path not found',
+				'path' => 'api/auth/unknown',
+			], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+			$result['stdout']
+		);
+
+	}
+
+	/**
 	 * Create a minimal application tree for the API runtime fixture.
 	 *
 	 * @param	string|null	$controllerSource	Optional custom API controller source for one focused runtime scenario.
@@ -272,9 +299,11 @@ PHP
 	 * Execute the fixture application in a subprocess with API-specific stubs loaded before Composer autoloading.
 	 *
 	 * @param	string	$applicationPath	Absolute path to the temporary fixture application.
+	 * @param	string	$action				Action name assigned to the runtime router.
+	 * @param	array	$vars				Route vars assigned to the runtime router.
 	 * @return	array{stdout: string, stderr: string, exitCode: int}
 	 */
-	private function runFixtureApplication(string $applicationPath): array {
+	private function runFixtureApplication(string $applicationPath, string $action = 'passkey', array $vars = []): array {
 
 		$scriptPath = tempnam(sys_get_temp_dir(), 'pair-api-test-');
 
@@ -443,8 +472,8 @@ PHP
 			'',
 			'	// CLI tests do not parse HTTP URLs, so set the runtime route explicitly.',
 			'	$router->setModule(\'api\');',
-			'	$router->action = \'passkey\';',
-			'	$router->vars = [];',
+			'	$router->action = ' . var_export($action, true) . ';',
+			'	$router->vars = ' . var_export($vars, true) . ';',
 			'	$router->ajax = false;',
 			'	$router->raw = false;',
 			'',

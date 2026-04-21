@@ -7,7 +7,7 @@ namespace Pair\Tests\Unit\Http;
 use Pair\Tests\Support\TestCase;
 
 /**
- * Covers the explicit Pair v4 JSON response object through subprocess execution because send() exits.
+ * Covers the explicit Pair v4 JSON response object through subprocess execution.
  */
 class JsonResponseTest extends TestCase {
 
@@ -91,6 +91,42 @@ PHP);
 		$this->assertSame(0, $result['exitCode']);
 		$this->assertSame(204, $this->extractReportedStatusCode($result['stderr']));
 		$this->assertSame('null', $result['stdout']);
+
+	}
+
+	/**
+	 * Verify scalar payloads can be emitted by explicit JSON responses.
+	 */
+	public function testSendSupportsScalarPayloads(): void {
+
+		$result = $this->runPhpSnippet(<<<'PHP'
+register_shutdown_function(function (): void {
+	fwrite(STDERR, 'HTTP_CODE=' . http_response_code() . PHP_EOL);
+});
+
+$response = new Pair\Http\JsonResponse('stored', 200);
+$response->send();
+PHP);
+
+		$this->assertSame(0, $result['exitCode']);
+		$this->assertSame(200, $this->extractReportedStatusCode($result['stderr']));
+		$this->assertSame('"stored"', $result['stdout']);
+
+	}
+
+	/**
+	 * Verify send() does not terminate the current process on the explicit v4 response path.
+	 */
+	public function testSendDoesNotTerminateExecution(): void {
+
+		$result = $this->runPhpSnippet(<<<'PHP'
+$response = new Pair\Http\JsonResponse(['ok' => true], 200);
+$response->send();
+print "\nAFTER_SEND";
+PHP);
+
+		$this->assertSame(0, $result['exitCode']);
+		$this->assertStringEndsWith("\nAFTER_SEND", $result['stdout']);
 
 	}
 

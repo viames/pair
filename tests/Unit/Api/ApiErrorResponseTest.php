@@ -7,7 +7,7 @@ namespace Pair\Tests\Unit\Api;
 use Pair\Tests\Support\TestCase;
 
 /**
- * Covers the explicit API error response object through subprocess execution because send() exits.
+ * Covers the explicit API error response object through subprocess execution.
  */
 class ApiErrorResponseTest extends TestCase {
 

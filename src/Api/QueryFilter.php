@@ -54,10 +54,8 @@ class QueryFilter {
 
 	/**
 	 * The API config for the model.
-	 *
-	 * @var array<string, mixed>
 	 */
-	private array $config;
+	private CrudResourceConfig $config;
 
 	/**
 	 * The HTTP request.
@@ -69,14 +67,14 @@ class QueryFilter {
 	 *
 	 * @param	string					$modelClass	The ActiveRecord model class name.
 	 * @param	Request					$request	The HTTP request.
-	 * @param	array<string, mixed>	$config		The API config from ApiExposable.
+	 * @param	array<string, mixed>|CrudResourceConfig	$config	The API config from ApiExposable.
 	 */
-	public function __construct(string $modelClass, Request $request, array $config) {
+	public function __construct(string $modelClass, Request $request, array|CrudResourceConfig $config) {
 
 		$this->modelClass = $modelClass;
 		$this->request = $request;
-		$this->config = $config;
-		$this->perPage = $config['perPage'] ?? 20;
+		$this->config = CrudResourceConfig::from($config);
+		$this->perPage = $this->config->perPage();
 
 	}
 
@@ -124,7 +122,7 @@ class QueryFilter {
 			return;
 		}
 
-		$filterable = $this->config['filterable'] ?? [];
+		$filterable = $this->config->filterable();
 
 		foreach ($filters as $property => $value) {
 
@@ -199,11 +197,11 @@ class QueryFilter {
 	private function applyPagination(Query $query): void {
 
 		$page = (int)$this->request->query('page', 1);
-		$perPage = (int)$this->request->query('perPage', $this->config['perPage'] ?? 20);
+		$perPage = (int)$this->request->query('perPage', $this->config->perPage());
 
 		// enforce bounds
 		$this->page = max(1, $page);
-		$maxPerPage = $this->config['maxPerPage'] ?? 100;
+		$maxPerPage = $this->config->maxPerPage();
 		$this->perPage = max(1, min($perPage, $maxPerPage));
 
 		$query->forPage($this->page, $this->perPage);
@@ -224,7 +222,7 @@ class QueryFilter {
 			return;
 		}
 
-		$searchable = $this->config['searchable'] ?? [];
+		$searchable = $this->config->searchable();
 
 		if (!count($searchable)) {
 			return;
@@ -269,14 +267,14 @@ class QueryFilter {
 
 		// fall back to default sort
 		if (!$sort or !is_string($sort)) {
-			$sort = $this->config['defaultSort'] ?? null;
+			$sort = $this->config->defaultSort();
 		}
 
 		if (!$sort) {
 			return;
 		}
 
-		$sortable = $this->config['sortable'] ?? [];
+		$sortable = $this->config->sortable();
 		$sortFields = array_map('trim', explode(',', $sort));
 
 		foreach ($sortFields as $sortField) {
@@ -367,7 +365,7 @@ class QueryFilter {
 		}
 
 		$requested = array_map('trim', explode(',', $include));
-		$allowed = $this->config['includes'] ?? [];
+		$allowed = $this->config->includes();
 
 		// only allow configured includes
 		$this->includes = array_values(array_intersect($requested, $allowed));

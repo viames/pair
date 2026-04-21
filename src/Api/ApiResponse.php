@@ -168,6 +168,7 @@ class ApiResponse {
 	public static function error(string $errorCode, array $extra = []): void {
 
 		self::errorResponse($errorCode, $extra)->send();
+		exit();
 
 	}
 
@@ -177,13 +178,14 @@ class ApiResponse {
 	public static function respond(\stdClass|array|null $data, int $httpCode = 200): void {
 
 		self::jsonResponse($data, $httpCode)->send();
+		exit();
 
 	}
 
 	/**
 	 * Build an explicit JSON response object for the given payload.
 	 */
-	public static function jsonResponse(\stdClass|array|null $data, int $httpCode = 200): JsonResponse {
+	public static function jsonResponse(mixed $data, int $httpCode = 200): JsonResponse {
 
 		return new JsonResponse($data, $httpCode);
 
@@ -195,6 +197,7 @@ class ApiResponse {
 	public static function success(?string $message = null): void {
 
 		self::successResponse($message)->send();
+		exit();
 
 	}
 
@@ -215,6 +218,7 @@ class ApiResponse {
 	public static function paginated(array $data, int $page, int $perPage, int $total): void {
 
 		self::paginatedResponse($data, $page, $perPage, $total)->send();
+		exit();
 
 	}
 

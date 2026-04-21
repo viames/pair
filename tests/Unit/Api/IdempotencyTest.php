@@ -88,7 +88,7 @@ class IdempotencyTest extends TestCase {
 	}
 
 	/**
-	 * Verify duplicateResponse() still returns a replay response object when the cached payload is scalar JSON.
+	 * Verify duplicateResponse() returns an explicit JSON response when the cached payload is scalar JSON.
 	 */
 	public function testDuplicateResponseSupportsScalarReplayPayloads(): void {
 
@@ -103,9 +103,32 @@ class IdempotencyTest extends TestCase {
 
 		$response = Idempotency::duplicateResponse($request, 'orders');
 
-		$this->assertInstanceOf(ResponseInterface::class, $response);
-		$this->assertNotInstanceOf(JsonResponse::class, $response);
-		$this->assertNotInstanceOf(ApiErrorResponse::class, $response);
+		$this->assertInstanceOf(JsonResponse::class, $response);
+		$this->assertSame('stored', $this->readJsonResponseProperty($response, 'payload'));
+		$this->assertSame(200, $this->readJsonResponseProperty($response, 'httpCode'));
+
+	}
+
+	/**
+	 * Verify respondIfDuplicate() reports false after sending an immediate replay or conflict response.
+	 */
+	public function testRespondIfDuplicateReturnsFalseAfterImmediateResponse(): void {
+
+		$request = $this->newRequest(
+			method: 'POST',
+			uri: '/api/orders',
+			rawBody: '{"amount":16}',
+			idempotencyKey: 'order-create-explicit-5'
+		);
+
+		Idempotency::storeResponse($request, 'orders', 'stored', 200, 300);
+
+		ob_start();
+		$result = Idempotency::respondIfDuplicate($request, 'orders');
+		$output = (string)ob_get_clean();
+
+		$this->assertFalse($result);
+		$this->assertSame('"stored"', $output);
 
 	}
 

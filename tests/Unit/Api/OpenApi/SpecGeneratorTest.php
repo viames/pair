@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Pair\Tests\Unit\Api\OpenApi;
 
+use Pair\Api\CrudResourceConfig;
 use Pair\Api\OpenApi\SpecGenerator;
 use Pair\Tests\Support\FakeCrudReadModel;
 use Pair\Tests\Support\FakeCrudRecord;
@@ -78,13 +79,13 @@ class SpecGeneratorTest extends TestCase {
 		$this->setInaccessibleProperty($generator, 'resources', [
 			'users' => [
 				'class' => FakeCrudRecord::class,
-				'config' => [
+				'config' => CrudResourceConfig::fromArray([
 					'readModel' => FakeCrudReadModel::class,
 					'rules' => [
 						'create' => ['name' => 'required|string'],
 						'update' => ['name' => 'string'],
 					],
-				],
+				]),
 				'basePath' => '/api',
 			],
 		]);

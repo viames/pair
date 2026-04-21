@@ -188,7 +188,7 @@ class Request {
 		// Preserve the legacy terminate-on-error contract for existing callers.
 		if ($result instanceof ApiErrorResponse) {
 			$result->send();
-			return [];
+			exit();
 		}
 
 		return $result;

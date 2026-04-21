@@ -118,7 +118,7 @@ abstract class PasskeyController extends CrudController {
 		// Preserve the legacy helper contract for callers that still expect immediate output.
 		if ($result instanceof ApiErrorResponse) {
 			$result->send();
-			throw new \LogicException('PasskeyController::optionalJsonPost() expected ApiErrorResponse::send() to terminate the request.');
+			exit();
 		}
 
 		return $result;

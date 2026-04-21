@@ -27,9 +27,13 @@ class CorsMiddlewareTest extends TestCase {
 			"\t'maxAge' => 600,",
 			']);',
 			'$request = new \Pair\Api\Request();',
-			'$middleware->handle($request, function (\Pair\Api\Request $request): void {',
+			'$response = $middleware->handle($request, function (\Pair\Api\Request $request): void {',
 			"\t\\Pair\\Api\\CorsMiddlewareTestRuntime::markNextCalled();",
 			'});',
+			'if ($response instanceof \Pair\Http\ResponseInterface) {',
+			"\t" . '$response->send();',
+			"\t" . '\Pair\Api\CorsMiddlewareTestRuntime::$status = http_response_code();',
+			'}',
 		]));
 
 		$this->assertSame(0, $result['exitCode']);
@@ -62,9 +66,13 @@ class CorsMiddlewareTest extends TestCase {
 			"\t'maxAge' => 1200,",
 			']);',
 			'$request = new \Pair\Api\Request();',
-			'$middleware->handle($request, function (\Pair\Api\Request $request): void {',
+			'$response = $middleware->handle($request, function (\Pair\Api\Request $request): void {',
 			"\t\\Pair\\Api\\CorsMiddlewareTestRuntime::markNextCalled();",
 			'});',
+			'if ($response instanceof \Pair\Http\ResponseInterface) {',
+			"\t" . '$response->send();',
+			"\t" . '\Pair\Api\CorsMiddlewareTestRuntime::$status = http_response_code();',
+			'}',
 		]));
 
 		$this->assertSame(0, $result['exitCode']);

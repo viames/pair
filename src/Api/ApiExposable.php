@@ -62,22 +62,16 @@ trait ApiExposable {
 	 */
 	public static function getApiConfig(): array {
 
-		$defaults = [
-			'readModel'   => null,
-			'resource'    => null,
-			'searchable'  => [],
-			'sortable'    => [],
-			'filterable'  => [],
-			'includes'    => [],
-			'includeReadModels' => [],
-			'includeResources' => [],
-			'perPage'     => 20,
-			'maxPerPage'  => 100,
-			'rules'       => ['create' => [], 'update' => []],
-			'defaultSort' => null,
-		];
+		return static::getCrudResourceConfig()->toArray();
 
-		return array_merge($defaults, static::apiConfig());
+	}
+
+	/**
+	 * Return the typed API config used by internal CRUD consumers.
+	 */
+	public static function getCrudResourceConfig(): CrudResourceConfig {
+
+		return CrudResourceConfig::fromArray(static::apiConfig());
 
 	}
 
@@ -86,8 +80,7 @@ trait ApiExposable {
 	 */
 	public static function isFilterable(string $property): bool {
 
-		$config = static::getApiConfig();
-		return in_array($property, $config['filterable']);
+		return in_array($property, static::getCrudResourceConfig()->filterable());
 
 	}
 
@@ -96,8 +89,7 @@ trait ApiExposable {
 	 */
 	public static function isSortable(string $property): bool {
 
-		$config = static::getApiConfig();
-		return in_array($property, $config['sortable']);
+		return in_array($property, static::getCrudResourceConfig()->sortable());
 
 	}
 
@@ -106,8 +98,7 @@ trait ApiExposable {
 	 */
 	public static function isSearchable(string $property): bool {
 
-		$config = static::getApiConfig();
-		return in_array($property, $config['searchable']);
+		return in_array($property, static::getCrudResourceConfig()->searchable());
 
 	}
 
@@ -116,8 +107,7 @@ trait ApiExposable {
 	 */
 	public static function isIncludable(string $relation): bool {
 
-		$config = static::getApiConfig();
-		return in_array($relation, $config['includes']);
+		return in_array($relation, static::getCrudResourceConfig()->includes());
 
 	}
 

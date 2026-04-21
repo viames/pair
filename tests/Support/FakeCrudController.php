@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Pair\Tests\Support;
 
+use Pair\Api\CrudResourceConfig;
 use Pair\Api\CrudController;
 
 /**
@@ -16,9 +17,9 @@ class FakeCrudController extends CrudController {
 	 *
 	 * @param	string		$slug		Resource slug.
 	 * @param	string		$modelClass	Model class name.
-	 * @param	array|null	$config		Optional explicit configuration.
+	 * @param	array<string, mixed>|CrudResourceConfig|null	$config	Optional explicit configuration.
 	 */
-	public function registerCrudResource(string $slug, string $modelClass, ?array $config = null): void {
+	public function registerCrudResource(string $slug, string $modelClass, array|CrudResourceConfig|null $config = null): void {
 
 		$this->crud($slug, $modelClass, $config);
 

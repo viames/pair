@@ -40,7 +40,7 @@ abstract class CrudController extends ApiController {
 	/**
 	 * Registered CRUD resources keyed by slug.
 	 *
-	 * @var array<string, array{class: string, config: array}>
+	 * @var array<string, array{class: string, config: CrudResourceConfig}>
 	 */
 	private array $resources = [];
 
@@ -48,7 +48,7 @@ abstract class CrudController extends ApiController {
 	 * Create a new resource. Validates the request body, creates the ActiveRecord
 	 * object, and returns it through the configured Resource transformer.
 	 *
-	 * @param	array	$resource	Resource configuration.
+	 * @param	array{class: string, config: CrudResourceConfig}	$resource	Resource configuration.
 	 */
 	private function createResource(array $resource): ResponseInterface {
 
@@ -68,7 +68,7 @@ abstract class CrudController extends ApiController {
 		}
 
 		// apply validation rules if configured
-		$rules = $config['rules']['create'] ?? [];
+		$rules = $config->createRules();
 
 		if (count($rules)) {
 			$data = $this->request->validateOrResponse($rules);
@@ -107,16 +107,11 @@ abstract class CrudController extends ApiController {
 	 *
 	 * @param	string		$slug		URL slug for the resource (e.g. 'faqs', 'users').
 	 * @param	string		$modelClass	Fully qualified ActiveRecord class name.
-	 * @param	array|null	$config		Optional config override (defaults to model's apiConfig).
+	 * @param	array<string, mixed>|CrudResourceConfig|null	$config	Optional config override (defaults to model's apiConfig).
 	 */
-	protected function crud(string $slug, string $modelClass, ?array $config = null): void {
+	protected function crud(string $slug, string $modelClass, array|CrudResourceConfig|null $config = null): void {
 
-		// get config from model if it uses ApiExposable trait
-		if (is_null($config) and method_exists($modelClass, 'getApiConfig')) {
-			$config = $modelClass::getApiConfig();
-		} else if (is_null($config)) {
-			$config = [];
-		}
+		$config = $this->resolveCrudResourceConfig($modelClass, $config);
 
 		$this->resources[$slug] = [
 			'class'  => $modelClass,
@@ -126,9 +121,33 @@ abstract class CrudController extends ApiController {
 	}
 
 	/**
+	 * Resolve explicit config overrides or model-level ApiExposable config into a typed value object.
+	 *
+	 * @param	string										$modelClass	Model class name.
+	 * @param	array<string, mixed>|CrudResourceConfig|null	$config		Optional config override.
+	 */
+	private function resolveCrudResourceConfig(string $modelClass, array|CrudResourceConfig|null $config): CrudResourceConfig {
+
+		if (!is_null($config)) {
+			return CrudResourceConfig::from($config);
+		}
+
+		if (method_exists($modelClass, 'getCrudResourceConfig')) {
+			return CrudResourceConfig::from($modelClass::getCrudResourceConfig());
+		}
+
+		if (method_exists($modelClass, 'getApiConfig')) {
+			return CrudResourceConfig::from($modelClass::getApiConfig());
+		}
+
+		return CrudResourceConfig::from(null);
+
+	}
+
+	/**
 	 * Delete a resource by its primary key. Returns a 204 No Content on success.
 	 *
-	 * @param	array		$resource	Resource configuration.
+	 * @param	array{class: string, config: CrudResourceConfig}	$resource	Resource configuration.
 	 * @param	string|int	$id			Primary key value.
 	 */
 	private function deleteResource(array $resource, string|int $id): ResponseInterface {
@@ -168,11 +187,20 @@ abstract class CrudController extends ApiController {
 	 * Return the full resource configuration for a given slug, or null if not registered.
 	 *
 	 * @param	string	$slug	The resource slug.
-	 * @return	array|null
+	 * @return	array{class: string, config: array<string, mixed>}|null
 	 */
 	public function getResourceConfig(string $slug): ?array {
 
-		return $this->resources[$slug] ?? null;
+		if (!isset($this->resources[$slug])) {
+			return null;
+		}
+
+		$resource = $this->resources[$slug];
+
+		return [
+			'class' => $resource['class'],
+			'config' => $resource['config']->toArray(),
+		];
 
 	}
 
@@ -200,7 +228,7 @@ abstract class CrudController extends ApiController {
 	/**
 	 * List resources with filtering, sorting, searching, pagination, and field selection.
 	 *
-	 * @param	array	$resource	Resource configuration.
+	 * @param	array{class: string, config: CrudResourceConfig}	$resource	Resource configuration.
 	 */
 	private function listResources(array $resource): JsonResponse {
 
@@ -239,7 +267,7 @@ abstract class CrudController extends ApiController {
 	/**
 	 * Show a single resource by its primary key.
 	 *
-	 * @param	array		$resource	Resource configuration.
+	 * @param	array{class: string, config: CrudResourceConfig}	$resource	Resource configuration.
 	 * @param	string|int	$id			Primary key value.
 	 */
 	private function showResource(array $resource, string|int $id): ResponseInterface {
@@ -262,7 +290,7 @@ abstract class CrudController extends ApiController {
 		$includeParam = $this->request->query('include');
 		if ($includeParam and is_string($includeParam)) {
 			$requested = array_map('trim', explode(',', $includeParam));
-			$allowed = $config['includes'] ?? [];
+			$allowed = $config->includes();
 			$includes = array_values(array_intersect($requested, $allowed));
 		}
 
@@ -276,14 +304,14 @@ abstract class CrudController extends ApiController {
 	 * Transform a collection of ActiveRecord objects for API output.
 	 *
 	 * @param	ActiveRecord[]		$objects	The objects to transform.
-	 * @param	array				$config		Resource config.
+	 * @param	array<string, mixed>|CrudResourceConfig	$config	Resource config.
 	 * @param	string[]|null		$fields		Sparse fieldset (null for all fields).
 	 * @param	string[]			$includes	Relationship includes.
 	 * @return	array
 	 */
-	private function transformCollection(array $objects, array $config, ?array $fields = null, array $includes = []): array {
+	private function transformCollection(array $objects, array|CrudResourceConfig $config, ?array $fields = null, array $includes = []): array {
 
-		$resourceClass = $config['resource'] ?? null;
+		$config = CrudResourceConfig::from($config);
 
 		$data = [];
 
@@ -300,15 +328,16 @@ abstract class CrudController extends ApiController {
 	 * or a legacy resource adapter with optional field filtering.
 	 *
 	 * @param	ActiveRecord	$object		The object to transform.
-	 * @param	array			$config		Resource config.
+	 * @param	array<string, mixed>|CrudResourceConfig	$config	Resource config.
 	 * @param	string[]|null	$fields		Sparse fieldset (null for all fields).
 	 * @param	string[]		$includes	Relationship includes.
 	 * @return	array
 	 */
-	private function transformResource(ActiveRecord $object, array $config, ?array $fields = null, array $includes = []): array {
+	private function transformResource(ActiveRecord $object, array|CrudResourceConfig $config, ?array $fields = null, array $includes = []): array {
 
-		$readModelClass = $config['readModel'] ?? null;
-		$resourceClass = $config['resource'] ?? null;
+		$config = CrudResourceConfig::from($config);
+		$readModelClass = $config->readModel();
+		$resourceClass = $config->resource();
 
 		// Prefer the explicit read-model path in Pair v4.
 		if ($readModelClass) {
@@ -339,11 +368,13 @@ abstract class CrudController extends ApiController {
 	 *
 	 * @param	ActiveRecord	$object		The parent object.
 	 * @param	array			$data		The transformed data array.
-	 * @param	array			$config		Resource config.
+	 * @param	array<string, mixed>|CrudResourceConfig	$config	Resource config.
 	 * @param	string[]		$includes	Relationship names to include.
 	 * @return	array			Data with includes attached.
 	 */
-	private function loadIncludes(ActiveRecord $object, array $data, array $config, array $includes): array {
+	private function loadIncludes(ActiveRecord $object, array $data, array|CrudResourceConfig $config, array $includes): array {
+
+		$config = CrudResourceConfig::from($config);
 
 		foreach ($includes as $include) {
 
@@ -374,11 +405,11 @@ abstract class CrudController extends ApiController {
 	 * Transform an included collection through explicit include mapping.
 	 *
 	 * @param	\Pair\Orm\Collection	$collection	Loaded relation collection.
-	 * @param	array					$config		Resource config.
+	 * @param	CrudResourceConfig		$config		Resource config.
 	 * @param	string					$include	Include name.
 	 * @return	array<int|string, array<string, mixed>>
 	 */
-	private function transformIncludedCollection(\Pair\Orm\Collection $collection, array $config, string $include): array {
+	private function transformIncludedCollection(\Pair\Orm\Collection $collection, CrudResourceConfig $config, string $include): array {
 
 		$data = [];
 
@@ -401,34 +432,49 @@ abstract class CrudController extends ApiController {
 	/**
 	 * Transform an included relation through explicit mapping rules.
 	 *
-	 * @param	array<string, mixed>	$config	Resource config.
+	 * @param	CrudResourceConfig	$config	Resource config.
 	 * @return	array<string, mixed>
 	 */
-	private function transformIncludedRecord(ActiveRecord $record, array $config, string $include): array {
+	private function transformIncludedRecord(ActiveRecord $record, CrudResourceConfig $config, string $include): array {
 
-		$includeReadModels = $config['includeReadModels'] ?? [];
+		$includeReadModels = $config->includeReadModels();
 
 		if (isset($includeReadModels[$include])) {
 			return RecordMapper::map($record, $includeReadModels[$include])->toArray();
 		}
 
-		$includeResources = $config['includeResources'] ?? [];
+		$includeResources = $config->includeResources();
 
 		if (isset($includeResources[$include]) and class_exists($includeResources[$include])) {
 			$resourceClass = $includeResources[$include];
 			return (new $resourceClass($record))->toArray();
 		}
 
-		if (method_exists($record::class, 'getApiConfig')) {
+		if (method_exists($record::class, 'getCrudResourceConfig')) {
 
-			$relatedConfig = $record::getApiConfig();
+			$relatedConfig = CrudResourceConfig::from($record::getCrudResourceConfig());
 
-			if (!empty($relatedConfig['readModel'])) {
-				return RecordMapper::map($record, $relatedConfig['readModel'])->toArray();
+			if ($relatedConfig->readModel()) {
+				return RecordMapper::map($record, $relatedConfig->readModel())->toArray();
 			}
 
-			if (!empty($relatedConfig['resource']) and class_exists($relatedConfig['resource'])) {
-				$resourceClass = $relatedConfig['resource'];
+			if ($relatedConfig->resource() and class_exists($relatedConfig->resource())) {
+				$resourceClass = $relatedConfig->resource();
+				return (new $resourceClass($record))->toArray();
+			}
+
+		}
+
+		if (method_exists($record::class, 'getApiConfig')) {
+
+			$relatedConfig = CrudResourceConfig::from($record::getApiConfig());
+
+			if ($relatedConfig->readModel()) {
+				return RecordMapper::map($record, $relatedConfig->readModel())->toArray();
+			}
+
+			if ($relatedConfig->resource() and class_exists($relatedConfig->resource())) {
+				$resourceClass = $relatedConfig->resource();
 				return (new $resourceClass($record))->toArray();
 			}
 
@@ -442,7 +488,7 @@ abstract class CrudController extends ApiController {
 	 * Update a resource by its primary key. Validates the request body, updates the
 	 * ActiveRecord object, and returns it through the configured Resource transformer.
 	 *
-	 * @param	array		$resource	Resource configuration.
+	 * @param	array{class: string, config: CrudResourceConfig}	$resource	Resource configuration.
 	 * @param	string|int	$id			Primary key value.
 	 */
 	private function updateResource(array $resource, string|int $id): ResponseInterface {
@@ -467,7 +513,7 @@ abstract class CrudController extends ApiController {
 		}
 
 		// apply validation rules if configured
-		$rules = $config['rules']['update'] ?? [];
+		$rules = $config->updateRules();
 
 		if (count($rules)) {
 			$data = $this->request->validateOrResponse($rules);

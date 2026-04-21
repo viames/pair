@@ -2,7 +2,6 @@
 
 namespace Pair\Api;
 
-use Pair\Http\JsonResponse;
 use Pair\Http\ResponseInterface;
 
 /**
@@ -73,7 +72,7 @@ class Idempotency {
 
 	/**
 	 * Reads and responds with cached result for duplicate requests, or marks key as processing.
-	 * Returns true when execution should continue without an immediate replay/conflict response.
+	 * Returns false when an immediate replay/conflict response was sent.
 	 */
 	public static function respondIfDuplicate(Request $request, string $scope, int $ttlSeconds = 86400): bool {
 
@@ -81,6 +80,7 @@ class Idempotency {
 
 		if ($response) {
 			$response->send();
+			return false;
 		}
 
 		return true;
@@ -185,32 +185,7 @@ class Idempotency {
 			return ApiResponse::jsonResponse($data, $httpCode);
 		}
 
-		// Preserve legacy scalar payload replays without forcing callers onto a new response type.
-		return new class($data, $httpCode) implements ResponseInterface {
-
-			/**
-			 * Store the cached payload and HTTP status for replay.
-			 */
-			public function __construct(
-				private mixed $payload,
-				private int $httpCode
-			) {}
-
-			/**
-			 * Send the cached payload as raw JSON.
-			 */
-			public function send(): void {
-
-				header('Content-Type: application/json', true);
-
-				$httpCode = empty($this->payload) ? 204 : $this->httpCode;
-				http_response_code($httpCode);
-				print json_encode($this->payload);
-				exit();
-
-			}
-
-		};
+		return ApiResponse::jsonResponse($data, $httpCode);
 
 	}
 

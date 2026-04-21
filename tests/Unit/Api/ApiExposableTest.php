@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Pair\Tests\Unit\Api;
 
 use Pair\Api\ApiExposable;
+use Pair\Api\CrudResourceConfig;
 use Pair\Tests\Support\FakeCrudExposeableModel;
 use Pair\Tests\Support\TestCase;
 
@@ -31,6 +32,27 @@ class ApiExposableTest extends TestCase {
 		$this->assertSame('-createdAt', $config['defaultSort']);
 		$this->assertSame(['name' => 'required|string'], $config['rules']['create']);
 		$this->assertSame(['name' => 'string'], $config['rules']['update']);
+
+	}
+
+	/**
+	 * Verify the trait exposes the same config through the typed internal value object.
+	 */
+	public function testGetCrudResourceConfigReturnsTypedConfig(): void {
+
+		$config = FakeCrudExposeableModel::getCrudResourceConfig();
+
+		$this->assertInstanceOf(CrudResourceConfig::class, $config);
+		$this->assertSame('Pair\Tests\Support\FakeCrudReadModel', $config->readModel());
+		$this->assertSame(['name'], $config->searchable());
+		$this->assertSame(['createdAt'], $config->sortable());
+		$this->assertSame(['status'], $config->filterable());
+		$this->assertSame(['group', 'tags'], $config->includes());
+		$this->assertSame(15, $config->perPage());
+		$this->assertSame(30, $config->maxPerPage());
+		$this->assertSame('-createdAt', $config->defaultSort());
+		$this->assertSame(['name' => 'required|string'], $config->createRules());
+		$this->assertSame(['name' => 'string'], $config->updateRules());
 
 	}
 
