@@ -174,6 +174,24 @@ class Request {
 	}
 
 	/**
+	 * Validate request data and map it into an explicit request object.
+	 *
+	 * @param	string	$requestDataClass	Class implementing RequestData.
+	 * @param	array	$rules				Associative array of field => 'rule1|rule2|...'.
+	 */
+	public function validateObjectOrResponse(string $requestDataClass, array $rules = []): RequestData|ApiErrorResponse {
+
+		$result = $this->validateOrResponse($rules);
+
+		if ($result instanceof ApiErrorResponse) {
+			return $result;
+		}
+
+		return $this->mapToRequestData($requestDataClass, $result);
+
+	}
+
+	/**
 	 * Validate request data against a set of rules. Returns the validated data array
 	 * or sends a 400 error response on failure.
 	 *
@@ -330,6 +348,26 @@ class Request {
 			'validated' => $validated,
 			'errors' => $errors,
 		];
+
+	}
+
+	/**
+	 * Map validated data into a request object through the explicit RequestData contract.
+	 *
+	 * @param	string					$requestDataClass	Class implementing RequestData.
+	 * @param	array<string, mixed>	$data				Validated request data.
+	 */
+	private function mapToRequestData(string $requestDataClass, array $data): RequestData {
+
+		if (!class_exists($requestDataClass)) {
+			throw new \InvalidArgumentException('Request data class ' . $requestDataClass . ' was not found');
+		}
+
+		if (!is_subclass_of($requestDataClass, RequestData::class)) {
+			throw new \InvalidArgumentException('Request data class ' . $requestDataClass . ' must implement ' . RequestData::class);
+		}
+
+		return $requestDataClass::fromArray($data);
 
 	}
 
@@ -536,22 +574,32 @@ class Request {
 
 			case 'min':
 				if (!is_null($ruleParam)) {
-					$min = (int)$ruleParam;
-					if (is_string($value) and mb_strlen($value) < $min) {
-						return 'The field ' . $field . ' must be at least ' . $min . ' characters';
-					} else if (is_numeric($value) and $value < $min) {
-						return 'The field ' . $field . ' must be at least ' . $min;
+					if (is_numeric($value) and is_numeric($ruleParam)) {
+						$min = (float)$ruleParam;
+						if ((float)$value < $min) {
+							return 'The field ' . $field . ' must be at least ' . $ruleParam;
+						}
+					} else if (is_string($value)) {
+						$min = (int)$ruleParam;
+						if (mb_strlen($value) < $min) {
+							return 'The field ' . $field . ' must be at least ' . $min . ' characters';
+						}
 					}
 				}
 				break;
 
 			case 'max':
 				if (!is_null($ruleParam)) {
-					$max = (int)$ruleParam;
-					if (is_string($value) and mb_strlen($value) > $max) {
-						return 'The field ' . $field . ' must not exceed ' . $max . ' characters';
-					} else if (is_numeric($value) and $value > $max) {
-						return 'The field ' . $field . ' must not exceed ' . $max;
+					if (is_numeric($value) and is_numeric($ruleParam)) {
+						$max = (float)$ruleParam;
+						if ((float)$value > $max) {
+							return 'The field ' . $field . ' must not exceed ' . $ruleParam;
+						}
+					} else if (is_string($value)) {
+						$max = (int)$ruleParam;
+						if (mb_strlen($value) > $max) {
+							return 'The field ' . $field . ' must not exceed ' . $max . ' characters';
+						}
 					}
 				}
 				break;

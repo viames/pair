@@ -57,6 +57,16 @@ $app->run();
 - [Configuration (.env)](https://github.com/viames/pair/wiki/Configuration-file)
 - [Boilerplate project](https://github.com/viames/pair_boilerplate)
 
+### 4) Generate Pair v4 skeletons
+
+```sh
+vendor/bin/pair make:module orders
+vendor/bin/pair make:api api
+vendor/bin/pair make:crud order --table=orders --fields=id,customer_id,total_amount
+```
+
+The generator writes explicit Pair v4 files and avoids overwriting user-edited files unless `--force` is provided.
+
 ## Why Pair
 
 - Small and fast for small/medium projects.
@@ -225,6 +235,7 @@ Main docs live in the [Wiki](https://github.com/viames/pair/wiki).
 The release and branching workflow for the v3 stable / v4 dev transition is documented in [RELEASING.md](RELEASING.md).
 
 Useful pages:
+- [Generator](https://github.com/viames/pair/wiki/Generator)
 - [Application](https://github.com/viames/pair/wiki/Application)
 - [Controller](https://github.com/viames/pair/wiki/Controller)
 - [View](https://github.com/viames/pair/wiki/View)

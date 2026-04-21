@@ -6,6 +6,7 @@ namespace Pair\Tests\Unit\Api;
 
 use Pair\Api\ApiErrorResponse;
 use Pair\Api\Request;
+use Pair\Tests\Support\FakeCreateOrderRequest;
 use Pair\Tests\Support\TestCase;
 
 /**
@@ -81,6 +82,31 @@ class RequestTest extends TestCase {
 	}
 
 	/**
+	 * Verify numeric min/max rules compare numeric values before falling back to string length checks.
+	 */
+	public function testValidateOrResponseSupportsDecimalNumericBounds(): void {
+
+		$request = $this->requestWithJsonBody([
+			'amount' => '0.005',
+			'discount' => '10.5',
+		]);
+
+		$result = $request->validateOrResponse([
+			'amount' => 'required|numeric|min:0.01',
+			'discount' => 'numeric|max:9.99',
+		]);
+
+		$this->assertInstanceOf(ApiErrorResponse::class, $result);
+		$this->assertSame([
+			'errors' => [
+				'amount' => 'The field amount must be at least 0.01',
+				'discount' => 'The field discount must not exceed 9.99',
+			],
+		], $this->readApiErrorResponseProperty($result, 'extra'));
+
+	}
+
+	/**
 	 * Verify the explicit validation helper returns an ApiErrorResponse instead of terminating immediately.
 	 */
 	public function testValidateOrResponseReturnsExplicitErrorResponse(): void {
@@ -103,6 +129,74 @@ class RequestTest extends TestCase {
 				'name' => 'The field name is required',
 			],
 		], $this->readApiErrorResponseProperty($result, 'extra'));
+
+	}
+
+	/**
+	 * Verify validated request data can be mapped into an explicit request object.
+	 */
+	public function testValidateObjectOrResponseMapsValidatedDataToRequestObject(): void {
+
+		$request = $this->requestWithJsonBody([
+			'customerId' => '42',
+			'amount' => '19.95',
+			'currency' => 'eur',
+			'ignored' => 'not-in-rules',
+		]);
+
+		$result = $request->validateObjectOrResponse(FakeCreateOrderRequest::class, [
+			'customerId' => 'required|int',
+			'amount' => 'required|numeric|min:0.01',
+			'currency' => 'required|string|max:3',
+		]);
+
+		$this->assertInstanceOf(FakeCreateOrderRequest::class, $result);
+		$this->assertSame(42, $result->customerId);
+		$this->assertSame(19.95, $result->amount);
+		$this->assertSame('EUR', $result->currency);
+
+	}
+
+	/**
+	 * Verify request-object mapping preserves explicit validation errors without terminating.
+	 */
+	public function testValidateObjectOrResponseReturnsExplicitErrorResponse(): void {
+
+		$request = $this->requestWithJsonBody([
+			'customerId' => 'not-an-int',
+		]);
+
+		$result = $request->validateObjectOrResponse(FakeCreateOrderRequest::class, [
+			'customerId' => 'required|int',
+			'amount' => 'required|numeric',
+		]);
+
+		$this->assertInstanceOf(ApiErrorResponse::class, $result);
+		$this->assertSame('INVALID_FIELDS', $this->readApiErrorResponseProperty($result, 'errorCode'));
+		$this->assertSame([
+			'errors' => [
+				'customerId' => 'The field customerId must be an integer',
+				'amount' => 'The field amount is required',
+			],
+		], $this->readApiErrorResponseProperty($result, 'extra'));
+
+	}
+
+	/**
+	 * Verify mapping fails fast when the target class does not implement RequestData.
+	 */
+	public function testValidateObjectOrResponseRequiresRequestDataContract(): void {
+
+		$request = $this->requestWithJsonBody([
+			'name' => 'Alice',
+		]);
+
+		$this->expectException(\InvalidArgumentException::class);
+		$this->expectExceptionMessage('must implement Pair\Api\RequestData');
+
+		$request->validateObjectOrResponse(\stdClass::class, [
+			'name' => 'required|string',
+		]);
 
 	}
 

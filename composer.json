@@ -33,6 +33,9 @@
 		"upgrade-to-v4": "php scripts/upgrade-to-v4.php",
 		"benchmark-v4": "php scripts/benchmark-v4.php"
 	},
+	"bin": [
+		"bin/pair"
+	],
 	"autoload": {
 		"psr-4": {
 			"Pair\\": "src/",
