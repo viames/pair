@@ -89,6 +89,96 @@ class ApiControllerTest extends TestCase {
 	}
 
 	/**
+	 * Verify requireJsonPostOrResponse() returns the decoded body for valid JSON POST requests.
+	 */
+	public function testRequireJsonPostOrResponseReturnsPayloadForValidJsonPost(): void {
+
+		$_SERVER['REQUEST_METHOD'] = 'POST';
+		$_SERVER['CONTENT_TYPE'] = 'application/json';
+
+		$controller = $this->newApiController();
+		$request = $this->newRequestWithJsonBody([
+			'email' => 'alice@example.test',
+		]);
+
+		$this->primeController($controller, $request);
+
+		$this->assertSame([
+			'email' => 'alice@example.test',
+		], $controller->exposeRequireJsonPostOrResponse());
+
+	}
+
+	/**
+	 * Verify requireJsonPostOrResponse() returns an explicit method error for non-POST requests.
+	 */
+	public function testRequireJsonPostOrResponseReturnsMethodErrorForNonPostRequests(): void {
+
+		$_SERVER['REQUEST_METHOD'] = 'GET';
+		$_SERVER['CONTENT_TYPE'] = 'application/json';
+
+		$controller = $this->newApiController();
+		$request = $this->newRequestWithJsonBody([
+			'email' => 'alice@example.test',
+		]);
+
+		$this->primeController($controller, $request);
+
+		$result = $controller->exposeRequireJsonPostOrResponse();
+
+		$this->assertInstanceOf(ApiErrorResponse::class, $result);
+		$this->assertSame('METHOD_NOT_ALLOWED', $this->readPrivateProperty($result, ApiErrorResponse::class, 'errorCode'));
+		$this->assertSame(405, $this->readPrivateProperty($result, ApiErrorResponse::class, 'httpCode'));
+		$this->assertSame([
+			'expected' => 'POST',
+			'actual' => 'GET',
+		], $this->readPrivateProperty($result, ApiErrorResponse::class, 'extra'));
+
+	}
+
+	/**
+	 * Verify requireJsonPostOrResponse() returns an explicit media-type error for non-JSON requests.
+	 */
+	public function testRequireJsonPostOrResponseReturnsMediaTypeErrorForNonJsonRequests(): void {
+
+		$_SERVER['REQUEST_METHOD'] = 'POST';
+
+		$controller = $this->newApiController();
+
+		$this->primeController($controller, new Request());
+
+		$result = $controller->exposeRequireJsonPostOrResponse();
+
+		$this->assertInstanceOf(ApiErrorResponse::class, $result);
+		$this->assertSame('UNSUPPORTED_MEDIA_TYPE', $this->readPrivateProperty($result, ApiErrorResponse::class, 'errorCode'));
+		$this->assertSame(415, $this->readPrivateProperty($result, ApiErrorResponse::class, 'httpCode'));
+		$this->assertSame(['expected' => 'application/json'], $this->readPrivateProperty($result, ApiErrorResponse::class, 'extra'));
+
+	}
+
+	/**
+	 * Verify requireJsonPostOrResponse() returns an explicit body error for invalid JSON.
+	 */
+	public function testRequireJsonPostOrResponseReturnsBodyErrorForInvalidJson(): void {
+
+		$_SERVER['REQUEST_METHOD'] = 'POST';
+		$_SERVER['CONTENT_TYPE'] = 'application/json';
+
+		$controller = $this->newApiController();
+		$request = $this->newRequestWithRawBody('not-json');
+
+		$this->primeController($controller, $request);
+
+		$result = $controller->exposeRequireJsonPostOrResponse();
+
+		$this->assertInstanceOf(ApiErrorResponse::class, $result);
+		$this->assertSame('BAD_REQUEST', $this->readPrivateProperty($result, ApiErrorResponse::class, 'errorCode'));
+		$this->assertSame(400, $this->readPrivateProperty($result, ApiErrorResponse::class, 'httpCode'));
+		$this->assertSame(['detail' => 'Invalid or empty JSON body'], $this->readPrivateProperty($result, ApiErrorResponse::class, 'extra'));
+
+	}
+
+	/**
 	 * Verify requireAuthOrResponse() returns an explicit UNAUTHORIZED response when no user is authenticated.
 	 */
 	public function testRequireAuthOrResponseReturnsExplicitErrorWhenUserIsMissing(): void {
@@ -565,6 +655,15 @@ final class TestApiController extends ApiController {
 	public function exposeRequireJsonPost(): mixed {
 
 		return $this->requireJsonPost();
+
+	}
+
+	/**
+	 * Expose the explicit JSON POST validator for focused unit tests.
+	 */
+	public function exposeRequireJsonPostOrResponse(): array|ApiErrorResponse {
+
+		return $this->requireJsonPostOrResponse();
 
 	}
 

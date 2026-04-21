@@ -411,6 +411,29 @@ class CrudControllerTest extends TestCase {
 	}
 
 	/**
+	 * Verify the migrated create-resource path returns an explicit media-type error response.
+	 */
+	public function testCrudActionReturnsExplicitCreateMediaTypeErrorResponse(): void {
+
+		$_SERVER['REQUEST_METHOD'] = 'POST';
+
+		$controller = $this->newCrudController();
+
+		$controller->registerCrudResource('users', FakeCrudRecord::class, [
+			'readModel' => FakeCrudReadModel::class,
+		]);
+		$this->setInaccessibleProperty($controller, 'request', new Request());
+
+		$response = $controller->usersAction();
+
+		$this->assertInstanceOf(ApiErrorResponse::class, $response);
+		$this->assertSame('UNSUPPORTED_MEDIA_TYPE', $this->readApiErrorResponseProperty($response, 'errorCode'));
+		$this->assertSame(415, $this->readApiErrorResponseProperty($response, 'httpCode'));
+		$this->assertSame(['expected' => 'application/json'], $this->readApiErrorResponseProperty($response, 'extra'));
+
+	}
+
+	/**
 	 * Verify the migrated update-resource path returns an explicit JsonResponse and uses the fake database update bridge.
 	 */
 	public function testCrudActionReturnsExplicitUpdateResponse(): void {
@@ -494,6 +517,103 @@ class CrudControllerTest extends TestCase {
 			],
 		], $this->readApiErrorResponseProperty($response, 'extra'));
 		$this->assertSame('before@example.test', $record->email);
+
+	}
+
+	/**
+	 * Verify the migrated update-resource path returns an explicit error when no resource ID is provided.
+	 */
+	public function testCrudActionReturnsExplicitUpdateMissingIdErrorResponse(): void {
+
+		$_SERVER['REQUEST_METHOD'] = 'PUT';
+
+		$controller = $this->newCrudController();
+
+		$controller->registerCrudResource('users', FakeCrudRecord::class, [
+			'readModel' => FakeCrudReadModel::class,
+		]);
+		$this->setInaccessibleProperty($controller, 'request', new Request());
+
+		$response = $controller->usersAction();
+
+		$this->assertInstanceOf(ApiErrorResponse::class, $response);
+		$this->assertSame('BAD_REQUEST', $this->readApiErrorResponseProperty($response, 'errorCode'));
+		$this->assertSame(400, $this->readApiErrorResponseProperty($response, 'httpCode'));
+		$this->assertSame(['detail' => 'Resource ID is required'], $this->readApiErrorResponseProperty($response, 'extra'));
+
+	}
+
+	/**
+	 * Verify the migrated show-resource path returns an explicit not-found error response.
+	 */
+	public function testCrudActionReturnsExplicitShowNotFoundErrorResponse(): void {
+
+		$controller = $this->newCrudController();
+		$router = \Pair\Core\Router::getInstance();
+
+		$controller->registerCrudResource('users', FakeCrudRecord::class, [
+			'readModel' => FakeCrudReadModel::class,
+		]);
+		$this->setInaccessibleProperty($controller, 'request', new Request());
+		$this->setInaccessibleProperty($router, 'vars', [0 => '404']);
+
+		$response = $controller->usersAction();
+
+		$this->assertInstanceOf(ApiErrorResponse::class, $response);
+		$this->assertSame('NOT_FOUND', $this->readApiErrorResponseProperty($response, 'errorCode'));
+		$this->assertSame(404, $this->readApiErrorResponseProperty($response, 'httpCode'));
+		$this->assertSame([
+			'class' => FakeCrudRecord::class,
+			'id' => '404',
+		], $this->readApiErrorResponseProperty($response, 'extra'));
+
+	}
+
+	/**
+	 * Verify the migrated delete-resource path returns an explicit conflict error response.
+	 */
+	public function testCrudActionReturnsExplicitDeleteConflictErrorResponse(): void {
+
+		$_SERVER['REQUEST_METHOD'] = 'DELETE';
+
+		$controller = $this->newCrudController();
+		$record = (new FakeCrudDeletableRecord())->setDeletable(false);
+		$router = \Pair\Core\Router::getInstance();
+
+		FakeCrudDeletableRecord::seedFindResult($record);
+		$controller->registerCrudResource('records', FakeCrudDeletableRecord::class, []);
+		$this->setInaccessibleProperty($controller, 'request', new Request());
+		$this->setInaccessibleProperty($router, 'vars', [0 => '5']);
+
+		$response = $controller->recordsAction();
+
+		$this->assertInstanceOf(ApiErrorResponse::class, $response);
+		$this->assertSame('CONFLICT', $this->readApiErrorResponseProperty($response, 'errorCode'));
+		$this->assertSame(409, $this->readApiErrorResponseProperty($response, 'httpCode'));
+		$this->assertSame(['detail' => 'Resource is referenced and cannot be deleted'], $this->readApiErrorResponseProperty($response, 'extra'));
+		$this->assertFalse($record->deleteCalled);
+
+	}
+
+	/**
+	 * Verify unsupported CRUD methods return an explicit method-not-allowed response.
+	 */
+	public function testCrudActionReturnsExplicitMethodNotAllowedErrorResponse(): void {
+
+		$_SERVER['REQUEST_METHOD'] = 'OPTIONS';
+
+		$controller = $this->newCrudController();
+
+		$controller->registerCrudResource('users', FakeCrudRecord::class, [
+			'readModel' => FakeCrudReadModel::class,
+		]);
+		$this->setInaccessibleProperty($controller, 'request', new Request());
+
+		$response = $controller->usersAction();
+
+		$this->assertInstanceOf(ApiErrorResponse::class, $response);
+		$this->assertSame('METHOD_NOT_ALLOWED', $this->readApiErrorResponseProperty($response, 'errorCode'));
+		$this->assertSame(405, $this->readApiErrorResponseProperty($response, 'httpCode'));
 
 	}
 

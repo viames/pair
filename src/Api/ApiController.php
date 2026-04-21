@@ -163,26 +163,43 @@ abstract class ApiController extends Controller {
 	}
 
 	/**
-	 * Require a JSON POST request. Validates Content-Type and HTTP method.
-	 * Returns the parsed JSON body or sends a 400 error.
+	 * Require a JSON POST request and return either the parsed body or an explicit API error response.
 	 */
-	public function requireJsonPost(): mixed {
+	public function requireJsonPostOrResponse(): array|ApiErrorResponse {
 
 		if ($this->request->method() !== 'POST') {
-			ApiResponse::error('METHOD_NOT_ALLOWED', ['expected' => 'POST', 'actual' => $this->request->method()]);
+			return $this->errorResponse('METHOD_NOT_ALLOWED', ['expected' => 'POST', 'actual' => $this->request->method()]);
 		}
 
 		if (!$this->request->isJson()) {
-			ApiResponse::error('UNSUPPORTED_MEDIA_TYPE', ['expected' => 'application/json']);
+			return $this->errorResponse('UNSUPPORTED_MEDIA_TYPE', ['expected' => 'application/json']);
 		}
 
 		$body = $this->request->json();
 
 		if (is_null($body)) {
-			ApiResponse::error('BAD_REQUEST', ['detail' => 'Invalid or empty JSON body']);
+			return $this->errorResponse('BAD_REQUEST', ['detail' => 'Invalid or empty JSON body']);
 		}
 
 		return $body;
+
+	}
+
+	/**
+	 * Require a JSON POST request. Validates Content-Type and HTTP method.
+	 * Returns the parsed JSON body or sends a 400 error.
+	 */
+	public function requireJsonPost(): mixed {
+
+		$result = $this->requireJsonPostOrResponse();
+
+		// Preserve the legacy terminate-on-error contract for existing callers.
+		if ($result instanceof ApiErrorResponse) {
+			$result->send();
+			throw new \LogicException('ApiController::requireJsonPost() expected ApiErrorResponse::send() to terminate the request.');
+		}
+
+		return $result;
 
 	}
 

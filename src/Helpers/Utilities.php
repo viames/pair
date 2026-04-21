@@ -1310,7 +1310,9 @@ class Utilities {
 
 		Router::exceedingPaginationFallback();
 
-		?><div class="<?php print UiTheme::alertClass('primary') ?>" role="alert"><?php print ($customMessage ? $customMessage : Translator::do('NO_DATA')) ?></div><?php
+		$alertClass = UiTheme::alertClass('primary');
+
+		?><div<?php print ('' !== $alertClass ? ' class="' . htmlspecialchars($alertClass, ENT_QUOTES, 'UTF-8') . '"' : '') ?> role="alert"><?php print ($customMessage ? $customMessage : Translator::do('NO_DATA')) ?></div><?php
 
 	}
 

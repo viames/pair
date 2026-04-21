@@ -95,6 +95,10 @@ class Pagination {
 			return $this->renderBulma($router, $pages);
 		}
 
+		if (!UiTheme::isBootstrap()) {
+			return $this->renderNative($router, $pages);
+		}
+
 		// start main pagination DOM object
 		$render = '<div class="pagination"><nav aria-label="Page navigation"><ul class="pagination">';
 
@@ -133,6 +137,46 @@ class Pagination {
 
 		// close the bar
 		$render .= '</ul></nav></div>';
+
+		return $render;
+
+	}
+
+	/**
+	 * Render native semantic pagination markup without framework-specific classes.
+	 *
+	 * @param	Router	$router	Router used to generate URLs.
+	 * @param	int		$pages	Total number of pages.
+	 */
+	private function renderNative(Router $router, int $pages): string {
+
+		$render = '<nav aria-label="Pagination"><ul>';
+
+		if ($this->page > 1) {
+			$render .= '<li><a href="' . $router->getPageUrl(1) . '" aria-label="Go to the first page">«</a></li>';
+		}
+
+		if ($this->page > 5 and $this->page + 5 > $pages) {
+			$max = $pages;
+			$min = ($max - 10) > 0 ? $max - 10 : 1;
+		} else if ($this->page <= 5) {
+			$min = 1;
+			$max = $pages < 10 ? $pages : 10;
+		} else {
+			$min = ($this->page - 5) > 0 ? $this->page - 5 : 1;
+			$max = ($this->page + 5 <= $pages) ? $this->page + 5 : $pages;
+		}
+
+		for ($i = $min; $i <= $max; $i++) {
+			$ariaCurrent = ($i == $this->page) ? ' aria-current="page"' : '';
+			$render .= '<li><a href="' . $router->getPageUrl($i) . '"' . $ariaCurrent . '>' . $i . '</a></li>';
+		}
+
+		if ($this->page < $pages) {
+			$render .= '<li><a href="' . $router->getPageUrl($pages) . '" aria-label="Go to the last page">»</a></li>';
+		}
+
+		$render .= '</ul></nav>';
 
 		return $render;
 

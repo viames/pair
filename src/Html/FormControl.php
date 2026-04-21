@@ -523,7 +523,7 @@ abstract class FormControl {
 		: $this->getLabelText();
 
 		if ($this->description) {
-			$label .= ' <i class="fal fa-question-circle" data-toggle="tooltip" data-placement="auto" title="' . htmlspecialchars((string)$this->description) . '"></i>';
+			$label .= ' ' . UiTheme::labelHelpTooltip((string)$this->description);
 		}
 
 		$label .= '</label>';

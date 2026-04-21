@@ -44,9 +44,26 @@ class UtilitiesTest extends TestCase {
 	}
 
 	/**
-	 * Verify the no-data helper keeps Bootstrap-compatible output by default.
+	 * Verify the no-data helper emits native HTML when no UI framework is selected.
 	 */
-	public function testShowNoDataAlertUsesBootstrapMarkupByDefault(): void {
+	public function testShowNoDataAlertUsesNativeMarkupByDefault(): void {
+
+		ob_start();
+		Utilities::showNoDataAlert('Nothing to show');
+		$html = (string)ob_get_clean();
+
+		$this->assertStringContainsString('<div role="alert">', $html);
+		$this->assertStringNotContainsString('class="alert alert-primary"', $html);
+		$this->assertStringContainsString('Nothing to show', $html);
+
+	}
+
+	/**
+	 * Verify Bootstrap alert markup remains available when configured explicitly.
+	 */
+	public function testShowNoDataAlertUsesBootstrapMarkupWhenConfigured(): void {
+
+		UiTheme::setCurrent('bootstrap');
 
 		ob_start();
 		Utilities::showNoDataAlert('Nothing to show');

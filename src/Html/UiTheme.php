@@ -6,14 +6,18 @@ namespace Pair\Html;
  * Resolve the active UI theme and expose small HTML-oriented mappings.
  *
  * The goal is to keep theme selection centralized without introducing
- * a heavy rendering subsystem. Bootstrap remains the default theme for
- * backward compatibility, while alternative frameworks can opt in through
- * the application runtime.
+ * a heavy rendering subsystem. Native HTML is the default renderer, while
+ * Bootstrap and Bulma can opt in through the application runtime.
  */
 final class UiTheme {
 
 	/**
-	 * Default Bootstrap-compatible theme identifier.
+	 * Native HTML renderer without framework-specific classes.
+	 */
+	public const NATIVE = 'native';
+
+	/**
+	 * Bootstrap-compatible theme identifier.
 	 */
 	public const BOOTSTRAP = 'bootstrap';
 
@@ -49,11 +53,20 @@ final class UiTheme {
 	}
 
 	/**
-	 * Reset the runtime override and restore the default Bootstrap behavior.
+	 * Reset the runtime override and restore native HTML rendering.
 	 */
 	public static function reset(): void {
 
 		self::$currentTheme = null;
+
+	}
+
+	/**
+	 * Return true when the active theme is Bootstrap.
+	 */
+	public static function isBootstrap(): bool {
+
+		return self::current() === self::BOOTSTRAP;
 
 	}
 
@@ -63,6 +76,15 @@ final class UiTheme {
 	public static function isBulma(): bool {
 
 		return self::current() === self::BULMA;
+
+	}
+
+	/**
+	 * Return true when no supported UI framework has been selected.
+	 */
+	public static function isNative(): bool {
+
+		return self::current() === self::NATIVE;
 
 	}
 
@@ -131,6 +153,29 @@ final class UiTheme {
 	}
 
 	/**
+	 * Render the small help marker appended to labels with descriptions.
+	 *
+	 * @param	string	$description	Description shown by the active tooltip implementation.
+	 */
+	public static function labelHelpTooltip(string $description): string {
+
+		$description = htmlspecialchars($description, ENT_QUOTES, 'UTF-8');
+		$questionMark = '<span aria-hidden="true">?</span>';
+		$ariaLabel = ' aria-label="' . $description . '"';
+
+		if (self::isBootstrap()) {
+			return '<span class="form-control-help" role="button" tabindex="0" data-toggle="tooltip" data-bs-toggle="tooltip" data-placement="auto" data-bs-placement="auto" title="' . $description . '"' . $ariaLabel . '>' . $questionMark . '</span>';
+		}
+
+		if (self::isBulma()) {
+			return '<span class="form-control-help has-tooltip-arrow has-tooltip-multiline" role="button" tabindex="0" data-tooltip="' . $description . '"' . $ariaLabel . '>' . $questionMark . '</span>';
+		}
+
+		return '<abbr class="form-control-help" title="' . $description . '"' . $ariaLabel . '>' . $questionMark . '</abbr>';
+
+	}
+
+	/**
 	 * Return the wrapper classes required by a Bulma select control.
 	 */
 	public static function selectWrapperClasses(bool $multiple = false): ?string {
@@ -156,7 +201,11 @@ final class UiTheme {
 			return 'notification is-' . $variant;
 		}
 
-		return 'alert alert-' . $variant;
+		if (self::isBootstrap()) {
+			return 'alert alert-' . $variant;
+		}
+
+		return '';
 
 	}
 
@@ -173,7 +222,11 @@ final class UiTheme {
 			return 'tag is-' . $variant;
 		}
 
-		return 'badge badge-' . $variant;
+		if (self::isBootstrap()) {
+			return 'badge badge-' . $variant;
+		}
+
+		return '';
 
 	}
 
@@ -182,7 +235,15 @@ final class UiTheme {
 	 */
 	public static function endAlignmentClass(): string {
 
-		return self::isBulma() ? 'is-pulled-right' : 'float-end';
+		if (self::isBulma()) {
+			return 'is-pulled-right';
+		}
+
+		if (self::isBootstrap()) {
+			return 'float-end';
+		}
+
+		return '';
 
 	}
 
@@ -219,7 +280,7 @@ final class UiTheme {
 
 		$theme = strtolower(trim((string)$theme));
 
-		if (in_array($theme, [self::BOOTSTRAP, self::BULMA], true)) {
+		if (in_array($theme, [self::NATIVE, self::BOOTSTRAP, self::BULMA], true)) {
 			return $theme;
 		}
 
@@ -227,7 +288,7 @@ final class UiTheme {
 			throw new \InvalidArgumentException('Unsupported UI framework: ' . $theme);
 		}
 
-		return self::BOOTSTRAP;
+		return self::NATIVE;
 
 	}
 

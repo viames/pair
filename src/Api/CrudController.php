@@ -57,14 +57,14 @@ abstract class CrudController extends ApiController {
 
 		// validate content type
 		if (!$this->request->isJson()) {
-			ApiResponse::error('UNSUPPORTED_MEDIA_TYPE', ['expected' => 'application/json']);
+			return ApiResponse::errorResponse('UNSUPPORTED_MEDIA_TYPE', ['expected' => 'application/json']);
 		}
 
 		// validate request data
 		$data = $this->request->json();
 
 		if (is_null($data)) {
-			ApiResponse::error('BAD_REQUEST', ['detail' => 'Invalid or empty JSON body']);
+			return ApiResponse::errorResponse('BAD_REQUEST', ['detail' => 'Invalid or empty JSON body']);
 		}
 
 		// apply validation rules if configured
@@ -92,7 +92,7 @@ abstract class CrudController extends ApiController {
 		}
 
 		if (!$object->create()) {
-			ApiResponse::error('INTERNAL_SERVER_ERROR', ['detail' => 'Failed to create resource']);
+			return ApiResponse::errorResponse('INTERNAL_SERVER_ERROR', ['detail' => 'Failed to create resource']);
 		}
 
 		// return the created resource
@@ -131,22 +131,22 @@ abstract class CrudController extends ApiController {
 	 * @param	array		$resource	Resource configuration.
 	 * @param	string|int	$id			Primary key value.
 	 */
-	private function deleteResource(array $resource, string|int $id): JsonResponse {
+	private function deleteResource(array $resource, string|int $id): ResponseInterface {
 
 		$class = $resource['class'];
 		$object = $class::find($id);
 
 		if (!$object) {
-			ApiResponse::error('NOT_FOUND', ['class' => $class, 'id' => $id]);
+			return ApiResponse::errorResponse('NOT_FOUND', ['class' => $class, 'id' => $id]);
 		}
 
 		// check if deletable
 		if (method_exists($object, 'isDeletable') and !$object->isDeletable()) {
-			ApiResponse::error('CONFLICT', ['detail' => 'Resource is referenced and cannot be deleted']);
+			return ApiResponse::errorResponse('CONFLICT', ['detail' => 'Resource is referenced and cannot be deleted']);
 		}
 
 		if (!$object->delete()) {
-			ApiResponse::error('INTERNAL_SERVER_ERROR', ['detail' => 'Failed to delete resource']);
+			return ApiResponse::errorResponse('INTERNAL_SERVER_ERROR', ['detail' => 'Failed to delete resource']);
 		}
 
 		return ApiResponse::jsonResponse(null, 204);
@@ -180,21 +180,19 @@ abstract class CrudController extends ApiController {
 	 * Route a CRUD action to the appropriate handler based on HTTP method and URL params.
 	 *
 	 * @param	string	$slug	The resource slug that matched.
-	 * @return	mixed	Explicit response objects when a migrated branch returns one.
 	 */
-	private function handleCrudAction(string $slug): mixed {
+	private function handleCrudAction(string $slug): ResponseInterface {
 
 		$resource = $this->resources[$slug];
 		$id = Router::get(0);
 
-		// Let migrated response objects bubble up while legacy static emitters keep the existing behavior.
 		return match ($this->request->method()) {
 			'GET'    => $id ? $this->showResource($resource, $id) : $this->listResources($resource),
 			'POST'   => $this->createResource($resource),
 			'PUT',
-			'PATCH'  => $id ? $this->updateResource($resource, $id) : ApiResponse::error('BAD_REQUEST', ['detail' => 'Resource ID is required']),
-			'DELETE' => $id ? $this->deleteResource($resource, $id) : ApiResponse::error('BAD_REQUEST', ['detail' => 'Resource ID is required']),
-			default  => ApiResponse::error('METHOD_NOT_ALLOWED'),
+			'PATCH'  => $id ? $this->updateResource($resource, $id) : ApiResponse::errorResponse('BAD_REQUEST', ['detail' => 'Resource ID is required']),
+			'DELETE' => $id ? $this->deleteResource($resource, $id) : ApiResponse::errorResponse('BAD_REQUEST', ['detail' => 'Resource ID is required']),
+			default  => ApiResponse::errorResponse('METHOD_NOT_ALLOWED'),
 		};
 
 	}
@@ -244,14 +242,14 @@ abstract class CrudController extends ApiController {
 	 * @param	array		$resource	Resource configuration.
 	 * @param	string|int	$id			Primary key value.
 	 */
-	private function showResource(array $resource, string|int $id): JsonResponse {
+	private function showResource(array $resource, string|int $id): ResponseInterface {
 
 		$class = $resource['class'];
 		$config = $resource['config'];
 		$object = $class::find($id);
 
 		if (!$object) {
-			ApiResponse::error('NOT_FOUND', ['class' => $class, 'id' => $id]);
+			return ApiResponse::errorResponse('NOT_FOUND', ['class' => $class, 'id' => $id]);
 		}
 
 		$fields = null;
@@ -454,18 +452,18 @@ abstract class CrudController extends ApiController {
 		$object = $class::find($id);
 
 		if (!$object) {
-			ApiResponse::error('NOT_FOUND', ['class' => $class, 'id' => $id]);
+			return ApiResponse::errorResponse('NOT_FOUND', ['class' => $class, 'id' => $id]);
 		}
 
 		// validate content type
 		if (!$this->request->isJson()) {
-			ApiResponse::error('UNSUPPORTED_MEDIA_TYPE', ['expected' => 'application/json']);
+			return ApiResponse::errorResponse('UNSUPPORTED_MEDIA_TYPE', ['expected' => 'application/json']);
 		}
 
 		$data = $this->request->json();
 
 		if (is_null($data)) {
-			ApiResponse::error('BAD_REQUEST', ['detail' => 'Invalid or empty JSON body']);
+			return ApiResponse::errorResponse('BAD_REQUEST', ['detail' => 'Invalid or empty JSON body']);
 		}
 
 		// apply validation rules if configured
@@ -492,7 +490,7 @@ abstract class CrudController extends ApiController {
 		}
 
 		if (!$object->update()) {
-			ApiResponse::error('INTERNAL_SERVER_ERROR', ['detail' => 'Failed to update resource']);
+			return ApiResponse::errorResponse('INTERNAL_SERVER_ERROR', ['detail' => 'Failed to update resource']);
 		}
 
 		// return the updated resource

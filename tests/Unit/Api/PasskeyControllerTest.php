@@ -97,6 +97,26 @@ class PasskeyControllerTest extends TestCase {
 	}
 
 	/**
+	 * Verify optionalJsonPostOrResponse() returns an explicit error object for unsupported media types.
+	 */
+	public function testOptionalJsonPostOrResponseReturnsExplicitUnsupportedMediaTypeResponse(): void {
+
+		$_SERVER['REQUEST_METHOD'] = 'POST';
+		$_SERVER['CONTENT_TYPE'] = 'text/plain';
+
+		$controller = $this->newPasskeyController();
+
+		$this->primeController($controller, new Request());
+
+		$response = $controller->exposeOptionalJsonPostOrResponse();
+
+		$this->assertInstanceOf(ApiErrorResponse::class, $response);
+		$this->assertSame('UNSUPPORTED_MEDIA_TYPE', $this->readPrivateProperty($response, ApiErrorResponse::class, 'errorCode'));
+		$this->assertSame(415, $this->readPrivateProperty($response, ApiErrorResponse::class, 'httpCode'));
+
+	}
+
+	/**
 	 * Verify normalizeTimezone() preserves valid identifiers and falls back to UTC otherwise.
 	 */
 	public function testNormalizeTimezonePreservesValidIdentifiersAndFallsBackToUtc(): void {
@@ -411,6 +431,61 @@ PHP);
 	}
 
 	/**
+	 * Verify passkeyAction() returns an explicit BAD_REQUEST response when login/verify has no credential payload.
+	 */
+	public function testPasskeyActionReturnsExplicitBadRequestForLoginVerifyWithoutCredential(): void {
+
+		$_SERVER['REQUEST_METHOD'] = 'POST';
+		$_SERVER['CONTENT_TYPE'] = 'application/json';
+
+		$controller = $this->newPasskeyController();
+		$request = $this->newRequestWithRawBody(json_encode([]));
+		$router = Router::getInstance();
+
+		$this->primeController($controller, $request);
+		$this->setPrivateProperty($controller, \Pair\Core\Controller::class, 'router', $router);
+		$this->setPrivateProperty($router, Router::class, 'vars', [0 => 'login', 1 => 'verify']);
+
+		$response = $controller->passkeyAction();
+
+		$this->assertInstanceOf(ApiErrorResponse::class, $response);
+		$this->assertSame('BAD_REQUEST', $this->readPrivateProperty($response, ApiErrorResponse::class, 'errorCode'));
+		$this->assertSame(400, $this->readPrivateProperty($response, ApiErrorResponse::class, 'httpCode'));
+
+	}
+
+	/**
+	 * Verify passkeyAction() returns an explicit AUTH_INVALID_CREDENTIALS response when passkey verification fails.
+	 */
+	public function testPasskeyActionReturnsExplicitInvalidCredentialsForLoginVerifyFailure(): void {
+
+		$_SERVER['REQUEST_METHOD'] = 'POST';
+		$_SERVER['CONTENT_TYPE'] = 'application/json';
+
+		$controller = $this->newPasskeyController();
+		$request = $this->newRequestWithRawBody(json_encode([
+			'credential' => ['id' => 'credential-1'],
+		]));
+		$router = Router::getInstance();
+		$passkeyAuth = $this->newFakePasskeyAuth();
+		$result = new \stdClass();
+		$result->error = true;
+		$passkeyAuth->authenticationResult = $result;
+
+		$this->primeController($controller, $request);
+		$this->setPrivateProperty($controller, \Pair\Core\Controller::class, 'router', $router);
+		$this->setPrivateProperty($router, Router::class, 'vars', [0 => 'login', 1 => 'verify']);
+		$this->setPrivateProperty($controller, PasskeyController::class, 'passkeyAuth', $passkeyAuth);
+
+		$response = $controller->passkeyAction();
+
+		$this->assertInstanceOf(ApiErrorResponse::class, $response);
+		$this->assertSame('AUTH_INVALID_CREDENTIALS', $this->readPrivateProperty($response, ApiErrorResponse::class, 'errorCode'));
+		$this->assertSame(401, $this->readPrivateProperty($response, ApiErrorResponse::class, 'httpCode'));
+
+	}
+
+	/**
 	 * Verify passkeyAction() returns an explicit JsonResponse for register/options when the user is authenticated.
 	 */
 	public function testPasskeyActionReturnsExplicitRegisterOptionsResponse(): void {
@@ -587,6 +662,30 @@ PHP);
 		$this->assertSame('user_passkeys', $database->updatedObjects[0]['table']);
 		$this->assertSame(5, $database->updatedObjects[0]['key']->id);
 		$this->assertNotEmpty((array)$database->updatedObjects[0]['object']);
+
+	}
+
+	/**
+	 * Verify passkeyAction() returns an explicit BAD_REQUEST response for malformed revoke identifiers.
+	 */
+	public function testPasskeyActionReturnsExplicitBadRequestForInvalidRevokeId(): void {
+
+		$_SERVER['REQUEST_METHOD'] = 'DELETE';
+
+		$controller = $this->newPasskeyController();
+		$router = Router::getInstance();
+		$user = $this->newLoadedUser(12);
+
+		$this->setApplicationCurrentUser($user);
+		$this->primeController($controller, new Request());
+		$this->setPrivateProperty($controller, \Pair\Core\Controller::class, 'router', $router);
+		$this->setPrivateProperty($router, Router::class, 'vars', [0 => 'revoke', 1 => '0']);
+
+		$response = $controller->passkeyAction();
+
+		$this->assertInstanceOf(ApiErrorResponse::class, $response);
+		$this->assertSame('BAD_REQUEST', $this->readPrivateProperty($response, ApiErrorResponse::class, 'errorCode'));
+		$this->assertSame(400, $this->readPrivateProperty($response, ApiErrorResponse::class, 'httpCode'));
 
 	}
 
@@ -828,6 +927,19 @@ final class TestPasskeyController extends PasskeyController {
 	public function exposeOptionalJsonPost(): array {
 
 		$method = new \ReflectionMethod(PasskeyController::class, 'optionalJsonPost');
+
+		return $method->invoke($this);
+
+	}
+
+	/**
+	 * Expose the optionalJsonPostOrResponse() helper for focused unit tests.
+	 *
+	 * @return	array<string, mixed>|ApiErrorResponse
+	 */
+	public function exposeOptionalJsonPostOrResponse(): array|ApiErrorResponse {
+
+		$method = new \ReflectionMethod(PasskeyController::class, 'optionalJsonPostOrResponse');
 
 		return $method->invoke($this);
 

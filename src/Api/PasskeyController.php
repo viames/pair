@@ -74,20 +74,20 @@ abstract class PasskeyController extends CrudController {
 	}
 
 	/**
-	 * Returns optional JSON body for POST requests.
+	 * Returns optional JSON body for POST requests or an explicit API error response.
 	 *
 	 * Empty JSON body is converted to an empty array.
 	 *
-	 * @return array<string,mixed>
+	 * @return array<string,mixed>|ApiErrorResponse
 	 */
-	private function optionalJsonPost(): array {
+	private function optionalJsonPostOrResponse(): array|ApiErrorResponse {
 
 		if ('POST' !== $this->request->method()) {
-			ApiResponse::error('METHOD_NOT_ALLOWED', ['expected' => 'POST', 'actual' => $this->request->method()]);
+			return $this->errorResponse('METHOD_NOT_ALLOWED', ['expected' => 'POST', 'actual' => $this->request->method()]);
 		}
 
 		if (!$this->request->isJson()) {
-			ApiResponse::error('UNSUPPORTED_MEDIA_TYPE', ['expected' => 'application/json']);
+			return $this->errorResponse('UNSUPPORTED_MEDIA_TYPE', ['expected' => 'application/json']);
 		}
 
 		$body = $this->request->json();
@@ -97,10 +97,31 @@ abstract class PasskeyController extends CrudController {
 		}
 
 		if (!is_array($body)) {
-			ApiResponse::error('INVALID_OBJECT', ['field' => 'body']);
+			return $this->errorResponse('INVALID_OBJECT', ['field' => 'body']);
 		}
 
 		return $body;
+
+	}
+
+	/**
+	 * Returns optional JSON body for POST requests through the legacy terminate-on-error bridge.
+	 *
+	 * Empty JSON body is converted to an empty array.
+	 *
+	 * @return array<string,mixed>
+	 */
+	private function optionalJsonPost(): array {
+
+		$result = $this->optionalJsonPostOrResponse();
+
+		// Preserve the legacy helper contract for callers that still expect immediate output.
+		if ($result instanceof ApiErrorResponse) {
+			$result->send();
+			throw new \LogicException('PasskeyController::optionalJsonPost() expected ApiErrorResponse::send() to terminate the request.');
+		}
+
+		return $result;
 
 	}
 
@@ -206,9 +227,14 @@ abstract class PasskeyController extends CrudController {
 	 * Endpoint: POST /api/passkey/login/options.
 	 * Returns an explicit JSON response containing the WebAuthn publicKey options payload.
 	 */
-	private function passkeyLoginOptions(): JsonResponse {
+	private function passkeyLoginOptions(): ResponseInterface {
 
-		$body = $this->optionalJsonPost();
+		$body = $this->optionalJsonPostOrResponse();
+
+		if ($body instanceof ApiErrorResponse) {
+			return $body;
+		}
+
 		$identifier = trim((string)($body['username'] ?? ''));
 		$user = $identifier ? $this->getUserByLoginIdentifier($identifier) : null;
 
@@ -222,13 +248,18 @@ abstract class PasskeyController extends CrudController {
 	 * Endpoint: POST /api/passkey/login/verify.
 	 * Returns an explicit JSON response when the passkey assertion is verified successfully.
 	 */
-	private function passkeyLoginVerify(): JsonResponse {
+	private function passkeyLoginVerify(): ResponseInterface {
 
-		$body = $this->optionalJsonPost();
+		$body = $this->optionalJsonPostOrResponse();
+
+		if ($body instanceof ApiErrorResponse) {
+			return $body;
+		}
+
 		$credential = (isset($body['credential']) and is_array($body['credential'])) ? $body['credential'] : null;
 
 		if (!$credential) {
-			ApiResponse::error('BAD_REQUEST', ['detail' => 'Missing passkey credential payload']);
+			return $this->errorResponse('BAD_REQUEST', ['detail' => 'Missing passkey credential payload']);
 		}
 
 		$identifier = trim((string)($body['username'] ?? ''));
@@ -237,7 +268,7 @@ abstract class PasskeyController extends CrudController {
 		$result = $this->passkey()->completeAuthentication($credential, $timezone, $user);
 
 		if ($result->error) {
-			ApiResponse::error('AUTH_INVALID_CREDENTIALS');
+			return $this->errorResponse('AUTH_INVALID_CREDENTIALS');
 		}
 
 		$destinationUrl = null;
@@ -284,7 +315,12 @@ abstract class PasskeyController extends CrudController {
 			return $user;
 		}
 
-		$body = $this->optionalJsonPost();
+		$body = $this->optionalJsonPostOrResponse();
+
+		if ($body instanceof ApiErrorResponse) {
+			return $body;
+		}
+
 		$displayName = trim((string)($body['displayName'] ?? ''));
 
 		$options = $this->passkey()->beginRegistration($user, ('' === $displayName ? null : $displayName));
@@ -306,11 +342,16 @@ abstract class PasskeyController extends CrudController {
 			return $user;
 		}
 
-		$body = $this->optionalJsonPost();
+		$body = $this->optionalJsonPostOrResponse();
+
+		if ($body instanceof ApiErrorResponse) {
+			return $body;
+		}
+
 		$credential = (isset($body['credential']) and is_array($body['credential'])) ? $body['credential'] : null;
 
 		if (!$credential) {
-			ApiResponse::error('BAD_REQUEST', ['detail' => 'Missing passkey credential payload']);
+			return $this->errorResponse('BAD_REQUEST', ['detail' => 'Missing passkey credential payload']);
 		}
 
 		$label = trim((string)($body['label'] ?? ''));
@@ -344,17 +385,17 @@ abstract class PasskeyController extends CrudController {
 		$passkeyId = intval((string)$this->router->getParam(1));
 
 		if ($passkeyId < 1) {
-			ApiResponse::error('BAD_REQUEST', ['detail' => 'Invalid passkey ID']);
+			return $this->errorResponse('BAD_REQUEST', ['detail' => 'Invalid passkey ID']);
 		}
 
 		$passkey = new UserPasskey($passkeyId);
 
 		if (!$passkey->isLoaded() or $passkey->userId !== $user->id) {
-			ApiResponse::error('NOT_FOUND', ['detail' => 'Passkey not found']);
+			return $this->errorResponse('NOT_FOUND', ['detail' => 'Passkey not found']);
 		}
 
 		if (!$passkey->isRevoked() and !$passkey->revoke()) {
-			ApiResponse::error('INTERNAL_SERVER_ERROR', ['detail' => 'Unable to revoke passkey']);
+			return $this->errorResponse('INTERNAL_SERVER_ERROR', ['detail' => 'Unable to revoke passkey']);
 		}
 
 		return ApiResponse::jsonResponse(null, 204);

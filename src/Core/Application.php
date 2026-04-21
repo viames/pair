@@ -1339,7 +1339,8 @@ class Application {
 	/**
 	 * Select the UI framework used by Pair HTML helpers for the current runtime.
 	 *
-	 * Supported values currently include bootstrap and bulma.
+	 * Native HTML rendering is the default. Supported explicit values currently
+	 * include native, bootstrap and bulma.
 	 *
 	 * @param	string	$framework	UI framework identifier.
 	 * @throws	\InvalidArgumentException	If the framework is not supported.

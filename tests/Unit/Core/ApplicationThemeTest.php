@@ -28,6 +28,23 @@ class ApplicationThemeTest extends TestCase {
 
 		$this->assertSame(UiTheme::BOOTSTRAP, UiTheme::current());
 
+		$app->uiFramework('native');
+
+		$this->assertSame(UiTheme::NATIVE, UiTheme::current());
+
+	}
+
+	/**
+	 * Verify resetting the theme returns to native HTML rendering.
+	 */
+	public function testUiThemeDefaultsToNativeHtmlRendering(): void {
+
+		UiTheme::setCurrent('bootstrap');
+		UiTheme::reset();
+
+		$this->assertSame(UiTheme::NATIVE, UiTheme::current());
+		$this->assertTrue(UiTheme::isNative());
+
 	}
 
 	/**

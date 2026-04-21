@@ -48,6 +48,31 @@ class FormTest extends TestCase {
 	}
 
 	/**
+	 * Verify native rendering does not inject framework classes when no UI framework is selected.
+	 */
+	public function testNativeThemeDoesNotInjectFrameworkClasses(): void {
+
+		$form = new Form();
+		$form->text('displayName')->label('Display name');
+		$form->textarea('bio')->label('Biography');
+		$form->button('save')->caption('Save');
+		$form->select('status')->options([
+			'draft' => 'Draft',
+			'live' => 'Live',
+		]);
+
+		$controlsHtml = $form->renderControls();
+		$labelHtml = $form->control('displayName')->renderLabel();
+
+		$this->assertStringNotContainsString('class="input"', $controlsHtml);
+		$this->assertStringNotContainsString('class="textarea"', $controlsHtml);
+		$this->assertStringNotContainsString('class="button"', $controlsHtml);
+		$this->assertStringNotContainsString('<div class="select">', $controlsHtml);
+		$this->assertStringNotContainsString('class="label"', $labelHtml);
+
+	}
+
+	/**
 	 * Verify duplicate form classes are collapsed while preserving insertion order.
 	 */
 	public function testClassForFormDeduplicatesCssClasses(): void {
@@ -55,6 +80,64 @@ class FormTest extends TestCase {
 		$form = (new Form())->classForForm('stacked compact compact');
 
 		$this->assertStringContainsString('class="stacked compact"', $form->open());
+
+	}
+
+	/**
+	 * Verify label descriptions render a native tooltip marker when no UI framework is selected.
+	 */
+	public function testNativeThemeRendersNativeLabelHelpTooltip(): void {
+
+		$control = (new Text('email'))
+			->label('Email')
+			->description('Used for notifications.');
+
+		$html = $control->renderLabel();
+
+		$this->assertStringContainsString('<abbr class="form-control-help" title="Used for notifications."', $html);
+		$this->assertStringContainsString('<span aria-hidden="true">?</span>', $html);
+		$this->assertStringNotContainsString('data-toggle="tooltip"', $html);
+		$this->assertStringNotContainsString('data-tooltip=', $html);
+
+	}
+
+	/**
+	 * Verify label descriptions render Bootstrap tooltip attributes when Bootstrap is selected explicitly.
+	 */
+	public function testBootstrapThemeRendersBootstrapLabelHelpTooltip(): void {
+
+		UiTheme::setCurrent('bootstrap');
+
+		$control = (new Text('email'))
+			->label('Email')
+			->description('Used for notifications.');
+
+		$html = $control->renderLabel();
+
+		$this->assertStringContainsString('data-toggle="tooltip"', $html);
+		$this->assertStringContainsString('data-bs-toggle="tooltip"', $html);
+		$this->assertStringContainsString('title="Used for notifications."', $html);
+		$this->assertStringContainsString('<span aria-hidden="true">?</span>', $html);
+
+	}
+
+	/**
+	 * Verify label descriptions render Bulma tooltip attributes when Bulma is selected.
+	 */
+	public function testBulmaThemeRendersBulmaLabelHelpTooltip(): void {
+
+		UiTheme::setCurrent('bulma');
+
+		$control = (new Text('email'))
+			->label('Email')
+			->description('Used for notifications.');
+
+		$html = $control->renderLabel();
+
+		$this->assertStringContainsString('class="label"', $html);
+		$this->assertStringContainsString('has-tooltip-arrow', $html);
+		$this->assertStringContainsString('data-tooltip="Used for notifications."', $html);
+		$this->assertStringContainsString('<span aria-hidden="true">?</span>', $html);
 
 	}
 

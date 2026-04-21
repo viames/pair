@@ -28,9 +28,27 @@ class PaginationTest extends TestCase {
 	}
 
 	/**
-	 * Verify the default renderer keeps the legacy Bootstrap-compatible structure.
+	 * Verify the default renderer uses native semantic markup when no UI framework is selected.
 	 */
-	public function testRenderUsesBootstrapMarkupByDefault(): void {
+	public function testRenderUsesNativeMarkupByDefault(): void {
+
+		$pagination = $this->buildPaginationFixture(3, 15, 160);
+
+		$html = $pagination->render();
+
+		$this->assertStringContainsString('<nav aria-label="Pagination"><ul>', $html);
+		$this->assertStringContainsString('aria-current="page"', $html);
+		$this->assertStringNotContainsString('class="pagination"', $html);
+		$this->assertStringNotContainsString('class="page-link"', $html);
+
+	}
+
+	/**
+	 * Verify Bootstrap pagination remains available when selected explicitly.
+	 */
+	public function testRenderUsesBootstrapMarkupWhenConfigured(): void {
+
+		UiTheme::setCurrent('bootstrap');
 
 		$pagination = $this->buildPaginationFixture(3, 15, 160);
 
