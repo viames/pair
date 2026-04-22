@@ -27,6 +27,12 @@ class EnvTest extends TestCase {
 		$this->assertSame(1.0, Env::get('PAIR_OBSERVABILITY_ERROR_SAMPLE_RATE'));
 		$this->assertSame(100, Env::get('PAIR_OBSERVABILITY_MAX_SPANS'));
 		$this->assertSame(50, Env::get('PAIR_OBSERVABILITY_MAX_EVENTS'));
+		$this->assertSame(250, Env::get('PAIR_LOGBAR_SLOW_REQUEST_MS'));
+		$this->assertSame(20, Env::get('PAIR_LOGBAR_SLOW_QUERY_MS'));
+		$this->assertSame(30, Env::get('PAIR_LOGBAR_QUERY_BUDGET'));
+		$this->assertSame(3, Env::get('PAIR_LOGBAR_DUPLICATE_QUERY_BUDGET'));
+		$this->assertSame(500, Env::get('PAIR_LOGBAR_MAX_EVENTS'));
+		$this->assertFalse(Env::get('PAIR_LOGBAR_SHOW_SQL_VALUES'));
 		$this->assertSame('', Env::get('SENTRY_DSN'));
 		$this->assertSame('', Env::get('SENTRY_ENVIRONMENT'));
 		$this->assertSame('', Env::get('SENTRY_RELEASE'));

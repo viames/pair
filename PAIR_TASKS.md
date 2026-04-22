@@ -4,9 +4,9 @@ This document guides AI coding agents when performing **complex tasks** in the P
 
 It complements:
 
-- SKILL.md (entrypoint)
+- AGENTS.md (entrypoint and workflow)
+- SKILL.md (quick-start and document map)
 - GEMINI.md (coding standards and conventions)
-- AGENTS.md (workflow)
 - CODEX.md (Codex behavior)
 - PAIR_ARCHITECTURE.md (framework architecture)
 - PAIR_PATTERNS.md (idiomatic coding patterns)

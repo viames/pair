@@ -10,6 +10,7 @@ Workflow and change-hygiene rules stay in `AGENTS.md`; technical conventions sta
 
 Use these defaults unless nearby code shows a different established pattern:
 
+- Pair v4 controllers return explicit response objects.
 - Controllers stay thin and coordinate work.
 - Models and ORM relations carry data access behavior.
 - Views stay simple and contain minimal logic.
@@ -20,32 +21,43 @@ Use these defaults unless nearby code shows a different established pattern:
 
 # Controller pattern
 
-Controllers extend:
+New Pair v4 controllers extend:
 
-`Pair\Core\Controller`
+`Pair\Web\Controller`
 
 Responsibilities:
 
 - receive the request
 - orchestrate business logic
-- load models if needed
-- pass data to views
+- build typed page state or API/read-model output
+- return an explicit response
 
 Controllers should remain **thin**.
 
 Example:
 
 ```php
-class UserController extends \Pair\Core\Controller
-{
-	public function loginAction()
-	{
-		$users = User::getAll();
+use Pair\Web\Controller;
+use Pair\Web\PageResponse;
 
-		$this->set('users', $users);
+final class UserController extends Controller {
+
+	/**
+	 * Render the user list page.
+	 */
+	public function defaultAction(): PageResponse {
+
+		$users = User::getAll();
+		$state = new UserListPageState($users);
+
+		return $this->page('default', $state, 'Users');
+
 	}
+
 }
 ```
+
+`Pair\Core\Controller` remains available only as a legacy MVC migration bridge and should not be the default for new Pair v4 modules.
 
 Avoid putting heavy logic inside controllers.
 
@@ -68,8 +80,7 @@ Models represent database tables.
 Example:
 
 ```php
-class User extends \Pair\Orm\ActiveRecord
-{
+class User extends \Pair\Orm\ActiveRecord {
 }
 ```
 
@@ -114,39 +125,39 @@ If relation helpers already express the intent, using manual joins is usually th
 
 ---
 
-# View pattern
+# Page response pattern
 
-Views are simple PHP templates.
+Pair v4 layouts are simple PHP templates backed by an explicit state object.
 
 Naming convention:
 
 ```text
-view<Action>.php
+layouts/<name>.php
 ```
 
 Example:
 
 ```text
-viewLogin.php
+layouts/default.php
 ```
 
-Views should contain minimal logic.
+Layouts should contain minimal logic and read from the typed `$state` object.
+
+Legacy `view<Action>.php` classes remain part of the migration bridge for `Pair\Core\Controller` modules.
 
 ---
 
-# Passing data to views
+# Passing data to pages
 
-Controllers pass data to views using:
-
-```php
-$this->set('variableName', $value);
-```
-
-Example:
+Controllers pass data to pages by returning a page response:
 
 ```php
-$this->set('user', $user);
+$state = new UserPageState($user);
+
+return $this->page('default', $state, 'User');
 ```
+
+Legacy `$this->set(...)`, `View::assign(...)`, and `View::assignState(...)` calls should be treated as migration work, not new Pair v4 code.
 
 ---
 
@@ -187,14 +198,14 @@ Keep JS local, explicit, and easy to remove.
 Typical pattern:
 
 ```php
-if ($this->request->isPost()) {
+if ($this->input()->method() === 'POST') {
 	$user = new User();
-	$user->name = $this->request->post('name');
+	$user->name = $this->input()->string('name', '');
 	$user->save();
 }
 ```
 
-Agents should follow existing request helpers.
+Agents should follow existing request helpers. For custom API endpoints, prefer `RequestData` and explicit validation responses when that pattern is already used nearby.
 
 ---
 
@@ -228,7 +239,8 @@ Agents implementing code in Pair should:
 1. follow MVC separation
 2. keep controllers thin
 3. prefer ORM helpers
-4. use PairUI for frontend behavior
-5. avoid unnecessary abstractions
+4. return explicit Pair v4 responses for new modules
+5. use PairUI for frontend behavior
+6. avoid unnecessary abstractions
 
 Pair values **clarity, stability, and predictability**.

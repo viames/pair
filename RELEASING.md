@@ -1,24 +1,19 @@
 # Releasing Pair
 
-This document defines the clean Git workflow for keeping Pair 3 stable while opening Pair 4 as the next unstable development line.
+This document defines the Git workflow for maintaining Pair 3 while Pair 4 is developed on `main`.
 
 ## Branch strategy
 
-- `v1`, `v2`, `v3`: maintenance branches for released major versions.
-- `main`: next unreleased major version.
+- `v3`: current stable maintenance branch.
+- `main`: Pair v4 alpha development branch.
 - Short-lived work branches should start from the target maintenance branch or from `main`.
 
-## Pair 3 to Pair 4 transition
+## Stable and Development Lines
 
-1. Cut `v3` from the current Pair v3 codebase once tests and docs are green.
-2. Keep Pair v3 documentation and package metadata on `v3`.
-3. Publish the first stable Pair 3 release from `v3` with tag `3.0.0`.
-4. Create the GitHub Release from that tag and include upgrade notes for users coming from Pair 2.
-5. After `3.0.0` is published, move `main` to Pair 4 development:
-   - update the repository wording from Pair v3 to Pair v4 alpha
-   - add Composer branch alias `dev-main => 4.x-dev`
-   - keep breaking and experimental work only on `main`
-6. Backport only Pair 3 compatible fixes to `v3`.
+- Keep Pair v3-compatible fixes on `v3`.
+- Keep Pair v4 breaking or experimental work on `main`.
+- Backport fixes from `main` to `v3` only when they are compatible with Pair v3.
+- Keep docs, upgrade notes, and Composer metadata aligned with the branch being released.
 
 ## Tagging rules
 
@@ -27,34 +22,38 @@ This document defines the clean Git workflow for keeping Pair 3 stable while ope
 - Tags must be created from a clean commit on the intended branch.
 - Never move an existing published tag.
 
-## Suggested Git sequence
+## Stable Pair 3 Release Sequence
+
+```sh
+git checkout v3
+vendor/bin/phpunit -c phpunit.xml.dist
+git tag 3.0.1
+git push origin 3.0.1
+```
+
+Create the GitHub Release from the pushed tag and include user-facing upgrade or rollback notes.
+
+## Pair 4 Pre-Release Sequence
 
 ```sh
 git checkout main
 vendor/bin/phpunit -c phpunit.xml.dist
-
-git branch v3
-git push origin v3
-
-git checkout v3
-git tag 3.0.0
-git push origin 3.0.0
-
-git checkout main
-# Update branch alias and repo wording to Pair v4 alpha here.
-git push origin main
+git tag 4.0.0-alpha.1
+git push origin 4.0.0-alpha.1
 ```
+
+Use beta and release-candidate tags only after the public API and migration path are ready for that stability level.
 
 ## Composer and Packagist notes
 
 - Stable Pair 3 consumers should install `^3.0`.
 - Users testing the next major should install `dev-main`.
-- Once `main` becomes Pair 4, add `extra.branch-alias.dev-main = 4.x-dev` on `main`.
+- `main` carries `extra.branch-alias.dev-main = 4.x-dev`.
 - If you want a tracked development line for Pair 3, add `extra.branch-alias.dev-v3 = 3.x-dev` on `v3`.
 
 ## Release checklist
 
-- Run the full test suite before cutting the release branch and before tagging.
+- Run the full test suite before tagging.
 - Verify `README.md`, `composer.json`, and wiki links point to the correct branch.
 - Confirm upgrade scripts and migration notes still match the published major version.
 - Write GitHub Release notes with breaking changes, upgrade steps, and manual rollback instructions.

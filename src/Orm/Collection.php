@@ -24,6 +24,13 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	private int $position = 0;
 
 	/**
+	 * Cached keys for the current iterator pass.
+	 *
+	 * @var array<int, int|string>
+	 */
+	private array $iteratorKeys = [];
+
+	/**
 	 * Create a new collection.
 	 */
 	public function __construct(?array $array = null) {
@@ -76,6 +83,10 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 */
 	public function avg(?string $key = null): float {
 
+		if ($this->isEmpty()) {
+			return 0.0;
+		}
+
 		$sum = $this->sum($key);
 
 		return $sum / $this->count();
@@ -105,31 +116,56 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 
 	}
 
+	/**
+	 * Split the collection into arrays with a fixed number of items.
+	 */
 	public function chunk(int $size): Collection {
 
-		$chunks = [];
-
-		for ($i = 0; $i < count($this->items); $i += $size) {
-
-			$chunks[] = array_slice($this->items, $i, $size);
-
-		}
-
-		return new Collection($chunks);
+		return new Collection($this->chunkItems($size));
 
 	}
 
+	/**
+	 * Compatibility alias for fixed-size chunking.
+	 */
 	public function chunkWhile(int $size): Collection {
 
-		$chunks = [];
+		return $this->chunk($size);
 
-		for ($i = 0; $i < count($this->items); $i += $size) {
+	}
 
-			$chunks[] = array_slice($this->items, $i, $size);
+	/**
+	 * Build fixed-size chunks after validating the requested chunk size.
+	 *
+	 * @return	array<int, array<int, mixed>>
+	 */
+	private function chunkItems(int $size): array {
 
+		if ($size <= 0) {
+			throw new PairException('Collection chunk size must be greater than zero.', ErrorCodes::INVALID_COLLECTION_VALUE);
 		}
 
-		return new Collection($chunks);
+		$chunks = [];
+		$count = count($this->items);
+
+		for ($i = 0; $i < $count; $i += $size) {
+			$chunks[] = array_slice($this->items, $i, $size);
+		}
+
+		return $chunks;
+
+	}
+
+	/**
+	 * Return the current iterator key from the underlying array keys.
+	 */
+	private function currentIteratorKey(): int|string|null {
+
+		if (!count($this->iteratorKeys) and count($this->items)) {
+			$this->iteratorKeys = array_keys($this->items);
+		}
+
+		return $this->iteratorKeys[$this->position] ?? null;
 
 	}
 
@@ -336,7 +372,9 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 */
 	public function current(): mixed {
 
-		return $this->items[$this->position];
+		$key = $this->currentIteratorKey();
+
+		return is_null($key) ? null : $this->items[$key];
 
 	}
 
@@ -848,11 +886,11 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 * A method required by the Iterator interface that returns the current key
 	 * (the position in the array).
 	 */
-    public function key(): int {
+	public function key(): mixed {
 
-        return $this->position;
+		return $this->currentIteratorKey();
 
-    }
+	}
 
 	/**
 	 * Keys the collection by the given key. If multiple items have the same key, only the last one
@@ -1297,11 +1335,12 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	/**
 	 * A method required by the Iterator interface that resets the pointer position to the beginning.
 	 */
-    public function rewind(): void {
+	public function rewind(): void {
 
-        $this->position = 0;
+		$this->position = 0;
+		$this->iteratorKeys = array_keys($this->items);
 
-    }
+	}
 
 	/**
 	 * Searches the collection for the given value and returns its key if found. If the item is not found,
@@ -1516,10 +1555,21 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	/**
 	 * Get the sum of the given values.
 	 */
-	public function sum(string $key): int {
+	public function sum(?string $key = null): int|float {
 
 		if ($this->isEmpty()) {
 			return 0;
+		}
+
+		if (is_null($key)) {
+			// Direct-value sums are only safe for numeric scalar collections.
+			foreach ($this->items as $item) {
+				if (!is_numeric($item)) {
+					throw new PairException('Values are not valid for sum.', ErrorCodes::INVALID_COLLECTION_VALUE);
+				}
+			}
+
+			return array_sum($this->items);
 		}
 
 		if (!property_exists($this->first(), $key)) {
@@ -1710,11 +1760,11 @@ class Collection implements \ArrayAccess, \Iterator, \Countable {
 	 * A method required by the Iterator interface that checks whether the current element is valid
 	 * (exists).
 	 */
-    public function valid(): bool {
+	public function valid(): bool {
 
-		return isset($this->items[$this->position]);
+		return !is_null($this->currentIteratorKey());
 
-    }
+	}
 
 	/**
 	 * Retrieves a given value from the first element of the collection.
