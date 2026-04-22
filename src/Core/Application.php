@@ -1249,6 +1249,10 @@ class Application {
 	 */
 	public function loadCss(string $href): void {
 
+		if (in_array($href, $this->cssFiles, true)) {
+			return;
+		}
+
 		$this->cssFiles[] = $href;
 
 	}
@@ -1687,6 +1691,11 @@ class Application {
 		}
 
 		$styleFile = $template->getStyleFile($this->style);
+
+		// Register LogBar controls before TemplateRenderer expands the scripts placeholder.
+		if ($this->logBar) {
+			$this->logBar->registerAssets();
+		}
 
 		// parse the template
 		TemplateRenderer::parse($styleFile);

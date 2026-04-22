@@ -5,7 +5,11 @@ declare(strict_types=1);
 namespace Pair\Tests\Unit\Helpers;
 
 use Pair\Helpers\LogBar;
+use Pair\Helpers\LogBarEntry;
+use Pair\Helpers\LogBarInspector;
+use Pair\Helpers\LogBarRenderer;
 use Pair\Helpers\LogBarSql;
+use Pair\Html\UiTheme;
 use Pair\Tests\Support\TestCase;
 
 /**
@@ -33,46 +37,41 @@ class LogBarTest extends TestCase {
 	/**
 	 * Build a structured query event for inspector-only tests.
 	 */
-	private function queryEvent(string $sql, float $duration, int $rows, float $start = 0.0): \stdClass {
+	private function queryEvent(string $sql, float $duration, int $rows, float $start = 0.0): LogBarEntry {
 
-		$event = new \stdClass();
-		$event->id = 'test-query-' . spl_object_id($event);
-		$event->type = 'query';
-		$event->description = LogBarSql::normalize($sql);
-		$event->subtext = $rows . ' ' . (1 === $rows ? 'row' : 'rows');
-		$event->start = $start;
-		$event->duration = $duration;
-		$event->chrono = $duration;
-		$event->status = 'ok';
-		$event->attributes = [
-			'fingerprint' => LogBarSql::fingerprint($sql),
-			'normalizedSql' => LogBarSql::normalize($sql),
-			'operation' => LogBarSql::operation($sql),
-			'rows' => $rows,
-			'table' => LogBarSql::table($sql),
-		];
-
-		return $event;
+		return new LogBarEntry(
+			'test-query-' . substr(hash('sha1', $sql . $duration . $start), 0, 8),
+			'query',
+			LogBarSql::normalize($sql),
+			$rows . ' ' . (1 === $rows ? 'row' : 'rows'),
+			$start,
+			$duration,
+			'ok',
+			[
+				'fingerprint' => LogBarSql::fingerprint($sql),
+				'normalizedSql' => LogBarSql::normalize($sql),
+				'operation' => LogBarSql::operation($sql),
+				'rows' => $rows,
+				'table' => LogBarSql::table($sql),
+			]
+		);
 
 	}
 
 	/**
 	 * Build a structured non-query event for inspector-only tests.
 	 */
-	private function noticeEvent(float $duration, float $start = 0.0): \stdClass {
+	private function noticeEvent(float $duration, float $start = 0.0): LogBarEntry {
 
-		$event = new \stdClass();
-		$event->id = 'test-notice-' . spl_object_id($event);
-		$event->type = 'notice';
-		$event->description = 'Controller work';
-		$event->subtext = null;
-		$event->start = $start;
-		$event->duration = $duration;
-		$event->chrono = $duration;
-		$event->status = 'ok';
-		$event->attributes = [];
-
-		return $event;
+		return new LogBarEntry(
+			'test-notice-' . substr(hash('sha1', (string)($duration . $start)), 0, 8),
+			'notice',
+			'Controller work',
+			null,
+			$start,
+			$duration,
+			'ok',
+		);
 
 	}
 
@@ -192,6 +191,113 @@ class LogBarTest extends TestCase {
 		$this->assertContains('DB-bound request', $titles);
 		$this->assertContains('High query count', $titles);
 		$this->assertContains('Duplicate query fingerprints', $titles);
+
+	}
+
+	/**
+	 * Verify the request inspector renders separated metrics and namespaced panes.
+	 */
+	public function testInspectorMarkupUsesSeparatedMetricsAndNamespacedBody(): void {
+
+		$logBar = LogBar::getInstance();
+		$events = [
+			$this->queryEvent('SELECT * FROM sessions WHERE user_id = ?', 0.060, 1, 0.000),
+			$this->queryEvent('SELECT * FROM sessions WHERE user_id = ?', 0.026, 1, 0.060),
+			$this->noticeEvent(0.032, 0.086),
+		];
+
+		$this->setInaccessibleProperty($logBar, 'events', $events);
+		$data = $this->invokeInaccessibleMethod($logBar, 'collectInspectorData');
+
+		// The renderer reads the Router singleton for a safe route label.
+		if (!defined('Pair\Core\URL_PATH')) {
+			define('Pair\Core\URL_PATH', '');
+		}
+
+		UiTheme::setCurrent('bootstrap');
+
+		$inspector = new LogBarInspector(250, 20, 30, 3, 80.0);
+		$renderer = new LogBarRenderer($inspector);
+		$html = $renderer->render($data, 'request inspector', 'test-correlation-id', true, true);
+
+		$this->assertStringContainsString('class="card mt-5 logbar logbar-shell logbar-shell-bootstrap"', $html);
+		$this->assertStringContainsString('data-logbar-ui="bootstrap"', $html);
+		$this->assertStringContainsString('class="card-header logbar-header"', $html);
+		$this->assertStringContainsString('class="logbar-titlebar"', $html);
+		$this->assertStringContainsString('<span class="logbar-metric-label">Queries</span>', $html);
+		$this->assertStringContainsString('<strong class="logbar-metric-value">2</strong>', $html);
+		$this->assertStringContainsString('<span class="logbar-metric-subtext">budget 30</span>', $html);
+		$this->assertStringContainsString('class="logbar-diagnostic-banner logbar-severity-warning"', $html);
+		$this->assertStringContainsString('class="card-body logbar-body logbar-show-queries"', $html);
+
+	}
+
+	/**
+	 * Verify non-Bootstrap UI frameworks get matching outer LogBar chrome.
+	 */
+	public function testRendererUsesActiveUiFrameworkChrome(): void {
+
+		$inspector = new LogBarInspector(250, 20, 30, 3, 80.0);
+		$renderer = new LogBarRenderer($inspector);
+		$data = $inspector->collect([$this->noticeEvent(0.010)], 0.010, 1048576, 134217728);
+
+		UiTheme::setCurrent('bulma');
+		$bulmaHtml = $renderer->render($data, 'sample/index', 'test-correlation-id', false, false);
+		$this->assertStringContainsString('class="card logbar logbar-shell logbar-shell-bulma"', $bulmaHtml);
+		$this->assertStringContainsString('class="card-header logbar-header"', $bulmaHtml);
+		$this->assertStringContainsString('class="card-content logbar-body hidden"', $bulmaHtml);
+		$this->assertStringContainsString('data-logbar-ui="bulma"', $bulmaHtml);
+
+		UiTheme::setCurrent('native');
+		$nativeHtml = $renderer->render($data, 'sample/index', 'test-correlation-id', false, false);
+		$this->assertStringContainsString('class="logbar logbar-shell logbar-shell-native"', $nativeHtml);
+		$this->assertStringContainsString('class="logbar-header"', $nativeHtml);
+		$this->assertStringContainsString('class="logbar-body hidden"', $nativeHtml);
+		$this->assertStringContainsString('data-logbar-ui="native"', $nativeHtml);
+
+	}
+
+	/**
+	 * Verify default asset paths follow applications mounted below the domain root when no public copy exists.
+	 */
+	public function testDefaultAssetPathFallsBackToApplicationUrlPath(): void {
+
+		$logBar = LogBar::getInstance();
+
+		$this->assertSame(
+			['/sample-app/assets/pair.css', '/sample-app/assets/PairLogBar.js'],
+			$this->invokeInaccessibleMethod($logBar, 'resolveAssetPaths', ['', '/sample-app', TEMP_PATH . 'missing-public'])
+		);
+		$this->assertSame(
+			['/assets/pair.css', '/assets/PairLogBar.js'],
+			$this->invokeInaccessibleMethod($logBar, 'resolveAssetPaths', ['', '', TEMP_PATH . 'missing-public'])
+		);
+		$this->assertSame(
+			['/custom/assets/pair.css', '/custom/assets/PairLogBar.js'],
+			$this->invokeInaccessibleMethod($logBar, 'resolveAssetPaths', ['/custom/assets'])
+		);
+
+	}
+
+	/**
+	 * Verify default asset paths prefer the Pair 3 public/css and public/js layout when available.
+	 */
+	public function testDefaultAssetPathPrefersLegacyPublicCssAndJs(): void {
+
+		$logBar = LogBar::getInstance();
+		$publicPath = TEMP_PATH . 'logbar-public';
+
+		mkdir($publicPath . '/css', 0777, true);
+		mkdir($publicPath . '/js', 0777, true);
+		file_put_contents($publicPath . '/css/pair.css', '');
+		file_put_contents($publicPath . '/js/PairLogBar.js', '');
+
+		$this->assertSame(
+			['css/pair.css', 'js/PairLogBar.js'],
+			$this->invokeInaccessibleMethod($logBar, 'resolveAssetPaths', ['', '/sample-app', $publicPath])
+		);
+
+		$this->removeDirectory($publicPath);
 
 	}
 

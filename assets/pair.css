@@ -19,123 +19,240 @@
 
 /* LogBar */
 
-/* Adds fa-caret-down icon */
-#logbar #toggle-events.expanded::after {
-    content: "\f0d7";
-    font-family: "Font Awesome 6 Pro", "Font Awesome 6 Free";
-    font-size: 1rem;
-    margin-left: 0.3rem;
-}
-
-/* Adds fa-caret-right icon */
-#logbar #toggle-events:not(.expanded)::after {
-    content: "\f0da";
-    font-family: "Font Awesome 6 Pro", "Font Awesome 6 Free";
-    font-size: 1rem;
-    margin-left: 0.3rem;
-}
-
 #logbar {
-    --logbar-bg: #20262d;
-    --logbar-bg-soft: #2b333c;
-    --logbar-border: #3e4854;
-    --logbar-text: #e4e9ef;
-    --logbar-muted: #aab4c0;
-    --logbar-warning: #d99a25;
-    --logbar-error: #d64b45;
-    --logbar-query: #6fb77a;
-    --logbar-api: #69a8d8;
+    --logbar-accent: #8fb6ff;
+    --logbar-api: #72aee6;
+    --logbar-bg: #171c22;
+    --logbar-bg-card: #232a32;
+    --logbar-bg-card-strong: #2d3540;
+    --logbar-bg-soft: #1d232b;
+    --logbar-border: #3a4552;
+    --logbar-border-soft: rgba(255, 255, 255, 0.08);
+    --logbar-error: #f06a61;
+    --logbar-ok: #72c68b;
+    --logbar-query: #78c88a;
+    --logbar-text: #edf2f7;
+    --logbar-muted: #aab7c5;
+    --logbar-warning: #f0b95d;
     color: var(--logbar-text);
     font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
-#logbar .logbar-header {
+#logbar.logbar-shell {
     background: var(--logbar-bg);
+    border: 1px solid var(--logbar-border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+#logbar.logbar-shell-bootstrap {
+    --bs-card-bg: var(--logbar-bg);
+    --bs-card-border-color: var(--logbar-border);
+    --bs-card-color: var(--logbar-text);
+}
+
+#logbar.logbar-shell-bulma {
+    box-shadow: none;
+    color: var(--logbar-text);
+}
+
+#logbar.logbar-shell-native {
+    margin-top: 3rem;
+}
+
+#logbar .logbar-header {
+    background: linear-gradient(180deg, #202832 0%, var(--logbar-bg) 100%);
     border-color: var(--logbar-border);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+    color: var(--logbar-text);
     position: sticky;
     top: 0;
     z-index: 20;
 }
 
-#logbar h4 {
-    color: var(--logbar-text);
-    font-size: 1rem;
-    margin: 0 0 0.75rem;
+/* Keep the v4 inspector layout isolated from legacy app #logbar .card-header rules. */
+#logbar[data-logbar-root] .logbar-header.card-header {
+    align-items: stretch;
+    display: block;
+    justify-content: initial;
+    padding: 1rem;
 }
 
-#logbar .head {
+#logbar .logbar-titlebar {
+    align-items: center;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    margin-bottom: 0.85rem;
+}
+
+#logbar .logbar-titlebar h4 {
+    color: var(--logbar-text);
+    font-size: 1.05rem;
+    font-weight: 700;
+    line-height: 1.2;
+    margin: 0;
+}
+
+#logbar .logbar-route {
+    color: var(--logbar-muted);
+    font-size: 0.76rem;
+    margin-top: 0.18rem;
+}
+
+#logbar .logbar-toggle {
+    align-items: center;
+    background: var(--logbar-bg-card);
+    border: 1px solid var(--logbar-border);
+    border-radius: 6px;
+    color: var(--logbar-text);
+    cursor: pointer;
+    display: inline-flex;
+    flex: 0 0 auto;
+    font-size: 0.82rem;
+    font-weight: 650;
+    gap: 0.4rem;
+    min-height: 2.2rem;
+    padding: 0.4rem 0.75rem;
+}
+
+/* Adds fa-caret-down icon. */
+#logbar .logbar-toggle.expanded::after {
+    content: "\f0d7";
+    font-family: "Font Awesome 6 Pro", "Font Awesome 6 Free";
+    font-size: 1rem;
+}
+
+/* Adds fa-caret-right icon. */
+#logbar .logbar-toggle:not(.expanded)::after {
+    content: "\f0da";
+    font-family: "Font Awesome 6 Pro", "Font Awesome 6 Free";
+    font-size: 1rem;
+}
+
+#logbar .logbar-metrics {
     display: grid;
-    font-size: 0.78rem;
-    gap: 1px;
-    grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
-    overflow: hidden;
+    gap: 0.55rem;
+    grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
     user-select: none;
 }
 
-#logbar .head .item {
-    background: var(--logbar-bg-soft);
+#logbar .logbar-metric {
+    background: var(--logbar-bg-card);
     border: 1px solid var(--logbar-border);
+    border-radius: 7px;
     min-width: 0;
-    padding: 0.55rem 0.65rem;
+    padding: 0.62rem 0.72rem;
 }
 
-#logbar .head .item .label,
-#logbar .logbar-stat span {
+#logbar .logbar-metric-label,
+#logbar .logbar-stat-label,
+#logbar .logbar-query-cell small {
     color: var(--logbar-muted);
     display: block;
-    font-size: 0.68rem;
-    line-height: 1;
+    font-size: 0.67rem;
+    font-weight: 700;
+    line-height: 1.15;
     text-transform: uppercase;
 }
 
-#logbar .head .item .emph {
+#logbar .logbar-metric-value {
     display: block;
-    font-size: 0.92rem;
-    font-weight: 650;
+    font-size: 1.05rem;
+    font-weight: 750;
+    line-height: 1.25;
+    margin-top: 0.22rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-#logbar .head .item .sub {
+#logbar .logbar-metric-subtext,
+#logbar .logbar-stat small {
     color: var(--logbar-muted);
     display: block;
-    font-size: 0.68rem;
+    font-size: 0.72rem;
+    line-height: 1.25;
+    margin-top: 0.16rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-#logbar .head .item.database {
+#logbar .logbar-metric.database {
     cursor: pointer;
 }
 
-#logbar .head .item.database.active,
-#logbar .head .item.query {
+#logbar .logbar-metric.database.active,
+#logbar .logbar-metric.database:hover {
     border-color: var(--logbar-query);
+    box-shadow: inset 0 0 0 1px rgba(120, 200, 138, 0.28);
 }
 
-#logbar .head .item.warning {
+#logbar .logbar-metric.warning,
+#logbar .logbar-stat.logbar-severity-warning {
     border-color: var(--logbar-warning);
+    box-shadow: inset 0 0 0 1px rgba(240, 185, 93, 0.18);
 }
 
-#logbar .head .item.error {
+#logbar .logbar-metric.error,
+#logbar .logbar-stat.logbar-severity-error {
     border-color: var(--logbar-error);
+    box-shadow: inset 0 0 0 1px rgba(240, 106, 97, 0.18);
 }
 
-#logbar #toggle-events.item {
-    background: var(--logbar-bg-soft);
-    border: 1px solid var(--logbar-border);
-    color: var(--logbar-text);
-    cursor: pointer;
-    font-size: 0.78rem;
-    padding: 0.35rem 0.65rem;
+#logbar .logbar-metric.correlation .logbar-metric-value {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: 0.92rem;
 }
 
 #logbar .logbar-body {
     background: #171c22;
     border-top: 1px solid var(--logbar-border);
     color: var(--logbar-text);
+    padding: 1rem;
+}
+
+/* Keep body spacing owned by the inspector when old themes still target .card-body. */
+#logbar[data-logbar-root] .logbar-body.card-body {
+    padding: 1rem;
+}
+
+#logbar .logbar-diagnostic-banner {
+    align-items: flex-start;
+    background: var(--logbar-bg-card);
+    border: 1px solid var(--logbar-border);
+    border-left: 4px solid var(--logbar-ok);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.24rem;
+    margin-bottom: 0.95rem;
+    padding: 0.85rem 1rem;
+}
+
+#logbar .logbar-diagnostic-banner strong {
+    color: var(--logbar-text);
+    font-size: 1rem;
+    line-height: 1.25;
+}
+
+#logbar .logbar-diagnostic-banner span {
+    color: var(--logbar-muted);
+    font-size: 0.86rem;
+    line-height: 1.45;
+}
+
+#logbar .logbar-diagnostic-banner.logbar-severity-warning {
+    background: rgba(240, 185, 93, 0.12);
+    border-color: rgba(240, 185, 93, 0.42);
+    border-left-color: var(--logbar-warning);
+}
+
+#logbar .logbar-diagnostic-banner.logbar-severity-error {
+    background: rgba(240, 106, 97, 0.12);
+    border-color: rgba(240, 106, 97, 0.42);
+    border-left-color: var(--logbar-error);
 }
 
 #logbar .logbar-tabs,
@@ -143,208 +260,294 @@
     align-items: center;
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-bottom: 0.85rem;
+    gap: 0.55rem;
 }
 
-#logbar .logbar-tabs button,
-#logbar .logbar-filters input,
-#logbar .logbar-filters select,
-#logbar .logbar-filters label {
-    background: var(--logbar-bg-soft);
-    border: 1px solid var(--logbar-border);
-    color: var(--logbar-text);
-    font-size: 0.78rem;
+#logbar .logbar-tabs {
+    border-bottom: 1px solid var(--logbar-border);
+    margin-bottom: 0.85rem;
+    padding-bottom: 0.55rem;
 }
 
 #logbar .logbar-tabs button {
+    background: transparent;
+    border: 1px solid var(--logbar-border);
+    border-radius: 999px;
+    color: var(--logbar-text);
     cursor: pointer;
-    padding: 0.35rem 0.7rem;
+    font-size: 0.82rem;
+    font-weight: 650;
+    min-height: 2.15rem;
+    padding: 0.38rem 0.82rem;
 }
 
 #logbar .logbar-tabs button.active {
-    background: #d7dde6;
-    color: #171c22;
+    background: var(--logbar-accent);
+    border-color: var(--logbar-accent);
+    color: #121820;
 }
 
-#logbar .logbar-filters input,
-#logbar .logbar-filters select {
-    min-height: 2rem;
-    padding: 0.3rem 0.55rem;
+#logbar .logbar-filters {
+    background: var(--logbar-bg-soft);
+    border: 1px solid var(--logbar-border);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    padding: 0.7rem;
 }
 
 #logbar .logbar-filters label {
     align-items: center;
-    cursor: pointer;
+    color: var(--logbar-muted);
     display: inline-flex;
-    gap: 0.35rem;
-    min-height: 2rem;
-    padding: 0.3rem 0.55rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    gap: 0.38rem;
+    text-transform: uppercase;
+}
+
+#logbar .logbar-filters input,
+#logbar .logbar-filters select {
+    background: var(--logbar-bg-card);
+    border: 1px solid var(--logbar-border);
+    border-radius: 6px;
+    color: var(--logbar-text);
+    font-size: 0.82rem;
+    min-height: 2.25rem;
+    padding: 0.36rem 0.6rem;
+}
+
+#logbar .logbar-search input {
+    min-width: min(22rem, 70vw);
+}
+
+#logbar .logbar-filter-toggle {
+    background: var(--logbar-bg-card);
+    border: 1px solid var(--logbar-border);
+    border-radius: 999px;
+    cursor: pointer;
+    min-height: 2.25rem;
+    padding: 0.35rem 0.68rem;
+}
+
+#logbar .logbar-filter-toggle input {
+    accent-color: var(--logbar-accent);
+    background: transparent;
+    border: 0;
+    height: 1rem;
+    min-height: auto;
+    padding: 0;
+    width: 1rem;
+}
+
+#logbar .logbar-filter-toggle span {
+    color: var(--logbar-text);
+    font-size: 0.78rem;
+    text-transform: none;
 }
 
 #logbar .logbar-section-title {
     color: var(--logbar-muted);
-    font-size: 0.72rem;
-    font-weight: 700;
-    margin: 1rem 0 0.5rem;
+    font-size: 0.74rem;
+    font-weight: 750;
+    margin: 1rem 0 0.55rem;
     text-transform: uppercase;
 }
 
 #logbar .logbar-overview-grid {
     display: grid;
-    gap: 0.65rem;
-    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 0.7rem;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
 }
 
 #logbar .logbar-stat {
-    background: var(--logbar-bg-soft);
+    background: var(--logbar-bg-card);
     border: 1px solid var(--logbar-border);
-    padding: 0.7rem;
+    border-radius: 8px;
+    padding: 0.85rem;
 }
 
 #logbar .logbar-stat strong {
     display: block;
-    font-size: 1.15rem;
-    margin-top: 0.2rem;
-}
-
-#logbar .logbar-stat small {
-    color: var(--logbar-muted);
+    font-size: 1.25rem;
+    line-height: 1.25;
+    margin-top: 0.25rem;
 }
 
 #logbar .logbar-findings {
+    display: grid;
+    gap: 0.65rem;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
     list-style: none;
     margin: 0;
     padding: 0;
 }
 
-#logbar .logbar-findings li {
-    background: var(--logbar-bg-soft);
-    border-left: 3px solid var(--logbar-muted);
-    margin-bottom: 0.45rem;
-    padding: 0.65rem 0.75rem;
+#logbar .logbar-finding-card {
+    background: var(--logbar-bg-card);
+    border: 1px solid var(--logbar-border);
+    border-left: 4px solid var(--logbar-muted);
+    border-radius: 8px;
+    padding: 0.78rem 0.85rem;
 }
 
-#logbar .logbar-findings li.warning {
+#logbar .logbar-finding-card.logbar-severity-warning {
+    background: rgba(240, 185, 93, 0.10);
+    border-color: rgba(240, 185, 93, 0.34);
     border-left-color: var(--logbar-warning);
 }
 
-#logbar .logbar-findings li.error {
+#logbar .logbar-finding-card.logbar-severity-error {
+    background: rgba(240, 106, 97, 0.10);
+    border-color: rgba(240, 106, 97, 0.34);
     border-left-color: var(--logbar-error);
 }
 
-#logbar .logbar-findings strong,
-#logbar .logbar-findings span {
+#logbar .logbar-finding-card strong,
+#logbar .logbar-finding-card span {
     display: block;
 }
 
-#logbar .logbar-findings span {
+#logbar .logbar-finding-card strong {
+    font-size: 0.9rem;
+}
+
+#logbar .logbar-finding-card span {
     color: var(--logbar-muted);
     font-size: 0.82rem;
+    line-height: 1.42;
+    margin-top: 0.18rem;
 }
 
 #logbar .logbar-event,
 #logbar .logbar-query-occurrence {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    font-size: 0.78rem;
+    align-items: start;
+    border-bottom: 1px solid var(--logbar-border-soft);
+    display: grid;
+    font-size: 0.82rem;
+    gap: 0.55rem;
+    grid-template-columns: 4.8rem 5.2rem minmax(12rem, 1fr);
     line-height: 1.45;
-    padding: 0.4rem 0;
+    padding: 0.48rem 0;
     text-align: left;
     word-break: break-word;
 }
 
-#logbar .logbar-event-message,
-#logbar .logbar-event-subtext,
 #logbar code {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 }
 
 #logbar .logbar-event-type,
-#logbar span.time {
+#logbar .logbar-duration {
     color: var(--logbar-muted);
-    cursor: default;
-    display: inline-block;
     font-size: 0.7rem;
-    margin-right: 0.45rem;
-    min-width: 3.7rem;
+    font-weight: 750;
     text-transform: uppercase;
-    user-select: none;
 }
 
-#logbar .events>*>span.time {
+#logbar .logbar-duration {
     background-color: var(--logbar-bg-soft);
     border-radius: 2px;
+    justify-self: start;
     padding: 1px 5px;
 }
 
-#logbar .events>*>span.time.slow,
-#logbar .logbar-slow .logbar-timeline-track span {
-    background-color: var(--logbar-warning);
+#logbar .logbar-event-subtext {
+    color: var(--logbar-muted);
 }
 
-#logbar .events.show-queries .query {
-    display: block;
-}
-
-#logbar .events:not(.show-queries) .query {
-    display: none;
-}
-
-#logbar .warning {
-    color: var(--logbar-warning);
-}
-
-#logbar .error {
-    color: var(--logbar-error);
-}
-
-#logbar .notice {
-    color: #8db6e5;
-}
-
-#logbar .api {
+#logbar .logbar-type-api .logbar-event-type {
     color: var(--logbar-api);
 }
 
-#logbar .query {
+#logbar .logbar-type-query .logbar-event-type {
     color: var(--logbar-query);
 }
 
+#logbar .logbar-type-warning .logbar-event-type,
+#logbar .logbar-slow .logbar-duration {
+    color: var(--logbar-warning);
+}
+
+#logbar .logbar-type-error .logbar-event-type {
+    color: var(--logbar-error);
+}
+
+#logbar .logbar-body:not(.logbar-show-queries) .logbar-event.logbar-type-query {
+    display: none;
+}
+
 #logbar .logbar-query-table {
-    font-size: 0.76rem;
+    font-size: 0.8rem;
+    overflow-x: auto;
 }
 
 #logbar .logbar-query-head,
 #logbar .logbar-query-summary {
     display: grid;
-    gap: 0.45rem;
-    grid-template-columns: 4rem 5rem 5rem 5rem 4rem 5rem 7rem minmax(12rem, 1fr);
+    gap: 0.55rem;
+    grid-template-columns: 4.3rem 5.2rem 5.2rem 5.2rem 4.5rem 5.3rem 7.5rem minmax(14rem, 1fr);
+    min-width: 58rem;
 }
 
 #logbar .logbar-query-head {
     color: var(--logbar-muted);
     font-weight: 700;
-    padding: 0.4rem 0.65rem;
+    padding: 0.4rem 0.8rem;
     text-transform: uppercase;
 }
 
 #logbar .logbar-query-group {
-    background: var(--logbar-bg-soft);
+    background: var(--logbar-bg-card);
     border: 1px solid var(--logbar-border);
-    margin-bottom: 0.45rem;
+    border-radius: 8px;
+    margin-bottom: 0.55rem;
+    min-width: 58rem;
+    overflow: hidden;
 }
 
-#logbar .logbar-query-group.duplicate {
+#logbar .logbar-query-group.logbar-query-duplicate {
     border-color: var(--logbar-warning);
 }
 
-#logbar .logbar-query-summary {
-    cursor: pointer;
-    list-style: none;
-    padding: 0.55rem 0.65rem;
+#logbar .logbar-query-group.logbar-query-expensive {
+    box-shadow: inset 0 0 0 1px rgba(240, 185, 93, 0.18);
 }
 
-#logbar .logbar-query-summary code,
+#logbar .logbar-query-summary {
+    align-items: center;
+    cursor: pointer;
+    list-style: none;
+    padding: 0.65rem 0.8rem 0.65rem 1.25rem;
+    position: relative;
+}
+
+#logbar .logbar-query-summary::-webkit-details-marker {
+    display: none;
+}
+
+#logbar .logbar-query-summary::before {
+    color: var(--logbar-muted);
+    content: "\f0da";
+    font-family: "Font Awesome 6 Pro", "Font Awesome 6 Free";
+    left: 0.62rem;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+#logbar .logbar-query-group[open] .logbar-query-summary::before {
+    content: "\f0d7";
+}
+
+#logbar .logbar-query-cell strong {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 750;
+    line-height: 1.25;
+    margin-top: 0.12rem;
+}
+
+#logbar .logbar-sql-preview,
 #logbar .logbar-query-occurrence code {
     color: var(--logbar-text);
     overflow: hidden;
@@ -354,26 +557,38 @@
 
 #logbar .logbar-query-occurrences {
     border-top: 1px solid var(--logbar-border);
-    padding: 0.35rem 0.65rem 0.55rem;
+    padding: 0.55rem 0.8rem 0.7rem;
+}
+
+#logbar .logbar-query-fullsql {
+    background: var(--logbar-bg-soft);
+    border: 1px solid var(--logbar-border-soft);
+    border-radius: 6px;
+    color: var(--logbar-text);
+    font-size: 0.78rem;
+    line-height: 1.45;
+    margin: 0 0 0.55rem;
+    max-height: 14rem;
+    overflow: auto;
+    padding: 0.65rem;
+    white-space: pre-wrap;
 }
 
 #logbar .logbar-query-occurrence {
-    display: grid;
-    gap: 0.6rem;
-    grid-template-columns: 5rem 5rem minmax(12rem, 1fr);
+    grid-template-columns: 5.2rem 5rem minmax(14rem, 1fr);
 }
 
 #logbar .logbar-timeline-row {
     align-items: center;
     display: grid;
-    gap: 0.7rem;
-    grid-template-columns: 8rem minmax(10rem, 1fr) minmax(12rem, 1.2fr);
-    margin-bottom: 0.45rem;
+    gap: 0.75rem;
+    grid-template-columns: 9rem minmax(12rem, 1fr) minmax(14rem, 1.2fr);
+    margin-bottom: 0.52rem;
 }
 
 #logbar .logbar-timeline-label {
-    color: var(--logbar-muted);
-    font-size: 0.72rem;
+    color: var(--logbar-text);
+    font-size: 0.76rem;
 }
 
 #logbar .logbar-timeline-label span,
@@ -383,7 +598,9 @@
 
 #logbar .logbar-timeline-track {
     background: rgba(255, 255, 255, 0.09);
-    height: 0.75rem;
+    border-radius: 999px;
+    height: 0.78rem;
+    overflow: hidden;
     position: relative;
 }
 
@@ -395,20 +612,29 @@
     top: 0;
 }
 
-#logbar .logbar-timeline-row.query .logbar-timeline-track span {
+#logbar .logbar-slow .logbar-timeline-track span {
+    background-color: var(--logbar-warning);
+}
+
+#logbar .logbar-timeline-row.logbar-type-query .logbar-timeline-track span {
     background: var(--logbar-query);
 }
 
-#logbar .logbar-timeline-row.error .logbar-timeline-track span {
+#logbar .logbar-timeline-row.logbar-type-error .logbar-timeline-track span {
     background: var(--logbar-error);
 }
 
-#logbar .logbar-timeline-row.warning .logbar-timeline-track span {
+#logbar .logbar-timeline-row.logbar-type-warning .logbar-timeline-track span {
+    background: var(--logbar-warning);
+}
+
+#logbar .logbar-timeline-row.logbar-slow .logbar-timeline-track span {
     background: var(--logbar-warning);
 }
 
 #logbar .logbar-timeline-text {
-    font-size: 0.76rem;
+    color: var(--logbar-muted);
+    font-size: 0.8rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -421,11 +647,34 @@
 }
 
 @media (max-width: 900px) {
+    #logbar .logbar-titlebar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    #logbar .logbar-toggle {
+        justify-content: center;
+    }
+
     #logbar .logbar-query-head,
     #logbar .logbar-query-summary,
     #logbar .logbar-query-occurrence,
-    #logbar .logbar-timeline-row {
+    #logbar .logbar-timeline-row,
+    #logbar .logbar-event {
         grid-template-columns: 1fr;
+        min-width: 0;
+    }
+
+    #logbar .logbar-query-head {
+        display: none;
+    }
+
+    #logbar .logbar-query-group {
+        min-width: 0;
+    }
+
+    #logbar .logbar-query-table {
+        overflow-x: visible;
     }
 }
 
