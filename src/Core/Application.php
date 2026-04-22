@@ -1441,6 +1441,10 @@ class Application {
 
 		$this->adapters()->set($name, $adapter);
 
+		if (AdapterKeys::OBSERVABILITY === $name and $adapter instanceof ObservabilityAdapter) {
+			Observability::setAdapter($adapter);
+		}
+
 		return $this;
 
 	}

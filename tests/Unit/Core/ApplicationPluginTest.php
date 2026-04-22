@@ -6,6 +6,9 @@ namespace Pair\Tests\Unit\Core;
 
 use Pair\Core\AdapterKeys;
 use Pair\Core\Application;
+use Pair\Core\Observability;
+use Pair\Core\ObservabilityAdapter;
+use Pair\Core\ObservabilitySpan;
 use Pair\Core\PluginInterface;
 use Pair\Html\UiRenderers\NativeUiRenderer;
 use Pair\Html\UiTheme;
@@ -103,6 +106,40 @@ class ApplicationPluginTest extends TestCase {
 
 		$this->assertSame('fixture', UiTheme::current());
 		$this->assertSame('fixture-alert', UiTheme::alertClass());
+
+	}
+
+	/**
+	 * Verify the conventional observability adapter key also activates the runtime facade.
+	 */
+	public function testSetObservabilityAdapterActivatesFacade(): void {
+
+		$app = $this->newApplicationStub();
+		$adapter = new class implements ObservabilityAdapter {
+
+			/**
+			 * Captured spans.
+			 *
+			 * @var	list<ObservabilitySpan>
+			 */
+			public array $spans = [];
+
+			/**
+			 * Store the span for assertions.
+			 */
+			public function record(ObservabilitySpan $span): void {
+
+				$this->spans[] = $span;
+
+			}
+
+		};
+
+		$app->setAdapter(AdapterKeys::OBSERVABILITY, $adapter);
+		Observability::trace('app.adapter', function (): void {});
+
+		$this->assertTrue($app->hasAdapter(AdapterKeys::OBSERVABILITY));
+		$this->assertCount(1, $adapter->spans);
 
 	}
 

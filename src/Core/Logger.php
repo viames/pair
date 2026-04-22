@@ -397,9 +397,15 @@ class Logger implements LoggerInterface {
 			$level = self::DEBUG;
 		}
 
+		$context['correlationId'] = $context['correlationId'] ?? Observability::correlationId();
+
 		// render the message with context values
 		$rendered = $this->interpolate((string)$message, $context);
 		$errorCode = $this->normalizeErrorCode($context['errorCode'] ?? null);
+
+		if ($level <= self::WARNING) {
+			Observability::recordLogEvent(self::LEVEL_NAMES[$level] ?? 'unknown', $rendered, $context);
+		}
 
 		// log the message in LogBar
 		if (in_array($level, [self::DEBUG, self::INFO, self::NOTICE], true)) {

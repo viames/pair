@@ -304,4 +304,34 @@ class ErrorCodes {
 	 */
 	const OPENAI_ERROR = 1061;
 
+	/**
+	 * Resend API error.
+	 */
+	const RESEND_ERROR = 1062;
+
+	/**
+	 * Cloudflare Turnstile error.
+	 */
+	const CLOUDFLARE_TURNSTILE_ERROR = 1063;
+
+	/**
+	 * Meilisearch API error.
+	 */
+	const MEILISEARCH_ERROR = 1064;
+
+	/**
+	 * Sentry observability adapter error.
+	 */
+	const SENTRY_ERROR = 1065;
+
+	/**
+	 * OpenTelemetry exporter error.
+	 */
+	const OPENTELEMETRY_ERROR = 1066;
+
+	/**
+	 * Supabase API error.
+	 */
+	const SUPABASE_ERROR = 1067;
+
 }
