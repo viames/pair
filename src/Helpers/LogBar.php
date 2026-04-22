@@ -164,8 +164,13 @@ class LogBar {
 
 		$script = <<<'JS'
 <script>
-(function () {
+(function (global) {
 	"use strict";
+
+	if (global.PairLogBar && typeof global.PairLogBar.initAll === "function") {
+		global.PairLogBar.initAll();
+		return;
+	}
 
 	/**
 	 * Read a plain cookie value by name.
@@ -202,12 +207,18 @@ class LogBar {
 	 * Apply text, type, and query filters to visible rows.
 	 */
 	function applyFilters(logbar) {
-		const search = (logbar.querySelector("[data-logbar-search]")?.value || "").toLowerCase();
-		const type = logbar.querySelector("[data-logbar-type-filter]")?.value || "";
-		const queriesOnly = !!logbar.querySelector("[data-logbar-queries-only]")?.checked;
-		const warningsOnly = !!logbar.querySelector("[data-logbar-warnings-only]")?.checked;
-		const duplicatesOnly = !!logbar.querySelector("[data-logbar-duplicates-only]")?.checked;
-		const queryRowsVisible = logbar.querySelector(".logbar-body")?.classList.contains("show-queries") !== false;
+		const searchControl = logbar.querySelector("[data-logbar-search]");
+		const typeControl = logbar.querySelector("[data-logbar-type-filter]");
+		const queriesOnlyControl = logbar.querySelector("[data-logbar-queries-only]");
+		const warningsOnlyControl = logbar.querySelector("[data-logbar-warnings-only]");
+		const duplicatesOnlyControl = logbar.querySelector("[data-logbar-duplicates-only]");
+		const body = logbar.querySelector(".logbar-body");
+		const search = ((searchControl && searchControl.value) || "").toLowerCase();
+		const type = (typeControl && typeControl.value) || "";
+		const queriesOnly = !!(queriesOnlyControl && queriesOnlyControl.checked);
+		const warningsOnly = !!(warningsOnlyControl && warningsOnlyControl.checked);
+		const duplicatesOnly = !!(duplicatesOnlyControl && duplicatesOnlyControl.checked);
+		const queryRowsVisible = !body || body.classList.contains("show-queries");
 
 		logbar.querySelectorAll("[data-logbar-row]").forEach(function (row) {
 			const rowType = row.getAttribute("data-logbar-type") || "";
@@ -234,6 +245,9 @@ class LogBar {
 	 * Attach controls to one rendered LogBar.
 	 */
 	function initLogBar(logbar) {
+		if (logbar.getAttribute("data-logbar-ready") === "1") return;
+		logbar.setAttribute("data-logbar-ready", "1");
+
 		const body = logbar.querySelector(".logbar-body");
 		const toggle = logbar.querySelector("#toggle-events");
 		const queryToggle = logbar.querySelector("[data-logbar-query-toggle]");
@@ -279,8 +293,23 @@ class LogBar {
 		applyFilters(logbar);
 	}
 
-	document.querySelectorAll("#logbar[data-logbar-root]").forEach(initLogBar);
-})();
+	/**
+	 * Initialize every LogBar currently available in the document.
+	 */
+	function initAll() {
+		document.querySelectorAll("#logbar[data-logbar-root]").forEach(initLogBar);
+	}
+
+	global.PairLogBar = {
+		initAll: initAll
+	};
+
+	if (document.readyState === "loading") {
+		document.addEventListener("DOMContentLoaded", initAll);
+	} else {
+		initAll();
+	}
+})(window);
 </script>
 JS;
 
