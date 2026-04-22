@@ -28,7 +28,8 @@ Agents should extend existing patterns instead of introducing new architectural 
 
 - Pair is pragmatic MVC.
 - Applications define modules under `/modules`.
-- Routing resolves a module, then a controller action, then a view/layout convention.
+- Routing resolves a module, then a controller action.
+- Pair v4 prefers explicit response objects; the legacy MVC bridge still supports view/layout conventions during migration.
 - ORM usage should stay close to ActiveRecord and relation helpers.
 - PairUI is progressive enhancement, not a frontend application framework.
 
@@ -36,15 +37,15 @@ Agents should extend existing patterns instead of introducing new architectural 
 
 # Core architecture
 
-Pair follows a pragmatic MVC architecture.
+Pair follows a pragmatic, server-rendered MVC architecture.
 
 The framework provides:
 
 - application bootstrap
 - routing
 - controllers
-- views
-- layouts
+- explicit HTML and JSON responses
+- legacy views and layouts for migration paths
 - ORM
 - utilities
 - integrations
@@ -56,7 +57,7 @@ Applications built with Pair define modules under `/modules`.
 
 # High-level request flow
 
-Typical lifecycle:
+Typical Pair v4 lifecycle:
 
 1. HTTP request arrives
 2. Application bootstrap initializes environment
@@ -64,9 +65,11 @@ Typical lifecycle:
 4. Module controller is resolved
 5. Controller action executes
 6. Model operations may run through ORM
-7. View is rendered
-8. Layout wraps the view
-9. Response is returned
+7. Action returns a `ResponseInterface`
+8. Response renders HTML or JSON
+9. Page responses may be wrapped by the configured template
+
+Legacy `Pair\Core\Controller` modules still follow the older view/layout bridge while applications migrate to `Pair\Web\Controller`.
 
 Agents should respect this flow when modifying framework code.
 

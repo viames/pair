@@ -1427,6 +1427,11 @@ class Query {
 	 */
 	public function selectRaw(string $sql, array $bindings = []): static {
 
+		// Raw-only selects should not keep the implicit wildcard projection.
+		if ($this->columns === ['*']) {
+			$this->columns = [];
+		}
+
 		$this->addSelect($sql);
 
 		if (count($bindings)) {

@@ -317,7 +317,14 @@ class QueryGrammar {
 
 		if (!$wrap || $value === '*') return $value;
 
-		return '`' . str_replace('.', '`.`', $value) . '`';
+		$segments = [];
+
+		foreach (explode('.', $value) as $segment) {
+			// Keep wildcard segments raw so "table.*" compiles as "`table`.*".
+			$segments[] = $segment === '*' ? '*' : '`' . $segment . '`';
+		}
+
+		return implode('.', $segments);
 
 	}
 

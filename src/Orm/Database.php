@@ -641,8 +641,9 @@ class Database {
 			throw new PairException($e->getMessage(), ErrorCodes::DB_QUERY_FAILED, $e);
 		}
 
-		$this->logParamQuery($this->query, $res, $params);
 		$res = (int)$stat->fetch(\PDO::FETCH_COLUMN);
+
+		$this->logParamQuery($this->query, $res, $params);
 
 		$stat->closeCursor();
 		self::finishQuerySpan($span, $res);
@@ -738,7 +739,7 @@ class Database {
 	}
 
 	/**
-	 * Proxy for logQuery() that binds query parameters.
+	 * Proxy for logQuery() that passes query parameters without rendering raw values by default.
 	 *
 	 * @param	string	SQL query.
 	 * @param	int		Number of items in result-set or affected rows.
@@ -746,35 +747,7 @@ class Database {
 	 */
 	private function logParamQuery(string $query, int $result, array $params = []): void {
 
-		// indexed is binding with "?"
-		$indexed = $params==array_values($params);
-
-		foreach ($params as $column=>$value) {
-
-			if (is_string($value)) {
-				$value = "'$value'";
-			} else if (is_null($value)) {
-				$value = 'NULL';
-			} else if (is_bool($value)) {
-				$value = $value ? 'true' : 'false';
-			} else if (is_array($value)) {
-				$value = 'Array';
-			} else if (is_object($value)) {
-				$value = get_class($value);
-			} else {
-				$value = (string)$value;
-			}
-
-			// fix omitted ":" on named parameters
-			if (':'!=substr($column,0,1)) {
-				$column = ':'.$column;
-			}
-
-			$query = $indexed ? preg_replace('/\?/', $value, $query, 1) : str_replace($column, $value, $query);
-
-		}
-
-		$this->logQuery($query, $result);
+		LogBar::query($query, $result, $params);
 
 	}
 
@@ -786,9 +759,7 @@ class Database {
 	 */
 	private function logQuery(string $query, int $result): void {
 
-		$subtext = (int)$result . ' ' . (1==$result ? 'row' : 'rows');
-
-		LogBar::event($query, 'query', $subtext);
+		LogBar::query($query, $result);
 
 	}
 

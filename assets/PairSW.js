@@ -160,8 +160,14 @@ async function cacheFirst(request, fallbackPath = null) {
   }
 }
 
+/**
+ * Store a runtime response only when the request and response are safe to cache.
+ * @param {Request} request
+ * @param {Response} response
+ * @returns {Promise<void>}
+ */
 async function cacheRuntimeResponse(request, response) {
-  if (!isCacheableResponse(response)) return;
+  if (!isCacheableResponse(request, response)) return;
 
   const cache = await caches.open(RUNTIME_CACHE);
   await cache.put(request, response.clone());
@@ -563,10 +569,92 @@ function headersToObject(headers) {
   return out;
 }
 
-function isCacheableResponse(response) {
+/**
+ * Return true when a response can be stored in the runtime cache.
+ * @param {Request} request
+ * @param {Response} response
+ * @returns {boolean}
+ */
+function isCacheableResponse(request, response) {
   if (!response) return false;
+  if (!(response.ok || response.type === "opaque")) return false;
 
-  return response.ok || response.type === "opaque";
+  if (request && isSensitiveCacheRequest(request)) {
+    return false;
+  }
+
+  const cacheControl = response.headers && typeof response.headers.get === "function"
+    ? String(response.headers.get("Cache-Control") || "")
+    : "";
+  const vary = response.headers && typeof response.headers.get === "function"
+    ? String(response.headers.get("Vary") || "")
+    : "";
+
+  if (/\b(no-store|no-cache|private)\b/i.test(cacheControl)) {
+    return false;
+  }
+
+  if (request && isApiRequestWithoutExplicitCachePolicy(request, cacheControl)) {
+    return false;
+  }
+
+  if (/(^|,\s*)(authorization|cookie)(\s*,|$)/i.test(vary)) {
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Return true when an API response has no explicit cacheability policy.
+ * @param {Request} request
+ * @param {string} cacheControl
+ * @returns {boolean}
+ */
+function isApiRequestWithoutExplicitCachePolicy(request, cacheControl) {
+  const url = new URL(request.url);
+
+  if (url.origin !== self.location.origin || !url.pathname.startsWith("/api/")) {
+    return false;
+  }
+
+  return !/\b(public|max-age|s-maxage)\b/i.test(cacheControl);
+}
+
+/**
+ * Return true when a request URL or headers suggest user-specific or security-sensitive data.
+ * @param {Request} request
+ * @returns {boolean}
+ */
+function isSensitiveCacheRequest(request) {
+  const authorization = request.headers && typeof request.headers.get === "function"
+    ? request.headers.get("Authorization")
+    : null;
+
+  if (authorization) {
+    return true;
+  }
+
+  const url = new URL(request.url);
+  const sensitiveParams = [
+    "access_token",
+    "auth",
+    "code",
+    "csrf",
+    "csrf_token",
+    "id_token",
+    "refresh_token",
+    "session",
+    "session_id",
+    "sid",
+    "token",
+  ];
+
+  for (const param of sensitiveParams) {
+    if (url.searchParams.has(param)) return true;
+  }
+
+  return /\/(auth|login|logout|oauth|passkey|session)(\/|$)/i.test(url.pathname);
 }
 
 function isSyncTag(tag) {
@@ -869,7 +957,7 @@ async function preloadUrls(urls) {
       const request = new Request(url, { method: "GET", credentials: "same-origin" });
       const response = await fetch(request);
 
-      if (isCacheableResponse(response)) {
+      if (isCacheableResponse(request, response)) {
         await cache.put(request, response.clone());
         await putCacheMeta(request.url, Date.now()).catch(() => false);
       }

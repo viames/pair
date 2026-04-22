@@ -2,20 +2,23 @@
 
 ## Supported Versions
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+Pair v3 is the current stable release line. Pair v4 is in alpha on `main` and receives security fixes while the next major release is under development.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+| Version | Supported |
+| --- | --- |
+| `main` / `4.x-dev` | Development security fixes only |
+| `3.x` | Yes |
+| `< 3.0` | No |
 
 ## Reporting a Vulnerability
 
-Use this section to tell people how to report a vulnerability.
+Do not report security vulnerabilities in public GitHub issues.
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+Report suspected vulnerabilities through GitHub private vulnerability reporting when available, or contact the maintainer privately through the project owner profile. Include:
+
+- affected Pair version or branch
+- a minimal reproduction or clear attack path
+- expected impact
+- any known workaround
+
+The maintainer will confirm receipt, assess the report, and coordinate a fix or advisory when the issue is accepted.

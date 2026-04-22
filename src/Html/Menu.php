@@ -31,6 +31,27 @@ class Menu {
 	 */
 	protected string $faSize = 'fa-lg';
 
+	/**
+	 * Escape a value for safe usage in an HTML attribute.
+	 */
+	protected function escapeAttribute(?string $value): string {
+
+		return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+
+	}
+
+	/**
+	 * Escape a value for safe usage as HTML text.
+	 */
+	protected function escapeText(?string $value): string {
+
+		return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+
+	}
+
+	/**
+	 * Create a menu and resolve the active item from application or router state.
+	 */
 	public function __construct() {
 
 		$app = Application::getInstance();
@@ -40,6 +61,9 @@ class Menu {
 
 	}
 
+	/**
+	 * Render the menu when it is cast to string.
+	 */
 	public function __toString(): string {
 
 		return $this->render();
@@ -304,6 +328,7 @@ class Menu {
 		$app = Application::getInstance();
 
 		$links = $menuLi = $menuA = '';
+		$faStyle = $this->escapeAttribute($this->faStyle);
 
 		// builds each sub-item link
 		foreach ($entry->list as $subitem) {
@@ -324,9 +349,9 @@ class Menu {
 			}
 
 			$links .=
-				'<li class="' . $class . '"><a href="' . $subitem->url . '" class="' . $class . '" ' . $aria . '>' .
-				'<i aria-hidden="true" class="' . $this->faStyle . ' fa-fw ' . $subitem->icon . '"></i>' . $subitem->title .
-				(!is_null($subitem->badge) ? '<span aria-label="' . $subitem->badge . '" class="float-end badge badge-' . $subitem->badgeType . '">' . $subitem->badge . '</span>' : '') .
+				'<li class="' . $class . '"><a href="' . $this->escapeAttribute($subitem->url) . '" class="' . $class . '" ' . $aria . '>' .
+				'<i aria-hidden="true" class="' . $faStyle . ' fa-fw ' . $this->escapeAttribute($subitem->icon) . '"></i>' . $this->escapeText($subitem->title) .
+				$this->renderBadge($subitem) .
 				'</a></li>';
 
 		}
@@ -339,9 +364,9 @@ class Menu {
 		// assembles the dropdown
 		return '<li class="has-sub' . $menuLi . '">' .
 			'<a href="javascript: void(0);" class="waves-effect ' . $menuA . '">
-					<i aria-hidden="true" class="' . $this->faStyle . ' fa-fw ' . ($entry->icon ?: 'fa-th-large') . '"></i>
-					<span class="nav-label">' . $entry->title . '</span>
-					<span class="' . $this->faStyle . ' fa-angle-down float-right"></span>
+					<i aria-hidden="true" class="' . $faStyle . ' fa-fw ' . $this->escapeAttribute($entry->icon ?: 'fa-th-large') . '"></i>
+					<span class="nav-label">' . $this->escapeText($entry->title) . '</span>
+					<span class="' . $faStyle . ' fa-angle-down float-right"></span>
 			</a>' .
 			'<ul class="nav nav-second-level collapse">' . $links . '</ul></li>';
 
@@ -354,8 +379,9 @@ class Menu {
 	 */
 	protected function renderSeparator(MenuEntry $item): string {
 
-		if (!$item->title) $item->title = '&nbsp;';
-		return '<div aria-hidden="true" class="separator" role="separator">' . $item->title . '</div>';
+		$title = $item->title ? $this->escapeText($item->title) : '&nbsp;';
+
+		return '<div aria-hidden="true" class="separator" role="separator">' . $title . '</div>';
 
 	}
 
@@ -372,13 +398,29 @@ class Menu {
 		}
 
 		$current = $item->active ? ' class="active" aria-current="page"' : '';
+		$target = $item->target ? ' target="' . $this->escapeAttribute($item->target) . '"' : '';
+		$iconClass = $this->escapeAttribute(trim($this->faStyle . ' ' . $this->faSize . ' fa-fw ' . $item->icon));
 
-		return '<li><a href="' . $item->url . '"' . ($item->target ? ' target="' . $item->target . '"' : '') .
-			$current . '><i aria-hidden="true" class="' . $this->faStyle . ' ' . $this->faSize . ' fa-fw ' . $item->icon . '"></i> <span class="nav-label">' . $item->title .'</span> ' .
-			(!is_null($item->badge)
-				? '<span aria-label="' . $item->badge . '" class="float-end badge badge-' . $item->badgeType . '">' . $item->badge . '</span>'
-				: '')
+		return '<li><a href="' . $this->escapeAttribute($item->url) . '"' . $target .
+			$current . '><i aria-hidden="true" class="' . $iconClass . '"></i> <span class="nav-label">' . $this->escapeText($item->title) .'</span> ' .
+			$this->renderBadge($item)
 			. '</a></li>';
+
+	}
+
+	/**
+	 * Render a menu badge with escaped label and CSS class.
+	 */
+	protected function renderBadge(MenuEntry $item): string {
+
+		if (is_null($item->badge)) {
+			return '';
+		}
+
+		$badge = $this->escapeText($item->badge);
+		$badgeType = $this->escapeAttribute($item->badgeType);
+
+		return '<span aria-label="' . $badge . '" class="float-end badge badge-' . $badgeType . '">' . $badge . '</span>';
 
 	}
 
@@ -387,7 +429,7 @@ class Menu {
 	 */
 	protected function renderTitle(MenuEntry $item): string {
 
-		return '<li class="menu-title">' . $item->title . '</li>';
+		return '<li class="menu-title">' . $this->escapeText($item->title) . '</li>';
 
 	}
 

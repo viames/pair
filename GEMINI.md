@@ -32,17 +32,22 @@ These are the conventions most likely to affect implementation accuracy:
 
 ## Backend
 
-Language: **PHP 8.3+ / 8.4+**
+Language: **PHP 8.3, 8.4, and 8.5**
 
-Required extensions:
+Composer-required extensions:
 
-- fileinfo
-- json
-- pcre
-- PDO
+- curl
 - intl
-- pdo_mysql
-- Reflection
+- json
+- mbstring
+- PDO
+
+Runtime and feature-specific extensions:
+
+- pdo_mysql is required when using the default MySQL driver.
+- fileinfo is strongly recommended for upload MIME detection.
+- openssl is required for Passkey/WebAuthn features.
+- pcre and Reflection are part of standard PHP 8+ builds.
 
 ---
 

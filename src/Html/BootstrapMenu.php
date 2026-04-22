@@ -9,12 +9,16 @@ use Pair\Core\Application;
  */
 class BootstrapMenu extends Menu {
 
+	/**
+	 * Render a dropdown menu entry with Bootstrap-compatible classes.
+	 */
 	protected function renderDropdown(MenuEntry $entry): string {
 
 		$app = Application::getInstance();
 		$ret = '';
 		$links = '';
 		$menuClass = '';
+		$faStyle = $this->escapeAttribute($this->faStyle);
 
 		// builds each sub-item link
 		foreach ($entry->list as $subitem) {
@@ -33,9 +37,9 @@ class BootstrapMenu extends Menu {
 			}
 
 			$links .=
-				'<li' . $liClass . '><a ' . $aria . 'href="' . $subitem->url . '">' .
-				'<i aria-hidden="true" class="' . $this->faStyle . ' fa-fw ' . $subitem->icon . '"></i> ' . $subitem->title .
-				((isset($subitem->badge) and !is_null($subitem->badge)) ? '<span aria-label="' . $subitem->badge . '" class="float-end badge badge-' . $subitem->badgeType . '">' . $subitem->badge . '</span>' : '') .
+				'<li' . $liClass . '><a ' . $aria . 'href="' . $this->escapeAttribute($subitem->url) . '">' .
+				'<i aria-hidden="true" class="' . $faStyle . ' fa-fw ' . $this->escapeAttribute($subitem->icon) . '"></i> ' . $this->escapeText($subitem->title) .
+				$this->renderBadge($subitem) .
 				'</a></li>';
 
 		}
@@ -50,8 +54,8 @@ class BootstrapMenu extends Menu {
 			'<li class="has-sub ' . $menuClass . '">' .
 			'<a href="javascript:;">
 				<b class="caret float-right"></b>
-				<i aria-hidden="true" class="' . $this->faStyle . ' fa-fw ' . ($entry->icon ?: 'fa-th-large') . '"></i>
-				<span class="nav-label">' . $entry->title . '</span>
+				<i aria-hidden="true" class="' . $faStyle . ' fa-fw ' . $this->escapeAttribute($entry->icon ?: 'fa-th-large') . '"></i>
+				<span class="nav-label">' . $this->escapeText($entry->title) . '</span>
 			</a>' .
 			'<ul class="sub-menu">' . $links . '</ul></li>';
 
@@ -59,12 +63,18 @@ class BootstrapMenu extends Menu {
 
 	}
 
+	/**
+	 * Render a Bootstrap nav heading separator.
+	 */
 	protected function renderSeparator(MenuEntry $entry): string {
 
-		return '<li aria-hidden="true" class="nav-heading" role="separator">' . $entry->title . '</li>';
+		return '<li aria-hidden="true" class="nav-heading" role="separator">' . $this->escapeText($entry->title) . '</li>';
 
 	}
 
+	/**
+	 * Render a single Bootstrap menu entry.
+	 */
 	protected function renderSingle(MenuEntry $entry): string {
 
 		$app = Application::getInstance();
@@ -74,10 +84,13 @@ class BootstrapMenu extends Menu {
 			return '';
 		}
 
+		$target = $entry->target ? ' target="' . $this->escapeAttribute($entry->target) . '"' : '';
+		$iconClass = $this->escapeAttribute(trim($this->faStyle . ' ' . $this->faSize . ' fa-fw ' . $entry->icon));
+
 		$ret = '<li' . ($entry->active ? ' class="active"' : '') . '>' .
-			'<a' . ($entry->active ? ' aria-current="page"' : '') . ' href="' . $entry->url . '"' . ($entry->target ? ' target="' . $entry->target . '"' : '') .
-			'><i aria-hidden="true" class="' . $this->faStyle . ' ' . $this->faSize . ' fa-fw ' . $entry->icon . '"></i> <span class="nav-label">' . $entry->title .'</span> ' .
-			((isset($entry->badge) and !is_null($entry->badge)) ? '<span aria-label="' . $entry->badge . '" class="float-end badge badge-' . $entry->badgeType . '">' . $entry->badge . '</span>' : '') .
+			'<a' . ($entry->active ? ' aria-current="page"' : '') . ' href="' . $this->escapeAttribute($entry->url) . '"' . $target .
+			'><i aria-hidden="true" class="' . $iconClass . '"></i> <span class="nav-label">' . $this->escapeText($entry->title) .'</span> ' .
+			$this->renderBadge($entry) .
 			'</a></li>';
 
 		return $ret;

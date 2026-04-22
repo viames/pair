@@ -28,12 +28,12 @@ composer run upgrade-to-v4 -- --write
 
 ### What the Upgrader Rewrites Automatically
 
-- controller imports from `Pair\Core\Controller` to `Pair\Web\Controller` only when the controller already returns an explicit `PageResponse`, `JsonResponse`, or `ResponseInterface`
+- controller imports from `Pair\Core\Controller` to `Pair\Web\Controller`, including aliased imports, only when the controller already returns an explicit `PageResponse`, `JsonResponse`, or `ResponseInterface`
 - legacy `_init()` hooks to `boot()` in controllers already migrated to the new response-oriented base
 - legacy controller `lang()` calls to an explicit `translate()` helper when the controller is already safe to switch to `Pair\Web\Controller`
 - `ApiExposable::apiConfig()` blocks that still lack both `readModel` and `resource`
 - common `ApiResponse::respond($object->toArray())` and `Utilities::jsonResponse($object->toArray())` patterns by wrapping them through `Pair\Data\Payload`
-- readonly `*PageState` skeleton classes inside `modules/*/classes/` for legacy `View` files that assign layout variables through `assign()`
+- readonly `*PageState` skeleton classes inside `modules/*/classes/` for legacy `View` files, including fully-qualified parent classes, that assign layout variables through `assign()`
 - dedicated warnings for legacy `View::assignState()` usage so existing typed state wiring is moved into the controller without generating redundant skeletons
 
 ### What the Upgrader Reports but Does Not Rewrite Blindly
@@ -58,8 +58,14 @@ use Pair\Web\Controller;
 
 final class UserController extends Controller {
 
+	/**
+	 * Run controller setup before actions execute.
+	 */
 	protected function boot(): void {}
 
+	/**
+	 * Render the default user page with explicit state.
+	 */
 	public function defaultAction(): \Pair\Web\PageResponse {
 
 		$user = new User(7);
@@ -83,11 +89,17 @@ final readonly class UserPageState implements ReadModel, MapsFromRecord {
 
 	use ArraySerializableData;
 
+	/**
+	 * Create the read model from explicit public fields.
+	 */
 	public function __construct(
 		public int $id,
 		public string $name
 	) {}
 
+	/**
+	 * Map an ORM record to the public read model.
+	 */
 	public static function fromRecord(\Pair\Orm\ActiveRecord $record): static {
 
 		return new self(
@@ -97,6 +109,9 @@ final readonly class UserPageState implements ReadModel, MapsFromRecord {
 
 	}
 
+	/**
+	 * Export the read model for JSON responses.
+	 */
 	public function toArray(): array {
 
 		return [
@@ -118,6 +133,9 @@ final class User extends \Pair\Orm\ActiveRecord {
 
 	use ApiExposable;
 
+	/**
+	 * Return the explicit CRUD API contract.
+	 */
 	public static function apiConfig(): array {
 
 		return [

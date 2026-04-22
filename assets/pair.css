@@ -23,7 +23,7 @@
 #logbar #toggle-events.expanded::after {
     content: "\f0d7";
     font-family: "Font Awesome 6 Pro", "Font Awesome 6 Free";
-    font-size: 1.2rem;
+    font-size: 1rem;
     margin-left: 0.3rem;
 }
 
@@ -31,125 +31,255 @@
 #logbar #toggle-events:not(.expanded)::after {
     content: "\f0da";
     font-family: "Font Awesome 6 Pro", "Font Awesome 6 Free";
-    font-size: 1.2rem;
+    font-size: 1rem;
     margin-left: 0.3rem;
 }
 
+#logbar {
+    --logbar-bg: #20262d;
+    --logbar-bg-soft: #2b333c;
+    --logbar-border: #3e4854;
+    --logbar-text: #e4e9ef;
+    --logbar-muted: #aab4c0;
+    --logbar-warning: #d99a25;
+    --logbar-error: #d64b45;
+    --logbar-query: #6fb77a;
+    --logbar-api: #69a8d8;
+    color: var(--logbar-text);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+#logbar .logbar-header {
+    background: var(--logbar-bg);
+    border-color: var(--logbar-border);
+    position: sticky;
+    top: 0;
+    z-index: 20;
+}
+
+#logbar h4 {
+    color: var(--logbar-text);
+    font-size: 1rem;
+    margin: 0 0 0.75rem;
+}
+
 #logbar .head {
-    display: flex !important;
-    flex-direction: row !important;
-    font-size: 0.86rem;
-    font-weight: 400;
-    justify-content: space-between !important;
+    display: grid;
+    font-size: 0.78rem;
+    gap: 1px;
+    grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
     overflow: hidden;
-    text-overflow: ellipsis;
     user-select: none;
-    white-space: nowrap;
 }
 
 #logbar .head .item {
-    border-right: var(--bs-card-border-width, 1px) solid var(--bs-card-border-color, #dbdbdb);
-    padding: 0 14px;
-    text-align: center;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    width: 100%;
+    background: var(--logbar-bg-soft);
+    border: 1px solid var(--logbar-border);
+    min-width: 0;
+    padding: 0.55rem 0.65rem;
 }
 
-#logbar .head .item:last-child {
-    border-right: none;
+#logbar .head .item .label,
+#logbar .logbar-stat span {
+    color: var(--logbar-muted);
+    display: block;
+    font-size: 0.68rem;
+    line-height: 1;
+    text-transform: uppercase;
+}
+
+#logbar .head .item .emph {
+    display: block;
+    font-size: 0.92rem;
+    font-weight: 650;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#logbar .head .item .sub {
+    color: var(--logbar-muted);
+    display: block;
+    font-size: 0.68rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 #logbar .head .item.database {
     cursor: pointer;
 }
 
-#logbar .head .item.active {
-    background-color: rgba(45, 53, 60, 0.72);
-    color: var(--light);
+#logbar .head .item.database.active,
+#logbar .head .item.query {
+    border-color: var(--logbar-query);
 }
 
 #logbar .head .item.warning {
-    background-color: #EA3;
-    color: white;
-    cursor: pointer;
+    border-color: var(--logbar-warning);
 }
 
 #logbar .head .item.error {
-    background-color: #900;
-    color: white;
-    cursor: pointer;
-}
-
-#logbar .head .item.warning:hover {
-    background-color: #FC5;
-}
-
-#logbar .head .item.error:hover {
-    background-color: #B00;
-}
-
-#logbar .head .item.active:hover,
-#logbar #toggle-events.item.active:hover {
-    background-color: #7892b5;
-    color: black;
-}
-
-#logbar .head .item .desc {
-    display: inline-block;
-    overflow: hidden;
-    vertical-align: bottom;
-    white-space: nowrap;
-}
-
-#logbar .head .item .icon {
-    font-size: 1.125rem;
-    margin-right: 7px;
-}
-
-#logbar .head .item .emph {
-    font-weight: 600;
-}
-
-#logbar .head .item .sub {
-    display: inline;
-    font-size: 0.7em;
-    margin-left: 0.2rem;
-    opacity: 0.7;
-    white-space: nowrap;
+    border-color: var(--logbar-error);
 }
 
 #logbar #toggle-events.item {
-    border: none;
+    background: var(--logbar-bg-soft);
+    border: 1px solid var(--logbar-border);
+    color: var(--logbar-text);
     cursor: pointer;
-    text-align: center;
-    width: 100%;
+    font-size: 0.78rem;
+    padding: 0.35rem 0.65rem;
 }
 
-#logbar .events {
-    border-top: var(--bs-card-border-width, 1px) solid var(--bs-card-border-color, #dbdbdb);
-    font-family: monospace;
-    font-size: 0.75rem;
-    line-height: 1.6rem;
-    margin-top: 1rem;
-    word-wrap: break-word;
+#logbar .logbar-body {
+    background: #171c22;
+    border-top: 1px solid var(--logbar-border);
+    color: var(--logbar-text);
 }
 
-#logbar .events div {
-    margin: 10px 0;
+#logbar .logbar-tabs,
+#logbar .logbar-filters {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.85rem;
+}
+
+#logbar .logbar-tabs button,
+#logbar .logbar-filters input,
+#logbar .logbar-filters select,
+#logbar .logbar-filters label {
+    background: var(--logbar-bg-soft);
+    border: 1px solid var(--logbar-border);
+    color: var(--logbar-text);
+    font-size: 0.78rem;
+}
+
+#logbar .logbar-tabs button {
+    cursor: pointer;
+    padding: 0.35rem 0.7rem;
+}
+
+#logbar .logbar-tabs button.active {
+    background: #d7dde6;
+    color: #171c22;
+}
+
+#logbar .logbar-filters input,
+#logbar .logbar-filters select {
+    min-height: 2rem;
+    padding: 0.3rem 0.55rem;
+}
+
+#logbar .logbar-filters label {
+    align-items: center;
+    cursor: pointer;
+    display: inline-flex;
+    gap: 0.35rem;
+    min-height: 2rem;
+    padding: 0.3rem 0.55rem;
+}
+
+#logbar .logbar-section-title {
+    color: var(--logbar-muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    margin: 1rem 0 0.5rem;
+    text-transform: uppercase;
+}
+
+#logbar .logbar-overview-grid {
+    display: grid;
+    gap: 0.65rem;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+}
+
+#logbar .logbar-stat {
+    background: var(--logbar-bg-soft);
+    border: 1px solid var(--logbar-border);
+    padding: 0.7rem;
+}
+
+#logbar .logbar-stat strong {
+    display: block;
+    font-size: 1.15rem;
+    margin-top: 0.2rem;
+}
+
+#logbar .logbar-stat small {
+    color: var(--logbar-muted);
+}
+
+#logbar .logbar-findings {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+#logbar .logbar-findings li {
+    background: var(--logbar-bg-soft);
+    border-left: 3px solid var(--logbar-muted);
+    margin-bottom: 0.45rem;
+    padding: 0.65rem 0.75rem;
+}
+
+#logbar .logbar-findings li.warning {
+    border-left-color: var(--logbar-warning);
+}
+
+#logbar .logbar-findings li.error {
+    border-left-color: var(--logbar-error);
+}
+
+#logbar .logbar-findings strong,
+#logbar .logbar-findings span {
+    display: block;
+}
+
+#logbar .logbar-findings span {
+    color: var(--logbar-muted);
+    font-size: 0.82rem;
+}
+
+#logbar .logbar-event,
+#logbar .logbar-query-occurrence {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 0.78rem;
+    line-height: 1.45;
+    padding: 0.4rem 0;
     text-align: left;
+    word-break: break-word;
 }
 
-#logbar .events>*>span.time {
-    background-color: #ddd;
-    border-radius: 2px;
+#logbar .logbar-event-message,
+#logbar .logbar-event-subtext,
+#logbar code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+#logbar .logbar-event-type,
+#logbar span.time {
+    color: var(--logbar-muted);
     cursor: default;
-    padding: 1px 5px;
+    display: inline-block;
+    font-size: 0.7rem;
+    margin-right: 0.45rem;
+    min-width: 3.7rem;
+    text-transform: uppercase;
     user-select: none;
 }
 
-#logbar .events>*>span.time.slow {
-    background-color: #EA3;
+#logbar .events>*>span.time {
+    background-color: var(--logbar-bg-soft);
+    border-radius: 2px;
+    padding: 1px 5px;
+}
+
+#logbar .events>*>span.time.slow,
+#logbar .logbar-slow .logbar-timeline-track span {
+    background-color: var(--logbar-warning);
 }
 
 #logbar .events.show-queries .query {
@@ -161,34 +291,142 @@
 }
 
 #logbar .warning {
-    color: #EA3;
+    color: var(--logbar-warning);
 }
 
 #logbar .error {
-    color: #F00;
+    color: var(--logbar-error);
 }
 
 #logbar .notice {
-    color: #458;
+    color: #8db6e5;
 }
 
 #logbar .api {
-    color: #487a45;
+    color: var(--logbar-api);
 }
 
-#logbar .query span,
-#logbar .api span {
-    color: #ccc;
-    cursor: default;
-    user-select: none;
+#logbar .query {
+    color: var(--logbar-query);
 }
 
-#logbar span.time {
-    color: #777;
+#logbar .logbar-query-table {
+    font-size: 0.76rem;
 }
 
-#logbar>.head>.item {
-	background-color: #2d353c;
+#logbar .logbar-query-head,
+#logbar .logbar-query-summary {
+    display: grid;
+    gap: 0.45rem;
+    grid-template-columns: 4rem 5rem 5rem 5rem 4rem 5rem 7rem minmax(12rem, 1fr);
+}
+
+#logbar .logbar-query-head {
+    color: var(--logbar-muted);
+    font-weight: 700;
+    padding: 0.4rem 0.65rem;
+    text-transform: uppercase;
+}
+
+#logbar .logbar-query-group {
+    background: var(--logbar-bg-soft);
+    border: 1px solid var(--logbar-border);
+    margin-bottom: 0.45rem;
+}
+
+#logbar .logbar-query-group.duplicate {
+    border-color: var(--logbar-warning);
+}
+
+#logbar .logbar-query-summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 0.55rem 0.65rem;
+}
+
+#logbar .logbar-query-summary code,
+#logbar .logbar-query-occurrence code {
+    color: var(--logbar-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#logbar .logbar-query-occurrences {
+    border-top: 1px solid var(--logbar-border);
+    padding: 0.35rem 0.65rem 0.55rem;
+}
+
+#logbar .logbar-query-occurrence {
+    display: grid;
+    gap: 0.6rem;
+    grid-template-columns: 5rem 5rem minmax(12rem, 1fr);
+}
+
+#logbar .logbar-timeline-row {
+    align-items: center;
+    display: grid;
+    gap: 0.7rem;
+    grid-template-columns: 8rem minmax(10rem, 1fr) minmax(12rem, 1.2fr);
+    margin-bottom: 0.45rem;
+}
+
+#logbar .logbar-timeline-label {
+    color: var(--logbar-muted);
+    font-size: 0.72rem;
+}
+
+#logbar .logbar-timeline-label span,
+#logbar .logbar-timeline-label strong {
+    display: block;
+}
+
+#logbar .logbar-timeline-track {
+    background: rgba(255, 255, 255, 0.09);
+    height: 0.75rem;
+    position: relative;
+}
+
+#logbar .logbar-timeline-track span {
+    background: #7892b5;
+    bottom: 0;
+    display: block;
+    position: absolute;
+    top: 0;
+}
+
+#logbar .logbar-timeline-row.query .logbar-timeline-track span {
+    background: var(--logbar-query);
+}
+
+#logbar .logbar-timeline-row.error .logbar-timeline-track span {
+    background: var(--logbar-error);
+}
+
+#logbar .logbar-timeline-row.warning .logbar-timeline-track span {
+    background: var(--logbar-warning);
+}
+
+#logbar .logbar-timeline-text {
+    font-size: 0.76rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#logbar .logbar-empty {
+    color: var(--logbar-muted);
+    font-size: 0.8rem;
+    padding: 0.75rem 0;
+}
+
+@media (max-width: 900px) {
+    #logbar .logbar-query-head,
+    #logbar .logbar-query-summary,
+    #logbar .logbar-query-occurrence,
+    #logbar .logbar-timeline-row {
+        grid-template-columns: 1fr;
+    }
 }
 
 .list-filter {

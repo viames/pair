@@ -2,6 +2,7 @@
 
 [Website](https://viames.github.io/pair/) | [Wiki](https://github.com/viames/pair/wiki) | [Issues](https://github.com/viames/pair/issues)
 
+[![Tests](https://github.com/viames/pair/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/viames/pair/actions/workflows/ci.yml?query=branch%3Amain)
 [![Total Downloads](https://poser.pugx.org/viames/pair/downloads)](https://packagist.org/packages/viames/pair)
 [![Latest Stable Version](https://poser.pugx.org/viames/pair/v/stable)](https://packagist.org/packages/viames/pair)
 [![GitHub Release](https://img.shields.io/github/v/release/viames/pair)](https://github.com/viames/pair/releases)
@@ -111,9 +112,15 @@ use Pair\Web\PageResponse;
 
 final class UserController extends Controller {
 
+	/**
+	 * Render the default user page.
+	 */
 	public function defaultAction(): PageResponse {
 
 		$state = new class ('Hello Pair v4') {
+			/**
+			 * Store the page message.
+			 */
 			public function __construct(public string $message) {}
 		};
 
@@ -209,11 +216,9 @@ Configuration reference: [Configuration (.env)](https://github.com/viames/pair/w
 
 ## Upgrading
 
-If you are upgrading between major versions:
+If you are upgrading a Pair v3 application to Pair v4:
 
 ```sh
-composer run upgrade-to-v2
-composer run upgrade-to-v3
 composer run upgrade-to-v4 -- --dry-run
 composer run upgrade-to-v4 -- --write
 ```
@@ -295,7 +300,7 @@ Version history is available in GitHub Releases: [github.com/viames/pair/release
 
 ## Security
 
-If you discover a security issue, please open a GitHub issue with a clear description and steps to reproduce.
+If you discover a security issue, follow the private reporting guidance in [SECURITY.md](SECURITY.md).
 
 ## Contributing
 
