@@ -281,7 +281,7 @@ PHP);
 			json_encode([
 				'code' => 'CONFLICT',
 				'error' => 'Conflict',
-				'detail' => 'Idempotency key already used with different payload',
+				'detail' => 'The idempotency key has already been used with a different payload',
 			], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
 			$result['stdout']
 		);

@@ -105,7 +105,7 @@
 			const url = options.url || "/api/passkey/login/verify";
 
 			if (!options.credential || typeof options.credential !== "object") {
-				throw new Error("Missing passkey credential payload.");
+				throw new Error(this.message("PASSKEY_MISSING_CREDENTIAL_PAYLOAD", "Passkey credential payload is missing."));
 			}
 
 			const payload = {
@@ -135,7 +135,7 @@
 			const url = options.url || "/api/passkey/register/verify";
 
 			if (!options.credential || typeof options.credential !== "object") {
-				throw new Error("Missing passkey credential payload.");
+				throw new Error(this.message("PASSKEY_MISSING_CREDENTIAL_PAYLOAD", "Passkey credential payload is missing."));
 			}
 
 			const payload = {
@@ -200,6 +200,21 @@
 				typeof navigator.credentials.create === "function" &&
 				typeof navigator.credentials.get === "function"
 			);
+
+		}
+
+		/**
+		 * Return a translated client message from server-injected PairMessages.
+		 * @param {string} key
+		 * @param {string} fallback
+		 * @returns {string}
+		 */
+		static message(key, fallback) {
+
+			const messages = global.PairMessages || {};
+			const message = messages && typeof messages[key] === "string" ? messages[key].trim() : "";
+
+			return message || fallback;
 
 		}
 
@@ -380,7 +395,7 @@
 
 			if (!response.ok) {
 				const error = new Error(
-					(payload && (payload.error || payload.message)) ? (payload.error || payload.message) : "Passkey request failed."
+					(payload && (payload.error || payload.message)) ? (payload.error || payload.message) : this.message("PASSKEY_REQUEST_FAILED", "The passkey request failed.")
 				);
 				error.status = response.status;
 				error.payload = payload;
@@ -401,7 +416,7 @@
 			const id = parseInt(String(options.id || ""), 10);
 
 			if (!Number.isFinite(id) || id < 1) {
-				throw new Error("Invalid passkey ID.");
+				throw new Error(this.message("PASSKEY_INVALID_ID", "Invalid passkey ID."));
 			}
 
 			const urlBase = options.urlBase || "/api/passkey/revoke";
@@ -422,7 +437,7 @@
 		static serializeCredential(credential) {
 
 			if (!credential || typeof credential !== "object") {
-				throw new Error("Credential is missing.");
+				throw new Error(this.message("PASSKEY_CREDENTIAL_MISSING", "Credential is missing."));
 			}
 
 			const response = credential.response || {};
@@ -501,7 +516,7 @@
 			} else if (ArrayBuffer.isView(value)) {
 				bytes = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
 			} else {
-				throw new Error("Unsupported buffer type.");
+				throw new Error(this.message("PASSKEY_UNSUPPORTED_BUFFER_TYPE", "Unsupported buffer type."));
 			}
 
 			let binary = "";
@@ -520,7 +535,7 @@
 		static ensureSupported() {
 
 			if (!this.isSupported()) {
-				throw new Error("Passkey/WebAuthn is not supported in this browser or context.");
+				throw new Error(this.message("PASSKEY_UNSUPPORTED_BROWSER_CONTEXT", "Passkey/WebAuthn is not supported by this browser or in this context."));
 			}
 
 		}

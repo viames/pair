@@ -444,7 +444,7 @@ class SpecGenerator {
 			'responses'   => [
 				'204' => ['description' => 'Resource deleted successfully'],
 				'404' => ['description' => 'Resource not found'],
-				'409' => ['description' => 'Resource is referenced and cannot be deleted'],
+				'409' => ['description' => 'This resource is referenced and cannot be deleted'],
 			],
 		];
 

@@ -210,7 +210,7 @@ abstract class View {
 
 		} catch (\Throwable $e) {
 
-			$this->modal(Translator::do('ERROR'), $e->getMessage(), 'error')->confirm('OK');
+			$this->modal(Translator::do('ERROR'), $e->getMessage(), 'error')->confirm(Translator::do('OK'));
 
 			if ('default' != $this->layout) {
 				$this->redirect();

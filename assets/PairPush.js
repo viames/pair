@@ -15,9 +15,22 @@ class PairPush {
 	 */
 	static async registerServiceWorker(swUrl = '/sw.js') {
 		if (!this.isSupported()) {
-			throw new Error('Web Push is not supported in this browser.');
+			throw new Error(this.message('WEB_PUSH_UNSUPPORTED', 'The Web Push API is not supported by this browser.'));
 		}
 		return navigator.serviceWorker.register(swUrl);
+	}
+
+	/**
+	 * Return a translated client message from server-injected PairMessages.
+	 * @param {string} key
+	 * @param {string} fallback
+	 * @returns {string}
+	 */
+	static message(key, fallback) {
+		const messages = window.PairMessages || {};
+		const message = messages && typeof messages[key] === 'string' ? messages[key].trim() : '';
+
+		return message || fallback;
 	}
 
 	/**
@@ -43,11 +56,11 @@ class PairPush {
 	 */
 	static async subscribe({ vapidPublicKey, subscribeUrl = '/push/subscribe', swUrl = '/sw.js' }) {
 		if (!this.isSupported()) {
-			throw new Error('Web Push is not supported in this browser.');
+			throw new Error(this.message('WEB_PUSH_UNSUPPORTED', 'The Web Push API is not supported by this browser.'));
 		}
 
 		if (!vapidPublicKey) {
-			throw new Error('VAPID public key is required.');
+			throw new Error(this.message('VAPID_PUBLIC_KEY_REQUIRED', 'VAPID public key is required.'));
 		}
 
 		const registration = await this.registerServiceWorker(swUrl);

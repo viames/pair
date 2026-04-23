@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+	<plugin type="module">
+		<name>Sample</name>
+		<folder>sample</folder>
+		<version>1.0.0</version>
+		<dateReleased>2026-04-23</dateReleased>
+		<appVersion>4.0.0</appVersion>
+		<files>
+			<file>controller.php</file>
+		</files>
+		<options/>
+	</plugin>
+</manifest>

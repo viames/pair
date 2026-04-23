@@ -3,6 +3,7 @@
 namespace Pair\Helpers;
 
 use Pair\Core\Application;
+use Pair\Core\Env;
 use Pair\Core\Logger;
 use Pair\Core\Router;
 use Pair\Exceptions\ErrorCodes;
@@ -13,9 +14,19 @@ use Pair\Orm\Collection;
 class Translator {
 
 	/**
+	 * Built-in fallback locale used when runtime locale loading is not available.
+	 */
+	private const FALLBACK_LOCALE = 'en-GB';
+
+	/**
 	 * Singleton object.
 	 */
 	protected static Translator $instance;
+
+	/**
+	 * Translation strings loaded from fallback ini files without requiring database locale state.
+	 */
+	private static ?array $safeFallbackStrings = null;
 
 	/**
 	 * The default Locale object.
@@ -307,6 +318,66 @@ class Translator {
 	}
 
 	/**
+	 * Return a translated string without forcing database-backed locale initialization when unsafe.
+	 *
+	 * This is intended for low-level API and rendering paths that may also run in CLI tests before
+	 * an application database has been configured.
+	 */
+	public static function safeDo(string $key, string|array|null $vars = null, ?string $default = null): string {
+
+		$fallback = $default ?? self::safeFallbackString($key) ?? $key;
+
+		if (!self::canUseRuntimeLocale()) {
+			return self::formatString($fallback, $vars);
+		}
+
+		try {
+			return self::do($key, $vars, false, $fallback);
+		} catch (\Throwable) {
+			return self::formatString($fallback, $vars);
+		}
+
+	}
+
+	/**
+	 * Return true when the normal Translator path can safely load the database-backed locale.
+	 */
+	private static function canUseRuntimeLocale(): bool {
+
+		if (Application::isCli()) {
+			return false;
+		}
+
+		return (
+			strlen(trim((string)Env::get('DB_HOST'))) > 0
+			and strlen(trim((string)Env::get('DB_NAME'))) > 0
+			and strlen(trim((string)Env::get('DB_USER'))) > 0
+		);
+
+	}
+
+	/**
+	 * Apply vsprintf-style variables to a fallback string without raising formatting errors.
+	 */
+	private static function formatString(string $string, string|array|null $vars = null): string {
+
+		if (is_null($vars)) {
+			return $string;
+		}
+
+		if (!is_array($vars)) {
+			$vars = [(string)$vars];
+		}
+
+		try {
+			return vsprintf($string, $vars);
+		} catch (\ValueError) {
+			return $string;
+		}
+
+	}
+
+	/**
 	 * Load language strings from ini file and merge them without overwriting already loaded keys.
 	 */
 	private function parseLanguageFile(string $filePath): void {
@@ -330,6 +401,40 @@ class Translator {
 			}
 
 		}
+
+	}
+
+	/**
+	 * Return a fallback translation from application and Pair language files.
+	 */
+	private static function safeFallbackString(string $key): ?string {
+
+		if (is_null(self::$safeFallbackStrings)) {
+			self::$safeFallbackStrings = [];
+
+			$pairLanguageFolder = dirname(dirname(__DIR__)) . '/translations/';
+			$languageFiles = [];
+
+			if (defined('APPLICATION_PATH')) {
+				$languageFiles[] = APPLICATION_PATH . '/translations/' . self::FALLBACK_LOCALE . '.ini';
+			}
+
+			$languageFiles[] = $pairLanguageFolder . self::FALLBACK_LOCALE . '.ini';
+
+			foreach ($languageFiles as $filePath) {
+				if (!file_exists($filePath) or !is_readable($filePath)) {
+					continue;
+				}
+
+				$strings = parse_ini_file($filePath);
+
+				if (is_array($strings)) {
+					self::$safeFallbackStrings += $strings;
+				}
+			}
+		}
+
+		return self::$safeFallbackStrings[$key] ?? null;
 
 	}
 

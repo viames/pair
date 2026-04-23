@@ -58,7 +58,7 @@ class Idempotency {
 		if (is_array($row)) {
 
 			if (isset($row['requestHash']) and $row['requestHash'] !== $hash) {
-				return ApiResponse::errorResponse('CONFLICT', ['detail' => 'Idempotency key already used with different payload']);
+				return ApiResponse::errorResponse('CONFLICT', ['detail' => ApiResponse::localizedMessage('API_DETAIL_IDEMPOTENCY_PAYLOAD_MISMATCH')]);
 			}
 
 			if (($row['status'] ?? '') === 'done') {
@@ -68,7 +68,7 @@ class Idempotency {
 			}
 
 			if (($row['status'] ?? '') === 'processing') {
-				return ApiResponse::errorResponse('CONFLICT', ['detail' => 'A request with this idempotency key is already processing']);
+				return ApiResponse::errorResponse('CONFLICT', ['detail' => ApiResponse::localizedMessage('API_DETAIL_IDEMPOTENCY_PROCESSING')]);
 			}
 
 		}

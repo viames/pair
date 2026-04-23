@@ -73,7 +73,8 @@ The generator writes explicit Pair v4 files and avoids overwriting user-edited f
 - Small and fast for small/medium projects.
 - MVC structure with SEO-friendly routing.
 - ActiveRecord-style ORM with automatic type casting.
-- Plugin-oriented architecture (modules/templates).
+- Installable Package architecture for ZIP-delivered modules, templates, providers, and custom package records.
+- Runtime Extensions for explicit optional integrations.
 - Good defaults for timezone, logging, and framework utilities.
 - Optional third-party integrations when needed.
 
@@ -211,6 +212,8 @@ Pair includes optional support for services such as:
 - [Telegram Bot API](https://core.telegram.org/bots/api)
 - [OneSignal](https://onesignal.com/)
 - [Stripe](https://stripe.com/docs)
+
+In Pair v4 these integrations should be exposed through Runtime Extensions and manually registered adapters. This is separate from Installable Packages, the ZIP/manifest mechanism used for modules, templates, providers, and custom package records.
 
 Configuration reference: [Configuration (.env)](https://github.com/viames/pair/wiki/Configuration-file)
 

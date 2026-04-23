@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Pair\Html\UiRenderers;
 
 use Pair\Core\Router;
+use Pair\Helpers\Translator;
 use Pair\Html\FormControl;
 use Pair\Html\UiRenderer;
 use Pair\Html\UiTheme;
@@ -98,10 +99,10 @@ class NativeUiRenderer implements UiRenderer {
 	public function pagination(Router $router, int $page, int $pages): string {
 
 		$range = $this->paginationRange($page, $pages);
-		$render = '<nav aria-label="Pagination"><ul>';
+		$render = '<nav aria-label="' . $this->translatedAttribute('PAGINATION') . '"><ul>';
 
 		if ($page > 1) {
-			$render .= '<li><a href="' . $router->getPageUrl(1) . '" aria-label="Go to the first page">«</a></li>';
+			$render .= '<li><a href="' . $router->getPageUrl(1) . '" aria-label="' . $this->translatedAttribute('GO_TO_FIRST_PAGE') . '">«</a></li>';
 		}
 
 		for ($i = $range['min']; $i <= $range['max']; $i++) {
@@ -110,12 +111,21 @@ class NativeUiRenderer implements UiRenderer {
 		}
 
 		if ($page < $pages) {
-			$render .= '<li><a href="' . $router->getPageUrl($pages) . '" aria-label="Go to the last page">»</a></li>';
+			$render .= '<li><a href="' . $router->getPageUrl($pages) . '" aria-label="' . $this->translatedAttribute('GO_TO_LAST_PAGE') . '">»</a></li>';
 		}
 
 		$render .= '</ul></nav>';
 
 		return $render;
+
+	}
+
+	/**
+	 * Return a translated value escaped for HTML attribute context.
+	 */
+	protected function translatedAttribute(string $key, string|array|null $vars = null): string {
+
+		return htmlspecialchars(Translator::safeDo($key, $vars), ENT_QUOTES, 'UTF-8');
 
 	}
 

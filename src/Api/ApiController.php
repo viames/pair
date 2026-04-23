@@ -187,7 +187,7 @@ abstract class ApiController extends Controller {
 		$body = $this->request->json();
 
 		if (is_null($body)) {
-			return $this->errorResponse('BAD_REQUEST', ['detail' => 'Invalid or empty JSON body']);
+			return $this->errorResponse('BAD_REQUEST', ['detail' => ApiResponse::localizedMessage('API_DETAIL_INVALID_OR_EMPTY_JSON_BODY')]);
 		}
 
 		return $body;
@@ -356,17 +356,17 @@ abstract class ApiController extends Controller {
 		$client = $this->whatsAppCloudClient();
 
 		if (!$client->webhookAppSecretSet()) {
-			return $this->errorResponse('INTERNAL_SERVER_ERROR', ['detail' => 'Missing WHATSAPP_CLOUD_APP_SECRET']);
+			return $this->errorResponse('INTERNAL_SERVER_ERROR', ['detail' => ApiResponse::localizedMessage('API_DETAIL_MISSING_WHATSAPP_APP_SECRET')]);
 		}
 
 		$payload = $this->request->rawBody();
 
 		if ('' === trim($payload)) {
-			return $this->errorResponse('BAD_REQUEST', ['detail' => 'Empty WhatsApp webhook payload']);
+			return $this->errorResponse('BAD_REQUEST', ['detail' => ApiResponse::localizedMessage('API_DETAIL_EMPTY_WHATSAPP_WEBHOOK_PAYLOAD')]);
 		}
 
 		if (!$client->verifyWebhookSignature($payload)) {
-			return $this->errorResponse('FORBIDDEN', ['detail' => 'Invalid WhatsApp webhook signature']);
+			return $this->errorResponse('FORBIDDEN', ['detail' => ApiResponse::localizedMessage('API_DETAIL_INVALID_WHATSAPP_WEBHOOK_SIGNATURE')]);
 		}
 
 		try {
@@ -390,7 +390,7 @@ abstract class ApiController extends Controller {
 		$client = $this->whatsAppCloudClient();
 
 		if (!$client->webhookVerifyTokenSet()) {
-			return $this->errorResponse('INTERNAL_SERVER_ERROR', ['detail' => 'Missing WHATSAPP_CLOUD_WEBHOOK_VERIFY_TOKEN']);
+			return $this->errorResponse('INTERNAL_SERVER_ERROR', ['detail' => ApiResponse::localizedMessage('API_DETAIL_MISSING_WHATSAPP_WEBHOOK_VERIFY_TOKEN')]);
 		}
 
 		try {

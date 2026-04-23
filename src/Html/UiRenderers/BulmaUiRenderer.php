@@ -119,14 +119,14 @@ class BulmaUiRenderer extends NativeUiRenderer {
 	public function pagination(Router $router, int $page, int $pages): string {
 
 		$range = $this->paginationRange($page, $pages);
-		$render = '<nav class="pagination" role="navigation" aria-label="pagination">';
+		$render = '<nav class="pagination" role="navigation" aria-label="' . $this->translatedAttribute('PAGINATION_LOWER') . '">';
 
 		if ($page > 1) {
-			$render .= '<a class="pagination-previous" href="' . $router->getPageUrl(1) . '" aria-label="Go to the first page">«</a>';
+			$render .= '<a class="pagination-previous" href="' . $router->getPageUrl(1) . '" aria-label="' . $this->translatedAttribute('GO_TO_FIRST_PAGE') . '">«</a>';
 		}
 
 		if ($page < $pages) {
-			$render .= '<a class="pagination-next" href="' . $router->getPageUrl($pages) . '" aria-label="Go to the last page">»</a>';
+			$render .= '<a class="pagination-next" href="' . $router->getPageUrl($pages) . '" aria-label="' . $this->translatedAttribute('GO_TO_LAST_PAGE') . '">»</a>';
 		}
 
 		$render .= '<ul class="pagination-list">';
@@ -135,8 +135,8 @@ class BulmaUiRenderer extends NativeUiRenderer {
 
 			$linkClass = ($i == $page) ? 'pagination-link is-current' : 'pagination-link';
 			$aria = ($i == $page)
-				? ' aria-label="Page ' . $i . '" aria-current="page"'
-				: ' aria-label="Go to page ' . $i . '"';
+				? ' aria-label="' . $this->translatedAttribute('PAGE_NUMBER', (string)$i) . '" aria-current="page"'
+				: ' aria-label="' . $this->translatedAttribute('GO_TO_PAGE_NUMBER', (string)$i) . '"';
 
 			$render .= '<li><a class="' . $linkClass . '"' . $aria . ' href="' . $router->getPageUrl($i) . '">' . $i . '</a></li>';
 

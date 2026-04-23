@@ -3,11 +3,12 @@
 namespace Pair\Models;
 
 use Pair\Core\Logger;
-use Pair\Helpers\Plugin;
-use Pair\Helpers\PluginBase;
+use Pair\Exceptions\PairException;
 use Pair\Helpers\Utilities;
+use Pair\Packages\InstallablePackage;
+use Pair\Packages\InstallablePackageRecord;
 
-class Module extends PluginBase {
+class Module extends InstallablePackageRecord {
 
 	/**
 	 * ID as primary key.
@@ -90,22 +91,22 @@ class Module extends PluginBase {
 	 */
 	protected function beforeDelete(): void {
 
-		// delete plugin folder
-		$plugin = $this->getPlugin();
+		// Delete the installed package folder before removing the database record.
+		$package = $this->getInstallablePackage();
 
-		if (!Utilities::deleteFolder($plugin->baseFolder)) {
-			throw new PairException('Could not delete module folder ' . $plugin->baseFolder);
+		if (!Utilities::deleteFolder($package->baseFolder)) {
+			throw new PairException('Could not delete module folder ' . $package->baseFolder);
 		}
 
 		$logger = Logger::getInstance();
-		$logger->info('Plugin folder ' . $plugin->baseFolder . ' has been deleted');
+		$logger->info('Installable package folder ' . $package->baseFolder . ' has been deleted');
 
 	}
 
 	/**
-	 * Returns absolute path to plugin folder.
+	 * Returns the base folder for module packages.
 	 */
-	public function getBaseFolder(): string {
+	public function getPackageBaseFolder(): string {
 
 		return APPLICATION_PATH . '/modules';
 
@@ -138,32 +139,32 @@ class Module extends PluginBase {
 	}
 
 	/**
-	 * Creates and returns the Plugin object of this Module object.
+	 * Creates and returns the InstallablePackage object of this Module object.
 	 */
-	public function getPlugin(): Plugin {
+	public function getInstallablePackage(): InstallablePackage {
 
-		$folder = $this->getBaseFolder() . '/' . strtolower(str_replace([' ', '_'], '', $this->name));
+		$folder = $this->getPackageBaseFolder() . '/' . strtolower(str_replace([' ', '_'], '', $this->name));
 		$dateReleased = $this->dateReleased->format('Y-m-d');
 
-		$plugin = new Plugin('Module', $this->name, $this->version, $dateReleased, $this->appVersion, $folder);
+		$package = new InstallablePackage('Module', $this->name, $this->version, $dateReleased, $this->appVersion, $folder);
 
-		return $plugin;
+		return $package;
 
 	}
 
 	/**
-	 * Checks if Module is already installed in this application.
+	 * Checks if a Module package record is already installed in this application.
 	 */
-	public static function pluginExists(string $name): bool {
+	public static function packageRecordExists(string $name): bool {
 
 		return (bool)self::countAllObjects(['name'=>$name]);
 
 	}
 
 	/**
-	 * Get option parameters and store this object loaded by a Plugin.
+	 * Get option parameters and store this object loaded from a package manifest.
 	 */
-	public function storeByPlugin(\SimpleXMLElement $options): bool {
+	public function storeFromPackageManifest(\SimpleXMLElement $options): bool {
 
 		return $this->store();
 

@@ -213,7 +213,7 @@
    * @param {*} fallback
    * @returns {string}
    */
-  function getErrorMessage(error, fallback = "Unexpected error") {
+  function getErrorMessage(error, fallback = getClientMessage("UNEXPECTED_ERROR", "Unexpected error")) {
     if (error && typeof error === "object") {
       if (error.payload && typeof error.payload === "object") {
         if (typeof error.payload.message === "string" && error.payload.message.trim()) {
@@ -238,7 +238,20 @@
       return error.trim();
     }
 
-    return String(fallback ?? "Unexpected error");
+    return String(fallback ?? getClientMessage("UNEXPECTED_ERROR", "Unexpected error"));
+  }
+
+  /**
+   * Return a translated client message from server-injected PairMessages.
+   * @param {string} key
+   * @param {string} fallback
+   * @returns {string}
+   */
+  function getClientMessage(key, fallback) {
+    const messages = global.PairMessages || {};
+    const message = messages && typeof messages[key] === "string" ? messages[key].trim() : "";
+
+    return message || fallback;
   }
 
   /**

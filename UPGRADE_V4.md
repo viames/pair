@@ -26,6 +26,8 @@ composer run upgrade-to-v4 -- --dry-run
 composer run upgrade-to-v4 -- --write
 ```
 
+The upgrader skips `.git`, `node_modules`, `vendor`, and `tests` folders so it updates application runtime code and package metadata without rewriting external code or test assertions.
+
 ### What the Upgrader Rewrites Automatically
 
 - controller imports from `Pair\Core\Controller` to `Pair\Web\Controller`, including aliased imports, only when the controller already returns an explicit `PageResponse`, `JsonResponse`, or `ResponseInterface`
@@ -35,6 +37,10 @@ composer run upgrade-to-v4 -- --write
 - common `ApiResponse::respond($object->toArray())` and `Utilities::jsonResponse($object->toArray())` patterns by wrapping them through `Pair\Data\Payload`
 - readonly `*PageState` skeleton classes inside `modules/*/classes/` for legacy `View` files, including fully-qualified parent classes, that assign layout variables through `assign()`
 - dedicated warnings for legacy `View::assignState()` usage so existing typed state wiring is moved into the controller without generating redundant skeletons
+- old Runtime Plugin API references to Runtime Extension names, including `PluginInterface`, `RuntimePluginInterface`, `registerPlugin()`, and `registerRuntimePlugin()`
+- old installable plugin API references to Installable Package names, including `Plugin`, `PluginBase`, `InstallablePlugin`, `installPackage()`, `downloadPackage()`, `createManifestFile()`, `getManifestByFile()`, `getPlugin()`, `pluginExists()`, and `storeByPlugin()`
+- installable package manifests from `<plugin>` nodes to `<package>` nodes
+- package-related Composer keywords and known package translation keys
 
 ### What the Upgrader Reports but Does Not Rewrite Blindly
 
@@ -43,6 +49,7 @@ composer run upgrade-to-v4 -- --write
 - `setView()` and `assign()`/`assignState()` calls
 - `ActiveRecord::html()` usage
 - `reload()` flows
+- Runtime Extension classes whose class name still ends with `Plugin`; rename the class and file manually when autoloading permits it
 
 These cases need manual migration because they depend on application-specific state and layout intent.
 This rule was validated against the current `pair_boilerplate` baseline: legacy controllers are now reported, not silently rewritten to an incompatible base class.

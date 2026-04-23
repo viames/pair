@@ -4,11 +4,12 @@ namespace Pair\Models;
 
 use Pair\Core\Logger;
 use Pair\Exceptions\CriticalException;
-use Pair\Helpers\Plugin;
-use Pair\Helpers\PluginBase;
+use Pair\Exceptions\PairException;
 use Pair\Helpers\Utilities;
+use Pair\Packages\InstallablePackage;
+use Pair\Packages\InstallablePackageRecord;
 
-class Template extends PluginBase {
+class Template extends InstallablePackageRecord {
 
 	/**
 	 * ID as primary key.
@@ -151,19 +152,19 @@ class Template extends PluginBase {
 	/**
 	 * Removes files of this Module object before its deletion.
 	 *
-	 * @throws PairException if the plugin folder could not be deleted.
+	 * @throws PairException if the package folder could not be deleted.
 	 */
 	protected function beforeDelete(): void {
 
-		// delete plugin folder
-		$plugin = $this->getPlugin();
+		// Delete the installed package folder before removing the database record.
+		$package = $this->getInstallablePackage();
 
-		if (!Utilities::deleteFolder($plugin->baseFolder)) {
-			throw new PairException('Could not delete template folder ' . $plugin->baseFolder);
+		if (!Utilities::deleteFolder($package->baseFolder)) {
+			throw new PairException('Could not delete template folder ' . $package->baseFolder);
 		}
 
 		$logger = Logger::getInstance();
-		$logger->info('Plugin folder ' . $plugin->baseFolder . ' has been deleted');
+		$logger->info('Installable package folder ' . $package->baseFolder . ' has been deleted');
 
 	}
 
@@ -446,11 +447,11 @@ class Template extends PluginBase {
 	}
 
 	/**
-	 * Returns absolute path to plugin folder for this Template object.
+	 * Returns absolute path to the package folder for this Template object.
 	 *
-	 * @return string Absolute path to plugin folder.
+	 * @return string Absolute path to package folder.
 	 */
-	public function getBaseFolder(): string {
+	public function getPackageBaseFolder(): string {
 
 		return APPLICATION_PATH . '/templates';
 
@@ -579,29 +580,29 @@ class Template extends PluginBase {
 	 * @param string $name Template name.
 	 * @return Template|null Template object or null if not found.
 	 */
-	public static function getPluginByName(string $name): ?self {
+	public static function getByName(string $name): ?self {
 
 		return self::getObjectByQuery('SELECT * FROM `templates` WHERE `name`=?', [$name]);
 
 	}
 
 	/**
-	 * Creates and returns the Plugin object of this Template object.
+	 * Creates and returns the InstallablePackage object of this Template object.
 	 *
-	 * @return Plugin Plugin object of this Template.
-	 * @throws PairException if the plugin folder does not exist or is not readable.
+	 * @return InstallablePackage InstallablePackage object of this Template.
+	 * @throws PairException if the package folder does not exist or is not readable.
 	 */
-	public function getPlugin(): Plugin {
+	public function getInstallablePackage(): InstallablePackage {
 
-		$folder = $this->getBaseFolder() . '/' . strtolower(str_replace([' ', '_'], '', $this->name));
+		$folder = $this->getPackageBaseFolder() . '/' . strtolower(str_replace([' ', '_'], '', $this->name));
 		$dateReleased = $this->dateReleased->format('Y-m-d');
 
-		// special parameters for Template plugin
+		// Add Template-specific package metadata to the manifest.
 		$options = [
 			'palette' => implode(',', $this->getPaletteColors())
 		];
 
-		return new Plugin('Template', $this->name, $this->version, $dateReleased, $this->appVersion, $folder, $options);
+		return new InstallablePackage('Template', $this->name, $this->version, $dateReleased, $this->appVersion, $folder, $options);
 
 	}
 
@@ -614,7 +615,7 @@ class Template extends PluginBase {
 	public function getStyleFile(string $styleName): string {
 
 		// by default load template style
-		$styleFile = $this->getBaseFolder() . '/' . strtolower($this->name) . '/' . $styleName . '.php';
+		$styleFile = $this->getPackageBaseFolder() . '/' . strtolower($this->name) . '/' . $styleName . '.php';
 
 		if (!file_exists($styleFile)) {
 			throw new CriticalException('Template style ' . $styleName . ' not found');
@@ -810,12 +811,12 @@ class Template extends PluginBase {
 	}
 
 	/**
-	 * Checks if Template is already installed in this application.
+	 * Checks if a Template package record is already installed in this application.
 	 *
 	 * @param string $name Name of Template to search.
 	 * @return bool True if Template exists, false otherwise.
 	 */
-	public static function pluginExists(string $name): bool {
+	public static function packageRecordExists(string $name): bool {
 
 		return (bool)self::countAllObjects(['name'=>$name]);
 
@@ -953,12 +954,12 @@ class Template extends PluginBase {
 	}
 
 	/**
-	 * Get option parameters and store this object loaded by a Plugin.
+	 * Get option parameters and store this object loaded from a package manifest.
 	 *
-	 * @param \SimpleXMLElement $options Options from plugin XML file.
+	 * @param \SimpleXMLElement $options Options from package XML file.
 	 * @return bool True on success, false on failure.
 	 */
-	public function storeByPlugin(\SimpleXMLElement $options): bool {
+	public function storeFromPackageManifest(\SimpleXMLElement $options): bool {
 
 		// get options
 		$children = $options->children();

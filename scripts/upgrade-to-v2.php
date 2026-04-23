@@ -83,8 +83,8 @@ foreach ($files as $file) {
 	$content = str_replace('Pair\Model;', 'Pair\Core\Model;', $content);
 	$content = str_replace('Pair\Router', 'Pair\Core\Router', $content);
 	$content = str_replace('Pair\View', 'Pair\Core\View', $content);
-	$content = str_replace('Pair\Plugin', 'Pair\Helpers\Plugin', $content);
-	$content = str_replace('Pair\PluginInterface', 'Pair\Helpers\PluginInterface', $content);
+	$content = str_replace('Pair\Plugin', 'Pair\Packages\InstallablePackage', $content);
+	$content = str_replace('Pair\PluginInterface', 'Pair\Core\RuntimeExtensionInterface', $content);
 	$content = str_replace('Pair\Input', 'Pair\Helpers\Post', $content);
 	$content = str_replace('Pair\Options', 'Pair\Helpers\Options', $content);
 	$content = str_replace('Pair\Schedule', 'Pair\Helpers\Schedule', $content);

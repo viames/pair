@@ -2,9 +2,12 @@
   "use strict";
 
   class PairDevice {
+    /**
+     * Attach a MediaStream to a video element and start playback.
+     */
     static attachStream(videoElement, stream, options = {}) {
       if (!videoElement) {
-        throw new Error("A video element is required.");
+        throw new Error(this.message("VIDEO_ELEMENT_REQUIRED", "A video element is required."));
       }
 
       const autoplay = options.autoplay !== false;
@@ -19,9 +22,12 @@
       return videoElement.play().catch(() => undefined);
     }
 
+    /**
+     * Return the current browser geolocation position.
+     */
     static getCurrentPosition(options = {}) {
       if (!this.supports.geolocation) {
-        return Promise.reject(new Error("Geolocation API is not supported in this browser."));
+        return Promise.reject(new Error(this.message("GEOLOCATION_UNSUPPORTED", "The Geolocation API is not supported by this browser.")));
       }
 
       return new Promise((resolve, reject) => {
@@ -29,12 +35,25 @@
       });
     }
 
+    /**
+     * Open the camera through getUserMedia.
+     */
     static async openCamera(constraints = { video: true, audio: false }) {
       if (!this.supports.camera) {
-        throw new Error("Camera API is not supported in this browser.");
+        throw new Error(this.message("CAMERA_UNSUPPORTED", "The Camera API is not supported by this browser."));
       }
 
       return navigator.mediaDevices.getUserMedia(constraints);
+    }
+
+    /**
+     * Return a translated client message from server-injected PairMessages.
+     */
+    static message(key, fallback) {
+      const messages = global.PairMessages || {};
+      const message = messages && typeof messages[key] === "string" ? messages[key].trim() : "";
+
+      return message || fallback;
     }
 
     static async queryPermission(name) {
@@ -52,7 +71,7 @@
 
     static async requestBluetooth(options = { acceptAllDevices: true }) {
       if (!this.supports.bluetooth) {
-        throw new Error("Web Bluetooth is not supported in this browser.");
+        throw new Error(this.message("WEB_BLUETOOTH_UNSUPPORTED", "The Web Bluetooth API is not supported by this browser."));
       }
 
       return navigator.bluetooth.requestDevice(options);

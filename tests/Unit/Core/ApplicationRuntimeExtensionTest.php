@@ -9,28 +9,28 @@ use Pair\Core\Application;
 use Pair\Core\Observability;
 use Pair\Core\ObservabilityAdapter;
 use Pair\Core\ObservabilitySpan;
-use Pair\Core\PluginInterface;
+use Pair\Core\RuntimeExtensionInterface;
 use Pair\Html\UiRenderers\NativeUiRenderer;
 use Pair\Html\UiTheme;
 use Pair\Tests\Support\TestCase;
 
 /**
- * Covers explicit plugin registration through the application runtime.
+ * Covers explicit runtime extension registration through the application runtime.
  */
-class ApplicationPluginTest extends TestCase {
+class ApplicationRuntimeExtensionTest extends TestCase {
 
 	/**
-	 * Verify plugins are registered manually and can publish adapters.
+	 * Verify runtime extensions are registered manually and can publish adapters.
 	 */
-	public function testRegisterPluginCanPublishAdapters(): void {
+	public function testRegisterRuntimeExtensionCanPublishAdapters(): void {
 
 		$app = $this->newApplicationStub();
 		$adapter = new \ArrayObject(['driver' => 'fake']);
 
-		$plugin = new class($adapter) implements PluginInterface {
+		$extension = new class($adapter) implements RuntimeExtensionInterface {
 
 			/**
-			 * Adapter published by this fixture plugin.
+			 * Adapter published by this fixture extension.
 			 */
 			private \ArrayObject $adapter;
 
@@ -54,20 +54,20 @@ class ApplicationPluginTest extends TestCase {
 
 		};
 
-		$this->assertSame($app, $app->registerPlugin($plugin));
+		$this->assertSame($app, $app->registerRuntimeExtension($extension));
 		$this->assertTrue($app->hasAdapter(AdapterKeys::PAYMENTS));
 		$this->assertSame($adapter, $app->adapter(AdapterKeys::PAYMENTS, \ArrayObject::class));
 
 	}
 
 	/**
-	 * Verify plugins can register custom UI renderers without automatic discovery.
+	 * Verify runtime extensions can register custom UI renderers without automatic discovery.
 	 */
-	public function testRegisterPluginCanPublishUiRenderer(): void {
+	public function testRegisterRuntimeExtensionCanPublishUiRenderer(): void {
 
 		$app = $this->newApplicationStub();
 
-		$plugin = new class implements PluginInterface {
+		$extension = new class implements RuntimeExtensionInterface {
 
 			/**
 			 * Register one custom renderer and select it for the current process.
@@ -102,7 +102,7 @@ class ApplicationPluginTest extends TestCase {
 
 		};
 
-		$app->registerPlugin($plugin);
+		$app->registerRuntimeExtension($extension);
 
 		$this->assertSame('fixture', UiTheme::current());
 		$this->assertSame('fixture-alert', UiTheme::alertClass());

@@ -3,6 +3,7 @@
 namespace Pair\Core;
 
 use Pair\Api\ApiErrorResponse;
+use Pair\Api\ApiResponse;
 use Pair\Exceptions\AppException;
 use Pair\Exceptions\CriticalException;
 use Pair\Exceptions\ErrorCodes;
@@ -849,7 +850,7 @@ class Application {
 		$ctlName = $name . 'Controller';
 
 		if (!class_exists($ctlName)) {
-			print ('The API Controller class is incorrect');
+			print ApiResponse::localizedMessage('API_CONTROLLER_CLASS_INCORRECT');
 			exit();
 		}
 
@@ -871,7 +872,7 @@ class Application {
 
 			if (!OAuth2Token::isValid($bearerToken)) {
 				sleep(3);
-				OAuth2Token::unauthorized('Authentication failed');
+				OAuth2Token::unauthorized(ApiResponse::localizedMessage('AUTHENTICATION_FAILED'));
 			}
 
 			// verify that the bearer token is valid
@@ -902,7 +903,7 @@ class Application {
 
 			} else {
 
-				$this->sendApiError('BAD_REQUEST','Path not found',400,[
+				$this->sendApiError('BAD_REQUEST', ApiResponse::localizedMessage('API_PATH_NOT_FOUND'), 400, [
 					'path' => $router->getUrl()
 				]);
 
@@ -940,14 +941,14 @@ class Application {
 
 			// check if sid is valid
 			if (!$session->isLoaded()) {
-				$this->sendApiError('SESSION_NOT_FOUND','Session not found');
+				$this->sendApiError('SESSION_NOT_FOUND', ApiResponse::localizedMessage('SESSION_NOT_FOUND'));
 			}
 
 			// reject and remove expired API sessions before extending timeout
 			if ($session->isExpired($sessionTime)) {
 				Audit::sessionExpired($session);
 				$session->delete();
-				$this->sendApiError('AUTH_SESSION_EXPIRED','User session expired',401);
+				$this->sendApiError('AUTH_SESSION_EXPIRED', ApiResponse::localizedMessage('AUTH_SESSION_EXPIRED'), 401);
 			}
 
 			// if session exists, extend session timeout
@@ -964,7 +965,7 @@ class Application {
 		// unauthorized request
 		} else {
 
-			OAuth2Token::unauthorized(Env::get('APP_NAME') . '-API: Authentication failed');
+			OAuth2Token::unauthorized(ApiResponse::localizedMessage('API_AUTHENTICATION_FAILED_WITH_APP', (string)Env::get('APP_NAME')));
 
 		}
 
@@ -996,7 +997,12 @@ class Application {
 			}
 
 		} catch (\Throwable $e) {
-			$this->sendApiError('INTERNAL_SERVER_ERROR',$e->getMessage(),500);
+			// Keep production API errors localized and avoid exposing technical exception text to clients.
+			$message = 'production' == self::getEnvironment()
+				? ApiResponse::localizedMessage('INTERNAL_SERVER_ERROR')
+				: $e->getMessage();
+
+			$this->sendApiError('INTERNAL_SERVER_ERROR', $message, 500);
 		}
 
 		exit();
@@ -1046,7 +1052,7 @@ class Application {
 		// sends js message about session expired
 		if ($this->headless) {
 
-			$this->sendApiError('AUTH_SESSION_EXPIRED','User session expired',401);
+			$this->sendApiError('AUTH_SESSION_EXPIRED', ApiResponse::localizedMessage('AUTH_SESSION_EXPIRED'), 401);
 
 		// redirects to login page
 		} else {
@@ -1284,6 +1290,8 @@ class Application {
 			$assetsPath = '';
 		}
 
+		$this->addPairClientMessagesScript();
+
 		if ($includePairUi) {
 			$this->loadScript($assetsPath . '/PairUI.js', true);
 		}
@@ -1300,6 +1308,39 @@ class Application {
 		if ($includePairPasskey) {
 			$this->loadScript($assetsPath . '/PairPasskey.js', true);
 		}
+
+	}
+
+	/**
+	 * Expose translated client-side Pair helper messages for static asset fallbacks.
+	 */
+	private function addPairClientMessagesScript(): void {
+
+		$keys = [
+			'CAMERA_UNSUPPORTED',
+			'GEOLOCATION_UNSUPPORTED',
+			'PASSKEY_CREDENTIAL_MISSING',
+			'PASSKEY_INVALID_ID',
+			'PASSKEY_MISSING_CREDENTIAL_PAYLOAD',
+			'PASSKEY_REQUEST_FAILED',
+			'PASSKEY_UNSUPPORTED_BROWSER_CONTEXT',
+			'PASSKEY_UNSUPPORTED_BUFFER_TYPE',
+			'REFRESH_URL_REQUIRED',
+			'SERVICE_WORKER_UNSUPPORTED',
+			'UNEXPECTED_ERROR',
+			'VAPID_PUBLIC_KEY_REQUIRED',
+			'VIDEO_ELEMENT_REQUIRED',
+			'WEB_BLUETOOTH_UNSUPPORTED',
+			'WEB_PUSH_UNSUPPORTED',
+		];
+
+		$messages = [];
+
+		foreach ($keys as $key) {
+			$messages[$key] = ApiResponse::localizedMessage($key);
+		}
+
+		$this->addScript('window.PairMessages = Object.assign(window.PairMessages || {}, ' . json_encode($messages, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . ');');
 
 	}
 
@@ -1428,11 +1469,11 @@ class Application {
 	}
 
 	/**
-	 * Register a runtime plugin explicitly.
+	 * Register a runtime extension explicitly.
 	 */
-	public function registerPlugin(PluginInterface $plugin): static {
+	public function registerRuntimeExtension(RuntimeExtensionInterface $extension): static {
 
-		$plugin->register($this);
+		$extension->register($this);
 
 		return $this;
 
@@ -1722,7 +1763,7 @@ class Application {
 
 			$this->modal(Translator::do('ERROR'), Translator::do('RESOURCE_NOT_FOUND', $router->url));
 			$this->style = '404';
-			$this->pageTitle('HTTP 404 error');
+			$this->pageTitle(ApiResponse::localizedMessage('HTTP_404_ERROR'));
 			http_response_code(404);
 
 		} else {

@@ -67,7 +67,7 @@ class BootstrapUiRenderer extends NativeUiRenderer {
 	public function pagination(Router $router, int $page, int $pages): string {
 
 		$range = $this->paginationRange($page, $pages);
-		$render = '<div class="pagination"><nav aria-label="Page navigation"><ul class="pagination">';
+		$render = '<div class="pagination"><nav aria-label="' . $this->translatedAttribute('PAGE_NAVIGATION') . '"><ul class="pagination">';
 
 		if ($page > 1) {
 			$render .= '<li class="page-item arrow"><a class="page-link" href="' . $router->getPageUrl(1) . '">«</a></li>';

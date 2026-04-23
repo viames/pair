@@ -220,9 +220,9 @@ class ErrorCodes {
 	const WIDGET_NOT_FOUND = 1043;
 
 	/**
-	 * Plugin already installed.
+	 * Installable package already installed.
 	 */
-	const PLUGIN_ALREADY_INSTALLED = 1044;
+	const PACKAGE_ALREADY_INSTALLED = 1044;
 
 	/**
 	 * Unvalid error level for logger.

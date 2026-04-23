@@ -23,7 +23,8 @@
 		"multilingual",
 		"framework",
 		"active-record",
-		"plugin-system",
+		"package-system",
+		"runtime-extensions",
 		"rest-api"
 	],
 	"scripts": {

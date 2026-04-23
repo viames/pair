@@ -696,7 +696,7 @@ class CrudControllerTest extends TestCase {
 		$this->assertInstanceOf(ApiErrorResponse::class, $response);
 		$this->assertSame('BAD_REQUEST', $this->readApiErrorResponseProperty($response, 'errorCode'));
 		$this->assertSame(400, $this->readApiErrorResponseProperty($response, 'httpCode'));
-		$this->assertSame(['detail' => 'Resource ID is required'], $this->readApiErrorResponseProperty($response, 'extra'));
+		$this->assertSame(['detail' => 'The resource ID is required'], $this->readApiErrorResponseProperty($response, 'extra'));
 
 	}
 
@@ -747,7 +747,7 @@ class CrudControllerTest extends TestCase {
 		$this->assertInstanceOf(ApiErrorResponse::class, $response);
 		$this->assertSame('CONFLICT', $this->readApiErrorResponseProperty($response, 'errorCode'));
 		$this->assertSame(409, $this->readApiErrorResponseProperty($response, 'httpCode'));
-		$this->assertSame(['detail' => 'Resource is referenced and cannot be deleted'], $this->readApiErrorResponseProperty($response, 'extra'));
+		$this->assertSame(['detail' => 'This resource is referenced and cannot be deleted'], $this->readApiErrorResponseProperty($response, 'extra'));
 		$this->assertFalse($record->deleteCalled);
 
 	}

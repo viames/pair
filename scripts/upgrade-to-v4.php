@@ -72,6 +72,48 @@ function main(array $argv): int {
 
 	}
 
+	foreach (collectPackageManifestFiles($targetPath) as $filePath) {
+
+		$original = file_get_contents($filePath);
+
+		if (!is_string($original)) {
+			$warnings[] = relativePath($targetPath, $filePath) . ': unable to read file';
+			continue;
+		}
+
+		$result = transformPackageManifestFile($original);
+
+		if ($result['changed']) {
+			$changedFiles[relativePath($targetPath, $filePath)] = $result['changes'];
+
+			if ($options['write']) {
+				file_put_contents($filePath, $result['content']);
+			}
+		}
+
+	}
+
+	foreach (collectNomenclatureTextFiles($targetPath) as $filePath) {
+
+		$original = file_get_contents($filePath);
+
+		if (!is_string($original)) {
+			$warnings[] = relativePath($targetPath, $filePath) . ': unable to read file';
+			continue;
+		}
+
+		$result = transformNomenclatureTextFile($original);
+
+		if ($result['changed']) {
+			$changedFiles[relativePath($targetPath, $filePath)] = $result['changes'];
+
+			if ($options['write']) {
+				file_put_contents($filePath, $result['content']);
+			}
+		}
+
+	}
+
 	printReport($targetPath, $options['write'], $changedFiles, $warnings);
 
 	return 0;
@@ -142,7 +184,7 @@ function resolveTargetPath(string $path): string {
 }
 
 /**
- * Collect every PHP file in the target tree except known generated or external folders.
+ * Collect every PHP file in the target tree except known generated, test, or external folders.
  *
  * @return	string[]
  */
@@ -179,6 +221,83 @@ function collectPhpFiles(string $rootPath): array {
 }
 
 /**
+ * Collect package manifest files that can be moved from plugin to package nodes.
+ *
+ * @return	string[]
+ */
+function collectPackageManifestFiles(string $rootPath): array {
+
+	$files = [];
+	$directory = new RecursiveDirectoryIterator($rootPath, RecursiveDirectoryIterator::SKIP_DOTS);
+	$iterator = new RecursiveIteratorIterator($directory);
+
+	foreach ($iterator as $fileInfo) {
+
+		if (!$fileInfo instanceof SplFileInfo or !$fileInfo->isFile()) {
+			continue;
+		}
+
+		$filePath = $fileInfo->getPathname();
+
+		if (strtolower(basename($filePath)) !== 'manifest.xml') {
+			continue;
+		}
+
+		if (shouldSkipPath($filePath)) {
+			continue;
+		}
+
+		$files[] = $filePath;
+
+	}
+
+	sort($files);
+
+	return $files;
+
+}
+
+/**
+ * Collect app metadata files that may contain official package nomenclature tokens.
+ *
+ * @return	string[]
+ */
+function collectNomenclatureTextFiles(string $rootPath): array {
+
+	$files = [];
+	$directory = new RecursiveDirectoryIterator($rootPath, RecursiveDirectoryIterator::SKIP_DOTS);
+	$iterator = new RecursiveIteratorIterator($directory);
+
+	foreach ($iterator as $fileInfo) {
+
+		if (!$fileInfo instanceof SplFileInfo or !$fileInfo->isFile()) {
+			continue;
+		}
+
+		$filePath = $fileInfo->getPathname();
+
+		if (shouldSkipPath($filePath)) {
+			continue;
+		}
+
+		$fileName = strtolower(basename($filePath));
+		$extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+
+		if (!in_array($fileName, ['composer.json', 'composer.lock'], true) and 'ini' !== $extension) {
+			continue;
+		}
+
+		$files[] = $filePath;
+
+	}
+
+	sort($files);
+
+	return $files;
+
+}
+
+/**
  * Return whether the current path should be ignored by the upgrader.
  */
 function shouldSkipPath(string $filePath): bool {
@@ -186,6 +305,7 @@ function shouldSkipPath(string $filePath): bool {
 	$skipFragments = [
 		DIRECTORY_SEPARATOR . '.git' . DIRECTORY_SEPARATOR,
 		DIRECTORY_SEPARATOR . 'node_modules' . DIRECTORY_SEPARATOR,
+		DIRECTORY_SEPARATOR . 'tests' . DIRECTORY_SEPARATOR,
 		DIRECTORY_SEPARATOR . 'vendor' . DIRECTORY_SEPARATOR,
 	];
 
@@ -216,6 +336,10 @@ function transformPhpFile(string $filePath, string $content): array {
 		or str_contains($content, 'extends \\Pair\\Core\\View')
 		or preg_match('/extends\s+View\b/', $content) === 1;
 	$isApiExposable = str_contains($content, 'ApiExposable');
+
+	[$updated, $nomenclatureChanges, $nomenclatureWarnings] = upgradePluginNomenclature($updated);
+	$changes = array_merge($changes, $nomenclatureChanges);
+	$warnings = array_merge($warnings, $nomenclatureWarnings);
 
 	if ($isController) {
 		[$updated, $controllerChanges, $controllerWarnings] = transformControllerFile($updated);
@@ -261,6 +385,224 @@ function transformPhpFile(string $filePath, string $content): array {
 		'generatedFiles' => $generatedFiles,
 		'warnings' => array_values(array_unique($warnings)),
 	];
+
+}
+
+/**
+ * Transform one package manifest from the old plugin node to the v4 package node.
+ *
+ * @return	array{changed: bool, changes: string[], content: string}
+ */
+function transformPackageManifestFile(string $content): array {
+
+	$changes = [];
+	$updated = $content;
+
+	$updated = replaceRegex($updated, '/<plugin(\s|>)/', '<package$1', $changes, 'renamed installable manifest node from plugin to package');
+	$updated = replaceLiteral($updated, '</plugin>', '</package>', $changes, 'renamed installable manifest closing node from plugin to package');
+
+	return [
+		'changed' => $updated !== $content,
+		'changes' => array_values(array_unique($changes)),
+		'content' => $updated,
+	];
+
+}
+
+/**
+ * Transform project metadata tokens that expose old plugin terminology.
+ *
+ * @return	array{changed: bool, changes: string[], content: string}
+ */
+function transformNomenclatureTextFile(string $content): array {
+
+	$changes = [];
+	$updated = $content;
+
+	$replacements = [
+		'PLUGIN_ALREADY_INSTALLED' => ['PACKAGE_ALREADY_INSTALLED', 'renamed package error code token'],
+		'PLUGIN_IS_ALREADY_INSTALLED' => ['PACKAGE_IS_ALREADY_INSTALLED', 'renamed package translation key'],
+		'FIX_PLUGINS' => ['FIX_PACKAGES', 'renamed package maintenance translation key'],
+		'PLUGINS_HAVE_BEEN_FIXED' => ['PACKAGES_HAVE_BEEN_FIXED', 'renamed package maintenance result key'],
+		'plugin-system' => ['package-system', 'renamed Composer keyword from plugin-system to package-system'],
+		'runtime-plugins' => ['runtime-extensions', 'renamed Composer keyword from runtime-plugins to runtime-extensions'],
+		'runtime-plugin' => ['runtime-extension', 'renamed Composer keyword from runtime-plugin to runtime-extension'],
+	];
+
+	foreach ($replacements as $search => [$replace, $label]) {
+		$updated = replaceLiteral($updated, $search, $replace, $changes, $label);
+	}
+
+	return [
+		'changed' => $updated !== $content,
+		'changes' => array_values(array_unique($changes)),
+		'content' => $updated,
+	];
+
+}
+
+/**
+ * Update old runtime plugin and installable plugin APIs to Pair v4 names.
+ *
+ * @return	array{0: string, 1: string[], 2: string[]}
+ */
+function upgradePluginNomenclature(string $content): array {
+
+	$changes = [];
+	$warnings = [];
+	$updated = $content;
+
+	$runtimeMarkers = [
+		'PluginInterface',
+		'RuntimePluginInterface',
+		'registerPlugin(',
+		'registerRuntimePlugin(',
+	];
+	$packageMarkers = [
+		'Pair\\Helpers\\Plugin',
+		'Pair\\Helpers\\PluginBase',
+		'Pair\\Helpers\\InstallablePlugin',
+		'InstallablePlugin',
+		'PluginBase',
+		'installPackage(',
+		'downloadPackage(',
+		'createManifestFile(',
+		'getManifestByFile(',
+		'removeOldFiles(',
+		'createPluginByManifest(',
+		'getInstallablePlugin(',
+		'getInstallablePluginByName(',
+		'getPluginByName(',
+		'getPlugin(',
+		'pluginExists(',
+		'storeByPlugin(',
+		'PLUGIN_ALREADY_INSTALLED',
+		'PLUGIN_IS_ALREADY_INSTALLED',
+		'->plugin',
+	];
+
+	$usesRuntimePluginApi = contentContainsAny($updated, $runtimeMarkers);
+	$usesInstallablePluginApi = contentContainsAny($updated, $packageMarkers);
+
+	if ($usesRuntimePluginApi) {
+		[$updated, $runtimeChanges] = upgradeRuntimePluginApi($updated);
+		$changes = array_merge($changes, $runtimeChanges);
+
+		if (preg_match('/\bclass\s+[A-Za-z_][A-Za-z0-9_]*Plugin\b/', $updated) === 1) {
+			$warnings[] = 'runtime extension class still ends with Plugin; rename the class and file manually when autoloading permits it';
+		}
+	}
+
+	if ($usesInstallablePluginApi) {
+		[$updated, $packageChanges] = upgradeInstallablePluginApi($updated);
+		$changes = array_merge($changes, $packageChanges);
+	}
+
+	return [$updated, array_values(array_unique($changes)), array_values(array_unique($warnings))];
+
+}
+
+/**
+ * Return whether content contains at least one marker.
+ *
+ * @param	string[]	$markers	Search markers.
+ */
+function contentContainsAny(string $content, array $markers): bool {
+
+	foreach ($markers as $marker) {
+		if (str_contains($content, $marker)) {
+			return true;
+		}
+	}
+
+	return false;
+
+}
+
+/**
+ * Rename runtime plugin API references to runtime extension API references.
+ *
+ * @return	array{0: string, 1: string[]}
+ */
+function upgradeRuntimePluginApi(string $content): array {
+
+	$changes = [];
+	$updated = $content;
+
+	$replacements = [
+		'Pair\\Core\\RuntimePluginInterface' => ['Pair\\Core\\RuntimeExtensionInterface', 'renamed runtime plugin interface import to RuntimeExtensionInterface'],
+		'Pair\\Core\\PluginInterface' => ['Pair\\Core\\RuntimeExtensionInterface', 'renamed runtime plugin interface import to RuntimeExtensionInterface'],
+		'Pair\\RuntimePluginInterface' => ['Pair\\Core\\RuntimeExtensionInterface', 'renamed runtime plugin interface import to RuntimeExtensionInterface'],
+		'Pair\\PluginInterface' => ['Pair\\Core\\RuntimeExtensionInterface', 'renamed runtime plugin interface import to RuntimeExtensionInterface'],
+		'RuntimePluginInterface' => ['RuntimeExtensionInterface', 'renamed runtime plugin interface type to RuntimeExtensionInterface'],
+		'PluginInterface' => ['RuntimeExtensionInterface', 'renamed runtime plugin interface type to RuntimeExtensionInterface'],
+		'registerRuntimePlugin(' => ['registerRuntimeExtension(', 'renamed registerRuntimePlugin() calls to registerRuntimeExtension()'],
+		'registerPlugin(' => ['registerRuntimeExtension(', 'renamed registerPlugin() calls to registerRuntimeExtension()'],
+	];
+
+	foreach ($replacements as $search => [$replace, $label]) {
+		$updated = replaceLiteral($updated, $search, $replace, $changes, $label);
+	}
+
+	return [$updated, array_values(array_unique($changes))];
+
+}
+
+/**
+ * Rename installable plugin API references to installable package API references.
+ *
+ * @return	array{0: string, 1: string[]}
+ */
+function upgradeInstallablePluginApi(string $content): array {
+
+	$changes = [];
+	$updated = $content;
+
+	$literalReplacements = [
+		'Pair\\Helpers\\InstallablePluginBase' => ['Pair\\Packages\\InstallablePackageRecord', 'renamed installable plugin record import to InstallablePackageRecord'],
+		'Pair\\Helpers\\InstallablePlugin' => ['Pair\\Packages\\InstallablePackage', 'renamed installable plugin helper import to InstallablePackage'],
+		'Pair\\Helpers\\PluginBase' => ['Pair\\Packages\\InstallablePackageRecord', 'renamed PluginBase import to InstallablePackageRecord'],
+		'Pair\\Helpers\\Plugin' => ['Pair\\Packages\\InstallablePackage', 'renamed Plugin helper import to InstallablePackage'],
+		'PLUGIN_ALREADY_INSTALLED' => ['PACKAGE_ALREADY_INSTALLED', 'renamed package error code token'],
+		'PLUGIN_IS_ALREADY_INSTALLED' => ['PACKAGE_IS_ALREADY_INSTALLED', 'renamed package translation key'],
+		'installPackage(' => ['installArchive(', 'renamed installPackage() calls to installArchive()'],
+		'downloadPackage(' => ['downloadArchive(', 'renamed downloadPackage() calls to downloadArchive()'],
+		'createManifestFile(' => ['writeManifestFile(', 'renamed createManifestFile() calls to writeManifestFile()'],
+		'getManifestByFile(' => ['readManifestFile(', 'renamed getManifestByFile() calls to readManifestFile()'],
+		'removeOldFiles(' => ['removeOldArchives(', 'renamed removeOldFiles() calls to removeOldArchives()'],
+		'createPluginByManifest(' => ['createRecordFromManifest(', 'renamed createPluginByManifest() calls to createRecordFromManifest()'],
+		'getInstallablePluginByName(' => ['getByName(', 'renamed getInstallablePluginByName() calls to getByName()'],
+		'getInstallablePlugin(' => ['getInstallablePackage(', 'renamed getInstallablePlugin() calls to getInstallablePackage()'],
+		'getPluginByName(' => ['getByName(', 'renamed getPluginByName() calls to getByName()'],
+		'getPlugin(' => ['getInstallablePackage(', 'renamed getPlugin() calls to getInstallablePackage()'],
+		'pluginExists(' => ['packageRecordExists(', 'renamed pluginExists() calls to packageRecordExists()'],
+		'storeByPlugin(' => ['storeFromPackageManifest(', 'renamed storeByPlugin() calls to storeFromPackageManifest()'],
+	];
+
+	foreach ($literalReplacements as $search => [$replace, $label]) {
+		$updated = replaceLiteral($updated, $search, $replace, $changes, $label);
+	}
+
+	$regexReplacements = [
+		'/\bInstallablePluginBase\b/' => ['InstallablePackageRecord', 'renamed InstallablePluginBase type references to InstallablePackageRecord'],
+		'/\bInstallablePlugin\b/' => ['InstallablePackage', 'renamed InstallablePlugin type references to InstallablePackage'],
+		'/\bPluginBase\b/' => ['InstallablePackageRecord', 'renamed PluginBase type references to InstallablePackageRecord'],
+		'/\bnew\s+Plugin\s*\(/' => ['new InstallablePackage(', 'renamed Plugin construction to InstallablePackage'],
+		'/\bPlugin::/' => ['InstallablePackage::', 'renamed Plugin static calls to InstallablePackage'],
+		'/(?<![A-Za-z0-9_\\\\])Plugin\b(?=\s*(?:[|&,\)=;{\$]|$))/m' => ['InstallablePackage', 'renamed Plugin type references to InstallablePackage'],
+	];
+
+	foreach ($regexReplacements as $pattern => [$replacement, $label]) {
+		$updated = replaceRegex($updated, $pattern, $replacement, $changes, $label);
+	}
+
+	$updated = replaceLiteral($updated, 'getBaseFolder(', 'getPackageBaseFolder(', $changes, 'renamed getBaseFolder() package calls to getPackageBaseFolder()');
+
+	if (str_contains($updated, 'manifest') and str_contains($updated, '->plugin')) {
+		$updated = replaceRegex($updated, '/->\s*plugin\b/', '->package', $changes, 'renamed manifest plugin node access to package node access');
+	}
+
+	return [$updated, array_values(array_unique($changes))];
 
 }
 
@@ -753,7 +1095,7 @@ function replaceLiteral(string $content, string $search, string $replace, array 
  */
 function replaceRegex(string $content, string $pattern, string $replacement, array &$changes, string $label): string {
 
-	$updated = preg_replace($pattern, $replacement, $content, 1, $count);
+	$updated = preg_replace($pattern, $replacement, $content, -1, $count);
 
 	if (!is_string($updated)) {
 		return $content;

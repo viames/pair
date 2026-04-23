@@ -22,6 +22,8 @@ class CriticalException extends PairException {
 	 */
 	public function __construct(string $message, int $code = 0, ?\Throwable $previous = null) {
 
+		parent::__construct($message, $code, $previous);
+
 		// intercept any previous message
 		$trackedMessage = ($previous and $previous->getMessage()) ? $previous->getMessage() : $message;
 

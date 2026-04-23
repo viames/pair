@@ -65,7 +65,7 @@ abstract class CrudController extends ApiController {
 		$data = $this->request->json();
 
 		if (is_null($data)) {
-			return ApiResponse::errorResponse('BAD_REQUEST', ['detail' => 'Invalid or empty JSON body']);
+			return ApiResponse::errorResponse('BAD_REQUEST', ['detail' => ApiResponse::localizedMessage('API_DETAIL_INVALID_OR_EMPTY_JSON_BODY')]);
 		}
 
 		// apply validation rules if configured
@@ -93,7 +93,7 @@ abstract class CrudController extends ApiController {
 		}
 
 		if (!$object->create()) {
-			return ApiResponse::errorResponse('INTERNAL_SERVER_ERROR', ['detail' => 'Failed to create resource']);
+			return ApiResponse::errorResponse('INTERNAL_SERVER_ERROR', ['detail' => ApiResponse::localizedMessage('API_DETAIL_FAILED_TO_CREATE_RESOURCE')]);
 		}
 
 		// return the created resource
@@ -162,11 +162,11 @@ abstract class CrudController extends ApiController {
 
 		// check if deletable
 		if (method_exists($object, 'isDeletable') and !$object->isDeletable()) {
-			return ApiResponse::errorResponse('CONFLICT', ['detail' => 'Resource is referenced and cannot be deleted']);
+			return ApiResponse::errorResponse('CONFLICT', ['detail' => ApiResponse::localizedMessage('API_DETAIL_RESOURCE_REFERENCED_CANNOT_DELETE')]);
 		}
 
 		if (!$object->delete()) {
-			return ApiResponse::errorResponse('INTERNAL_SERVER_ERROR', ['detail' => 'Failed to delete resource']);
+			return ApiResponse::errorResponse('INTERNAL_SERVER_ERROR', ['detail' => ApiResponse::localizedMessage('API_DETAIL_FAILED_TO_DELETE_RESOURCE')]);
 		}
 
 		return ApiResponse::jsonResponse(null, 204);
@@ -219,8 +219,8 @@ abstract class CrudController extends ApiController {
 			'GET'    => $id ? $this->showResource($resource, $id) : $this->listResources($resource),
 			'POST'   => $this->createResource($resource),
 			'PUT',
-			'PATCH'  => $id ? $this->updateResource($resource, $id) : ApiResponse::errorResponse('BAD_REQUEST', ['detail' => 'Resource ID is required']),
-			'DELETE' => $id ? $this->deleteResource($resource, $id) : ApiResponse::errorResponse('BAD_REQUEST', ['detail' => 'Resource ID is required']),
+			'PATCH'  => $id ? $this->updateResource($resource, $id) : ApiResponse::errorResponse('BAD_REQUEST', ['detail' => ApiResponse::localizedMessage('API_DETAIL_RESOURCE_ID_REQUIRED')]),
+			'DELETE' => $id ? $this->deleteResource($resource, $id) : ApiResponse::errorResponse('BAD_REQUEST', ['detail' => ApiResponse::localizedMessage('API_DETAIL_RESOURCE_ID_REQUIRED')]),
 			default  => ApiResponse::errorResponse('METHOD_NOT_ALLOWED'),
 		};
 
@@ -606,7 +606,7 @@ abstract class CrudController extends ApiController {
 		$data = $this->request->json();
 
 		if (is_null($data)) {
-			return ApiResponse::errorResponse('BAD_REQUEST', ['detail' => 'Invalid or empty JSON body']);
+			return ApiResponse::errorResponse('BAD_REQUEST', ['detail' => ApiResponse::localizedMessage('API_DETAIL_INVALID_OR_EMPTY_JSON_BODY')]);
 		}
 
 		// apply validation rules if configured
@@ -633,7 +633,7 @@ abstract class CrudController extends ApiController {
 		}
 
 		if (!$object->update()) {
-			return ApiResponse::errorResponse('INTERNAL_SERVER_ERROR', ['detail' => 'Failed to update resource']);
+			return ApiResponse::errorResponse('INTERNAL_SERVER_ERROR', ['detail' => ApiResponse::localizedMessage('API_DETAIL_FAILED_TO_UPDATE_RESOURCE')]);
 		}
 
 		// return the updated resource

@@ -3,6 +3,7 @@
 namespace Pair\Html;
 
 use Pair\Core\Application;
+use Pair\Helpers\Translator;
 
 class Breadcrumb {
 
@@ -28,8 +29,8 @@ class Breadcrumb {
 	private function __construct() {
 
 		$app = Application::getInstance();
-		
-		$this->segment('Home', BASE_HREF);
+
+		$this->segment(Translator::safeDo('HOME'), BASE_HREF);
 
 	}
 

@@ -310,7 +310,7 @@ class Request {
 
 			// Keep required-field failures deterministic before running the remaining validators.
 			if ($isRequired and (is_null($value) or $value === '')) {
-				$errors[$field] = 'The field ' . $field . ' is required';
+				$errors[$field] = ApiResponse::localizedMessage('API_VALIDATION_REQUIRED', $field);
 				continue;
 			}
 
@@ -544,31 +544,31 @@ class Request {
 
 			case 'string':
 				if (!is_string($value)) {
-					return 'The field ' . $field . ' must be a string';
+					return ApiResponse::localizedMessage('API_VALIDATION_STRING', $field);
 				}
 				break;
 
 			case 'int':
 				if (!is_int($value) and !ctype_digit((string)$value)) {
-					return 'The field ' . $field . ' must be an integer';
+					return ApiResponse::localizedMessage('API_VALIDATION_INTEGER', $field);
 				}
 				break;
 
 			case 'numeric':
 				if (!is_numeric($value)) {
-					return 'The field ' . $field . ' must be numeric';
+					return ApiResponse::localizedMessage('API_VALIDATION_NUMERIC', $field);
 				}
 				break;
 
 			case 'email':
 				if (!filter_var($value, FILTER_VALIDATE_EMAIL)) {
-					return 'The field ' . $field . ' must be a valid email address';
+					return ApiResponse::localizedMessage('API_VALIDATION_EMAIL', $field);
 				}
 				break;
 
 			case 'bool':
 				if (!is_bool($value) and !in_array($value, [0, 1, '0', '1', 'true', 'false'], true)) {
-					return 'The field ' . $field . ' must be a boolean';
+					return ApiResponse::localizedMessage('API_VALIDATION_BOOLEAN', $field);
 				}
 				break;
 
@@ -577,12 +577,12 @@ class Request {
 					if (is_numeric($value) and is_numeric($ruleParam)) {
 						$min = (float)$ruleParam;
 						if ((float)$value < $min) {
-							return 'The field ' . $field . ' must be at least ' . $ruleParam;
+							return ApiResponse::localizedMessage('API_VALIDATION_MIN_VALUE', [$field, $ruleParam]);
 						}
 					} else if (is_string($value)) {
 						$min = (int)$ruleParam;
 						if (mb_strlen($value) < $min) {
-							return 'The field ' . $field . ' must be at least ' . $min . ' characters';
+							return ApiResponse::localizedMessage('API_VALIDATION_MIN_LENGTH', [$field, (string)$min]);
 						}
 					}
 				}
@@ -593,12 +593,12 @@ class Request {
 					if (is_numeric($value) and is_numeric($ruleParam)) {
 						$max = (float)$ruleParam;
 						if ((float)$value > $max) {
-							return 'The field ' . $field . ' must not exceed ' . $ruleParam;
+							return ApiResponse::localizedMessage('API_VALIDATION_MAX_VALUE', [$field, $ruleParam]);
 						}
 					} else if (is_string($value)) {
 						$max = (int)$ruleParam;
 						if (mb_strlen($value) > $max) {
-							return 'The field ' . $field . ' must not exceed ' . $max . ' characters';
+							return ApiResponse::localizedMessage('API_VALIDATION_MAX_LENGTH', [$field, (string)$max]);
 						}
 					}
 				}

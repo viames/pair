@@ -201,13 +201,13 @@ class Database {
 
 		$this->query = $query;
 		$span = self::startQuerySpan($this->query);
-		$stat = $this->handler->prepare($this->query);
 
 		try {
+			$stat = $this->handler->prepare($this->query);
 			$stat->execute($params);
-		} catch (\Throwable $e) {
+		} catch (\PDOException $e) {
 			self::finishQuerySpan($span, 0, 'error', $e);
-			throw $e;
+			self::throwQueryException($e);
 		}
 
 		$affected = $stat->rowCount();
@@ -421,6 +421,75 @@ class Database {
 	}
 
 	/**
+	 * Return the driver-specific database error code when PDO exposes one.
+	 */
+	private static function pdoDriverCode(\PDOException $e): ?int {
+
+		$driverCode = $e->errorInfo[1] ?? null;
+
+		if (is_int($driverCode)) {
+			return $driverCode;
+		}
+
+		if (is_string($driverCode) and preg_match('/^-?\d+$/', $driverCode)) {
+			return (int)$driverCode;
+		}
+
+		return null;
+
+	}
+
+	/**
+	 * Convert low-level PDO query failures into framework-level exceptions.
+	 *
+	 * @throws	PairException
+	 */
+	private static function throwQueryException(\PDOException $e): never {
+
+		$message = $e->getMessage();
+
+		// MySQL driver codes are more precise than broad SQLSTATE classes.
+		switch (self::pdoDriverCode($e)) {
+
+			case 1049:
+				throw new CriticalException($message, ErrorCodes::MISSING_DB, $e);
+
+			case 1146:
+				throw new CriticalException($message, ErrorCodes::MISSING_DB_TABLE, $e);
+
+			case 1062:
+				throw new PairException($message, ErrorCodes::DUPLICATE_ENTRY, $e);
+
+			case 1451:
+			case 1452:
+				throw new PairException($message, ErrorCodes::FOREIGN_KEY_CONSTRAINT, $e);
+
+			case 2002:
+			case 2003:
+			case 2006:
+			case 2013:
+				throw new CriticalException($message, ErrorCodes::MYSQL_GENERAL_ERROR, $e);
+
+		}
+
+		switch ((string)$e->getCode()) {
+
+			case '21000':
+				throw new PairException($message, ErrorCodes::DB_CARDINALITY_VIOLATION, $e);
+
+			case '42000':
+			case '42S02':
+			case 'HY093':
+				throw new PairException($message, ErrorCodes::INVALID_QUERY_SYNTAX, $e);
+
+			default:
+				throw new PairException($message, ErrorCodes::DB_QUERY_FAILED, $e);
+
+		}
+
+	}
+
+	/**
 	 * Return data in various formats by third string parameter. Default is self::OBJECT_LIST parameters
 	 * as array. Support PDO parameters bind.
 	 *
@@ -438,45 +507,16 @@ class Database {
 		$self->castParams($params);
 
 		$span = self::startQuerySpan($query, $option);
-		$stat = $self->handler->prepare($query);
 
 		try {
 
+			$stat = $self->handler->prepare($query);
 			$stat->execute($params);
 
 		} catch (\PDOException $e) {
 
 			self::finishQuerySpan($span, 0, 'error', $e);
-
-			// choose the right exception based on MySQL error code
-			switch ($e->getCode()) {
-
-				case '21000':
-					throw new PairException($e->getMessage(), ErrorCodes::DB_CARDINALITY_VIOLATION, $e);
-
-				case '42000':
-					throw new PairException($e->getMessage(), ErrorCodes::INVALID_QUERY_SYNTAX, $e);
-
-				case '42S02':
-					if (false !== strpos($e->getMessage(), 'Unknown database')) {
-						throw new CriticalException($e->getMessage(), ErrorCodes::MISSING_DB, $e);
-					} else if (false !== strpos($e->getMessage(), 'Table')) {
-						throw new CriticalException($e->getMessage(), ErrorCodes::MISSING_DB_TABLE, $e);
-					} else {
-						throw new PairException($e->getMessage(), ErrorCodes::INVALID_QUERY_SYNTAX, $e);
-					}
-
-				case 'HY000':
-					throw new CriticalException($e->getMessage(), ErrorCodes::MYSQL_GENERAL_ERROR, $e);
-
-				// invalid parameter number: mixed named and positional parameters
-				case 'HY093':
-					throw new PairException($e->getMessage(), ErrorCodes::INVALID_QUERY_SYNTAX, $e);
-
-				default:
-					throw new PairException($e->getMessage(), ErrorCodes::DB_QUERY_FAILED, $e);
-
-			}
+			self::throwQueryException($e);
 
 		}
 
@@ -551,45 +591,16 @@ class Database {
 		$self->castParams($params);
 
 		$span = self::startQuerySpan($query, self::DICTIONARY);
-		$stat = $self->handler->prepare($query);
 
 		try {
 
+			$stat = $self->handler->prepare($query);
 			$stat->execute($params);
 
 		} catch (\PDOException $e) {
 
 			self::finishQuerySpan($span, 0, 'error', $e);
-
-			// choose the right exception based on MySQL error code
-			switch ($e->getCode()) {
-
-				case '21000':
-					throw new PairException($e->getMessage(), ErrorCodes::DB_CARDINALITY_VIOLATION, $e);
-
-				case '42000':
-					throw new PairException($e->getMessage(), ErrorCodes::INVALID_QUERY_SYNTAX, $e);
-
-				case '42S02':
-					if (false !== strpos($e->getMessage(), 'Unknown database')) {
-						throw new CriticalException($e->getMessage(), ErrorCodes::MISSING_DB, $e);
-					} else if (false !== strpos($e->getMessage(), 'Table')) {
-						throw new CriticalException($e->getMessage(), ErrorCodes::MISSING_DB_TABLE, $e);
-					} else {
-						throw new PairException($e->getMessage(), ErrorCodes::INVALID_QUERY_SYNTAX, $e);
-					}
-
-				case 'HY000':
-					throw new CriticalException($e->getMessage(), ErrorCodes::MYSQL_GENERAL_ERROR, $e);
-
-				// invalid parameter number: mixed named and positional parameters
-				case 'HY093':
-					throw new PairException($e->getMessage(), ErrorCodes::INVALID_QUERY_SYNTAX, $e);
-
-				default:
-					throw new PairException($e->getMessage(), ErrorCodes::DB_QUERY_FAILED, $e);
-
-			}
+			self::throwQueryException($e);
 
 		}
 
@@ -632,13 +643,13 @@ class Database {
 
 		$res = 0;
 		$span = self::startQuerySpan($this->query, self::COUNT);
-		$stat = $this->handler->prepare($this->query);
 
 		try {
+			$stat = $this->handler->prepare($this->query);
 			$stat->execute($params);
 		} catch (\PDOException $e) {
 			self::finishQuerySpan($span, 0, 'error', $e);
-			throw new PairException($e->getMessage(), ErrorCodes::DB_QUERY_FAILED, $e);
+			self::throwQueryException($e);
 		}
 
 		$res = (int)$stat->fetch(\PDO::FETCH_COLUMN);
@@ -666,13 +677,13 @@ class Database {
 		$this->openConnection();
 
 		$span = self::startQuerySpan($this->query, self::OBJECT_LIST);
-		$stat = $this->handler->prepare($this->query);
 
 		try {
+			$stat = $this->handler->prepare($this->query);
 			$stat->execute($params);
 		} catch (\PDOException $e) {
 			self::finishQuerySpan($span, 0, 'error', $e);
-			throw new PairException($e->getMessage(), ErrorCodes::DB_QUERY_FAILED, $e);
+			self::throwQueryException($e);
 		}
 
 		$ret = $stat->fetchAll(\PDO::FETCH_OBJ);
@@ -699,13 +710,13 @@ class Database {
 
 		$res = null;
 		$span = self::startQuerySpan($this->query, self::RESULT);
-		$stat = $this->handler->prepare($this->query);
 
 		try {
+			$stat = $this->handler->prepare($this->query);
 			$stat->execute((array)$params);
 		} catch (\PDOException $e) {
 			self::finishQuerySpan($span, 0, 'error', $e);
-			throw new PairException($e->getMessage(), ErrorCodes::DB_QUERY_FAILED, $e);
+			self::throwQueryException($e);
 		}
 
 		$res = $stat->fetch(\PDO::FETCH_COLUMN);
@@ -862,13 +873,13 @@ class Database {
 		$self->openConnection();
 
 		$span = self::startQuerySpan($query);
-		$stat = $self->handler->prepare($query);
 
 		try {
+			$stat = $self->handler->prepare($query);
 			$stat->execute((array)$params);
 		} catch (\PDOException $e) {
 			self::finishQuerySpan($span, 0, 'error', $e);
-			throw new PairException($e->getMessage(), ErrorCodes::DB_QUERY_FAILED, $e);
+			self::throwQueryException($e);
 		}
 
 		// count affected rows

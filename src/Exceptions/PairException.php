@@ -23,6 +23,12 @@ class PairException extends \Exception {
 	 */
 	public function __construct(string $message, int $code = 0, ?\Throwable $previous = null) {
 
+		// CriticalException initializes Throwable metadata here without re-entering escalation.
+		if (is_a(static::class, CriticalException::class, true)) {
+			parent::__construct($message, $code, $previous);
+			return;
+		}
+
 		$criticalCodes = [
 			ErrorCodes::DB_CONNECTION_FAILED,
 			ErrorCodes::NO_VALID_TEMPLATE,
@@ -33,7 +39,7 @@ class PairException extends \Exception {
 		];
 
 		// run drastic steps to close the application
-		if (in_array($code, $criticalCodes)) {
+		if (in_array($code, $criticalCodes, true)) {
 			throw new CriticalException($message, $code, $previous);
 		}
 

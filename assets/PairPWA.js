@@ -47,6 +47,16 @@
       return "serviceWorker" in navigator;
     }
 
+    /**
+     * Return a translated client message from server-injected PairMessages.
+     */
+    static message(key, fallback) {
+      const messages = global.PairMessages || {};
+      const message = messages && typeof messages[key] === "string" ? messages[key].trim() : "";
+
+      return message || fallback;
+    }
+
     static async init(config = {}) {
       const defaults = {
         swUrl: "/assets/PairSW.js",
@@ -160,9 +170,12 @@
       return queued;
     }
 
+    /**
+     * Register the configured service worker and wait until it is ready.
+     */
     static async registerServiceWorker(swUrl = "/assets/PairSW.js", scope = "/") {
       if (!this.isSupported()) {
-        throw new Error("Service Worker is not supported in this browser.");
+        throw new Error(this.message("SERVICE_WORKER_UNSUPPORTED", "The Service Worker API is not supported by this browser."));
       }
 
       const registration = await navigator.serviceWorker.register(swUrl, { scope });
@@ -172,6 +185,9 @@
       return registration;
     }
 
+    /**
+     * Start a periodic background refresh request while the page is visible.
+     */
     static startBackgroundRefresh({
       url,
       intervalMs = 60000,
@@ -181,7 +197,7 @@
       onError = null,
     } = {}) {
       if (!url) {
-        throw new Error("A refresh URL is required.");
+        throw new Error(this.message("REFRESH_URL_REQUIRED", "A refresh URL is required."));
       }
 
       this.stopBackgroundRefresh();

@@ -259,7 +259,7 @@ abstract class PasskeyController extends CrudController {
 		$credential = (isset($body['credential']) and is_array($body['credential'])) ? $body['credential'] : null;
 
 		if (!$credential) {
-			return $this->errorResponse('BAD_REQUEST', ['detail' => 'Missing passkey credential payload']);
+			return $this->errorResponse('BAD_REQUEST', ['detail' => ApiResponse::localizedMessage('API_DETAIL_MISSING_PASSKEY_CREDENTIAL_PAYLOAD')]);
 		}
 
 		$identifier = trim((string)($body['username'] ?? ''));
@@ -294,7 +294,7 @@ abstract class PasskeyController extends CrudController {
 		}
 
 		return ApiResponse::jsonResponse([
-			'message' => 'Authenticated',
+			'message' => ApiResponse::localizedMessage('API_MESSAGE_AUTHENTICATED'),
 			'userId' => $result->userId,
 			'sessionId' => $result->sessionId,
 			'redirectUrl' => $destinationUrl
@@ -351,14 +351,14 @@ abstract class PasskeyController extends CrudController {
 		$credential = (isset($body['credential']) and is_array($body['credential'])) ? $body['credential'] : null;
 
 		if (!$credential) {
-			return $this->errorResponse('BAD_REQUEST', ['detail' => 'Missing passkey credential payload']);
+			return $this->errorResponse('BAD_REQUEST', ['detail' => ApiResponse::localizedMessage('API_DETAIL_MISSING_PASSKEY_CREDENTIAL_PAYLOAD')]);
 		}
 
 		$label = trim((string)($body['label'] ?? ''));
 		$passkey = $this->passkey()->registerCredential($user, $credential, ('' === $label ? null : $label));
 
 		return ApiResponse::jsonResponse([
-			'message' => 'Passkey registered',
+			'message' => ApiResponse::localizedMessage('API_MESSAGE_PASSKEY_REGISTERED'),
 			'passkey' => [
 				'id' => $passkey->id,
 				'label' => $passkey->label,
@@ -385,17 +385,17 @@ abstract class PasskeyController extends CrudController {
 		$passkeyId = intval((string)$this->router->getParam(1));
 
 		if ($passkeyId < 1) {
-			return $this->errorResponse('BAD_REQUEST', ['detail' => 'Invalid passkey ID']);
+			return $this->errorResponse('BAD_REQUEST', ['detail' => ApiResponse::localizedMessage('API_DETAIL_INVALID_PASSKEY_ID')]);
 		}
 
 		$passkey = new UserPasskey($passkeyId);
 
 		if (!$passkey->isLoaded() or $passkey->userId !== $user->id) {
-			return $this->errorResponse('NOT_FOUND', ['detail' => 'Passkey not found']);
+			return $this->errorResponse('NOT_FOUND', ['detail' => ApiResponse::localizedMessage('API_DETAIL_PASSKEY_NOT_FOUND')]);
 		}
 
 		if (!$passkey->isRevoked() and !$passkey->revoke()) {
-			return $this->errorResponse('INTERNAL_SERVER_ERROR', ['detail' => 'Unable to revoke passkey']);
+			return $this->errorResponse('INTERNAL_SERVER_ERROR', ['detail' => ApiResponse::localizedMessage('API_DETAIL_UNABLE_TO_REVOKE_PASSKEY')]);
 		}
 
 		return ApiResponse::jsonResponse(null, 204);

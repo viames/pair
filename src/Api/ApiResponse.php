@@ -2,6 +2,7 @@
 
 namespace Pair\Api;
 
+use Pair\Helpers\Translator;
 use Pair\Http\JsonResponse;
 
 /**
@@ -17,118 +18,147 @@ class ApiResponse {
 
 		'AUTH_MISSING_FIELDS' => [
 			'httpCode' => 400,
+			'messageKey' => 'AUTH_MISSING_FIELDS',
 			'message' => 'Missing username or password'
 		],
 		'AUTH_PASSWORD_TOO_SHORT' => [
 			'httpCode' => 400,
+			'messageKey' => 'AUTH_PASSWORD_TOO_SHORT',
 			'message' => 'Password is too short'
 		],
 		'BAD_REQUEST' => [
 			'httpCode' => 400,
+			'messageKey' => 'BAD_REQUEST',
 			'message' => 'This request is invalid'
 		],
 		'INVALID_FIELD' => [
 			'httpCode' => 400,
+			'messageKey' => 'INVALID_FIELD',
 			'message' => 'Invalid field'
 		],
 		'INVALID_VALUE' => [
 			'httpCode' => 400,
+			'messageKey' => 'INVALID_VALUE',
 			'message' => 'Invalid value'
 		],
 		'INVALID_TYPE' => [
 			'httpCode' => 400,
+			'messageKey' => 'INVALID_TYPE',
 			'message' => 'Invalid type'
 		],
 		'INVALID_FIELDS' => [
 			'httpCode' => 400,
+			'messageKey' => 'INVALID_FIELDS',
 			'message' => 'Invalid fields'
 		],
 		'INVALID_OBJECT' => [
 			'httpCode' => 400,
+			'messageKey' => 'INVALID_OBJECT',
 			'message' => 'Invalid object'
 		],
 		'INVALID_OBJECT_ID' => [
 			'httpCode' => 400,
+			'messageKey' => 'INVALID_OBJECT_ID',
 			'message' => 'Invalid object ID'
 		],
 		'INVALID_OBJECT_DATA' => [
 			'httpCode' => 400,
+			'messageKey' => 'INVALID_OBJECT_DATA',
 			'message' => 'Invalid object data'
 		],
 		'INVALID_OBJECT_DATE' => [
 			'httpCode' => 400,
+			'messageKey' => 'INVALID_OBJECT_DATE',
 			'message' => 'Invalid object date'
 		],
 		'INVALID_OBJECT_TIME' => [
 			'httpCode' => 400,
+			'messageKey' => 'INVALID_OBJECT_TIME',
 			'message' => 'Invalid object time'
 		],
 		'INVALID_OBJECT_DATETIME' => [
 			'httpCode' => 400,
+			'messageKey' => 'INVALID_OBJECT_DATETIME',
 			'message' => 'Invalid object datetime'
 		],
 		'AUTH_INVALID_CREDENTIALS' => [
 			'httpCode' => 401,
+			'messageKey' => 'AUTH_INVALID_CREDENTIALS',
 			'message' => 'Invalid credentials'
 		],
 		'UNAUTHORIZED' => [
 			'httpCode' => 401,
+			'messageKey' => 'UNAUTHORIZED',
 			'message' => 'Unauthorized'
 		],
 		'AUTH_TOKEN_MISSING' => [
 			'httpCode' => 401,
+			'messageKey' => 'AUTH_TOKEN_MISSING',
 			'message' => 'Missing authentication token or session ID'
 		],
 		'AUTH_TOKEN_EXPIRED' => [
 			'httpCode' => 403,
+			'messageKey' => 'AUTH_TOKEN_EXPIRED',
 			'message' => 'Token expired'
 		],
 		'FORBIDDEN' => [
 			'httpCode' => 403,
+			'messageKey' => 'FORBIDDEN',
 			'message' => 'Forbidden'
 		],
 		'NOT_FOUND' => [
 			'httpCode' => 404,
+			'messageKey' => 'NOT_FOUND',
 			'message' => 'Not found'
 		],
 		'METHOD_NOT_ALLOWED' => [
 			'httpCode' => 405,
+			'messageKey' => 'METHOD_NOT_ALLOWED',
 			'message' => 'Method not allowed'
 		],
 		'NOT_ACCEPTABLE' => [
 			'httpCode' => 406,
+			'messageKey' => 'NOT_ACCEPTABLE',
 			'message' => 'Not acceptable'
 		],
 		'CONFLICT' => [
 			'httpCode' => 409,
+			'messageKey' => 'CONFLICT',
 			'message' => 'Conflict'
 		],
 		'UNSUPPORTED_MEDIA_TYPE' => [
 			'httpCode' => 415,
+			'messageKey' => 'UNSUPPORTED_MEDIA_TYPE',
 			'message' => 'Unsupported media type'
 		],
 		'TOO_MANY_ATTEMPTS' => [
 			'httpCode' => 429,
+			'messageKey' => 'TOO_MANY_ATTEMPTS',
 			'message' => 'Too many attempts'
 		],
 		'TOO_MANY_REQUESTS' => [
 			'httpCode' => 429,
+			'messageKey' => 'TOO_MANY_REQUESTS',
 			'message' => 'Too many requests'
 		],
 		'INTERNAL_SERVER_ERROR' => [
 			'httpCode' => 500,
+			'messageKey' => 'INTERNAL_SERVER_ERROR',
 			'message' => 'Internal server error'
 		],
 		'NOT_IMPLEMENTED' => [
 			'httpCode' => 501,
+			'messageKey' => 'NOT_IMPLEMENTED',
 			'message' => 'Not implemented'
 		],
 		'BAD_GATEWAY' => [
 			'httpCode' => 502,
+			'messageKey' => 'BAD_GATEWAY',
 			'message' => 'Bad gateway'
 		],
 		'GATEWAY_TIMEOUT' => [
 			'httpCode' => 504,
+			'messageKey' => 'GATEWAY_TIMEOUT',
 			'message' => 'Gateway timeout'
 		],
 
@@ -138,6 +168,11 @@ class ApiResponse {
 	 * Application-specific error codes registered at runtime.
 	 */
 	private static array $customErrors = [];
+
+	/**
+	 * Built-in English fallback messages loaded without depending on the runtime Translator.
+	 */
+	private static ?array $fallbackMessages = null;
 
 	/**
 	 * Register application-specific error codes. Custom errors take precedence over built-in ones.
@@ -188,6 +223,21 @@ class ApiResponse {
 	public static function jsonResponse(mixed $data, int $httpCode = 200): JsonResponse {
 
 		return new JsonResponse($data, $httpCode);
+
+	}
+
+	/**
+	 * Return a localized API payload message with a safe fallback for CLI and early bootstrap paths.
+	 */
+	public static function localizedMessage(string $key, string|array|null $vars = null, ?string $default = null): string {
+
+		$fallback = $default ?? self::fallbackMessage($key) ?? $key;
+
+		if (method_exists(Translator::class, 'safeDo')) {
+			return Translator::safeDo($key, $vars, $fallback);
+		}
+
+		return self::formatFallbackMessage($fallback, $vars);
 
 	}
 
@@ -250,10 +300,15 @@ class ApiResponse {
 
 		if (array_key_exists($errorCode, self::$customErrors)) {
 			$error = self::$customErrors[$errorCode];
+			$message = (string)($error['message'] ?? self::localizedMessage('INTERNAL_SERVER_ERROR'));
+
+			if (isset($error['messageKey'])) {
+				$message = self::localizedMessage((string)$error['messageKey'], null, $message);
+			}
 
 			return [
 				'httpCode' => intval($error['httpCode'] ?? 500),
-				'message' => (string)($error['message'] ?? 'Internal server error'),
+				'message' => $message,
 			];
 		}
 
@@ -262,11 +317,55 @@ class ApiResponse {
 		}
 
 		$error = self::ERRORS[$errorCode];
+		$message = (string)($error['message'] ?? self::localizedMessage('INTERNAL_SERVER_ERROR'));
+
+		if (isset($error['messageKey'])) {
+			$message = self::localizedMessage((string)$error['messageKey'], null, $message);
+		}
 
 		return [
 			'httpCode' => intval($error['httpCode'] ?? 500),
-			'message' => (string)($error['message'] ?? 'Internal server error'),
+			'message' => $message,
 		];
+
+	}
+
+	/**
+	 * Apply placeholder variables when a lightweight Translator test double is in use.
+	 */
+	private static function formatFallbackMessage(string $message, string|array|null $vars = null): string {
+
+		if (is_null($vars)) {
+			return $message;
+		}
+
+		if (!is_array($vars)) {
+			$vars = [(string)$vars];
+		}
+
+		try {
+			return vsprintf($message, $vars);
+		} catch (\ValueError) {
+			return $message;
+		}
+
+	}
+
+	/**
+	 * Read a built-in fallback message from Pair's English translation file.
+	 */
+	private static function fallbackMessage(string $key): ?string {
+
+		if (is_null(self::$fallbackMessages)) {
+			$filePath = dirname(__DIR__, 2) . '/translations/en-GB.ini';
+			$strings = (file_exists($filePath) and is_readable($filePath))
+				? parse_ini_file($filePath)
+				: false;
+
+			self::$fallbackMessages = is_array($strings) ? $strings : [];
+		}
+
+		return self::$fallbackMessages[$key] ?? null;
 
 	}
 

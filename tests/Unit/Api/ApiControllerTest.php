@@ -174,7 +174,7 @@ class ApiControllerTest extends TestCase {
 		$this->assertInstanceOf(ApiErrorResponse::class, $result);
 		$this->assertSame('BAD_REQUEST', $this->readPrivateProperty($result, ApiErrorResponse::class, 'errorCode'));
 		$this->assertSame(400, $this->readPrivateProperty($result, ApiErrorResponse::class, 'httpCode'));
-		$this->assertSame(['detail' => 'Invalid or empty JSON body'], $this->readPrivateProperty($result, ApiErrorResponse::class, 'extra'));
+		$this->assertSame(['detail' => 'The JSON request body is invalid or empty'], $this->readPrivateProperty($result, ApiErrorResponse::class, 'extra'));
 
 	}
 

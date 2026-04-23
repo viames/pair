@@ -1,0 +1,7 @@
+{
+	"name": "pair/legacy-upgrade-fixture",
+	"keywords": [
+		"plugin-system",
+		"runtime-plugins"
+	]
+}
