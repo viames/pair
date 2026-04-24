@@ -35,7 +35,7 @@ The upgrader skips `.git`, `node_modules`, `vendor`, and `tests` folders so it u
 - legacy controller `lang()` calls to an explicit `translate()` helper when the controller is already safe to switch to `Pair\Web\Controller`
 - `ApiExposable::apiConfig()` blocks that still lack both `readModel` and `resource`
 - common `ApiResponse::respond($object->toArray())` and `Utilities::jsonResponse($object->toArray())` patterns by wrapping them through `Pair\Data\Payload`
-- readonly `*PageState` skeleton classes inside `modules/*/classes/` for legacy `View` files, including fully-qualified parent classes, that assign layout variables through `assign()`
+- readonly `*PageState` skeleton classes inside `modules/*/classes/` for legacy `View` files, including the imports required by the generated code
 - dedicated warnings for legacy `View::assignState()` usage so existing typed state wiring is moved into the controller without generating redundant skeletons
 - old Runtime Plugin API references to Runtime Extension names, including `PluginInterface`, `RuntimePluginInterface`, `registerPlugin()`, and `registerRuntimePlugin()`
 - old installable plugin API references to Installable Package names, including `Plugin`, `PluginBase`, `InstallablePlugin`, `installPackage()`, `downloadPackage()`, `createManifestFile()`, `getManifestByFile()`, `getPlugin()`, `pluginExists()`, and `storeByPlugin()`
@@ -52,16 +52,44 @@ The upgrader skips `.git`, `node_modules`, `vendor`, and `tests` folders so it u
 - Runtime Extension classes whose class name still ends with `Plugin`; rename the class and file manually when autoloading permits it
 
 These cases need manual migration because they depend on application-specific state and layout intent.
-This rule was validated against the current `pair_boilerplate` baseline: legacy controllers are now reported, not silently rewritten to an incompatible base class.
-The same boilerplate validation now generates concrete page-state skeletons for the legacy views, so the manual work can start from explicit code instead of from an empty file.
+
+This rule was validated against the current `pair_boilerplate` baseline: legacy controllers are now reported, not silently rewritten to an incompatible base class. The same boilerplate validation now generates concrete page-state skeletons for the legacy views, so the manual work can start from explicit code instead of from an empty file.
+
 The framework now also emits deprecation notices in non-production environments when a module still extends `Pair\Core\Controller` or `Pair\Core\View`, so the remaining runtime legacy path stays visible during the migration.
+
+### Documentation Style
+
+Code examples in this document prefer imported class names over fully-qualified type paths.
+
+Use this style:
+
+```php
+use Pair\Web\PageResponse;
+
+public function defaultAction(): PageResponse {
+	// ...
+}
+```
+
+Avoid this style in documentation examples:
+
+```php
+public function defaultAction(): \Pair\Web\PageResponse {
+	// ...
+}
+```
+
+Fully-qualified names should only be used when they improve clarity or when the surrounding code intentionally has no import section.
 
 ### Target Pair v4 Shape
 
 #### Web controller
 
 ```php
+<?php
+
 use Pair\Web\Controller;
+use Pair\Web\PageResponse;
 
 final class UserController extends Controller {
 
@@ -73,7 +101,7 @@ final class UserController extends Controller {
 	/**
 	 * Render the default user page with explicit state.
 	 */
-	public function defaultAction(): \Pair\Web\PageResponse {
+	public function defaultAction(): PageResponse {
 
 		$user = new User(7);
 		$state = UserPageState::fromRecord($user);
@@ -88,9 +116,12 @@ final class UserController extends Controller {
 #### Read model
 
 ```php
+<?php
+
 use Pair\Data\ArraySerializableData;
 use Pair\Data\MapsFromRecord;
 use Pair\Data\ReadModel;
+use Pair\Orm\ActiveRecord;
 
 final readonly class UserPageState implements ReadModel, MapsFromRecord {
 
@@ -107,7 +138,7 @@ final readonly class UserPageState implements ReadModel, MapsFromRecord {
 	/**
 	 * Map an ORM record to the public read model.
 	 */
-	public static function fromRecord(\Pair\Orm\ActiveRecord $record): static {
+	public static function fromRecord(ActiveRecord $record): static {
 
 		return new self(
 			(int)$record->id,
@@ -134,9 +165,12 @@ final readonly class UserPageState implements ReadModel, MapsFromRecord {
 #### API config
 
 ```php
-use Pair\Api\ApiExposable;
+<?php
 
-final class User extends \Pair\Orm\ActiveRecord {
+use Pair\Api\ApiExposable;
+use Pair\Orm\ActiveRecord;
+
+final class User extends ActiveRecord {
 
 	use ApiExposable;
 
