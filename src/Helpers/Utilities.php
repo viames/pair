@@ -594,32 +594,35 @@ class Utilities {
 		$classes = [];
 
 		// lambda method that check a folder and add each ActiveRecord class found
-		$checkFolder = function (string $folder, ?string $pairPrefix) use(&$classes) {
+		$checkFolder = function (string $folder, ?string $pairPrefix, bool $recursive = false) use(&$classes) {
 
 			if (!is_dir($folder)) return;
 
-			$files = array_diff(scandir($folder), ['..', '.', '.DS_Store']);
+			$files = self::getPhpClassScanFiles($folder, $recursive);
 
 			foreach ($files as $file) {
 
-				$pathParts = pathinfo($file);
+				$pathParts = pathinfo($file->getFilename());
 
-				// avoid folders and hidden files
-				if (is_dir($file) or !isset($pathParts['extension']) or 'php' != $pathParts['extension']) continue;
+				// avoid hidden files and non-PHP resources collected by recursive iterators
+				if (str_starts_with($file->getFilename(), '.') or !isset($pathParts['extension']) or 'php' != $pathParts['extension']) continue;
 
 				// include the file code
-				include_once ($folder . '/' . $file);
+				include_once ($file->getPathname());
 
-				// cut .php from file name
-				$class = $pathParts['filename'];
+				// namespaced applications can declare an explicit FQCN, while legacy files keep the basename.
+				$class = self::getPhpFileDeclaredClass($file->getPathname());
 
-				// Pair classes must prefix with namespace
-				if (is_null($pairPrefix)) {
-					$pair = false;
-				} else {
-					$class = $pairPrefix . $class;
-					$pair = true;
+				if (is_null($class)) {
+					$class = $pathParts['filename'];
+
+					// Pair classes must prefix with namespace when the file does not declare one.
+					if (!is_null($pairPrefix)) {
+						$class = $pairPrefix . $class;
+					}
 				}
+
+				$pair = !is_null($pairPrefix);
 
 				// check on class exists
 				if (!class_exists($class)) continue;
@@ -634,7 +637,7 @@ class Utilities {
 
 					$getInstance = method_exists($class, 'getInstance');
 
-					$classes[$class] = ['file'=>$file, 'folder'=>$folder, 'tableName'=>$class::TABLE_NAME,
+					$classes[$class] = ['file'=>$file->getFilename(), 'folder'=>$file->getPath(), 'tableName'=>$class::TABLE_NAME,
 							'constructor' => $constructor, 'getInstance' => $getInstance, 'pair' => $pair];
 
 				}
@@ -653,15 +656,152 @@ class Utilities {
 		$checkFolder(APPLICATION_PATH . '/' . PAIR_FOLDER . '/Helpers', 'Pair\\Helpers\\');
 
 		// custom classes
-		$checkFolder(APPLICATION_PATH . '/classes', null);
+		$checkFolder(APPLICATION_PATH . '/classes', null, true);
 
 		// modules classes
 		$modules = array_diff(scandir(APPLICATION_PATH . '/modules'), ['..', '.', '.DS_Store']);
 		foreach ($modules as $module) {
-			$checkFolder(APPLICATION_PATH . '/modules/' . $module . '/classes', null);
+			$checkFolder(APPLICATION_PATH . '/modules/' . $module . '/classes', null, true);
 		}
 
 		return $classes;
+
+	}
+
+	/**
+	 * Return PHP files from a class folder, optionally walking nested folders.
+	 *
+	 * @return	array<int, \SplFileInfo>
+	 */
+	private static function getPhpClassScanFiles(string $folder, bool $recursive): array {
+
+		$files = [];
+
+		if ($recursive) {
+			$iterator = new \RecursiveIteratorIterator(
+				new \RecursiveDirectoryIterator($folder, \FilesystemIterator::SKIP_DOTS)
+			);
+
+			foreach ($iterator as $file) {
+				if ($file instanceof \SplFileInfo and $file->isFile() and 'php' === $file->getExtension()) {
+					$files[] = $file;
+				}
+			}
+
+			return $files;
+		}
+
+		foreach (array_diff(scandir($folder), ['..', '.', '.DS_Store']) as $file) {
+			$path = $folder . '/' . $file;
+
+			if (is_file($path) and 'php' === pathinfo($file, PATHINFO_EXTENSION)) {
+				$files[] = new \SplFileInfo($path);
+			}
+		}
+
+		return $files;
+
+	}
+
+	/**
+	 * Parse the first declared class FQCN from a PHP file without assuming one class naming style.
+	 */
+	private static function getPhpFileDeclaredClass(string $file): ?string {
+
+		$contents = file_get_contents($file);
+
+		if (false === $contents) {
+			return null;
+		}
+
+		$namespace = '';
+		$tokens = token_get_all($contents);
+		$count = count($tokens);
+
+		for ($index = 0; $index < $count; $index++) {
+			$token = $tokens[$index];
+
+			if (!is_array($token)) {
+				continue;
+			}
+
+			if (T_NAMESPACE === $token[0]) {
+				$namespace = self::readTokenName($tokens, $index + 1);
+				continue;
+			}
+
+			if (T_CLASS === $token[0] && !self::isAnonymousClassToken($tokens, $index)) {
+				$class = self::readTokenName($tokens, $index + 1, true);
+
+				return '' === $namespace ? $class : $namespace . '\\' . $class;
+			}
+		}
+
+		return null;
+
+	}
+
+	/**
+	 * Read a namespace or class token sequence starting at a token offset.
+	 *
+	 * @param	array<int, mixed>	$tokens	Token stream from token_get_all().
+	 */
+	private static function readTokenName(array $tokens, int $start, bool $singleName = false): string {
+
+		$name = '';
+		$count = count($tokens);
+
+		for ($index = $start; $index < $count; $index++) {
+			$token = $tokens[$index];
+
+			if (is_string($token)) {
+				if ('\\' === $token) {
+					$name .= '\\';
+					continue;
+				}
+
+				if (';' === $token or '{' === $token or '(' === $token) {
+					break;
+				}
+
+				continue;
+			}
+
+			if (in_array($token[0], [T_STRING, T_NAME_QUALIFIED, T_NAME_FULLY_QUALIFIED, T_NS_SEPARATOR], true)) {
+				$name .= $token[1];
+
+				if ($singleName) {
+					break;
+				}
+			}
+		}
+
+		return ltrim($name, '\\');
+
+	}
+
+	/**
+	 * Detect anonymous class declarations so discovery does not treat them as named classes.
+	 *
+	 * @param	array<int, mixed>	$tokens	Token stream from token_get_all().
+	 */
+	private static function isAnonymousClassToken(array $tokens, int $classIndex): bool {
+
+		for ($index = $classIndex - 1; $index >= 0; $index--) {
+			$token = $tokens[$index];
+
+			if (is_string($token)) {
+				continue;
+			}
+
+			if (T_WHITESPACE === $token[0] or T_COMMENT === $token[0] or T_DOC_COMMENT === $token[0]) {
+				continue;
+			}
+
+			return T_NEW === $token[0];
+		}
+
+		return false;
 
 	}
 

@@ -334,4 +334,14 @@ class ErrorCodes {
 	 */
 	const SUPABASE_ERROR = 1067;
 
+	/**
+	 * Gemini API error.
+	 */
+	const GEMINI_ERROR = 1068;
+
+	/**
+	 * Claude API error.
+	 */
+	const CLAUDE_ERROR = 1069;
+
 }

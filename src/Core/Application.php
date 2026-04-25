@@ -235,6 +235,11 @@ class Application {
 		$router = Router::getInstance();
 		$router->parseRoutes();
 
+		// Legacy raw routes own their output and must skip template bootstrapping.
+		if ($router->raw) {
+			$this->headless();
+		}
+
 		// force utf8mb4
 		if (Env::get('DB_UTF8')) {
 			$db = Database::getInstance();
@@ -846,8 +851,8 @@ class Application {
 		// read the Bearer token via HTTP header
 		$bearerToken = OAuth2Token::bearerToken();
 
-		// assemble the API controller name
-		$ctlName = $name . 'Controller';
+		// Resolve a custom controller class from the module manifest when one is declared.
+		$ctlName = $this->getModuleControllerClass($name, $name . 'Controller');
 
 		if (!class_exists($ctlName)) {
 			print ApiResponse::localizedMessage('API_CONTROLLER_CLASS_INCORRECT');
@@ -1019,6 +1024,50 @@ class Application {
 		$controllerFile = APPLICATION_PATH . '/modules/' . $module . '/controller.php';
 
 		return FilesystemMetadata::fileExists($controllerFile) ? $controllerFile : null;
+
+	}
+
+	/**
+	 * Return the controller class declared by a module manifest or the conventional fallback.
+	 *
+	 * @param	string	$module			Module name.
+	 * @param	string	$defaultClass	Conventional controller class.
+	 */
+	private function getModuleControllerClass(string $module, string $defaultClass): string {
+
+		$manifestFile = APPLICATION_PATH . '/modules/' . $module . '/manifest.xml';
+
+		if (!FilesystemMetadata::fileExists($manifestFile)) {
+			return $defaultClass;
+		}
+
+		$previousErrorHandling = libxml_use_internal_errors(true);
+		$manifest = simplexml_load_file($manifestFile, \SimpleXMLElement::class, LIBXML_NONET);
+		libxml_clear_errors();
+		libxml_use_internal_errors($previousErrorHandling);
+
+		if (!$manifest instanceof \SimpleXMLElement || !isset($manifest->package)) {
+			return $defaultClass;
+		}
+
+		// Pair v4 allows namespaced application controllers without breaking legacy modules.
+		$controllerClass = trim((string)($manifest->package->controllerClass ?? ''));
+
+		if ('' === $controllerClass && isset($manifest->package->options->controllerClass)) {
+			$controllerClass = trim((string)$manifest->package->options->controllerClass);
+		}
+
+		if ('' === $controllerClass) {
+			return $defaultClass;
+		}
+
+		$normalizedClass = ltrim($controllerClass, '\\');
+
+		if (!preg_match('/^[A-Za-z_][A-Za-z0-9_]*(\\\\[A-Za-z_][A-Za-z0-9_]*)*$/', $normalizedClass)) {
+			return $defaultClass;
+		}
+
+		return $normalizedClass;
 
 	}
 
@@ -1770,8 +1819,8 @@ class Application {
 
 			require $controllerFile;
 
-			// build controller object
-			$controllerName = ucfirst($router->module) . 'Controller';
+			// Resolve the controller class after loading the conventional module controller file.
+			$controllerName = $this->getModuleControllerClass((string)$router->module, ucfirst($router->module) . 'Controller');
 
 			// set the action
 			$action = $router->action ? $router->action . 'Action' : 'defaultAction';

@@ -126,11 +126,7 @@ class Router {
 	 */
 	public function __toString(): string {
 
-		$path = $this->module .'/'. $this->action;
-		if (count($this->vars)) {
-			$path .= '/'. implode('/', $this->vars);
-		}
-		return $path;
+		return $this->getUrl();
 
 	}
 
@@ -142,7 +138,7 @@ class Router {
 	 * @param string|null $module Optional module name.
 	 * @param bool|null $raw Optional raw flag.
 	 */
-	public static function addRoute(string $path, string $action, ?string $module = null, ?bool $raw = false) {
+	public static function addRoute(string $path, string $action, ?string $module = null, ?bool $raw = false): void {
 
 		// fix empty path
 		if ('' == $path) {
@@ -156,12 +152,13 @@ class Router {
 		$route->path	= $path;
 		$route->action	= $action;
 		$route->module	= $module;
+		$route->raw		= (bool)$raw;
 
-		try {
-			self::$instance->routes[] = $route;
-		} catch (\Exception $e) {
+		if (!self::hasInstance()) {
 			die('Router instance has not been created yet');
 		}
+
+		self::$instance->routes[] = $route;
 
 	}
 
@@ -171,9 +168,9 @@ class Router {
 	 */
 	public static function exceedingPaginationFallback(): void {
 
-		$self = static::$instance;
+		if (!self::hasInstance()) return;
 
-		if (!$self) return;
+		$self = self::$instance;
 
 		if ($self->getPage() > 1) {
 			$self->resetPage();
@@ -188,23 +185,15 @@ class Router {
 	 *
 	 * @param mixed	$paramIdx Parameter position (zero based) or Key name.
 	 * @param bool	$decode Flag to decode a previously encoded value as char-only.
-	 * @return string|null The parameter value or null if not found.
+	 * @return string|array|null The parameter value or null if not found.
 	 */
-	public static function get(int|string $paramIdx, bool $decode = false): ?string {
+	public static function get(int|string $paramIdx, bool $decode = false): string|array|null {
 
-		$self = static::$instance;
+		if (!self::hasInstance()) return null;
 
-		if (!$self) return null;
+		$self = self::$instance;
 
-		if (array_key_exists($paramIdx, $self->vars) and '' != $self->vars[$paramIdx]) {
-			$value = $self->vars[$paramIdx];
-			if ($decode) {
-				$value = json_decode(gzinflate(base64_decode(strtr($value, '-_', '+/'))));
-			}
-			return $value;
-		} else {
-			return null;
-		}
+		return $self->getStoredParam($paramIdx, $decode);
 
 	}
 
@@ -242,6 +231,15 @@ class Router {
 		}
 
 		return self::$instance;
+
+	}
+
+	/**
+	 * Return true when the singleton has already been initialized.
+	 */
+	private static function hasInstance(): bool {
+
+		return isset(self::$instance);
 
 	}
 
@@ -292,6 +290,42 @@ class Router {
 		$this->page = $tmpPage;
 
 		return $url;
+
+	}
+
+	/**
+	 * Decode a URL-safe encoded parameter value produced by setParam().
+	 */
+	private function decodeParamValue(string $value): ?string {
+
+		$compressed = base64_decode(strtr($value, '-_', '+/'), true);
+
+		if (false === $compressed) {
+			return null;
+		}
+
+		$decoded = @gzinflate($compressed);
+
+		if (false === $decoded) {
+			return null;
+		}
+
+		$json = json_decode($decoded);
+
+		if (is_null($json)) {
+			return null;
+		}
+
+		return (string)$json;
+
+	}
+
+	/**
+	 * Encode one path segment for safe use in generated URLs.
+	 */
+	private function encodePathSegment(mixed $value): string {
+
+		return rawurlencode((string)$value);
 
 	}
 
@@ -347,19 +381,11 @@ class Router {
 	 *
 	 * @param mixed $paramIdx Parameter position (zero based) or Key name.
 	 * @param bool $decode Flag to decode a previously encoded value as char-only before returning it.
-	 * @return string|null The parameter value or null if not found.
+	 * @return string|array|null The parameter value or null if not found.
 	 */
-	public function getParam(int|string $paramIdx, bool $decode = false): ?string {
+	public function getParam(int|string $paramIdx, bool $decode = false): string|array|null {
 
-		if (array_key_exists($paramIdx, $this->vars) and ''!=$this->vars[$paramIdx]) {
-			$value = $this->vars[$paramIdx];
-			if ($decode) {
-				$value = json_decode(gzinflate(base64_decode(strtr($value, '-_', '+/'))));
-			}
-			return $value;
-		} else {
-			return null;
-		}
+		return $this->getStoredParam($paramIdx, $decode);
 
 	}
 
@@ -379,6 +405,33 @@ class Router {
 	}
 
 	/**
+	 * Return a stored parameter value after applying Pair's optional transport decoding.
+	 */
+	private function getStoredParam(int|string $paramIdx, bool $decode = false): string|array|null {
+
+		if (!array_key_exists($paramIdx, $this->vars)) {
+			return null;
+		}
+
+		$value = $this->vars[$paramIdx];
+
+		if (is_array($value)) {
+			return $value;
+		}
+
+		if ('' == $value) {
+			return null;
+		}
+
+		if ($decode) {
+			return $this->decodeParamValue((string)$value);
+		}
+
+		return (string)$value;
+
+	}
+
+	/**
 	 * Return the current relative URL, with order and optional pagination, in the format "module/action/param1/param2?key=value".
 	 * 
 	 * @return string The current relative URL.
@@ -391,13 +444,13 @@ class Router {
 		// queue all parameters
 		foreach ($this->vars as $key=>$val) {
 			if (is_int($key)) {
-				$sefParams[] = $val;
+				$sefParams[] = $this->encodePathSegment($val);
 			} else {
 				$cgiParams[$key] = $val;
 			}
 		}
 
-		$url = $this->module . '/' . $this->action;
+		$url = $this->encodePathSegment($this->module) . '/' . $this->encodePathSegment($this->action);
 
 		// add slashed params
 		if (count($sefParams)) {
@@ -416,7 +469,7 @@ class Router {
 
 		// add associative params
 		if (count($cgiParams)) {
-			$url .= '?' . http_build_query($cgiParams);
+			$url .= '?' . http_build_query($cgiParams, '', '&', PHP_QUERY_RFC3986);
 		}
 
 		return $url;
@@ -433,24 +486,44 @@ class Router {
 			return;
 		}
 
-		$temp = explode('?', $this->url);
+		$temp = explode('?', (string)$this->url, 2);
 		$this->url = $temp[0];
 
-		if (!array_key_exists(1, $temp)) {
+		if (!array_key_exists(1, $temp) or '' === $temp[1]) {
 			return;
 		}
 
-		// adds to $this->params
-		$couples = explode('&', $temp[1]);
+		$queryParams = [];
+		parse_str($temp[1], $queryParams);
 
-		foreach ($couples as $c) {
+		// Store decoded CGI parameters so getUrl() can safely encode them once.
+		foreach ($queryParams as $key => $value) {
+			$this->setParam((string)$key, $value);
+		}
 
-			$var = explode('=', $c);
+	}
 
-			if (array_key_exists(1, $var)) {
-				list ($key, $value) = $var;
-				$this->setParam($key, $value);
+	/**
+	 * Detect and remove legacy route mode prefixes such as /raw and /ajax from the current URL.
+	 */
+	private function parseRouteModePrefixes(): void {
+
+		if (!$this->url) {
+			return;
+		}
+
+		// Multiple prefixes are accepted for legacy URLs such as /raw/ajax/module/action.
+		while (true) {
+
+			if ($this->consumeRouteModePrefix('raw')) {
+				continue;
 			}
+
+			if ($this->consumeRouteModePrefix('ajax')) {
+				continue;
+			}
+
+			break;
 
 		}
 
@@ -495,6 +568,7 @@ class Router {
 
 				// assign action
 				$this->action = $r->action;
+				$this->raw = $this->raw or (bool)($r->raw ?? false);
 
 				// assign even module
 				if (!$moduleRoute and !$this->module) {
@@ -592,6 +666,9 @@ class Router {
 
 			// parse, add and remove from URL any CGI param after question mark
 			$this->parseCgiParameters();
+
+			// parse and remove legacy route mode prefixes before matching routes
+			$this->parseRouteModePrefixes();
 
 			// remove special prefixes and return parameters
 			$params = $this->getParameters();
@@ -727,15 +804,75 @@ class Router {
 	 */
 	public function routePathMatchesUrl(string $path, string $url): bool {
 
-		// replace any regex after param name in path
-		$pathRegex = preg_replace('|/:[^/(]+\(([^)]+)\)|', '/($1)', $path);
+		$pathRegex = $this->routePathToRegex($path);
+		$cleanUrl = $this->stripRouteModePrefixes($url);
 
-		// then replace simple param name in path
-		$pathRegex = preg_replace('|/(:[^/]+)|', '/([^/]+)', $pathRegex);
+		return 1 === preg_match($pathRegex, $cleanUrl);
 
-		// remove prefix and compare current URL to regex
-		$cleanUrl = preg_replace('#^([/]*raw)/|^([/]*ajax)/#','/', $url, 1);
-		return preg_match('|^' . $pathRegex . '$|', $cleanUrl);
+	}
+
+	/**
+	 * Consume one route mode prefix from the current URL and update the related flag.
+	 */
+	private function consumeRouteModePrefix(string $prefix): bool {
+
+		$match = '/' . $prefix;
+
+		if ($this->url !== $match and !str_starts_with((string)$this->url, $match . '/')) {
+			return false;
+		}
+
+		if ('raw' == $prefix) {
+			$this->raw = true;
+		} else if ('ajax' == $prefix) {
+			$this->ajax = true;
+		}
+
+		$this->url = substr((string)$this->url, strlen($match));
+		$this->url = '' === $this->url ? '/' : $this->url;
+
+		return true;
+
+	}
+
+	/**
+	 * Build a safe regular expression for a custom route path.
+	 */
+	private function routePathToRegex(string $path): string {
+
+		$delimiter = '~';
+
+		if ('' == $path) {
+			$path = '/';
+		} else if ('/' != $path[0]) {
+			$path = '/' . $path;
+		}
+
+		if ('/' == $path) {
+			return $delimiter . '^/$' . $delimiter;
+		}
+
+		$segments = explode('/', trim($path, '/'));
+		$regexSegments = [];
+
+		foreach ($segments as $segment) {
+
+			if (preg_match('/^:([^\/(]+)(?:\((.+)\))?$/', $segment, $matches)) {
+				$constraint = isset($matches[2]) ? str_replace($delimiter, '\\' . $delimiter, $matches[2]) : null;
+				$regexSegments[] = $constraint ? '(' . $constraint . ')' : '([^/]+)';
+			} else {
+				$regexSegments[] = preg_quote($segment, $delimiter);
+			}
+
+		}
+
+		$regex = $delimiter . '^/' . implode('/', $regexSegments);
+
+		if (str_ends_with($path, '/')) {
+			$regex .= '/';
+		}
+
+		return $regex . '$' . $delimiter;
 
 	}
 
@@ -843,16 +980,37 @@ class Router {
 	 * Add a param value to the URL, on index position if given and existent.
 	 *
 	 * @param mixed $paramIdx Zero based position on URL path or Key name.
-	 * @param string $value Value to add.
+	 * @param string|array $value Value to add.
 	 * @param bool $encode Flag to encode as char-only the value.
 	 */
-	public function setParam(mixed $paramIdx, string $value, bool $encode = false): void {
+	public function setParam(mixed $paramIdx, string|array $value, bool $encode = false): void {
 
-		if ($encode) {
+		if ($encode and is_string($value)) {
 			$value = rtrim(strtr(base64_encode(gzdeflate(json_encode($value), 9)), '+/', '-_'), '=');
 		}
 
 		$this->vars[$paramIdx] = $value;
+
+	}
+
+	/**
+	 * Remove legacy route mode prefixes from an arbitrary URL without changing router state.
+	 */
+	private function stripRouteModePrefixes(string $url): string {
+
+		foreach (['raw', 'ajax'] as $prefix) {
+
+			$match = '/' . $prefix;
+
+			if ($url === $match or str_starts_with($url, $match . '/')) {
+				$url = substr($url, strlen($match));
+				$url = '' === $url ? '/' : $url;
+				return $this->stripRouteModePrefixes($url);
+			}
+
+		}
+
+		return $url;
 
 	}
 
