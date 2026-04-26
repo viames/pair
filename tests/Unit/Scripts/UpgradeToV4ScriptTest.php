@@ -52,6 +52,7 @@ class UpgradeToV4ScriptTest extends TestCase {
 		$this->assertStringContainsString('legacy View still loads data from $this->model', $result['stdout']);
 		$this->assertStringContainsString('legacy View already uses assignState(); move typed state construction into the controller and return PageResponse directly', $result['stdout']);
 		$this->assertStringContainsString('runtime extension class still ends with Plugin', $result['stdout']);
+		$this->assertStringContainsString('legacy Pair\\Helpers\\Upload detected', $result['stdout']);
 		$this->assertStringNotContainsString('modules/stateful/classes/StatefulDefaultPageState.php', $result['stdout']);
 		$this->assertStringContainsString('controller still depends on the legacy MVC flow', $result['stdout']);
 		$this->assertSame($originalController, file_get_contents($controllerPath));
@@ -75,6 +76,7 @@ class UpgradeToV4ScriptTest extends TestCase {
 		$this->assertStringContainsString('Mode: write', $result['stdout']);
 		$this->assertStringContainsString('controller still depends on the legacy MVC flow', $result['stdout']);
 		$this->assertStringContainsString('ActiveRecord::html() detected', $result['stdout']);
+		$this->assertStringContainsString('legacy Pair\\Helpers\\Upload detected', $result['stdout']);
 
 		$unsafeControllerContent = file_get_contents($this->fixtureTargetPath() . '/modules/user/controller.php');
 		$this->assertStringContainsString('use Pair\\Core\\Controller;', (string)$unsafeControllerContent);
@@ -126,6 +128,7 @@ class UpgradeToV4ScriptTest extends TestCase {
 
 		$catalogControllerContent = file_get_contents($this->fixtureTargetPath() . '/modules/catalog/controller.php');
 		$this->assertStringContainsString('use Pair\\Packages\\InstallablePackage;', (string)$catalogControllerContent);
+		$this->assertStringContainsString('use Pair\\Helpers\\Upload;', (string)$catalogControllerContent);
 		$this->assertStringContainsString('InstallablePackage::removeOldArchives();', (string)$catalogControllerContent);
 		$this->assertStringContainsString('$plugin = new InstallablePackage();', (string)$catalogControllerContent);
 		$this->assertStringContainsString('->installArchive(', (string)$catalogControllerContent);

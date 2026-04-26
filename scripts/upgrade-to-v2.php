@@ -89,7 +89,7 @@ foreach ($files as $file) {
 	$content = str_replace('Pair\Options', 'Pair\Helpers\Options', $content);
 	$content = str_replace('Pair\Schedule', 'Pair\Helpers\Schedule', $content);
 	$content = str_replace('Pair\Translator', 'Pair\Helpers\Translator', $content);
-	$content = str_replace('Pair\Upload', 'Pair\Helpers\Upload', $content);
+	$content = str_replace('Pair\Upload', 'Pair\Http\UploadedFile', $content);
 	$content = str_replace('Pair\Utilities', 'Pair\Helpers\Utilities', $content);
 	$content = str_replace('Pair\BootstrapMenu', 'Pair\Html\BootstrapMenu', $content);
 	$content = str_replace('Pair\Breadcrumb', 'Pair\Html\Breadcrumb', $content);

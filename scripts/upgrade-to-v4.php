@@ -340,6 +340,7 @@ function transformPhpFile(string $filePath, string $content): array {
 	[$updated, $nomenclatureChanges, $nomenclatureWarnings] = upgradePluginNomenclature($updated);
 	$changes = array_merge($changes, $nomenclatureChanges);
 	$warnings = array_merge($warnings, $nomenclatureWarnings);
+	$warnings = array_merge($warnings, buildLegacyUploadMigrationWarnings($updated));
 
 	if ($isController) {
 		[$updated, $controllerChanges, $controllerWarnings] = transformControllerFile($updated);
@@ -384,6 +385,30 @@ function transformPhpFile(string $filePath, string $content): array {
 		'content' => $updated,
 		'generatedFiles' => $generatedFiles,
 		'warnings' => array_values(array_unique($warnings)),
+	];
+
+}
+
+/**
+ * Build explicit warnings for legacy upload helper usage that needs manual migration.
+ *
+ * @return string[]
+ */
+function buildLegacyUploadMigrationWarnings(string $content): array {
+
+	$markers = [
+		'Pair\\Helpers\\Upload',
+		'new Upload(',
+		'new \\Pair\\Helpers\\Upload(',
+		'->saveS3(',
+	];
+
+	if (!contentContainsAny($content, $markers)) {
+		return [];
+	}
+
+	return [
+		'legacy Pair\\Helpers\\Upload detected; migrate to Pair\\Http\\UploadedFile::fromGlobals(), moveTo(), or putToS3()',
 	];
 
 }

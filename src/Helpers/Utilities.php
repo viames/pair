@@ -7,8 +7,8 @@ use Pair\Core\Env;
 use Pair\Core\Logger;
 use Pair\Core\Router;
 use Pair\Exceptions\PairException;
-use Pair\Html\FormControls\File;
 use Pair\Html\UiTheme;
+use Pair\Http\FileMediaType;
 use Pair\Orm\Collection;
 
 /**
@@ -157,7 +157,7 @@ class Utilities {
 		}
 
 		// check if the file is a CSV
-		if ('csv' != File::mimeCategory($fileMime)) {
+		if (!FileMediaType::matchesCategory($fileMime, 'csv')) {
 			throw new PairException('The file mime “' . $fileMime . '” is not CSV type');
 		}
 
