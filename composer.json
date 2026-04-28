@@ -59,6 +59,7 @@
 		"ext-openssl": "Required for Passkey/WebAuthn features.",
 		"ext-redis": "Recommended for Redis-backed cache/session integrations.",
 		"ext-xdebug": "Useful while debugging Pair applications and tests.",
+		"aws/aws-sdk-php": "Required by Pair\\Services\\AmazonS3 for AWS S3 and S3-compatible object storage.",
 		"stripe/stripe-php": "Required by Pair\\Services\\StripeGateway for Stripe payments."
 	},
 	"bin": [

@@ -39,27 +39,63 @@ class AmazonS3 {
 	 * @param	string	Secret Access Key.
 	 * @param	string	Bucket Region.
 	 * @param	string	Bucket Name.
+	 * @param	array<string, mixed>	Client options for S3-compatible providers.
 	 */
-	public function __construct(string $key, string $secret, string $region, string $bucket) {
+	public function __construct(string $key, string $secret, string $region, string $bucket, array $options = []) {
 
 		$this->assertDependencies();
 
 		try {
 
-			$this->client = new S3Client([
+			$clientOptions = [
 				'version' => 'latest',
 				'region' => $region,
 				'credentials' => [
 					'key' => $key,
 					'secret' => $secret
 				]
-			]);
+			];
+
+			// I provider S3-compatible, come Aruba Object Storage, richiedono endpoint custom e spesso path-style.
+			$endpoint = $this->optionString($options, 'endpoint');
+
+			if ('' !== $endpoint) {
+				$clientOptions['endpoint'] = $endpoint;
+			}
+
+			foreach (['use_path_style_endpoint', 'bucket_endpoint'] as $optionName) {
+				if (array_key_exists($optionName, $options)) {
+					$clientOptions[$optionName] = (bool)$options[$optionName];
+				}
+			}
+
+			$signatureVersion = $this->optionString($options, 'signature_version');
+
+			if ('' !== $signatureVersion) {
+				$clientOptions['signature_version'] = $signatureVersion;
+			}
+
+			$this->client = new S3Client($clientOptions);
 
 			$this->bucket = $bucket;
 
 		} catch (\Throwable $e) {
 			throw new PairException('Unable to initialize Amazon S3 driver: ' . $e->getMessage(), ErrorCodes::AMAZON_S3_ERROR);
 		}
+
+	}
+
+	/**
+	 * Restituisce una opzione stringa normalizzata per il client AWS SDK.
+	 *
+	 * @param	array<string, mixed>	$options	Opzioni grezze passate al costruttore.
+	 * @param	string				$key		Nome dell'opzione da leggere.
+	 */
+	private function optionString(array $options, string $key): string {
+
+		$value = $options[$key] ?? '';
+
+		return is_scalar($value) ? trim((string)$value) : '';
 
 	}
 
