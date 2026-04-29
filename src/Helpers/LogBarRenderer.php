@@ -2,6 +2,7 @@
 
 namespace Pair\Helpers;
 
+use Pair\Core\Application;
 use Pair\Html\UiTheme;
 
 /**
@@ -30,7 +31,7 @@ final readonly class LogBarRenderer {
 		$ret = '<div class="' . $this->escapeAttribute($chrome['root']) . '" id="logbar" data-logbar-root data-logbar-ui="' . $this->escapeAttribute(UiTheme::current()) . '">';
 		$ret .= '<div class="' . $this->escapeAttribute($chrome['header']) . '">';
 		$ret .= '<div class="logbar-titlebar">';
-		$ret .= '<div><h4>Pair LogBar</h4><div class="logbar-route">' . $this->escape($route ?: 'request inspector') . '</div></div>';
+		$ret .= '<div class="logbar-heading"><h4>Pair LogBar</h4><div class="logbar-route">' . $this->escape($route ?: 'request inspector') . '</div>' . $this->buildRuntimeContextHtml($correlationId) . '</div>';
 		$ret .= '<button type="button" id="toggle-events" class="logbar-toggle' . ($showEvents ? ' expanded' : '') . '" aria-expanded="' . ($showEvents ? 'true' : 'false') . '">' . ($showEvents ? 'Hide details' : 'Show details') . '</button>';
 		$ret .= '</div>';
 		$ret .= '<div class="logbar-metrics">';
@@ -40,7 +41,6 @@ final readonly class LogBarRenderer {
 		$ret .= $this->buildMetricHtml('Memory', $memory['value'], $memory['subtext'], ((float)$data['memoryLimitPercent'] >= (float)$data['memoryNearLimitRatio'] ? 'warning' : ''));
 		$ret .= $this->buildMetricHtml('Warnings', (string)$data['warningCount'], ((int)$data['warningCount'] ? 'needs review' : 'none'), ((int)$data['warningCount'] ? 'warning' : ''));
 		$ret .= $this->buildMetricHtml('Errors', (string)$data['errorCount'], ((int)$data['errorCount'] ? 'needs review' : 'none'), ((int)$data['errorCount'] ? 'error' : ''));
-		$ret .= $this->buildMetricHtml('Request ID', substr($correlationId, 0, 12), 'correlation', 'correlation');
 		$ret .= '</div></div>';
 
 		$ret .= '<div class="' . $this->escapeAttribute(trim($chrome['body'] . ' ' . $bodyClasses)) . '">';
@@ -104,6 +104,85 @@ final readonly class LogBarRenderer {
 		}
 
 		return $log;
+
+	}
+
+	/**
+	 * Build the runtime metadata shown near the title instead of in the metric grid.
+	 */
+	private function buildRuntimeContextHtml(string $correlationId): string {
+
+		$ret = '<div class="logbar-context" aria-label="LogBar runtime context">';
+		$ret .= $this->buildRuntimeContextItemHtml('Env', $this->appEnvironment(), 'environment');
+		$ret .= $this->buildRuntimeContextItemHtml('UI', $this->uiFrameworkLabel(), 'ui');
+		$ret .= $this->buildBreakpointContextHtml();
+		$ret .= $this->buildRequestContextHtml($correlationId);
+		$ret .= '</div>';
+
+		return $ret;
+
+	}
+
+	/**
+	 * Build one compact runtime context item.
+	 */
+	private function buildRuntimeContextItemHtml(string $label, string $value, string $class = '', string $attributes = ''): string {
+
+		$classAttribute = trim('logbar-context-item ' . $class);
+
+		return
+			'<span class="' . $this->escapeAttribute($classAttribute) . '"' . $attributes . '>' .
+				'<span class="logbar-context-label">' . $this->escape($label) . '</span>' .
+				'<strong class="logbar-context-value">' . $this->escape($value) . '</strong>' .
+			'</span>';
+
+	}
+
+	/**
+	 * Return the normalized application environment shown in the LogBar header.
+	 */
+	private function appEnvironment(): string {
+
+		return Application::getEnvironment();
+
+	}
+
+	/**
+	 * Build the viewport breakpoint context item for UI frameworks that expose named breakpoints.
+	 */
+	private function buildBreakpointContextHtml(): string {
+
+		if (!UiTheme::isBootstrap() and !UiTheme::isBulma()) {
+			return '';
+		}
+
+		return $this->buildRuntimeContextItemHtml('Breakpoint', '-', 'breakpoint', ' data-logbar-breakpoint="1" aria-live="polite"');
+
+	}
+
+	/**
+	 * Build the request context item with a copy affordance for the correlation ID.
+	 */
+	private function buildRequestContextHtml(string $correlationId): string {
+
+		$value = substr($correlationId, 0, 12);
+
+		return
+			'<span class="logbar-context-item request">' .
+				'<span class="logbar-context-label">Request</span>' .
+				'<button type="button" class="logbar-context-copy" data-logbar-copy-value="' . $this->escapeAttribute($correlationId) . '" title="Copy request ID" aria-label="Copy request ID ' . $this->escapeAttribute($value) . '">' .
+					'<strong class="logbar-context-value">' . $this->escape($value) . '</strong>' .
+				'</button>' .
+			'</span>';
+
+	}
+
+	/**
+	 * Return a readable label for the active UI framework.
+	 */
+	private function uiFrameworkLabel(): string {
+
+		return ucfirst(UiTheme::current());
 
 	}
 

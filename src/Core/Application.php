@@ -586,6 +586,80 @@ class Application {
 	}
 
 	/**
+	 * Configure the native PHP session cookie before a session is started.
+	 */
+	public static function configureNativeSessionCookie(): void {
+
+		if (PHP_SESSION_NONE !== session_status() or headers_sent()) {
+			return;
+		}
+
+		$sessionName = static::getSessionCookieName();
+
+		if (session_name() !== $sessionName) {
+			session_name($sessionName);
+		}
+
+		$params = static::getSessionCookieParams(0);
+
+		// session_set_cookie_params expects lifetime, while setcookie expects expires.
+		session_set_cookie_params([
+			'lifetime' => 0,
+			'path' => $params['path'],
+			'secure' => $params['secure'],
+			'httponly' => $params['httponly'],
+			'samesite' => $params['samesite']
+		]);
+
+	}
+
+	/**
+	 * Return the app-specific native PHP session cookie name.
+	 */
+	public static function getSessionCookieName(): string {
+
+		$prefix = preg_replace('/[^A-Za-z0-9]/', '', static::getCookiePrefix());
+
+		if (!$prefix) {
+			$prefix = 'Pair';
+		}
+
+		if (ctype_digit($prefix[0])) {
+			$prefix = 'Pair' . $prefix;
+		}
+
+		return $prefix . 'Session';
+
+	}
+
+	/**
+	 * Return cookie parameters used by the native PHP session cookie.
+	 */
+	public static function getSessionCookieParams(int $expires): array {
+
+		return [
+			'expires' => $expires,
+			'path' => static::getSessionCookiePath(),
+			'samesite' => 'Lax',
+			'secure' => static::isSecureRequest(),
+			'httponly' => true
+		];
+
+	}
+
+	/**
+	 * Return the request path that should receive the native session cookie.
+	 */
+	private static function getSessionCookiePath(): string {
+
+		$path = defined('URL_PATH') ? (string)URL_PATH : '';
+		$path = '/' . trim($path, '/');
+
+		return '/' === $path ? '/' : $path;
+
+	}
+
+	/**
 	 * Returns true when a persistent state is expected to be mutated directly by the UI.
 	 *
 	 * Filter selects rely on client-side cookie updates when the user changes or clears
@@ -892,8 +966,8 @@ class Application {
 				// destroy the current session
 				Session::destroy();
 
-				// start a new session
-				session_start();
+				// Start a new native session with Pair's app-scoped cookie settings.
+				static::startNativeSession();
 
 			} else if ('logout' == $param) {
 
@@ -904,7 +978,7 @@ class Application {
 
 				// Ensure refresh flows can renew a session from a token without requiring a bearer first.
 				Session::destroy();
-				session_start();
+				static::startNativeSession();
 
 			} else {
 
@@ -935,7 +1009,7 @@ class Application {
 
 			// ensure a session exists for challenge storage
 			if (PHP_SESSION_ACTIVE !== session_status()) {
-				session_start();
+				static::startNativeSession();
 			}
 
 		// all the other requests with sid
@@ -1137,6 +1211,20 @@ class Application {
 	}
 
 	/**
+	 * Start the native PHP session after applying Pair's cookie settings.
+	 */
+	private static function startNativeSession(): void {
+
+		if (PHP_SESSION_ACTIVE === session_status()) {
+			return;
+		}
+
+		static::configureNativeSessionCookie();
+		session_start();
+
+	}
+
+	/**
 	 * Start the session and set the User class (Pair/Models/User or a custom one that inherites
 	 * from Pair/Models/User). Must use only for command-line and web application access.
 	 */
@@ -1145,8 +1233,8 @@ class Application {
 		// get required singleton instances
 		$router = Router::getInstance();
 
-		// start session or resume session started by handleApiRequest
-		session_start();
+		// Start or resume the app-scoped native PHP session.
+		static::startNativeSession();
 
 		// get existing previous session
 		$this->session = Session::find(session_id());

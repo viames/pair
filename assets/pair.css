@@ -166,10 +166,76 @@ body[data-bs-theme="dark"] #logbar {
     margin: 0;
 }
 
+#logbar .logbar-heading {
+    min-width: 0;
+}
+
 #logbar .logbar-route {
     color: var(--pair-logbar-muted);
     font-size: 0.76rem;
     margin-top: 0.18rem;
+}
+
+#logbar .logbar-context {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.38rem;
+    margin-top: 0.48rem;
+}
+
+#logbar .logbar-context-item {
+    align-items: baseline;
+    background: var(--pair-logbar-bg-soft);
+    border: 1px solid var(--pair-logbar-border-soft);
+    border-radius: 6px;
+    display: inline-flex;
+    gap: 0.32rem;
+    min-width: 0;
+    padding: 0.22rem 0.48rem;
+}
+
+#logbar .logbar-context-label {
+    color: var(--pair-logbar-muted);
+    font-size: 0.62rem;
+    font-weight: 750;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+#logbar .logbar-context-value {
+    color: var(--pair-logbar-text);
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 750;
+    line-height: 1.2;
+    max-width: 14rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#logbar .logbar-context-item.request .logbar-context-value {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+#logbar .logbar-context-copy {
+    appearance: none;
+    background: transparent;
+    border: 0;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    margin: 0;
+    padding: 0;
+}
+
+#logbar .logbar-context-copy:hover .logbar-context-value,
+#logbar .logbar-context-copy:focus-visible .logbar-context-value {
+    color: var(--pair-logbar-accent);
+}
+
+#logbar .logbar-context-copy.copied .logbar-context-value {
+    color: var(--pair-logbar-ok);
 }
 
 #logbar .logbar-toggle {

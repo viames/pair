@@ -102,13 +102,17 @@ class Session extends ActiveRecord {
 	 */
 	public static function destroy(): void {
 
-		// delete the session cookie
-		if (isset($_COOKIE[session_name()])) {
-			setcookie(session_name(), '', time()-3600, '/');
+		Application::configureNativeSessionCookie();
+		$sessionName = session_name();
+
+		// Delete the app-scoped native session cookie using the same path and flags used to create it.
+		if (isset($_COOKIE[$sessionName])) {
+			setcookie($sessionName, '', Application::getSessionCookieParams(time() - 3600));
+			unset($_COOKIE[$sessionName]);
 		}
 
-		// destroy the session
-		if (session_id()) {
+		// Destroy the active PHP session data when a session is currently open.
+		if (PHP_SESSION_ACTIVE === session_status()) {
 			session_destroy();
 		}
 

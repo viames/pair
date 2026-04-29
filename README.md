@@ -172,6 +172,8 @@ Pair includes a built-in log bar for development and diagnostics:
 - loaded objects
 - memory usage
 - timings
+- application environment
+- current Bootstrap/Bulma breakpoint when a matching UI framework is selected
 - SQL traces
 - backtraces
 - custom debug messages

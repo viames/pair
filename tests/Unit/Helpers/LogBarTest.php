@@ -215,6 +215,7 @@ class LogBarTest extends TestCase {
 		}
 
 		UiTheme::setCurrent('bootstrap');
+		$_ENV['APP_ENV'] = 'staging';
 
 		$inspector = new LogBarInspector(250, 20, 30, 3, 80.0);
 		$renderer = new LogBarRenderer($inspector);
@@ -224,9 +225,17 @@ class LogBarTest extends TestCase {
 		$this->assertStringContainsString('data-logbar-ui="bootstrap"', $html);
 		$this->assertStringContainsString('class="card-header logbar-header"', $html);
 		$this->assertStringContainsString('class="logbar-titlebar"', $html);
+		$this->assertStringContainsString('class="logbar-context" aria-label="LogBar runtime context"', $html);
+		$this->assertStringContainsString('<span class="logbar-context-label">Env</span><strong class="logbar-context-value">staging</strong>', $html);
+		$this->assertStringContainsString('<span class="logbar-context-label">UI</span><strong class="logbar-context-value">Bootstrap</strong>', $html);
+		$this->assertStringContainsString('data-logbar-breakpoint="1" aria-live="polite"', $html);
+		$this->assertStringContainsString('<span class="logbar-context-label">Breakpoint</span><strong class="logbar-context-value">-</strong>', $html);
+		$this->assertStringContainsString('data-logbar-copy-value="test-correlation-id"', $html);
 		$this->assertStringContainsString('<span class="logbar-metric-label">Queries</span>', $html);
 		$this->assertStringContainsString('<strong class="logbar-metric-value">2</strong>', $html);
 		$this->assertStringContainsString('<span class="logbar-metric-subtext">budget 30</span>', $html);
+		$this->assertStringNotContainsString('<span class="logbar-metric-label">Environment</span>', $html);
+		$this->assertStringNotContainsString('<span class="logbar-metric-label">Request ID</span>', $html);
 		$this->assertStringContainsString('class="logbar-diagnostic-banner logbar-severity-warning"', $html);
 		$this->assertStringContainsString('class="card-body logbar-body logbar-show-queries"', $html);
 
@@ -247,6 +256,8 @@ class LogBarTest extends TestCase {
 		$this->assertStringContainsString('class="card-header logbar-header"', $bulmaHtml);
 		$this->assertStringContainsString('class="card-content logbar-body hidden"', $bulmaHtml);
 		$this->assertStringContainsString('data-logbar-ui="bulma"', $bulmaHtml);
+		$this->assertStringContainsString('data-logbar-breakpoint="1" aria-live="polite"', $bulmaHtml);
+		$this->assertStringContainsString('<span class="logbar-context-label">UI</span><strong class="logbar-context-value">Bulma</strong>', $bulmaHtml);
 
 		UiTheme::setCurrent('native');
 		$nativeHtml = $renderer->render($data, 'sample/index', 'test-correlation-id', false, false);
@@ -254,6 +265,8 @@ class LogBarTest extends TestCase {
 		$this->assertStringContainsString('class="logbar-header"', $nativeHtml);
 		$this->assertStringContainsString('class="logbar-body hidden"', $nativeHtml);
 		$this->assertStringContainsString('data-logbar-ui="native"', $nativeHtml);
+		$this->assertStringContainsString('<span class="logbar-context-label">UI</span><strong class="logbar-context-value">Native</strong>', $nativeHtml);
+		$this->assertStringNotContainsString('data-logbar-breakpoint="1"', $nativeHtml);
 
 	}
 

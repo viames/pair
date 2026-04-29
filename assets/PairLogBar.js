@@ -3,6 +3,24 @@
 (function (global) {
   "use strict";
 
+  /* Bootstrap 5 and Bulma expose stable named viewport ranges that the LogBar can show without framework JavaScript. */
+  const BOOTSTRAP_BREAKPOINTS = [
+    { name: "xs", min: 0 },
+    { name: "sm", min: 576 },
+    { name: "md", min: 768 },
+    { name: "lg", min: 992 },
+    { name: "xl", min: 1200 },
+    { name: "xxl", min: 1400 }
+  ];
+  const BULMA_BREAKPOINTS = [
+    { name: "mobile", min: 0 },
+    { name: "tablet", min: 769 },
+    { name: "desktop", min: 1024 },
+    { name: "widescreen", min: 1216 },
+    { name: "fullhd", min: 1408 }
+  ];
+  let breakpointFrame = 0;
+
   /**
    * Read a plain cookie value by name.
    * @param {string} name
@@ -37,6 +55,150 @@
    */
   function logbarRoot(element) {
     return element && typeof element.closest === "function" ? element.closest("#logbar[data-logbar-root]") : null;
+  }
+
+  /**
+   * Return the viewport width used for framework breakpoint detection.
+   * @returns {number}
+   */
+  function viewportWidth() {
+    const documentWidth = document.documentElement ? document.documentElement.clientWidth : 0;
+
+    return Math.max(documentWidth || 0, global.innerWidth || 0);
+  }
+
+  /**
+   * Resolve a breakpoint name from sorted min-width definitions.
+   * @param {number} width
+   * @param {Array<{name: string, min: number}>} breakpoints
+   * @returns {string}
+   */
+  function breakpointForWidth(width, breakpoints) {
+    let current = breakpoints[0] ? breakpoints[0].name : "";
+
+    breakpoints.forEach(function (breakpoint) {
+      if (width >= breakpoint.min) {
+        current = breakpoint.name;
+      }
+    });
+
+    return current;
+  }
+
+  /**
+   * Return the active framework breakpoint name for the current LogBar UI.
+   * @param {string} ui
+   * @param {number} width
+   * @returns {string}
+   */
+  function breakpointForUi(ui, width) {
+    if (ui === "bootstrap") {
+      return breakpointForWidth(width, BOOTSTRAP_BREAKPOINTS);
+    }
+
+    if (ui === "bulma") {
+      return breakpointForWidth(width, BULMA_BREAKPOINTS);
+    }
+
+    return "";
+  }
+
+  /**
+   * Update one rendered breakpoint context item from the current viewport.
+   * @param {Element} logbar
+   */
+  function updateBreakpoint(logbar) {
+    const metric = logbar.querySelector("[data-logbar-breakpoint]");
+    const value = metric ? metric.querySelector(".logbar-context-value") : null;
+    const breakpoint = metric ? breakpointForUi(logbar.getAttribute("data-logbar-ui") || "", viewportWidth()) : "";
+
+    if (!metric || !value || !breakpoint) return;
+
+    value.textContent = breakpoint;
+    metric.setAttribute("data-logbar-current-breakpoint", breakpoint);
+  }
+
+  /**
+   * Show short visual feedback after a copy action succeeds.
+   * @param {Element} button
+   */
+  function showCopyFeedback(button) {
+    button.classList.add("copied");
+    global.setTimeout(function () {
+      button.classList.remove("copied");
+    }, 1200);
+  }
+
+  /**
+   * Copy text with the Clipboard API and fall back for older local debug pages.
+   * @param {string} value
+   * @returns {Promise<void>}
+   */
+  function copyText(value) {
+    if (global.navigator && global.navigator.clipboard && typeof global.navigator.clipboard.writeText === "function") {
+      return global.navigator.clipboard.writeText(value);
+    }
+
+    return new Promise(function (resolve, reject) {
+      const field = document.createElement("textarea");
+
+      // The fallback needs a selectable element, but it should never affect LogBar layout.
+      field.value = value;
+      field.setAttribute("readonly", "");
+      field.style.left = "-9999px";
+      field.style.position = "fixed";
+      document.body.appendChild(field);
+      field.select();
+
+      try {
+        if (document.execCommand("copy")) {
+          resolve();
+        } else {
+          reject(new Error("Copy command was not accepted."));
+        }
+      } catch (error) {
+        reject(error);
+      } finally {
+        document.body.removeChild(field);
+      }
+    });
+  }
+
+  /**
+   * Copy a runtime context value such as the request correlation ID.
+   * @param {Element} button
+   */
+  function copyContextValue(button) {
+    const value = button.getAttribute("data-logbar-copy-value") || "";
+
+    if (!value) return;
+
+    copyText(value).then(function () {
+      showCopyFeedback(button);
+    }).catch(function () {
+      button.blur();
+    });
+  }
+
+  /**
+   * Update every LogBar breakpoint metric currently available in the document.
+   */
+  function updateAllBreakpoints() {
+    document.querySelectorAll("#logbar[data-logbar-root]").forEach(updateBreakpoint);
+  }
+
+  /**
+   * Schedule a single breakpoint refresh for resize bursts.
+   */
+  function scheduleBreakpointUpdate() {
+    if (breakpointFrame) return;
+
+    const refresh = function () {
+      breakpointFrame = 0;
+      updateAllBreakpoints();
+    };
+
+    breakpointFrame = global.requestAnimationFrame ? global.requestAnimationFrame(refresh) : global.setTimeout(refresh, 16);
   }
 
   /**
@@ -169,6 +331,7 @@
     }
 
     setActiveTab(logbar, "overview");
+    updateBreakpoint(logbar);
     applyFilters(logbar);
   }
 
@@ -184,10 +347,16 @@
    * @param {MouseEvent} event
    */
   function handleClick(event) {
-    const target = event.target && typeof event.target.closest === "function" ? event.target.closest("#toggle-events, [data-logbar-tab-button], [data-logbar-query-toggle]") : null;
+    const target = event.target && typeof event.target.closest === "function" ? event.target.closest("#toggle-events, [data-logbar-tab-button], [data-logbar-query-toggle], [data-logbar-copy-value]") : null;
     const logbar = logbarRoot(target);
 
     if (!target || !logbar) return;
+
+    if (target.hasAttribute("data-logbar-copy-value")) {
+      event.preventDefault();
+      copyContextValue(target);
+      return;
+    }
 
     if (target.id === "toggle-events") {
       event.preventDefault();
@@ -224,6 +393,7 @@
   document.addEventListener("click", handleClick);
   document.addEventListener("input", handleFilterEvent);
   document.addEventListener("change", handleFilterEvent);
+  window.addEventListener("resize", scheduleBreakpointUpdate);
   window.addEventListener("pair:router:navigated", initAll);
 
   global.PairLogBar = {

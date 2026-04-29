@@ -742,6 +742,9 @@ class User extends ActiveRecord {
 		// reset the user in Application object
 		$app->currentUser = null;
 
+		// Clear the native PHP session cookie after the database session has been revoked.
+		Session::destroy();
+
 		// hook for tasks to be executed after logout
 		$user->afterLogout();
 

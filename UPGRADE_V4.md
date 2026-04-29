@@ -57,6 +57,8 @@ This rule was validated against the current `pair_boilerplate` baseline: legacy 
 
 The framework now also emits deprecation notices in non-production environments when a module still extends `Pair\Core\Controller` or `Pair\Core\View`, so the remaining runtime legacy path stays visible during the migration.
 
+Pair v4 native PHP sessions now use an app-scoped cookie name derived from `APP_NAME` and a cookie path derived from the current `URL_PATH`, instead of the shared `PHPSESSID` default. This avoids local multi-application collisions on the same host. Existing browser sessions created with `PHPSESSID` are not reused after the upgrade, so users may need to log in once.
+
 ### Documentation Style
 
 Code examples in this document prefer imported class names over fully-qualified type paths.
