@@ -4,11 +4,13 @@ Guide for automated agents (LLMs, code assistants, review bots) working on this 
 
 This is the **primary entrypoint** for AI agents working on this repository.
 Read this file first.
+Do not add agent-specific shim files unless they contain genuinely non-duplicated operational requirements.
 
 This file owns the high-level operating contract for agents:
 
 - workflow
 - repository exploration requirements
+- technical conventions
 - change hygiene
 - review expectations
 - completion format
@@ -17,7 +19,6 @@ This file owns the high-level operating contract for agents:
 After this file:
 
 - read `SKILL.md` for the compact quick-start and document map
-- read `GEMINI.md` for technical conventions and framework-level guardrails
 - read task-specific documents only when needed
 
 > Version scope
@@ -47,8 +48,6 @@ Before making any change:
 
 Never introduce a new architectural pattern if an existing one already solves the problem.
 
-For coding conventions and technical guardrails, defer to `GEMINI.md`.
-
 If `/tests` is not present, verify behavior through the closest available manual or local validation path and mention that in the final report.
 
 ---
@@ -60,7 +59,7 @@ If `/tests` is not present, verify behavior through the closest available manual
 3. Implement the **smallest possible change** that solves the task.
 4. Verify that backward compatibility is preserved (unless explicitly requested otherwise).
 5. Add or update tests if the behavior changes.
-6. Keep the implementation consistent with Pair conventions defined in `GEMINI.md`.
+6. Keep the implementation consistent with Pair conventions defined in this file and nearby code.
 7. If public framework behavior changes, update the relevant pages in the sibling `pair.wiki` docs, especially for `src/Api` and `.env` configuration changes.
 
 Use deeper documents only when needed:
@@ -74,11 +73,8 @@ Use deeper documents only when needed:
 
 Use each file for its owning responsibility:
 
-- `AGENTS.md`: primary entrypoint, workflow, mandatory exploration, output contract, document ownership
+- `AGENTS.md`: primary entrypoint, workflow, mandatory exploration, technical conventions, output contract, document ownership
 - `SKILL.md`: compact quick-start, search heuristics, component map, minimal runbook
-- `GEMINI.md`: technical conventions, architecture summary, coding standards, security and testing guidance
-- `CODEX.md`: Codex-specific operating notes that must stay compatible with this file
-- `CLAUDE.md`: Claude-specific reading order that must stay compatible with this file
 - `PAIR_ARCHITECTURE.md`: framework internals and design reasoning
 - `PAIR_PATTERNS.md`: implementation patterns and nearby code shape
 - `PAIR_CONTEXT.md`: strategic context and anti-pattern avoidance
@@ -92,11 +88,9 @@ Default reading order for most tasks:
 
 1. `AGENTS.md`
 2. `SKILL.md`
-3. `GEMINI.md`
-4. `CODEX.md` or `CLAUDE.md` only when relevant to the current agent
-5. One deeper task-specific document only if uncertainty remains
+3. One deeper task-specific document only if uncertainty remains
 
-If the task is small and local, stop after step 3 unless there is ambiguity or architectural risk.
+If the task is small and local, stop after step 2 unless there is ambiguity or architectural risk.
 
 ## Conflict resolution
 
@@ -106,14 +100,57 @@ If guidance conflicts, use this order:
 2. Tests
 3. `AGENTS.md`
 4. `SKILL.md`
-5. `GEMINI.md`
-6. Agent-specific file (`CODEX.md`, `CLAUDE.md`, or equivalent)
-7. `PAIR_ARCHITECTURE.md`
-8. `PAIR_CONTEXT.md`
-9. `PAIR_PATTERNS.md`
-10. `PAIR_TASKS.md`
+5. `PAIR_ARCHITECTURE.md`
+6. `PAIR_CONTEXT.md`
+7. `PAIR_PATTERNS.md`
+8. `PAIR_TASKS.md`
 
 ---
+
+## Technical conventions
+
+Use these defaults unless nearby code establishes a more specific local pattern.
+
+### Runtime and dependencies
+
+- Target PHP 8.3, 8.4, and 8.5.
+- Required Composer extensions are `curl`, `intl`, `json`, `mbstring`, `PDO`, and `pdo_mysql` for the default MySQL driver.
+- Feature-specific extensions should remain optional unless the feature already requires them, for example `fileinfo`, `openssl`, `redis`, or `xdebug`.
+- Do not introduce new runtime dependencies for simple framework behavior.
+
+### PHP conventions
+
+- Use PSR-4 classes under the `Pair\` namespace.
+- Use tabs for indentation.
+- Keep one class per file and match filename to class name.
+- Use `CamelCase` for classes, `camelCase` for variables and methods, `UPPER_SNAKE_CASE` for constants, and suffix interfaces with `Interface`.
+- Use short English names for functions and tests: one word when clear, two if ambiguous, three only for exceptional cases.
+- Put opening braces on the same line.
+- Prefer readable multi-line control flow over compact clever code.
+- Prefer `and` / `or`; use parentheses when precedence could be unclear.
+- Avoid short PHP tags.
+
+### JavaScript and frontend conventions
+
+- Prefer vanilla JavaScript and PairUI directives.
+- Keep frontend behavior lightweight, build-free, and progressively enhanced.
+- Do not introduce jQuery or heavy frontend frameworks.
+- Keep server-rendered behavior intact unless the task explicitly moves logic client-side.
+
+### Framework conventions
+
+- Pair uses ActiveRecord. Prefer ORM relation helpers, parent relation helpers, and collections over manual SQL joins when they express the intent.
+- Default routing is `/<module>/<action>/<params>`, with actions resolved as `<action>Action()`.
+- New Pair v4 web work should prefer explicit `Pair\Web\Controller` responses; `Pair\Core\Controller` and legacy views remain migration bridges.
+- Layout files should stay mostly HTML; editor/static-analysis hints such as `declare(strict_types=1)` or `/** @var FooPageState $state */` are not runtime contracts.
+
+### Security, tests, and performance
+
+- Keep framework code secure by default, especially input validation, output escaping, CSRF, sessions, and database queries.
+- When tests exist, update or add deterministic tests for changed behavior.
+- Never modify tests merely to make a broken implementation pass.
+- Avoid N+1 queries, repeated database calls, heavy loops, and unnecessary allocations.
+- Prefer cached results and existing collections where they fit the existing code.
 
 ## Change hygiene
 
@@ -144,7 +181,7 @@ Agents must avoid:
 - Rewriting existing utilities with custom implementations
 - Introducing new dependencies without clear justification
 - Changing public APIs without explicit request
-- Changing coding conventions defined in GEMINI.md
+- Changing coding conventions defined in this file
 - Creating parallel architectures for existing components
 
 ---
@@ -181,7 +218,7 @@ Manual test:
 Before completing the task:
 
 - [ ] I read `AGENTS.md` first and used it as the primary guide
-- [ ] I followed conventions defined in `GEMINI.md`
+- [ ] I followed conventions defined in `AGENTS.md`
 - [ ] I applied the quick-start guardrails defined in `SKILL.md`
 - [ ] I explored the repository before coding
 - [ ] I preserved backward compatibility

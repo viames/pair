@@ -5,10 +5,8 @@ Its purpose is to reduce incorrect assumptions and prevent agents from importing
 
 This file complements:
 
-- SKILL.md
-- GEMINI.md
 - AGENTS.md
-- CODEX.md
+- SKILL.md
 - PAIR_ARCHITECTURE.md
 - PAIR_PATTERNS.md
 - PAIR_TASKS.md

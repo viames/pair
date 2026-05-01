@@ -2,7 +2,7 @@
 
 This document describes **idiomatic coding patterns** for the Pair PHP framework.
 Read it when you already know where to change code and need to match Pair’s implementation style.
-Workflow and change-hygiene rules stay in `AGENTS.md`; technical conventions stay in `GEMINI.md`.
+Workflow, change-hygiene rules, and technical conventions stay in `AGENTS.md`.
 
 ---
 

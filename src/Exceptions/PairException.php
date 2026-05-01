@@ -66,21 +66,25 @@ class PairException extends \Exception {
 		$message = trim($message);
 
 		if ('' === $message) {
-			return Translator::do('AN_ERROR_OCCURRED');
+			return Translator::safeDo('AN_ERROR_OCCURRED', null, 'An error occurred.');
 		}
 
-		// if message is a translation key, translate it
-		$localized = Translator::do($message, null, false, $message);
+		// Low-level exception rendering must also work before database-backed locales are ready.
+		$localized = Translator::safeDo($message, null, $message);
 
 		if ($localized !== $message) {
 			return $localized;
 		}
 
 		// avoid showing english hard-coded messages on non-english locales
-		$currentLanguage = strtolower((string)Translator::getCurrentLanguageCode());
+		try {
+			$currentLanguage = strtolower((string)Translator::getCurrentLanguageCode());
+		} catch (\Throwable) {
+			return $message;
+		}
 
 		if ($currentLanguage and !str_starts_with($currentLanguage, 'en')) {
-			return Translator::do('AN_ERROR_OCCURRED');
+			return Translator::safeDo('AN_ERROR_OCCURRED', null, 'An error occurred.');
 		}
 
 		return $message;
@@ -94,7 +98,7 @@ class PairException extends \Exception {
 
 		$messages = [];
 		$currentError = $error;
-		$fallbackMessage = Translator::do('TECHNICAL_ERROR_WITHOUT_DETAILS', null, false, 'Technical error without details.');
+		$fallbackMessage = Translator::safeDo('TECHNICAL_ERROR_WITHOUT_DETAILS', null, 'Technical error without details.');
 
 		do {
 			$message = trim((string)$currentError->getMessage());
@@ -127,7 +131,7 @@ class PairException extends \Exception {
 
 		// overwrite the message with a more user-friendly one in production
 		if ('production' == Application::getEnvironment()) {
-			$message = Translator::do('AN_ERROR_OCCURRED');
+			$message = Translator::safeDo('AN_ERROR_OCCURRED', null, 'An error occurred.');
 		} else if ($error instanceof \Throwable) {
 			$message = static::buildThrowableDebugMessage($error);
 		} else {
@@ -141,7 +145,8 @@ class PairException extends \Exception {
 		if ($app->headless) {
 			Utilities::jsonError('INTERNAL_SERVER_ERROR',$message);
 		} else {
-			$app->modal(Translator::do('ERROR'), $message, 'error')->confirm(Translator::do('OK'));
+			$app->modal(Translator::safeDo('ERROR', null, 'Error'), $message, 'error')
+				->confirm(Translator::safeDo('OK', null, 'OK'));
 		}
 
 	}

@@ -38,8 +38,7 @@ The goal is to produce **safe, minimal, reviewable changes**.
 
 Use this file for navigation, not as a second source of truth.
 
-- Workflow, change hygiene, clarification rules, and final output format are owned by `AGENTS.md`.
-- Technical conventions, comments/docblocks, security, and testing guidance are owned by `GEMINI.md`.
+- Workflow, technical conventions, change hygiene, clarification rules, and final output format are owned by `AGENTS.md`.
 - Reuse existing framework patterns before introducing helpers or abstractions.
 - Prefer additive changes over rewrites.
 - Use the smallest set of documents needed for the current task.
@@ -50,14 +49,13 @@ Use this file for navigation, not as a second source of truth.
 
 Use this decision guide to avoid reading too much documentation:
 
-- For any code change: read `AGENTS.md` and `GEMINI.md`.
+- For any code change: read `AGENTS.md`, then use this file for navigation.
 - For architecture or framework internals: read `PAIR_ARCHITECTURE.md`.
 - For implementation style and nearby code shape: read `PAIR_PATTERNS.md`.
 - To avoid importing patterns from heavier frameworks: read `PAIR_CONTEXT.md`.
 - For larger features, refactors, migrations, or performance work: read `PAIR_TASKS.md`.
-- In Codex environments: read `CODEX.md`.
 
-Start with `AGENTS.md`, `SKILL.md`, and `GEMINI.md`, then stop unless the task still needs deeper context.
+Start with `AGENTS.md` and `SKILL.md`, then stop unless the task still needs deeper context.
 
 ---
 
@@ -191,8 +189,7 @@ Document ownership and conflict resolution are defined in `AGENTS.md`.
 
 Use deeper docs only for their narrow role:
 
-- `GEMINI.md`: technical conventions and framework-level guardrails
-- `CODEX.md`: Codex-specific notes that do not restate shared rules
+- `AGENTS.md`: authoritative workflow, technical conventions, and output contract
 - `PAIR_ARCHITECTURE.md`: framework internals and request flow
 - `PAIR_CONTEXT.md`: anti-import guardrails
 - `PAIR_PATTERNS.md`: idiomatic code shape and examples

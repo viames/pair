@@ -4,10 +4,8 @@ This document guides AI coding agents when performing **complex tasks** in the P
 
 It complements:
 
-- AGENTS.md (entrypoint and workflow)
+- AGENTS.md (entrypoint, workflow, and technical conventions)
 - SKILL.md (quick-start and document map)
-- GEMINI.md (coding standards and conventions)
-- CODEX.md (Codex behavior)
 - PAIR_ARCHITECTURE.md (framework architecture)
 - PAIR_PATTERNS.md (idiomatic coding patterns)
 
@@ -25,7 +23,7 @@ Agents should consult this document when implementing:
 # When to Use This File
 
 Open this document only when the task is not obviously local and low-risk.
-For routine work, follow `AGENTS.md`, `SKILL.md`, and `GEMINI.md` first.
+For routine work, follow `AGENTS.md` and `SKILL.md` first.
 
 This file adds task-shaping guidance for work that crosses layers, carries rollout risk, or needs broader verification.
 

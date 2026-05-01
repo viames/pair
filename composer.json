@@ -97,9 +97,6 @@
 			"/phpunit.xml.dist",
 			"/composer.lock",
 			"/AGENTS.md",
-			"/CLAUDE.md",
-			"/CODEX.md",
-			"/GEMINI.md",
 			"/SKILL.md"
 		]
 	}

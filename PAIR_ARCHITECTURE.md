@@ -2,7 +2,7 @@
 
 This document explains the architectural philosophy and internal structure of the **Pair PHP framework**.
 Read it when a task touches framework internals or requires architectural decisions.
-Use `GEMINI.md` for technical conventions and `AGENTS.md` for workflow and safety rules.
+Use `AGENTS.md` for workflow, safety rules, and technical conventions.
 
 ---
 

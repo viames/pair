@@ -93,6 +93,24 @@ class ApplicationResponseDispatchTest extends TestCase {
 	}
 
 	/**
+	 * Verify Pair v4 action failures stop before the legacy view fallback.
+	 */
+	public function testFailure(): void {
+
+		$app = $this->bootApplicationForRoute('failing', 'default');
+
+		ob_start();
+		ob_start();
+		$app->run();
+		$output = ob_get_clean();
+
+		$this->assertIsString($output);
+		$this->assertStringContainsString('<div class="shell"></div>', $output);
+		$this->assertContains('Pair v4 failure', $app->getAllNotificationsMessages());
+
+	}
+
+	/**
 	 * Boot the application singleton for one controller action and inject a fake template record.
 	 */
 	private function bootApplicationForRoute(string $module, string $action): Application {
@@ -125,6 +143,7 @@ class ApplicationResponseDispatchTest extends TestCase {
 
 		$pageModuleDirectory = APPLICATION_PATH . '/modules/page/layouts';
 		$rawModuleDirectory = APPLICATION_PATH . '/modules/raw';
+		$failingModuleDirectory = APPLICATION_PATH . '/modules/failing';
 		$templateDirectory = APPLICATION_PATH . '/templates/default';
 
 		if (!is_dir($pageModuleDirectory)) {
@@ -133,6 +152,10 @@ class ApplicationResponseDispatchTest extends TestCase {
 
 		if (!is_dir($rawModuleDirectory)) {
 			mkdir($rawModuleDirectory, 0777, true);
+		}
+
+		if (!is_dir($failingModuleDirectory)) {
+			mkdir($failingModuleDirectory, 0777, true);
 		}
 
 		if (!is_dir($templateDirectory)) {
@@ -223,6 +246,32 @@ final class RawDefaultResponse implements ResponseInterface {
 	public function send(): void {
 
 		print $this->body;
+
+	}
+
+}
+PHP
+		);
+
+		file_put_contents(
+			APPLICATION_PATH . '/modules/failing/controller.php',
+			<<<'PHP'
+<?php
+
+use Pair\Exceptions\PairException;
+use Pair\Web\Controller;
+
+/**
+ * Failing module used to verify Pair v4 exception dispatch.
+ */
+final class FailingController extends Controller {
+
+	/**
+	 * Throw a framework exception before an explicit response is built.
+	 */
+	public function defaultAction(): void {
+
+		throw new PairException('Pair v4 failure');
 
 	}
 

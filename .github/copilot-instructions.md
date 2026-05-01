@@ -4,11 +4,9 @@ Before suggesting or modifying code in this repository, read and follow these fi
 
 1. AGENTS.md - primary entrypoint, workflow, and output expectations
 2. SKILL.md - quick-start and document map
-3. GEMINI.md - coding standards, architecture, and security rules
-4. PAIR_ARCHITECTURE.md - framework design and request lifecycle
-5. PAIR_PATTERNS.md - idiomatic Pair coding patterns
-6. PAIR_TASKS.md - task strategy for bugfixes, features, refactors, migrations
-7. CODEX.md - additional agent-oriented execution guidance
+3. PAIR_ARCHITECTURE.md - framework design and request lifecycle when architecture is relevant
+4. PAIR_PATTERNS.md - idiomatic Pair coding patterns when local shape is unclear
+5. PAIR_TASKS.md - task strategy for larger bugfixes, features, refactors, and migrations
 
 Important rules:
 - Keep diffs minimal.

@@ -1942,6 +1942,9 @@ class Application {
 					. $e->getMessage(), ErrorCodes::CONTROLLER_INIT_FAILED, $e);
 			}
 
+			$response = null;
+			$actionFailed = false;
+
 			if (method_exists($controller, $action)) {
 				try {
 					// Trace the web controller action before legacy or explicit rendering starts.
@@ -1952,12 +1955,12 @@ class Application {
 						'action' => str_replace('Action', '', $action),
 					]);
 				} catch (\Throwable $e) {
+					$actionFailed = true;
 					PairException::frontEnd($e);
 				}
 			} else {
 				$logger = Logger::getInstance();
 				$logger->info('Method ' . $controllerName . '->' . $action . '() not found');
-				$response = null;
 			}
 
 			if ($response instanceof ResponseInterface) {
@@ -1974,6 +1977,12 @@ class Application {
 			}
 
 			if (!method_exists($controller, 'renderView')) {
+				if ($actionFailed) {
+					// Explicit Pair v4 controllers have no legacy view fallback after an action failure.
+					$this->logBar = LogBar::getInstance();
+					return;
+				}
+
 				throw new CriticalException(
 					'Controller ' . $controllerName . ' must return a Pair\Http\ResponseInterface or implement renderView()',
 					ErrorCodes::CONTROLLER_CONFIG_ERROR
