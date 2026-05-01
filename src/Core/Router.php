@@ -631,8 +631,8 @@ class Router {
 
 						$this->vars[$variables[$pos]] = $param;
 
-					// otherwise assign the param by its index position
-					} else {
+					// otherwise assign only dynamic or unmatched segments by index position
+					} else if (!isset($parts[$pos]) || substr($parts[$pos], 0, 1) == ':') {
 
 						$this->vars[$pos] = $param;
 

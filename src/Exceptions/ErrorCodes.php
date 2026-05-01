@@ -344,4 +344,9 @@ class ErrorCodes {
 	 */
 	const CLAUDE_ERROR = 1069;
 
+	/**
+	 * Social authentication provider error.
+	 */
+	const SOCIAL_AUTH_ERROR = 1070;
+
 }
