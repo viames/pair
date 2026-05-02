@@ -9,14 +9,14 @@ use Pair\Exceptions\ErrorCodes;
 use Pair\Exceptions\PairException;
 
 /**
- * Cloudflare Turnstile helper for widget rendering and server-side token validation.
+ * Google reCAPTCHA helper for widget rendering and server-side token validation.
  */
-class CloudflareTurnstile {
+class GoogleRecaptcha {
 
 	/**
-	 * Official Turnstile browser script URL.
+	 * Official reCAPTCHA browser script URL.
 	 */
-	private const API_SCRIPT_URL = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+	private const API_SCRIPT_URL = 'https://www.google.com/recaptcha/api.js';
 
 	/**
 	 * Default connection timeout in seconds.
@@ -24,9 +24,9 @@ class CloudflareTurnstile {
 	private const DEFAULT_CONNECT_TIMEOUT = 3;
 
 	/**
-	 * Default response field submitted by Turnstile widgets.
+	 * Default response field submitted by reCAPTCHA widgets.
 	 */
-	private const DEFAULT_RESPONSE_FIELD = 'cf-turnstile-response';
+	private const DEFAULT_RESPONSE_FIELD = 'g-recaptcha-response';
 
 	/**
 	 * Default request timeout in seconds.
@@ -36,12 +36,12 @@ class CloudflareTurnstile {
 	/**
 	 * Default server-side verification endpoint.
 	 */
-	private const DEFAULT_VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
+	private const DEFAULT_VERIFY_URL = 'https://www.google.com/recaptcha/api/siteverify';
 
 	/**
-	 * Maximum documented Turnstile token length.
+	 * Generous token length guard to avoid oversized verification payloads.
 	 */
-	private const MAX_TOKEN_LENGTH = 2048;
+	private const MAX_TOKEN_LENGTH = 4096;
 
 	/**
 	 * HTTP connect timeout in seconds.
@@ -49,7 +49,7 @@ class CloudflareTurnstile {
 	private int $connectTimeout;
 
 	/**
-	 * POST field used to read Turnstile response tokens.
+	 * POST field used to read reCAPTCHA response tokens.
 	 */
 	private string $responseField;
 
@@ -74,39 +74,39 @@ class CloudflareTurnstile {
 	private string $verifyUrl;
 
 	/**
-	 * Build a Turnstile helper using explicit values or Env defaults.
+	 * Build a reCAPTCHA helper using explicit values or Env defaults.
 	 */
 	public function __construct(?string $secretKey = null, ?string $siteKey = null, ?string $verifyUrl = null, ?int $timeout = null, ?int $connectTimeout = null, ?string $responseField = null) {
 
-		$this->secretKey = trim((string)($secretKey ?? Env::get('CLOUDFLARE_TURNSTILE_SECRET_KEY')));
-		$this->siteKey = trim((string)($siteKey ?? Env::get('CLOUDFLARE_TURNSTILE_SITE_KEY')));
-		$this->verifyUrl = $this->sanitizeVerifyUrl((string)($verifyUrl ?? Env::get('CLOUDFLARE_TURNSTILE_VERIFY_URL') ?? self::DEFAULT_VERIFY_URL));
-		$this->timeout = max(1, (int)($timeout ?? Env::get('CLOUDFLARE_TURNSTILE_TIMEOUT') ?? self::DEFAULT_TIMEOUT));
-		$this->connectTimeout = max(1, (int)($connectTimeout ?? Env::get('CLOUDFLARE_TURNSTILE_CONNECT_TIMEOUT') ?? self::DEFAULT_CONNECT_TIMEOUT));
-		$this->responseField = $this->sanitizeResponseField((string)($responseField ?? Env::get('CLOUDFLARE_TURNSTILE_RESPONSE_FIELD') ?? self::DEFAULT_RESPONSE_FIELD));
+		$this->secretKey = trim((string)($secretKey ?? Env::get('GOOGLE_RECAPTCHA_SECRET_KEY')));
+		$this->siteKey = trim((string)($siteKey ?? Env::get('GOOGLE_RECAPTCHA_SITE_KEY')));
+		$this->verifyUrl = $this->sanitizeVerifyUrl((string)($verifyUrl ?? Env::get('GOOGLE_RECAPTCHA_VERIFY_URL') ?? self::DEFAULT_VERIFY_URL));
+		$this->timeout = max(1, (int)($timeout ?? Env::get('GOOGLE_RECAPTCHA_TIMEOUT') ?? self::DEFAULT_TIMEOUT));
+		$this->connectTimeout = max(1, (int)($connectTimeout ?? Env::get('GOOGLE_RECAPTCHA_CONNECT_TIMEOUT') ?? self::DEFAULT_CONNECT_TIMEOUT));
+		$this->responseField = $this->sanitizeResponseField((string)($responseField ?? Env::get('GOOGLE_RECAPTCHA_RESPONSE_FIELD') ?? self::DEFAULT_RESPONSE_FIELD));
 
 	}
 
 	/**
-	 * Assert that a POST payload contains a valid Turnstile token.
+	 * Assert that a POST payload contains a valid reCAPTCHA token.
 	 */
-	public function assertPost(array $post, ?string $remoteIp = null, array $options = []): array {
+	public function assertPost(array $post, ?string $remoteIp = null): array {
 
-		return $this->assertToken($this->tokenFromPost($post), $remoteIp, $options);
+		return $this->assertToken($this->tokenFromPost($post), $remoteIp);
 
 	}
 
 	/**
-	 * Assert that a Turnstile token is valid and return the verification response.
+	 * Assert that a reCAPTCHA token is valid and return the verification response.
 	 *
 	 * @throws PairException
 	 */
-	public function assertToken(string $token, ?string $remoteIp = null, array $options = []): array {
+	public function assertToken(string $token, ?string $remoteIp = null): array {
 
-		$result = $this->verifyToken($token, $remoteIp, $options);
+		$result = $this->verifyToken($token, $remoteIp);
 
 		if (!($result['success'] ?? false)) {
-			throw new PairException($this->failureMessage($result), ErrorCodes::CLOUDFLARE_TURNSTILE_ERROR);
+			throw new PairException($this->failureMessage($result), ErrorCodes::GOOGLE_RECAPTCHA_ERROR);
 		}
 
 		return $result;
@@ -114,13 +114,13 @@ class CloudflareTurnstile {
 	}
 
 	/**
-	 * Return the official Turnstile script tag.
+	 * Return the official reCAPTCHA script tag.
 	 */
-	public function scriptTag(bool $explicit = false, array $attributes = []): string {
+	public function scriptTag(array $parameters = [], array $attributes = []): string {
 
 		$attributes = array_merge([
-			'src' => $this->scriptUrl($explicit),
-			'async' => !$explicit,
+			'src' => $this->scriptUrl($parameters),
+			'async' => true,
 			'defer' => true,
 		], $attributes);
 
@@ -129,11 +129,24 @@ class CloudflareTurnstile {
 	}
 
 	/**
-	 * Return the official Turnstile script URL.
+	 * Return the official reCAPTCHA script URL.
 	 */
-	public function scriptUrl(bool $explicit = false): string {
+	public function scriptUrl(array $parameters = []): string {
 
-		return self::API_SCRIPT_URL . ($explicit ? '?render=explicit' : '');
+		$allowedParameters = [];
+
+		foreach (['onload', 'render', 'hl'] as $name) {
+			$value = $this->normalizeNullableString($parameters[$name] ?? null);
+			if (!is_null($value)) {
+				$allowedParameters[$name] = $value;
+			}
+		}
+
+		if (!$allowedParameters) {
+			return self::API_SCRIPT_URL;
+		}
+
+		return self::API_SCRIPT_URL . '?' . http_build_query($allowedParameters, '', '&', PHP_QUERY_RFC3986);
 
 	}
 
@@ -156,7 +169,7 @@ class CloudflareTurnstile {
 	}
 
 	/**
-	 * Extract the configured Turnstile response token from a POST-like payload.
+	 * Extract the configured reCAPTCHA response token from a POST-like payload.
 	 */
 	public function tokenFromPost(array $post): string {
 
@@ -165,18 +178,18 @@ class CloudflareTurnstile {
 	}
 
 	/**
-	 * Verify a POST payload by extracting the configured Turnstile response field.
+	 * Verify a POST payload by extracting the configured reCAPTCHA response field.
 	 */
-	public function verifyPost(array $post, ?string $remoteIp = null, array $options = []): array {
+	public function verifyPost(array $post, ?string $remoteIp = null): array {
 
-		return $this->verifyToken($this->tokenFromPost($post), $remoteIp, $options);
+		return $this->verifyToken($this->tokenFromPost($post), $remoteIp);
 
 	}
 
 	/**
-	 * Verify a Turnstile token through Cloudflare Siteverify.
+	 * Verify a reCAPTCHA token through Google Siteverify.
 	 */
-	public function verifyToken(string $token, ?string $remoteIp = null, array $options = []): array {
+	public function verifyToken(string $token, ?string $remoteIp = null): array {
 
 		$this->assertSecretKeyConfigured();
 
@@ -187,7 +200,6 @@ class CloudflareTurnstile {
 			'secret' => $this->secretKey,
 			'response' => $token,
 			'remoteip' => $this->normalizeNullableString($remoteIp),
-			'idempotency_key' => $this->normalizeNullableString($options['idempotency_key'] ?? $options['idempotencyKey'] ?? null),
 		];
 
 		return $this->normalizeVerificationResponse(
@@ -197,20 +209,20 @@ class CloudflareTurnstile {
 	}
 
 	/**
-	 * Return the implicit-rendering Turnstile widget HTML.
+	 * Return the implicit-rendering reCAPTCHA widget HTML.
 	 */
 	public function widgetHtml(array $options = []): string {
 
 		$siteKey = trim((string)($options['sitekey'] ?? $options['siteKey'] ?? $this->siteKey));
 
 		if ('' === $siteKey) {
-			throw new PairException('Missing Cloudflare Turnstile site key. Set CLOUDFLARE_TURNSTILE_SITE_KEY.', ErrorCodes::MISSING_CONFIGURATION);
+			throw new PairException('Missing Google reCAPTCHA site key. Set GOOGLE_RECAPTCHA_SITE_KEY.', ErrorCodes::MISSING_CONFIGURATION);
 		}
 
 		unset($options['sitekey'], $options['siteKey']);
 
 		$attributes = [
-			'class' => trim('cf-turnstile ' . (string)($options['class'] ?? '')),
+			'class' => trim('g-recaptcha ' . (string)($options['class'] ?? '')),
 			'data-sitekey' => $siteKey,
 		];
 
@@ -232,22 +244,22 @@ class CloudflareTurnstile {
 	private function assertSecretKeyConfigured(): void {
 
 		if ('' === $this->secretKey) {
-			throw new PairException('Missing Cloudflare Turnstile secret key. Set CLOUDFLARE_TURNSTILE_SECRET_KEY.', ErrorCodes::MISSING_CONFIGURATION);
+			throw new PairException('Missing Google reCAPTCHA secret key. Set GOOGLE_RECAPTCHA_SECRET_KEY.', ErrorCodes::MISSING_CONFIGURATION);
 		}
 
 	}
 
 	/**
-	 * Assert that a Turnstile token is present and within the documented size limit.
+	 * Assert that a reCAPTCHA token is present and within the local size guard.
 	 */
 	private function assertTokenFormat(string $token): void {
 
 		if ('' === $token) {
-			throw new PairException('Cloudflare Turnstile token cannot be empty.', ErrorCodes::CLOUDFLARE_TURNSTILE_ERROR);
+			throw new PairException('Google reCAPTCHA token cannot be empty.', ErrorCodes::GOOGLE_RECAPTCHA_ERROR);
 		}
 
 		if (strlen($token) > self::MAX_TOKEN_LENGTH) {
-			throw new PairException('Cloudflare Turnstile token exceeds the maximum length.', ErrorCodes::CLOUDFLARE_TURNSTILE_ERROR);
+			throw new PairException('Google reCAPTCHA token exceeds the maximum length.', ErrorCodes::GOOGLE_RECAPTCHA_ERROR);
 		}
 
 	}
@@ -260,17 +272,17 @@ class CloudflareTurnstile {
 		$responseBody = trim($responseBody);
 
 		if ('' === $responseBody) {
-			throw new PairException('Cloudflare Turnstile returned an empty response.', ErrorCodes::CLOUDFLARE_TURNSTILE_ERROR);
+			throw new PairException('Google reCAPTCHA returned an empty response.', ErrorCodes::GOOGLE_RECAPTCHA_ERROR);
 		}
 
 		$decodedResponse = json_decode($responseBody, true);
 
 		if (!is_array($decodedResponse)) {
-			throw new PairException('Cloudflare Turnstile returned an invalid JSON response.', ErrorCodes::CLOUDFLARE_TURNSTILE_ERROR);
+			throw new PairException('Google reCAPTCHA returned an invalid JSON response.', ErrorCodes::GOOGLE_RECAPTCHA_ERROR);
 		}
 
 		if ($statusCode >= 400) {
-			throw new PairException($this->failureMessage($decodedResponse, $statusCode), ErrorCodes::CLOUDFLARE_TURNSTILE_ERROR);
+			throw new PairException($this->failureMessage($decodedResponse, $statusCode), ErrorCodes::GOOGLE_RECAPTCHA_ERROR);
 		}
 
 		return $decodedResponse;
@@ -285,14 +297,14 @@ class CloudflareTurnstile {
 		$errorCodes = $result['error-codes'] ?? $result['error_codes'] ?? [];
 
 		if (is_array($errorCodes) and count($errorCodes)) {
-			return 'Cloudflare Turnstile validation failed: ' . implode(', ', array_map('strval', $errorCodes));
+			return 'Google reCAPTCHA validation failed: ' . implode(', ', array_map('strval', $errorCodes));
 		}
 
 		if ($statusCode) {
-			return 'Cloudflare Turnstile request failed with HTTP ' . $statusCode . '.';
+			return 'Google reCAPTCHA request failed with HTTP ' . $statusCode . '.';
 		}
 
-		return 'Cloudflare Turnstile validation failed.';
+		return 'Google reCAPTCHA validation failed.';
 
 	}
 
@@ -363,7 +375,7 @@ class CloudflareTurnstile {
 		$curl = curl_init($this->verifyUrl);
 
 		if (false === $curl) {
-			throw new PairException('Unable to initialize Cloudflare Turnstile request.', ErrorCodes::CLOUDFLARE_TURNSTILE_ERROR);
+			throw new PairException('Unable to initialize Google reCAPTCHA request.', ErrorCodes::GOOGLE_RECAPTCHA_ERROR);
 		}
 
 		curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, $this->connectTimeout);
@@ -382,7 +394,7 @@ class CloudflareTurnstile {
 		if (false === $responseBody) {
 			$error = curl_error($curl);
 			curl_close($curl);
-			throw new PairException('Cloudflare Turnstile request failed: ' . $error, ErrorCodes::CLOUDFLARE_TURNSTILE_ERROR);
+			throw new PairException('Google reCAPTCHA request failed: ' . $error, ErrorCodes::GOOGLE_RECAPTCHA_ERROR);
 		}
 
 		curl_close($curl);
@@ -399,7 +411,7 @@ class CloudflareTurnstile {
 		$responseField = trim($responseField);
 
 		if ('' === $responseField) {
-			throw new PairException('CLOUDFLARE_TURNSTILE_RESPONSE_FIELD cannot be empty.', ErrorCodes::CLOUDFLARE_TURNSTILE_ERROR);
+			throw new PairException('GOOGLE_RECAPTCHA_RESPONSE_FIELD cannot be empty.', ErrorCodes::GOOGLE_RECAPTCHA_ERROR);
 		}
 
 		return $responseField;
@@ -414,7 +426,7 @@ class CloudflareTurnstile {
 		$verifyUrl = trim($verifyUrl);
 
 		if ('' === $verifyUrl or !filter_var($verifyUrl, FILTER_VALIDATE_URL)) {
-			throw new PairException('CLOUDFLARE_TURNSTILE_VERIFY_URL is not valid.', ErrorCodes::CLOUDFLARE_TURNSTILE_ERROR);
+			throw new PairException('GOOGLE_RECAPTCHA_VERIFY_URL is not valid.', ErrorCodes::GOOGLE_RECAPTCHA_ERROR);
 		}
 
 		return $verifyUrl;

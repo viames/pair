@@ -15,6 +15,7 @@ use Pair\Html\FormControls\Email;
 use Pair\Html\FormControls\File;
 use Pair\Html\FormControls\GoogleAddress;
 use Pair\Html\FormControls\Hidden;
+use Pair\Html\FormControls\HumanChallenge;
 use Pair\Html\FormControls\Image;
 use Pair\Html\FormControls\Meter;
 use Pair\Html\FormControls\Month;
@@ -599,6 +600,20 @@ class Form {
 	public function hidden(string $name, array $attributes = []): Hidden {
 
 		$control = new Hidden($name, $attributes);
+		$this->add($control);
+		return $control;
+
+	}
+
+	/**
+	 * Adds a provider-backed human challenge widget to this Form object. Chainable method.
+	 *
+	 * @param	string	Control name.
+	 * @param	array	List of widget options and attributes.
+	 */
+	public function humanChallenge(string $name = 'human_challenge', array $attributes = []): HumanChallenge {
+
+		$control = new HumanChallenge($name, $attributes);
 		$this->add($control);
 		return $control;
 

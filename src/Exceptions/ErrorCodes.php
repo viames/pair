@@ -349,4 +349,14 @@ class ErrorCodes {
 	 */
 	const SOCIAL_AUTH_ERROR = 1070;
 
+	/**
+	 * Google reCAPTCHA error.
+	 */
+	const GOOGLE_RECAPTCHA_ERROR = 1071;
+
+	/**
+	 * Human challenge provider error.
+	 */
+	const HUMAN_CHALLENGE_ERROR = 1072;
+
 }
