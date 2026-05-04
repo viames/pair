@@ -113,7 +113,7 @@ Use these defaults unless nearby code establishes a more specific local pattern.
 
 ### Runtime and dependencies
 
-- Target PHP 8.3, 8.4, and 8.5.
+- Target PHP 8.4.1 and 8.5.
 - Required Composer extensions are `curl`, `intl`, `json`, `mbstring`, `PDO`, and `pdo_mysql` for the default MySQL driver.
 - Feature-specific extensions should remain optional unless the feature already requires them, for example `fileinfo`, `openssl`, `redis`, or `xdebug`.
 - Do not introduce new runtime dependencies for simple framework behavior.

@@ -59,6 +59,10 @@ The framework now also emits deprecation notices in non-production environments 
 
 Pair v4 native PHP sessions now use an app-scoped cookie name derived from `APP_NAME` and a cookie path derived from the current `URL_PATH`, instead of the shared `PHPSESSID` default. This avoids local multi-application collisions on the same host. Existing browser sessions created with `PHPSESSID` are not reused after the upgrade, so users may need to log in once.
 
+Pair v4 remember-me tokens are now device-scoped. Creating or renewing a remember-me cookie no longer deletes the user's other remember-me records, and logout removes only the token represented by the current browser cookie. Applications that previously relied on login from one browser to revoke remembered access from all other browsers should add an explicit account-level revocation flow.
+
+Pair v4 also ships reusable native mobile stacks for apps that use Pair APIs. `mobile/ios/PairMobileKit` standardizes cookie-free URLSession transport, Bearer auth with `remember_me=true`, migratable Keychain storage, startup session bootstrap and remote image caching. `mobile/android/PairMobileAndroid` provides the Android-native equivalent through OkHttp, Kotlin coroutines, Kotlin serialization, migratable private preferences, startup session bootstrap and shared HTTP image loading. See `docs/MOBILE_IOS_STACK.md` and `docs/MOBILE_ANDROID_STACK.md` before wiring a native app directly to custom auth code.
+
 ### Documentation Style
 
 Code examples in this document prefer imported class names over fully-qualified type paths.

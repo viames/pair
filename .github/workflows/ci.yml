@@ -23,7 +23,6 @@ jobs:
       fail-fast: false
       matrix:
         php-version:
-          - '8.3'
           - '8.4'
           - '8.5'
 
@@ -46,3 +45,36 @@ jobs:
 
       - name: Run PHPUnit
         run: vendor/bin/phpunit -c phpunit.xml.dist
+
+  mobile-ios:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run PairMobileKit tests
+        run: swift test --package-path mobile/ios/PairMobileKit
+
+  mobile-android:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android platform
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Run PairMobileAndroid tests
+        working-directory: mobile/android/PairMobileAndroid
+        run: ./gradlew testDebugUnitTest

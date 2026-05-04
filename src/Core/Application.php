@@ -252,10 +252,8 @@ class Application {
 			// default page title, maybe overwritten
 			$this->pageTitle(Env::get('APP_NAME'));
 
-			$gzip = (isset($_SERVER['HTTP_ACCEPT_ENCODING']) and substr_count($_SERVER['HTTP_ACCEPT_ENCODING'], 'gzip'));
-
-			// if supported, output is compressed with gzip
-			if ($gzip and extension_loaded('zlib') and !ini_get('zlib.output_compression')) {
+			// Origin compression starts only when Pair can negotiate it without a CDN already owning compression.
+			if (self::shouldUseGzipOutputBuffer()) {
 				ob_start('ob_gzhandler');
 			} else {
 				ob_start();
@@ -701,16 +699,154 @@ class Application {
 
 	/**
 	 * Return 'development', 'staging' or 'production' (default).
-     */
-    public static function getEnvironment(): string {
+	 */
+	public static function getEnvironment(): string {
 
 		if (in_array(Env::get('APP_ENV'), ['development','staging'])) {
-        	return Env::get('APP_ENV');
+			return Env::get('APP_ENV');
 		}
 
 		return 'production';
 
-    }
+	}
+
+	/**
+	 * Returns true when the HTTP response can safely use `ob_gzhandler`.
+	 */
+	private static function shouldUseGzipOutputBuffer(): bool {
+
+		if (static::isCli() || headers_sent()) {
+			return false;
+		}
+
+		if (!extension_loaded('zlib') || self::isZlibOutputCompressionEnabled()) {
+			return false;
+		}
+
+		if (!self::acceptsGzipEncoding()) {
+			return false;
+		}
+
+		$mode = self::originGzipMode();
+
+		if ('off' === $mode) {
+			return false;
+		}
+
+		return 'on' === $mode || !self::isEdgeCompressedRequest();
+
+	}
+
+	/**
+	 * Checks whether the client accepts gzip while honoring exact tokens, wildcards and HTTP quality values.
+	 */
+	private static function acceptsGzipEncoding(?string $acceptEncoding = null): bool {
+
+		$acceptEncoding = strtolower(trim((string)($acceptEncoding ?? ($_SERVER['HTTP_ACCEPT_ENCODING'] ?? ''))));
+
+		if ('' === $acceptEncoding) {
+			return false;
+		}
+
+		$wildcardAccepted = false;
+
+		foreach (explode(',', $acceptEncoding) as $rawEncoding) {
+			$parts = array_map('trim', explode(';', $rawEncoding));
+			$encoding = strtolower(array_shift($parts) ?? '');
+
+			if ('' === $encoding) {
+				continue;
+			}
+
+			$quality = self::encodingQuality($parts);
+
+			if ('gzip' === $encoding) {
+				return $quality > 0.0;
+			}
+
+			if ('*' === $encoding) {
+				$wildcardAccepted = $quality > 0.0;
+			}
+		}
+
+		return $wildcardAccepted;
+
+	}
+
+	/**
+	 * Reads the `q` parameter from an Accept-Encoding token and returns a normalized quality value.
+	 *
+	 * @param	string[]	$parameters	Accept-Encoding token parameters without the encoding name.
+	 */
+	private static function encodingQuality(array $parameters): float {
+
+		$quality = 1.0;
+
+		foreach ($parameters as $parameter) {
+			[$name, $value] = array_pad(explode('=', $parameter, 2), 2, '');
+
+			if ('q' !== strtolower(trim($name))) {
+				continue;
+			}
+
+			$value = trim($value);
+			$quality = is_numeric($value) ? max(0.0, min(1.0, (float)$value)) : 0.0;
+		}
+
+		return $quality;
+
+	}
+
+	/**
+	 * Returns the configured origin gzip mode for Pair.
+	 */
+	private static function originGzipMode(): string {
+
+		$value = Env::get('PAIR_ORIGIN_GZIP');
+
+		if (is_bool($value)) {
+			return $value ? 'on' : 'off';
+		}
+
+		$value = strtolower(trim((string)$value));
+
+		if (in_array($value, ['1', 'true', 'on', 'yes'], true)) {
+			return 'on';
+		}
+
+		if (in_array($value, ['0', 'false', 'off', 'no'], true)) {
+			return 'off';
+		}
+
+		return 'auto';
+
+	}
+
+	/**
+	 * Detects requests that are already candidates for compression at the CDN edge in front of the origin.
+	 */
+	private static function isEdgeCompressedRequest(): bool {
+
+		if (!empty($_SERVER['HTTP_CF_RAY']) || !empty($_SERVER['HTTP_CF_VISITOR'])) {
+			return true;
+		}
+
+		$cdnLoop = strtolower((string)($_SERVER['HTTP_CDN_LOOP'] ?? ''));
+
+		return '' !== $cdnLoop && str_contains($cdnLoop, 'cloudflare');
+
+	}
+
+	/**
+	 * Checks whether PHP already manages output compression through zlib configuration.
+	 */
+	private static function isZlibOutputCompressionEnabled(): bool {
+
+		$value = strtolower(trim((string)ini_get('zlib.output_compression')));
+
+		return '' !== $value && !in_array($value, ['0', 'off', 'false', 'no'], true);
+
+	}
 
 	/**
 	 * Create singleton Application object and return it.

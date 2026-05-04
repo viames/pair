@@ -70,6 +70,7 @@ https://github.com/viames/pair_boilerplate
 - MVC routing with clear module/action conventions.
 - ActiveRecord-style ORM with practical type casting and relation helpers.
 - API tooling for CRUD resources and OpenAPI-oriented contracts.
+- Native mobile helpers through `mobile/ios/PairMobileKit` and `mobile/android/PairMobileAndroid`.
 - PairUI helpers for progressive enhancement.
 - PWA, push and passkey helpers without forcing a SPA architecture.
 - Runtime extensions for optional integrations.
@@ -164,6 +165,8 @@ Useful docs:
 - [ApiExposable](https://github.com/viames/pair/wiki/ApiExposable)
 - [CrudController](https://github.com/viames/pair/wiki/CrudController)
 - [Generator](https://github.com/viames/pair/wiki/Generator)
+- [Mobile iOS stack](docs/MOBILE_IOS_STACK.md)
+- [Mobile Android stack](docs/MOBILE_ANDROID_STACK.md)
 
 ### Log bar and debugging
 
@@ -304,7 +307,7 @@ The upgrader is conservative by design. It rewrites low-risk patterns automatica
 
 | Software | Minimum | Recommended | Notes |
 | --- | :---: | :---: | --- |
-| PHP | 8.3 | 8.4 / 8.5 | Required by Composer |
+| PHP | 8.4.1 | 8.5 | Required by Composer |
 | Apache | 2.4 | 2.4+ | `mod_rewrite` recommended |
 | MySQL | 8.0 | 8.0+ | `utf8mb4`, `utf8mb4_unicode_ci`, InnoDB |
 | Composer | 2.x | Latest stable | Required for package installation |

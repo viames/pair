@@ -430,9 +430,7 @@ class User extends ActiveRecord {
 			return false;
 		}
 
-		// keep only one remember-me token per user
-		Database::run('DELETE FROM `user_remembers` WHERE `user_id` = ? AND `remember_me` != ?', [$this->id, $ur->rememberMe]);
-
+		// Keep other remember-me tokens so browser/device sessions do not compete with each other.
 		try {
 			$content = self::buildRememberMeCookiePayload($dateTimeZone->getName(), $rememberMe);
 		} catch (\Throwable $e) {
@@ -1285,8 +1283,7 @@ class User extends ActiveRecord {
 	/**
 	 * Renews the remember-me token for this user.
 	 *
-	 * Rotates the remember-me token for this user, keeps only the newest token
-	 * in DB and refreshes the browser cookie with a new expiration date.
+	 * Rotates the current remember-me token and refreshes the browser cookie with a new expiration date.
 	 *
 	 * @return bool True if the cookie was updated, false otherwise.
 	 */
@@ -1331,8 +1328,7 @@ class User extends ActiveRecord {
 			return false;
 		}
 
-		Database::run('DELETE FROM `user_remembers` WHERE `user_id` = ? AND `remember_me` != ?', [$this->id, $newRememberMeHash]);
-
+		// The renewal only rotates the current token; other remembered devices remain valid.
 		try {
 			$content = self::buildRememberMeCookiePayload($cookieContent->timezone, $newRememberMe);
 		} catch (\Throwable $e) {
@@ -1393,7 +1389,7 @@ class User extends ActiveRecord {
 
 		// check if cookie exists
 		if (is_null($cookieContent)) {
-			Database::run('DELETE FROM `user_remembers` WHERE `user_id` = ?', [$this->id]);
+			// Without a cookie we cannot identify the current device token, so other devices are left untouched.
 			return setcookie($cookieName, '', Application::getCookieParams(-1));
 		}
 
