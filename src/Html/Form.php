@@ -552,6 +552,11 @@ class Form {
 
 		foreach ($values as $name => $value) {
 			if (array_key_exists($name, $this->controls)) {
+				// Toggles expose a boolean API even when persisted data uses 0/1.
+				if ($this->controls[$name] instanceof Toggle) {
+					$value = (bool)$value;
+				}
+
 				$this->controls[$name]->value($value);
 			}
 		}

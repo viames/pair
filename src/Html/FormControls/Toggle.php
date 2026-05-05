@@ -14,6 +14,20 @@ class Toggle extends FormControl {
 	 */
 	private bool $labelSuppressed = false;
 
+	/**
+	 * Sets whether the toggle is checked.
+	 */
+	public function value(mixed $value): static {
+
+		if (!is_bool($value)) {
+			throw new \TypeError(__METHOD__ . '(): Argument #1 ($value) must be of type bool, ' . get_debug_type($value) . ' given');
+		}
+
+		$this->value = $value;
+		return $this;
+
+	}
+
 	public function render(): string {
 
 		$checked = $this->value ? ' checked="checked"' : '';

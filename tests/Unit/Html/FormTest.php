@@ -73,6 +73,50 @@ class FormTest extends TestCase {
 	}
 
 	/**
+	 * Verify toggles accept only boolean state values.
+	 */
+	public function testToggleValueAcceptsOnlyBooleans(): void {
+
+		$form = new Form();
+		$form->toggle('enabled')->value(true);
+		$form->toggle('disabled')->value(false);
+
+		$this->assertStringContainsString('name="enabled"', $form->control('enabled')->render());
+		$this->assertStringContainsString('checked="checked"', $form->control('enabled')->render());
+		$this->assertStringNotContainsString('checked="checked"', $form->control('disabled')->render());
+
+		$this->expectException(\TypeError::class);
+		$form->control('enabled')->value(1);
+
+	}
+
+	/**
+	 * Verify form fill adapts persisted 0/1 values to the toggle boolean contract.
+	 */
+	public function testFillCastsToggleValuesToBooleans(): void {
+
+		$form = new Form();
+		$form->toggle('enabled');
+		$form->toggle('hidden');
+		$form->text('title');
+
+		$form->fill([
+			'enabled' => 1,
+			'hidden' => 0,
+			'title' => 'Example',
+		]);
+
+		$enabledHtml = $form->control('enabled')->render();
+		$hiddenHtml = $form->control('hidden')->render();
+		$titleHtml = $form->control('title')->render();
+
+		$this->assertStringContainsString('checked="checked"', $enabledHtml);
+		$this->assertStringNotContainsString('checked="checked"', $hiddenHtml);
+		$this->assertStringContainsString('value="Example"', $titleHtml);
+
+	}
+
+	/**
 	 * Verify duplicate form classes are collapsed while preserving insertion order.
 	 */
 	public function testClassForFormDeduplicatesCssClasses(): void {
