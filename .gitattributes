@@ -37,6 +37,5 @@
 /mobile/** export-ignore
 /phpunit.xml.dist export-ignore
 /scripts/update-version-from-release.php export-ignore
-/scripts/update-version-from-tag.php export-ignore
 /tests export-ignore
 /tests/** export-ignore

@@ -7,6 +7,7 @@ namespace Pair\Web;
 use Pair\Core\Application;
 use Pair\Core\Router;
 use Pair\Data\ReadModel;
+use Pair\Helpers\LogBar;
 use Pair\Http\Input;
 use Pair\Http\JsonResponse;
 
@@ -60,6 +61,38 @@ abstract class Controller {
 	protected function boot(): void {}
 
 	/**
+	 * Build a standard JSON data response.
+	 *
+	 * @param	array<string, mixed>	$meta	Additional non-domain metadata.
+	 */
+	protected function dataResponse(mixed $data = null, ?string $message = null, array $meta = [], int $httpCode = 200): JsonResponse {
+
+		$payload = [];
+
+		if (!is_null($data)) {
+			$payload['data'] = $this->normalizeResponseData($data);
+		}
+
+		if (!is_null($message)) {
+			$meta['message'] = $message;
+		}
+
+		// add ajax diagnostics outside the domain payload.
+		$eventList = LogBar::getInstance()->renderForAjax();
+
+		if ($eventList) {
+			$meta['logBar'] = $eventList;
+		}
+
+		if ($meta) {
+			$payload['meta'] = $meta;
+		}
+
+		return new JsonResponse($payload, $httpCode);
+
+	}
+
+	/**
 	 * Return the immutable request input.
 	 */
 	protected function input(): Input {
@@ -87,6 +120,73 @@ abstract class Controller {
 	}
 
 	/**
+	 * Build a legacy JSON response compatible with Utilities::pairJsonData().
+	 *
+	 * @deprecated Use dataResponse() or problemResponse() for new code.
+	 */
+	protected function pairJsonDataResponse(mixed $data, ?string $message = null, bool $error = false, ?int $code = null, ?int $httpCode = null): JsonResponse {
+
+		$payload = [
+			'error' => $error,
+		];
+
+		if (!is_null($data)) {
+			$payload['data'] = $this->normalizeResponseData($data);
+		}
+
+		if (!is_null($message)) {
+			$payload['message'] = $message;
+		}
+
+		if (!is_null($code)) {
+			$payload['code'] = $code;
+		}
+
+		// preserve the ajax diagnostics field used by legacy clients.
+		$eventList = LogBar::getInstance()->renderForAjax();
+
+		if ($eventList) {
+			$payload['logBar'] = $eventList;
+		}
+
+		return new JsonResponse($payload, $httpCode ?? 200);
+
+	}
+
+	/**
+	 * Build a standard RFC 9457 problem details response.
+	 *
+	 * @param	array<string, mixed>	$extensions	Problem-specific extension members.
+	 */
+	protected function problemResponse(string $type, string $title, int $httpCode, ?string $detail = null, ?string $code = null, array $extensions = []): JsonResponse {
+
+		$payload = $extensions;
+		$payload['type'] = trim($type) !== '' ? trim($type) : 'about:blank';
+		$payload['title'] = $title;
+		$payload['status'] = $httpCode;
+
+		if (!is_null($detail)) {
+			$payload['detail'] = $detail;
+		}
+
+		if (!is_null($code)) {
+			$payload['code'] = $code;
+		}
+
+		// RFC 9457 allows extension members, so ajax diagnostics remain available.
+		$eventList = LogBar::getInstance()->renderForAjax();
+
+		if ($eventList) {
+			$payload['logBar'] = $eventList;
+		}
+
+		return new JsonResponse($payload, $httpCode, [
+			'Content-Type' => 'application/problem+json',
+		]);
+
+	}
+
+	/**
 	 * Resolve a relative path inside the current module.
 	 */
 	protected function modulePath(?string $path = null): string {
@@ -105,6 +205,29 @@ abstract class Controller {
 	private function layoutPath(string $layout): string {
 
 		return $this->modulePath('layouts/' . $layout . '.php');
+
+	}
+
+	/**
+	 * Normalize response payload values before wrapping them in an envelope.
+	 */
+	private function normalizeResponseData(mixed $value): mixed {
+
+		if ($value instanceof ReadModel) {
+			return $value->toArray();
+		}
+
+		if (!is_array($value)) {
+			return $value;
+		}
+
+		$normalized = [];
+
+		foreach ($value as $key => $item) {
+			$normalized[$key] = $this->normalizeResponseData($item);
+		}
+
+		return $normalized;
 
 	}
 

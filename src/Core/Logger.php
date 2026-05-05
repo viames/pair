@@ -9,7 +9,6 @@ use Pair\Exceptions\ErrorCodes;
 use Pair\Helpers\LogBar;
 use Pair\Helpers\Mailer;
 use Pair\Helpers\Utilities;
-use Pair\Models\ErrorLog;
 use Pair\Orm\Database;
 use Pair\Services\AmazonSes;
 use Pair\Services\Sendmail;
@@ -297,15 +296,16 @@ class Logger implements LoggerInterface {
 
 		// log the error internally
 		$context = [
-			'exception'	=> get_class($e),
-			'file'		=> $e->getFile(),
-			'line'		=> $e->getLine(),
-			'message'	=> $e->getMessage(),
-			'errorCode' => $e->getCode()
+			'exception'		=> $e,
+			'exceptionClass' => get_class($e),
+			'file'			=> $e->getFile(),
+			'line'			=> $e->getLine(),
+			'message'		=> $e->getMessage(),
+			'errorCode'		=> $e->getCode()
 		];
-		$fullMsg = '{exception}: {message} in {file} line {line}';
+		$fullMsg = '{exceptionClass}: {message} in {file} line {line}';
 		$self = Logger::getInstance();
-    	$self->error($fullMsg, $context);
+		$self->error($fullMsg, $context);
 
 	}
 
@@ -450,12 +450,13 @@ class Logger implements LoggerInterface {
 		// register error in database only if not a DB connection error
 		$dbErrorCodes = [
 			ErrorCodes::DB_CONNECTION_FAILED,
+			ErrorCodes::DB_QUERY_FAILED,
 			ErrorCodes::MYSQL_GENERAL_ERROR,
 			ErrorCodes::MISSING_DB,
 		];
 
 		if ((!$errorCode or ($errorCode and !in_array($errorCode, $dbErrorCodes, true))) and Database::getInstance()->isConnected()) {
-			$this->snapshot($description, $level);
+			$this->snapshot($description, $level, $context);
 		}
 
 		$levelDescription = self::LEVEL_NAMES[$level] ?? 'Unknown';
@@ -620,50 +621,28 @@ class Logger implements LoggerInterface {
 	}
 
 	/**
-	 * Persist a snapshot of request/app state to ErrorLog. Level defaults to DEBUG (1–8 bounds).
+	 * Persist a snapshot of request/app state to LogEvent. Level defaults to DEBUG (1-8 bounds).
 	 *
 	 * @param	string	Description of the snapshot moment.
 	 * @param	int		Optional PSR-3 log level number equivalent, default is 8 (DEBUG).
+	 * @param	array	Optional PSR-3 context data.
 	 */
-	private function snapshot(string $description, ?int $level = null): void {
+	private function snapshot(string $description, ?int $level = null, array $context = []): void {
 
 		if (!$this->enabled) {
 			return;
 		}
 
 		if (!is_null($level) and ($level > 8 or $level < 1)) {
-            $level = 8;
-        }
-
-		$app = Application::getInstance();
-		$router = Router::getInstance();
-
-		$errorLog = new ErrorLog();
-
-		$errorLog->level 		= $level ?: self::DEBUG;
-		$errorLog->userId		= $app->currentUser->id ?? null;
-		$errorLog->path			= substr((string)$router->url,1);
-		$errorLog->getData		= $_GET;
-		$errorLog->postData		= $_POST;
-		$errorLog->filesData	= $_FILES;
-		$errorLog->cookieData	= []; //$_COOKIE;
-		$errorLog->description	= substr($description, 0, 255);
-		$errorLog->userMessages	= $app->getAllNotificationsMessages();
-
-		if (isset($_SERVER['HTTP_REFERER'])) {
-
-			// removes application base url from referer
-			$errorLog->referer = (0 === strpos($_SERVER['HTTP_REFERER'], BASE_HREF))
-				? substr($_SERVER['HTTP_REFERER'], strlen(BASE_HREF))
-				: (string)$_SERVER['HTTP_REFERER'];
-
-		} else {
-
-			$errorLog->referer = '';
-
+			$level = 8;
 		}
 
-		$errorLog->create();
+		try {
+			$writer = new DatabaseLogWriter();
+			$writer->write($level ?: self::DEBUG, $description, $context);
+		} catch (\Throwable) {
+			// database logging must never trigger recursive logger failures
+		}
 
 	}
 

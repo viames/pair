@@ -121,7 +121,6 @@
 			"/mobile",
 			"/phpunit.xml.dist",
 			"/scripts/update-version-from-release.php",
-			"/scripts/update-version-from-tag.php",
 			"/tests"
 		]
 	}

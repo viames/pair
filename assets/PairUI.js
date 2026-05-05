@@ -208,6 +208,17 @@
   }
 
   /**
+   * Return true when a Content-Type header represents a JSON payload.
+   * @param {*} contentType
+   * @returns {boolean}
+   */
+  function isJsonContentType(contentType) {
+    const mimeType = String(contentType || "").split(";")[0].trim().toLowerCase();
+
+    return mimeType === "application/json" || mimeType.endsWith("+json");
+  }
+
+  /**
    * Extract a readable error message from Error objects or HTTP payloads.
    * @param {*} error
    * @param {*} fallback
@@ -216,12 +227,24 @@
   function getErrorMessage(error, fallback = getClientMessage("UNEXPECTED_ERROR", "Unexpected error")) {
     if (error && typeof error === "object") {
       if (error.payload && typeof error.payload === "object") {
+        if (typeof error.payload.detail === "string" && error.payload.detail.trim()) {
+          return error.payload.detail.trim();
+        }
+
+        if (error.payload.meta && typeof error.payload.meta.message === "string" && error.payload.meta.message.trim()) {
+          return error.payload.meta.message.trim();
+        }
+
         if (typeof error.payload.message === "string" && error.payload.message.trim()) {
           return error.payload.message.trim();
         }
 
         if (typeof error.payload.error === "string" && error.payload.error.trim()) {
           return error.payload.error.trim();
+        }
+
+        if (typeof error.payload.title === "string" && error.payload.title.trim()) {
+          return error.payload.title.trim();
         }
       }
 
@@ -1712,7 +1735,7 @@
       }
 
       const contentType = res.headers.get("content-type") || "";
-      const wantsJson = expect === "json" || (expect === "auto" && contentType.includes("application/json"));
+      const wantsJson = expect === "json" || (expect === "auto" && isJsonContentType(contentType));
 
       let payload;
       if (res.status === 204) {

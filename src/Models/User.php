@@ -288,8 +288,8 @@ class User extends ActiveRecord {
 		// deletes user sessions
 		Database::run('DELETE FROM `sessions` WHERE `user_id` = ?', [$this->id]);
 
-		// deletes error_logs of this user
-		Database::run('DELETE FROM `error_logs` WHERE `user_id` = ?', [$this->id]);
+		// deletes log events of this user
+		Database::run('DELETE FROM `log_events` WHERE `user_id` = ?', [$this->id]);
 
 		if ($this->isDeletable()) {
 			Audit::userDeleted($this);

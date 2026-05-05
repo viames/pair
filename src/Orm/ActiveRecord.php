@@ -812,8 +812,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 		// reset updated-properties tracker
 		$this->updatedProperties = [];
 
-		// suppress notices for error logs to avoid loops
-		if ('error_logs' != static::TABLE_NAME) {
+		// suppress notices for log events to avoid loops
+		if ('log_events' != static::TABLE_NAME) {
 			$logger = Logger::getInstance();
 			$logger->debug('Created a new ' . $class . ' object with ' . $this->getKeysForEventlog());
 		}
@@ -2902,8 +2902,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 		$className = basename(str_replace('\\', '/', $class));
 
-		// suppress notices for error logs to avoid loops
-		if ('error_logs' != static::TABLE_NAME) {
+		// suppress notices for log events to avoid loops
+		if ('log_events' != static::TABLE_NAME) {
 			$logger = Logger::getInstance();
 			$logger->debug('Updated a {class} object with {keys}', ['class' => $className,'keys' => $logParam]);
 		}
@@ -2912,7 +2912,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$uniqueId = is_array($this->getId()) ? implode('-', $this->getId()) : (string)$this->getId();
 		if (isset($app->activeRecordCache[$class][$uniqueId])) {
 			$app->putActiveRecordCache($class, $this);
-			if ('error_logs' != static::TABLE_NAME) {
+			if ('log_events' != static::TABLE_NAME) {
 				$logger = Logger::getInstance();
 				$logger->debug('Updated {class} object with id={uniqueId} in common cache', ['class' => $className,'uniqueId' => $uniqueId]);
 			}
