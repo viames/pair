@@ -211,6 +211,11 @@
       pane.hidden = pane.getAttribute("data-logbar-tab") !== tabName;
     });
 
+    // Mirror the active tab on the root so CSS can adapt tab-specific controls.
+    ["overview", "timeline", "queries", "events"].forEach(function (name) {
+      logbar.classList.toggle("logbar-tab-" + name, name === tabName);
+    });
+
     logbar.querySelectorAll("[data-logbar-tab-button]").forEach(function (button) {
       const active = button.getAttribute("data-logbar-tab-button") === tabName;
 
@@ -262,6 +267,51 @@
 
       group.hidden = hidden;
     });
+  }
+
+  /**
+   * Open the first visible query group after a finding filters the query pane.
+   * @param {Element} logbar
+   */
+  function openFirstVisibleQueryGroup(logbar) {
+    const groups = logbar.querySelectorAll("[data-logbar-query-group]");
+
+    for (const group of groups) {
+      if (!group.hidden) {
+        group.setAttribute("open", "");
+        return;
+      }
+    }
+  }
+
+  /**
+   * Apply one automatic finding as a tab and filter shortcut.
+   * @param {Element} logbar
+   * @param {Element} button
+   */
+  function applyFindingAction(logbar, button) {
+    const tabName = button.getAttribute("data-logbar-finding-tab") || "overview";
+    const safeTabName = logbar.querySelector('[data-logbar-tab="' + tabName + '"]') ? tabName : "overview";
+    const searchControl = logbar.querySelector("[data-logbar-search]");
+    const typeControl = logbar.querySelector("[data-logbar-type-filter]");
+    const queriesOnlyControl = logbar.querySelector("[data-logbar-queries-only]");
+    const warningsOnlyControl = logbar.querySelector("[data-logbar-warnings-only]");
+    const duplicatesOnlyControl = logbar.querySelector("[data-logbar-duplicates-only]");
+
+    setActiveTab(logbar, safeTabName);
+
+    // Reset manual filters before applying the finding so old filters cannot hide the target rows.
+    if (searchControl) searchControl.value = button.getAttribute("data-logbar-finding-search") || "";
+    if (typeControl) typeControl.value = button.getAttribute("data-logbar-finding-type") || "";
+    if (queriesOnlyControl) queriesOnlyControl.checked = button.getAttribute("data-logbar-finding-queries-only") === "1";
+    if (warningsOnlyControl) warningsOnlyControl.checked = button.getAttribute("data-logbar-finding-warnings-only") === "1";
+    if (duplicatesOnlyControl) duplicatesOnlyControl.checked = button.getAttribute("data-logbar-finding-duplicates-only") === "1";
+
+    applyFilters(logbar);
+
+    if (button.getAttribute("data-logbar-finding-open-query") === "1") {
+      openFirstVisibleQueryGroup(logbar);
+    }
   }
 
   /**
@@ -347,10 +397,16 @@
    * @param {MouseEvent} event
    */
   function handleClick(event) {
-    const target = event.target && typeof event.target.closest === "function" ? event.target.closest("#toggle-events, [data-logbar-tab-button], [data-logbar-query-toggle], [data-logbar-copy-value]") : null;
+    const target = event.target && typeof event.target.closest === "function" ? event.target.closest("#toggle-events, [data-logbar-tab-button], [data-logbar-query-toggle], [data-logbar-copy-value], [data-logbar-finding-action]") : null;
     const logbar = logbarRoot(target);
 
     if (!target || !logbar) return;
+
+    if (target.hasAttribute("data-logbar-finding-action")) {
+      event.preventDefault();
+      applyFindingAction(logbar, target);
+      return;
+    }
 
     if (target.hasAttribute("data-logbar-copy-value")) {
       event.preventDefault();

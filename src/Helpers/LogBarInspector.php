@@ -65,6 +65,7 @@ final readonly class LogBarInspector {
 			'memoryLimitPercent' => $memoryLimitPercent,
 			'memoryNearLimitRatio' => $this->memoryNearLimitRatio,
 			'memoryPeakBytes' => $memoryPeakBytes,
+			'duplicateQueryBudget' => $this->duplicateQueryBudget,
 			'queryBudget' => $this->queryBudget,
 			'queryCount' => $queryCount,
 			'queryGroups' => $queryGroups,
@@ -112,7 +113,9 @@ final readonly class LogBarInspector {
 
 		if ($totalMs >= $this->slowRequestMs) {
 			$findings[] = [
+				'actionLabel' => 'Open timeline',
 				'type' => 'warning',
+				'targetTab' => 'timeline',
 				'title' => 'Slow request',
 				'detail' => 'Request time is ' . $this->formatMilliseconds($totalMs) . ' over the ' . $this->slowRequestMs . ' ms threshold.',
 			];
@@ -120,7 +123,9 @@ final readonly class LogBarInspector {
 
 		if ($queryMs > 0 and $queryPercent > 50.0) {
 			$findings[] = [
+				'actionLabel' => 'Open queries',
 				'type' => 'warning',
+				'targetTab' => 'queries',
 				'title' => 'DB-bound request',
 				'detail' => 'DB time is ' . $this->formatMilliseconds($queryMs) . ' (' . round($queryPercent) . '% of request time).',
 			];
@@ -128,9 +133,11 @@ final readonly class LogBarInspector {
 
 		if ($queryCount > $this->queryBudget) {
 			$findings[] = [
+				'actionLabel' => 'Open queries',
 				'type' => 'warning',
+				'targetTab' => 'queries',
 				'title' => 'High query count',
-				'detail' => $queryCount . ' queries exceed the budget of ' . $this->queryBudget . '.',
+				'detail' => $this->countLabel($queryCount, 'query') . ' ' . (1 === $queryCount ? 'exceeds' : 'exceed') . ' the budget of ' . $this->queryBudget . '.',
 			];
 		}
 
@@ -140,40 +147,65 @@ final readonly class LogBarInspector {
 
 		if (count($duplicateGroups)) {
 			$worst = reset($duplicateGroups);
+			$count = count($duplicateGroups);
 			$findings[] = [
+				'actionLabel' => 'Show duplicates',
+				'duplicatesOnly' => '1',
 				'type' => 'warning',
+				'targetTab' => 'queries',
 				'title' => 'Duplicate query fingerprints',
-				'detail' => count($duplicateGroups) . ' fingerprints exceed the duplicate budget; worst count is ' . (int)$worst['count'] . '.',
+				'detail' => $this->countLabel($count, 'fingerprint') . ' ' . (1 === $count ? 'exceeds' : 'exceed') . ' the duplicate budget; worst count is ' . (int)$worst['count'] . '.',
 			];
 		}
 
 		$slowest = $this->slowestQueryGroup($data['queryGroups']);
 
 		if ($slowest and (float)$slowest['maxMs'] >= $this->slowQueryMs) {
+			$queryLabel = trim(((string)$slowest['operation'] ?: 'SQL') . ' ' . (string)$slowest['table']);
 			$findings[] = [
+				'actionLabel' => 'Open query',
+				'openQuery' => '1',
+				'search' => (string)$slowest['fingerprint'],
 				'type' => 'warning',
+				'targetTab' => 'queries',
 				'title' => 'Slowest query',
-				'detail' => $this->formatMilliseconds((float)$slowest['maxMs']) . ' in ' . ((string)$slowest['operation'] ?: 'SQL') . ' ' . ((string)$slowest['table'] ?: ''),
+				'detail' => $this->formatMilliseconds((float)$slowest['maxMs']) . ' in ' . ($queryLabel ?: 'SQL') . '.',
 			];
 		}
 
 		if ((int)$data['warningCount'] or (int)$data['errorCount']) {
+			$errorCount = (int)$data['errorCount'];
+			$warningCount = (int)$data['warningCount'];
 			$findings[] = [
-				'type' => ((int)$data['errorCount'] ? 'error' : 'warning'),
+				'actionLabel' => 'Open events',
+				'type' => ($errorCount ? 'error' : 'warning'),
+				'targetTab' => 'events',
+				'warningsOnly' => '1',
 				'title' => 'Warnings or errors',
-				'detail' => (int)$data['warningCount'] . ' warnings and ' . (int)$data['errorCount'] . ' errors were logged.',
+				'detail' => $this->countLabel($warningCount, 'warning') . ' and ' . $this->countLabel($errorCount, 'error') . ' were logged.',
 			];
 		}
 
 		if ((float)$data['memoryLimitPercent'] >= $this->memoryNearLimitRatio) {
 			$findings[] = [
+				'actionLabel' => 'Open overview',
 				'type' => 'warning',
+				'targetTab' => 'overview',
 				'title' => 'Memory near limit',
 				'detail' => 'Peak memory is ' . round((float)$data['memoryLimitPercent']) . '% of the configured limit.',
 			];
 		}
 
 		return $findings;
+
+	}
+
+	/**
+	 * Return a count label with an English singular or plural noun.
+	 */
+	private function countLabel(int $count, string $singular): string {
+
+		return $count . ' ' . $singular . (1 === $count ? '' : 's');
 
 	}
 

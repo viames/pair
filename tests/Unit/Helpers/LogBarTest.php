@@ -207,10 +207,17 @@ class LogBarTest extends TestCase {
 		$this->setInaccessibleProperty($logBar, 'events', $events);
 		$data = $this->invokeInaccessibleMethod($logBar, 'collectInspectorData');
 		$titles = array_column($data['findings'], 'title');
+		$findings = array_column($data['findings'], null, 'title');
 
 		$this->assertContains('DB-bound request', $titles);
 		$this->assertContains('High query count', $titles);
 		$this->assertContains('Duplicate query fingerprints', $titles);
+		$this->assertSame('queries', $findings['DB-bound request']['targetTab']);
+		$this->assertSame('queries', $findings['High query count']['targetTab']);
+		$this->assertSame('queries', $findings['Duplicate query fingerprints']['targetTab']);
+		$this->assertSame('1 fingerprint exceeds the duplicate budget; worst count is 79.', $findings['Duplicate query fingerprints']['detail']);
+		$this->assertSame('Show duplicates', $findings['Duplicate query fingerprints']['actionLabel']);
+		$this->assertSame('1', $findings['Duplicate query fingerprints']['duplicatesOnly']);
 
 	}
 
@@ -257,7 +264,99 @@ class LogBarTest extends TestCase {
 		$this->assertStringNotContainsString('<span class="logbar-metric-label">Environment</span>', $html);
 		$this->assertStringNotContainsString('<span class="logbar-metric-label">Request ID</span>', $html);
 		$this->assertStringContainsString('class="logbar-diagnostic-banner logbar-severity-warning"', $html);
+		$this->assertStringContainsString('<span class="logbar-severity-badge logbar-severity-warning">Warning</span>', $html);
+		$this->assertStringContainsString('Open Overview to inspect 1 more finding.', $html);
+		$this->assertStringContainsString('data-logbar-finding-action="1"', $html);
+		$this->assertStringContainsString('data-logbar-finding-tab="queries"', $html);
+		$this->assertStringContainsString('<span class="logbar-finding-action">Open queries</span>', $html);
+		$this->assertStringContainsString('class="logbar-filter-toggle logbar-filter-query-events"', $html);
+		$this->assertStringContainsString('<span>Query events</span>', $html);
+		$this->assertStringContainsString('class="logbar-query-issues"', $html);
+		$this->assertStringContainsString('<span class="logbar-severity-badge logbar-severity-warning">Slowest</span>', $html);
+		$this->assertStringContainsString('data-logbar-finding-open-query="1"', $html);
+		$this->assertStringNotContainsString('class="logbar-overview-grid"', $html);
 		$this->assertStringContainsString('class="card-body logbar-body logbar-show-queries"', $html);
+
+	}
+
+	/**
+	 * Verify query groups expose shortcut cards and row badges for duplicate budgets.
+	 */
+	public function testQueryPaneHighlightsDuplicateBudgetOffenders(): void {
+
+		$events = [];
+		$start = 0.0;
+
+		for ($i = 0; $i < 5; $i++) {
+			$events[] = $this->queryEvent('SELECT * FROM categories WHERE target_category_id = ?', 0.001, 1, $start);
+			$start += 0.001;
+		}
+
+		$inspector = new LogBarInspector(250, 20, 30, 3, 80.0);
+		$renderer = new LogBarRenderer($inspector);
+		$data = $inspector->collect($events, 0.010, 1048576, 134217728);
+
+		UiTheme::setCurrent('bootstrap');
+		$html = $renderer->render($data, 'sample/index', 'test-correlation-id', true, true);
+
+		$this->assertStringContainsString('<span class="logbar-severity-badge logbar-severity-warning">Duplicate x5</span>', $html);
+		$this->assertStringContainsString('SELECT categories repeated 5 times', $html);
+		$this->assertStringContainsString('data-logbar-finding-duplicates-only="1"', $html);
+		$this->assertStringContainsString('logbar-query-duplicate-over-budget', $html);
+		$this->assertStringContainsString('<span class="logbar-query-badge logbar-query-badge-duplicate">Duplicate x5</span>', $html);
+
+	}
+
+	/**
+	 * Verify empty event panes are omitted when query rows are hidden.
+	 */
+	public function testInspectorOmitsBlankEventPanesWhenOnlyHiddenQueriesExist(): void {
+
+		$inspector = new LogBarInspector(250, 20, 30, 3, 80.0);
+		$renderer = new LogBarRenderer($inspector);
+		$data = $inspector->collect([$this->queryEvent('SELECT * FROM users WHERE id = ?', 0.010, 1)], 0.010, 1048576, 134217728);
+
+		UiTheme::setCurrent('bootstrap');
+		$html = $renderer->render($data, 'sample/index', 'test-correlation-id', false, true);
+
+		$this->assertStringContainsString('data-logbar-tab-button="overview"', $html);
+		$this->assertStringContainsString('data-logbar-tab-button="queries"', $html);
+		$this->assertStringNotContainsString('data-logbar-tab-button="timeline"', $html);
+		$this->assertStringNotContainsString('data-logbar-tab-button="events"', $html);
+		$this->assertStringNotContainsString('data-logbar-tab="timeline"', $html);
+		$this->assertStringNotContainsString('data-logbar-tab="events"', $html);
+
+	}
+
+	/**
+	 * Verify event panes remain available when they can render rows.
+	 */
+	public function testInspectorKeepsEventPanesWhenRowsAreVisible(): void {
+
+		$inspector = new LogBarInspector(250, 20, 30, 3, 80.0);
+		$renderer = new LogBarRenderer($inspector);
+
+		UiTheme::setCurrent('bootstrap');
+
+		$queryHtml = $renderer->render(
+			$inspector->collect([$this->queryEvent('SELECT * FROM users WHERE id = ?', 0.010, 1)], 0.010, 1048576, 134217728),
+			'sample/index',
+			'test-correlation-id',
+			true,
+			true
+		);
+		$noticeHtml = $renderer->render(
+			$inspector->collect([$this->noticeEvent(0.010)], 0.010, 1048576, 134217728),
+			'sample/index',
+			'test-correlation-id',
+			false,
+			true
+		);
+
+		$this->assertStringContainsString('data-logbar-tab-button="timeline"', $queryHtml);
+		$this->assertStringContainsString('data-logbar-tab-button="events"', $queryHtml);
+		$this->assertStringContainsString('data-logbar-tab-button="timeline"', $noticeHtml);
+		$this->assertStringContainsString('data-logbar-tab-button="events"', $noticeHtml);
 
 	}
 

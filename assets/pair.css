@@ -283,7 +283,7 @@ body[data-bs-theme="dark"] #logbar {
     display: flex;
     gap: 1rem;
     justify-content: space-between;
-    margin-bottom: 0.85rem;
+    margin-bottom: 0.65rem;
 }
 
 #logbar .logbar-titlebar h4 {
@@ -378,8 +378,8 @@ body[data-bs-theme="dark"] #logbar {
     font-size: 0.82rem;
     font-weight: 650;
     gap: 0.4rem;
-    min-height: 2.2rem;
-    padding: 0.4rem 0.75rem;
+    min-height: 2rem;
+    padding: 0.32rem 0.68rem;
 }
 
 /* Adds fa-caret-down icon. */
@@ -398,8 +398,8 @@ body[data-bs-theme="dark"] #logbar {
 
 #logbar .logbar-metrics {
     display: grid;
-    gap: 0.55rem;
-    grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+    gap: 0.45rem;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
     user-select: none;
 }
 
@@ -408,11 +408,10 @@ body[data-bs-theme="dark"] #logbar {
     border: 1px solid var(--pair-logbar-border);
     border-radius: 7px;
     min-width: 0;
-    padding: 0.62rem 0.72rem;
+    padding: 0.5rem 0.65rem;
 }
 
 #logbar .logbar-metric-label,
-#logbar .logbar-stat-label,
 #logbar .logbar-query-cell small {
     color: var(--pair-logbar-muted);
     display: block;
@@ -433,8 +432,7 @@ body[data-bs-theme="dark"] #logbar {
     white-space: nowrap;
 }
 
-#logbar .logbar-metric-subtext,
-#logbar .logbar-stat small {
+#logbar .logbar-metric-subtext {
     color: var(--pair-logbar-muted);
     display: block;
     font-size: 0.72rem;
@@ -455,14 +453,12 @@ body[data-bs-theme="dark"] #logbar {
     box-shadow: inset 0 0 0 1px rgba(120, 200, 138, 0.28);
 }
 
-#logbar .logbar-metric.warning,
-#logbar .logbar-stat.logbar-severity-warning {
+#logbar .logbar-metric.warning {
     border-color: var(--pair-logbar-warning);
     box-shadow: inset 0 0 0 1px rgba(240, 185, 93, 0.18);
 }
 
-#logbar .logbar-metric.error,
-#logbar .logbar-stat.logbar-severity-error {
+#logbar .logbar-metric.error {
     border-color: var(--pair-logbar-error);
     box-shadow: inset 0 0 0 1px rgba(240, 106, 97, 0.18);
 }
@@ -476,12 +472,12 @@ body[data-bs-theme="dark"] #logbar {
     background: var(--pair-logbar-bg);
     border-top: 1px solid var(--pair-logbar-border);
     color: var(--pair-logbar-text);
-    padding: 1rem;
+    padding: 0.85rem;
 }
 
 /* Keep body spacing owned by the inspector when old themes still target .card-body. */
 #logbar[data-logbar-root] .logbar-body.card-body {
-    padding: 1rem;
+    padding: 0.85rem;
 }
 
 #logbar .logbar-diagnostic-banner {
@@ -493,8 +489,15 @@ body[data-bs-theme="dark"] #logbar {
     display: flex;
     flex-direction: column;
     gap: 0.24rem;
-    margin-bottom: 0.95rem;
-    padding: 0.85rem 1rem;
+    margin-bottom: 0.75rem;
+    padding: 0.72rem 0.85rem;
+}
+
+#logbar .logbar-diagnostic-title {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
 }
 
 #logbar .logbar-diagnostic-banner strong {
@@ -507,6 +510,33 @@ body[data-bs-theme="dark"] #logbar {
     color: var(--pair-logbar-muted);
     font-size: 0.86rem;
     line-height: 1.45;
+}
+
+#logbar .logbar-severity-badge {
+    border: 1px solid var(--pair-logbar-border);
+    border-radius: 999px;
+    color: var(--pair-logbar-muted);
+    display: inline-flex;
+    font-size: 0.62rem;
+    font-weight: 800;
+    line-height: 1.1;
+    padding: 0.16rem 0.42rem;
+    text-transform: uppercase;
+}
+
+#logbar .logbar-severity-badge.logbar-severity-ok {
+    border-color: rgba(26, 139, 97, 0.36);
+    color: var(--pair-logbar-ok);
+}
+
+#logbar .logbar-severity-badge.logbar-severity-warning {
+    border-color: rgba(240, 185, 93, 0.5);
+    color: var(--pair-logbar-warning);
+}
+
+#logbar .logbar-severity-badge.logbar-severity-error {
+    border-color: rgba(240, 106, 97, 0.5);
+    color: var(--pair-logbar-error);
 }
 
 #logbar .logbar-diagnostic-banner.logbar-severity-warning {
@@ -531,8 +561,8 @@ body[data-bs-theme="dark"] #logbar {
 
 #logbar .logbar-tabs {
     border-bottom: 1px solid var(--pair-logbar-border);
-    margin-bottom: 0.85rem;
-    padding-bottom: 0.55rem;
+    margin-bottom: 0.68rem;
+    padding-bottom: 0.48rem;
 }
 
 #logbar .logbar-tabs button {
@@ -557,8 +587,8 @@ body[data-bs-theme="dark"] #logbar {
     background: var(--pair-logbar-bg-soft);
     border: 1px solid var(--pair-logbar-border);
     border-radius: 8px;
-    margin-bottom: 1rem;
-    padding: 0.7rem;
+    margin-bottom: 0.82rem;
+    padding: 0.62rem;
 }
 
 #logbar .logbar-filters label {
@@ -611,32 +641,16 @@ body[data-bs-theme="dark"] #logbar {
     text-transform: none;
 }
 
+#logbar.logbar-tab-queries .logbar-filter-query-events {
+    display: none;
+}
+
 #logbar .logbar-section-title {
     color: var(--pair-logbar-muted);
     font-size: 0.74rem;
     font-weight: 750;
     margin: 1rem 0 0.55rem;
     text-transform: uppercase;
-}
-
-#logbar .logbar-overview-grid {
-    display: grid;
-    gap: 0.7rem;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-}
-
-#logbar .logbar-stat {
-    background: var(--pair-logbar-bg-card);
-    border: 1px solid var(--pair-logbar-border);
-    border-radius: 8px;
-    padding: 0.85rem;
-}
-
-#logbar .logbar-stat strong {
-    display: block;
-    font-size: 1.25rem;
-    line-height: 1.25;
-    margin-top: 0.25rem;
 }
 
 #logbar .logbar-findings {
@@ -648,12 +662,23 @@ body[data-bs-theme="dark"] #logbar {
     padding: 0;
 }
 
+#logbar .logbar-findings > li {
+    display: flex;
+    min-width: 0;
+}
+
 #logbar .logbar-finding-card {
+    appearance: none;
     background: var(--pair-logbar-bg-card);
     border: 1px solid var(--pair-logbar-border);
     border-left: 4px solid var(--pair-logbar-muted);
     border-radius: 8px;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
     padding: 0.78rem 0.85rem;
+    text-align: left;
+    width: 100%;
 }
 
 #logbar .logbar-finding-card.logbar-severity-warning {
@@ -668,8 +693,28 @@ body[data-bs-theme="dark"] #logbar {
     border-left-color: var(--pair-logbar-error);
 }
 
+#logbar .logbar-finding-card:hover,
+#logbar .logbar-finding-card:focus-visible {
+    box-shadow: inset 0 0 0 1px var(--pair-logbar-accent);
+    outline: 0;
+}
+
+#logbar .logbar-finding-meta {
+    align-items: center;
+    display: flex;
+    gap: 0.45rem;
+    justify-content: space-between;
+    margin-bottom: 0.42rem;
+}
+
+#logbar .logbar-finding-action {
+    color: var(--pair-logbar-accent);
+    font-size: 0.72rem;
+    font-weight: 750;
+}
+
 #logbar .logbar-finding-card strong,
-#logbar .logbar-finding-card span {
+#logbar .logbar-finding-card > span:not(.logbar-finding-meta) {
     display: block;
 }
 
@@ -677,7 +722,7 @@ body[data-bs-theme="dark"] #logbar {
     font-size: 0.9rem;
 }
 
-#logbar .logbar-finding-card span {
+#logbar .logbar-finding-card > span:not(.logbar-finding-meta) {
     color: var(--pair-logbar-muted);
     font-size: 0.82rem;
     line-height: 1.42;
@@ -742,6 +787,51 @@ body[data-bs-theme="dark"] #logbar {
     display: none;
 }
 
+#logbar .logbar-query-issues {
+    display: grid;
+    gap: 0.55rem;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    margin-bottom: 0.75rem;
+}
+
+#logbar .logbar-query-issue {
+    appearance: none;
+    background: rgba(240, 185, 93, 0.10);
+    border: 1px solid rgba(240, 185, 93, 0.34);
+    border-left: 4px solid var(--pair-logbar-warning);
+    border-radius: 8px;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    min-width: 0;
+    padding: 0.58rem 0.7rem;
+    text-align: left;
+}
+
+#logbar .logbar-query-issue:hover,
+#logbar .logbar-query-issue:focus-visible {
+    box-shadow: inset 0 0 0 1px var(--pair-logbar-accent);
+    outline: 0;
+}
+
+#logbar .logbar-query-issue strong,
+#logbar .logbar-query-issue > span:not(.logbar-severity-badge) {
+    display: block;
+}
+
+#logbar .logbar-query-issue strong {
+    font-size: 0.84rem;
+    line-height: 1.25;
+    margin-top: 0.36rem;
+}
+
+#logbar .logbar-query-issue > span:not(.logbar-severity-badge) {
+    color: var(--pair-logbar-muted);
+    font-size: 0.76rem;
+    line-height: 1.35;
+    margin-top: 0.12rem;
+}
+
 #logbar .logbar-query-table {
     font-size: 0.8rem;
     overflow-x: auto;
@@ -773,6 +863,10 @@ body[data-bs-theme="dark"] #logbar {
 
 #logbar .logbar-query-group.logbar-query-duplicate {
     border-color: var(--pair-logbar-warning);
+}
+
+#logbar .logbar-query-group.logbar-query-duplicate-over-budget {
+    background: rgba(240, 185, 93, 0.08);
 }
 
 #logbar .logbar-query-group.logbar-query-expensive {
@@ -813,12 +907,51 @@ body[data-bs-theme="dark"] #logbar {
     margin-top: 0.12rem;
 }
 
+#logbar .logbar-query-sql {
+    display: block;
+    min-width: 0;
+}
+
+#logbar .logbar-query-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.28rem;
+    margin-bottom: 0.28rem;
+}
+
+#logbar .logbar-query-badge {
+    border: 1px solid var(--pair-logbar-border);
+    border-radius: 999px;
+    color: var(--pair-logbar-muted);
+    display: inline-flex;
+    font-size: 0.62rem;
+    font-weight: 800;
+    line-height: 1.1;
+    padding: 0.14rem 0.38rem;
+    text-transform: uppercase;
+}
+
+#logbar .logbar-query-badge-duplicate,
+#logbar .logbar-query-badge-slow,
+#logbar .logbar-query-badge-total {
+    border-color: rgba(240, 185, 93, 0.5);
+    color: var(--pair-logbar-warning);
+}
+
 #logbar .logbar-sql-preview,
 #logbar .logbar-query-occurrence code {
     color: var(--pair-logbar-text);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+#logbar .logbar-query-duplicate-over-budget .logbar-sql-preview,
+#logbar .logbar-query-expensive .logbar-sql-preview {
+    display: block;
+    line-height: 1.38;
+    max-height: 2.8em;
+    white-space: normal;
 }
 
 #logbar .logbar-query-occurrences {

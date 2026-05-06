@@ -41,6 +41,21 @@ class PairLogBarAssetTest extends TestCase {
 	}
 
 	/**
+	 * Verify actionable finding cards can switch tabs and apply filters.
+	 */
+	public function testFindingActionsAreHandledByLogBarClient(): void {
+
+		$source = $this->pairLogBarSource();
+
+		$this->assertStringContainsString('[data-logbar-finding-action]', $source);
+		$this->assertStringContainsString('function applyFindingAction(logbar, button)', $source);
+		$this->assertStringContainsString('data-logbar-finding-duplicates-only', $source);
+		$this->assertStringContainsString('function openFirstVisibleQueryGroup(logbar)', $source);
+		$this->assertStringContainsString('logbar.classList.toggle("logbar-tab-" + name, name === tabName)', $source);
+
+	}
+
+	/**
 	 * Return the Pair LogBar client source code.
 	 */
 	private function pairLogBarSource(): string {

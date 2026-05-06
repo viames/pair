@@ -29,6 +29,20 @@ class PairCssTest extends TestCase {
 	}
 
 	/**
+	 * Verify query diagnostics have dedicated styling hooks.
+	 */
+	public function testLogBarQueryDiagnosticsHaveStylingHooks(): void {
+
+		$source = $this->pairCssSource();
+
+		$this->assertStringContainsString('#logbar.logbar-tab-queries .logbar-filter-query-events', $source);
+		$this->assertStringContainsString('#logbar .logbar-query-issues', $source);
+		$this->assertStringContainsString('#logbar .logbar-query-badge', $source);
+		$this->assertStringContainsString('#logbar .logbar-query-duplicate-over-budget .logbar-sql-preview', $source);
+
+	}
+
+	/**
 	 * Return the Pair stylesheet source code.
 	 */
 	private function pairCssSource(): string {
