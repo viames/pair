@@ -41,6 +41,11 @@ class FakeCrudDatabase extends Database {
 	public int $virtualGeneratedChecks = 0;
 
 	/**
+	 * Number of describe-column calls performed during the current test.
+	 */
+	public int $describeColumnChecks = 0;
+
+	/**
 	 * Install an in-memory SQLite database after executing the provided schema or seed statements.
 	 *
 	 * @param	array<int, string>	$statements	SQL statements executed before exposing the PDO handler to Database::load().
@@ -114,6 +119,8 @@ class FakeCrudDatabase extends Database {
 	 * Return a permissive in-memory column description so ActiveRecord can prepare fake insert/update payloads.
 	 */
 	public function describeColumn(string $tableName, string $column): ?\stdClass {
+
+		$this->describeColumnChecks++;
 
 		$description = new \stdClass();
 		$description->Field = $column;

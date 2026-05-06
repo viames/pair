@@ -33,11 +33,12 @@ class ActiveRecordTest extends TestCase {
 		$database = $this->setDatabaseInstance();
 
 		$record = new ActiveRecordHydrationRecord((object)[
-			'id' => 10,
+			'id' => '10',
 			'name' => 'Original',
 			'email' => 'original@example.test',
 		]);
 
+		$this->assertSame(10, $record->id);
 		$this->assertSame([], $this->updatedProperties($record));
 		$this->assertSame(0, $database->virtualGeneratedChecks);
 
@@ -45,6 +46,19 @@ class ActiveRecordTest extends TestCase {
 
 		$this->assertSame(['name'], $this->updatedProperties($record));
 		$this->assertSame(1, $database->virtualGeneratedChecks);
+
+	}
+
+	/**
+	 * Verify repeated nullability checks reuse metadata already loaded for the model column.
+	 */
+	public function testColumnNullabilityMetadataIsCached(): void {
+
+		$database = $this->setDatabaseInstance();
+
+		$this->assertTrue(ActiveRecordHydrationRecord::isNullable('email'));
+		$this->assertTrue(ActiveRecordHydrationRecord::isNullable('email'));
+		$this->assertSame(1, $database->describeColumnChecks);
 
 	}
 

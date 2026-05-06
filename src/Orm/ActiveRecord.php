@@ -93,6 +93,13 @@ abstract class ActiveRecord implements \JsonSerializable {
 	const SHARED_CACHE_PROPERTIES = [];
 
 	/**
+	 * Process-local cache for column nullability metadata.
+	 *
+	 * @var	array<string, bool|null>
+	 */
+	private static array $nullableColumns = [];
+
+	/**
 	 * Constructor, initializes the object and populate it if parameter is given.
 	 *
 	 * @param	mixed	$initParam	Db row as stdClass or primary key value(s).
@@ -2318,14 +2325,20 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	final public static function isNullable(string $columnName): ?bool {
 
+		$cacheKey = static::class . "\0" . $columnName;
+
+		if (array_key_exists($cacheKey, self::$nullableColumns)) {
+			return self::$nullableColumns[$cacheKey];
+		}
+
 		$db = Database::getInstance();
 		$column = $db->describeColumn(static::TABLE_NAME, $columnName);
 
 		if (is_null($column)) {
-			return null;
+			return self::$nullableColumns[$cacheKey] = null;
 		}
 
-		return ('YES'==$column->Null ? true : false);
+		return self::$nullableColumns[$cacheKey] = ('YES'==$column->Null ? true : false);
 
 	}
 
@@ -2495,8 +2508,8 @@ abstract class ActiveRecord implements \JsonSerializable {
 
 			foreach ($varFields as $objProperty => $dbField) {
 
-				// cast it and assign
-				$this->__set($objProperty, $dbRow->$dbField);
+				// assign database values directly to avoid the mutation-tracking setter path.
+				$this->assignHydratedProperty($objProperty, $dbRow->$dbField);
 
 			}
 
@@ -2507,6 +2520,15 @@ abstract class ActiveRecord implements \JsonSerializable {
 		}
 
 		$this->afterPopulate();
+
+	}
+
+	/**
+	 * Assign a database value during hydration while preserving Pair type casting.
+	 */
+	private function assignHydratedProperty(string $name, mixed $value): void {
+
+		$this->$name = $this->castBindedProperty($name, $value);
 
 	}
 

@@ -205,6 +205,10 @@ class Logger implements LoggerInterface {
 	 */
 	public function debug(\Stringable|string $message, array $context = []): void {
 
+		if (!self::debugLoggingEnabled()) {
+			return;
+		}
+
 		$this->log(self::DEBUG, $message, $context);
 
 	}
@@ -315,6 +319,29 @@ class Logger implements LoggerInterface {
 	public static function getInstance(): self {
 
 		return self::$instance ??= new self();
+
+	}
+
+	/**
+	 * Return whether verbose debug logs should be collected for the current runtime.
+	 */
+	private static function debugLoggingEnabled(): bool {
+
+		$enabled = Env::get('PAIR_LOGGER_DEBUG_ENABLED');
+
+		if (is_bool($enabled)) {
+			return $enabled;
+		}
+
+		if (is_int($enabled) or is_float($enabled)) {
+			return 0 !== (int)$enabled;
+		}
+
+		if (is_string($enabled) and '' !== trim($enabled)) {
+			return in_array(strtolower(trim($enabled)), ['1', 'true', 'yes', 'on'], true);
+		}
+
+		return false;
 
 	}
 

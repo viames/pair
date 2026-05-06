@@ -34,6 +34,10 @@ class TemplateRendererTest extends TestCase {
 
 		$this->removeDirectory(APPLICATION_PATH . '/widgets');
 
+		if (file_exists(APPLICATION_PATH . '/template-style.php')) {
+			unlink(APPLICATION_PATH . '/template-style.php');
+		}
+
 		parent::tearDown();
 
 	}
@@ -49,6 +53,27 @@ class TemplateRendererTest extends TestCase {
 		$html = $method->invoke(null, '{{title}} {{ sampleWidget }} {{missingWidget}}');
 
 		$this->assertSame('{{title}} WIDGET {{missingWidget}}', $html);
+
+	}
+
+	/**
+	 * Verify cached template contents are invalidated when the file signature changes.
+	 */
+	public function testStyleFileCacheInvalidatesOnFileChange(): void {
+
+		$templateFile = APPLICATION_PATH . '/template-style.php';
+		file_put_contents($templateFile, 'first');
+
+		$cache = new \ReflectionProperty(TemplateRenderer::class, 'styleFileCache');
+		$cache->setValue(null, []);
+
+		$method = new \ReflectionMethod(TemplateRenderer::class, 'loadStyleFile');
+
+		$this->assertSame('first', $method->invoke(null, $templateFile));
+
+		file_put_contents($templateFile, 'second-content');
+
+		$this->assertSame('second-content', $method->invoke(null, $templateFile));
 
 	}
 

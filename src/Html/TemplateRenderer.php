@@ -11,6 +11,13 @@ use Pair\Core\Observability;
 class TemplateRenderer {
 
 	/**
+	 * Process-local template file cache keyed by path, mtime and size.
+	 *
+	 * @var	array<string, array{signature: string, html: string}>
+	 */
+	private static array $styleFileCache = [];
+
+	/**
 	 * Parses the template style file and replaces placeholders with HTML code.
 	 */
 	public static function parse(string $styleFile): void {
@@ -31,7 +38,7 @@ class TemplateRenderer {
 		$app = Application::getInstance();
 
 		// load the style page file
-		$templateHtml = file_get_contents($styleFile);
+		$templateHtml = self::loadStyleFile($styleFile);
 
 		// render only widgets that are actually referenced by this template.
 		$templateHtml = self::renderWidgets($templateHtml);
@@ -91,6 +98,31 @@ class TemplateRenderer {
 		);
 
 		print $templateHtml;
+
+	}
+
+	/**
+	 * Load a template style file once per process while invalidating on file changes.
+	 */
+	private static function loadStyleFile(string $styleFile): string {
+
+		clearstatcache(true, $styleFile);
+
+		$signature = (string)(filemtime($styleFile) ?: 0) . ':' . (string)(filesize($styleFile) ?: 0);
+
+		if (isset(self::$styleFileCache[$styleFile]) and self::$styleFileCache[$styleFile]['signature'] === $signature) {
+			return self::$styleFileCache[$styleFile]['html'];
+		}
+
+		$html = file_get_contents($styleFile);
+		$html = is_string($html) ? $html : '';
+
+		self::$styleFileCache[$styleFile] = [
+			'signature' => $signature,
+			'html' => $html,
+		];
+
+		return $html;
 
 	}
 
