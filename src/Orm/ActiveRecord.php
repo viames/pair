@@ -53,6 +53,11 @@ abstract class ActiveRecord implements \JsonSerializable {
 	private array $updatedProperties = [];
 
 	/**
+	 * Marks the internal database hydration path so setters can skip expensive caller inspection.
+	 */
+	private bool $isPopulating = false;
+
+	/**
 	 * List of dynamic properties, deprecated by PHP 8.2 onwards.
 	 */
 	private array $dynamicProperties = [];
@@ -281,7 +286,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	public function __get(string $name): mixed {
 
-		if (array_key_exists($name, static::getBinds()) or in_array($name, ['keyProperties', 'db', 'loadedFromDb', 'typeList', 'cache', 'errors', 'updatedProperties', 'dynamicProperties'])) {
+		if (array_key_exists($name, static::getBinds()) or in_array($name, ['keyProperties', 'db', 'loadedFromDb', 'typeList', 'cache', 'errors', 'updatedProperties', 'isPopulating', 'dynamicProperties'])) {
 
 			return isset($this->$name) ? $this->$name : null;
 
@@ -328,19 +333,23 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	public function __set(string $name, mixed $value): void {
 
+		$binds = static::getBinds();
+
 		// it’s a dynamic property, deprecated since PHP 8.2
-		if (!array_key_exists($name, static::getBinds())) {
+		if (!array_key_exists($name, $binds)) {
 			$this->dynamicProperties[$name] = @$value;
 			return;
 		}
 
-		// check that’s not the initial object population
-		if (isset(debug_backtrace()[1]) and !in_array(debug_backtrace()[1]['function'], ['populate'])) {
+		$trackChange = !$this->isPopulating;
+
+		// read the previous value only when this is a real user-land mutation.
+		if ($trackChange) {
 			$previousValue = $this->__get($name);
 		}
 
 		// if it is a virtually generated column, it does not set the corresponding property
-		$columnName = array_search($name, static::getBinds());
+		$columnName = $binds[$name];
 		if ($this->db->isVirtualGenerated(static::TABLE_NAME, $columnName)) {
 			$this->addError('Cannot set value for virtual generated column “'. $columnName .'”');
 			return;
@@ -349,8 +358,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$this->$name = $this->castBindedProperty($name, $value);
 
 		// keep track of updated properties
-		if (!in_array($name, $this->updatedProperties) and isset(debug_backtrace()[1]) and !in_array(debug_backtrace()[1]['function'], ['populate'])
-			and in_array($name, static::getBinds()) and $previousValue != $this->__get($name)) {
+		if ($trackChange and !in_array($name, $this->updatedProperties, true) and $previousValue != $this->__get($name)) {
 			$this->updatedProperties[] = $name;
 		}
 
@@ -847,7 +855,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$this->afterDelete();
 
 		// list properties to not remove
-		$activeRecordsProperties = ['keyProperties', 'db', 'loadedFromDb', 'typeList', 'errors'];
+		$activeRecordsProperties = ['keyProperties', 'db', 'loadedFromDb', 'typeList', 'errors', 'isPopulating'];
 
 		// unset all properties
 		foreach ($this as $key => $value) {
@@ -1829,7 +1837,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	final public function getPropertyType(string $name): ?string {
 
-		if (in_array($name, ['db', 'loadedFromDb', 'typeList', 'errors', 'updatedProperties'])) {
+		if (in_array($name, ['db', 'loadedFromDb', 'typeList', 'errors', 'updatedProperties', 'isPopulating'])) {
 			$type = null;
 		} else if (array_key_exists($name, $this->typeList)) {
 			$type = $this->typeList[$name];
@@ -2383,6 +2391,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		unset($vars['cache']);
 		unset($vars['errors']);
 		unset($vars['updatedProperties']);
+		unset($vars['isPopulating']);
 		unset($vars['dynamicProperties']);
 
 		return $vars;
@@ -2479,10 +2488,21 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$class = get_called_class();
 		$varFields = $class::getBinds();
 
-		foreach ($varFields as $objProperty => $dbField) {
+		$wasPopulating = $this->isPopulating;
+		$this->isPopulating = true;
 
-			// cast it and assign
-			$this->__set($objProperty, $dbRow->$dbField);
+		try {
+
+			foreach ($varFields as $objProperty => $dbField) {
+
+				// cast it and assign
+				$this->__set($objProperty, $dbRow->$dbField);
+
+			}
+
+		} finally {
+
+			$this->isPopulating = $wasPopulating;
 
 		}
 
@@ -2659,7 +2679,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$class = get_called_class();
 
 		// properties to not reset
-		$propertiesToSave = ['keyProperties', 'db', 'loadedFromDb', 'typeList', 'cache', 'errors'];
+		$propertiesToSave = ['keyProperties', 'db', 'loadedFromDb', 'typeList', 'cache', 'errors', 'isPopulating'];
 
 		// save key from being unset
 		$propertiesToSave = array_merge($propertiesToSave, (array)$this->keyProperties);

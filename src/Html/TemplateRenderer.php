@@ -33,24 +33,8 @@ class TemplateRenderer {
 		// load the style page file
 		$templateHtml = file_get_contents($styleFile);
 
-		// find all widget placeholders in the template
-		foreach (Widget::availableWidgets() as $name) {
-
-			// prepare the regex pattern to find the widget placeholder
-			$pattern = '/\{\{\s*' . preg_quote($name, '/') . '\s*\}\}/';
-
-			// check if the widget placeholder exists in the template
-			if (preg_match($pattern, $templateHtml)) {
-
-				// create the widget instance
-				$widget = new Widget($name);
-
-				// replace the widget placeholder with the rendered HTML
-				$templateHtml = preg_replace($pattern, $widget->render(), $templateHtml, 1);
-
-			}
-
-		}
+		// render only widgets that are actually referenced by this template.
+		$templateHtml = self::renderWidgets($templateHtml);
 
 		// placeholders to replace with $app properties
 		$placeholders = [
@@ -107,6 +91,30 @@ class TemplateRenderer {
 		);
 
 		print $templateHtml;
+
+	}
+
+	/**
+	 * Replace widget placeholders without scanning the whole widget directory.
+	 */
+	private static function renderWidgets(string $templateHtml): string {
+
+		return preg_replace_callback(
+			'/\{\{\s*([A-Za-z0-9_-]+)\s*\}\}/',
+			function(array $matches): string {
+
+				$name = $matches[1];
+
+				// non-widget placeholders are preserved for the application placeholder pass.
+				if (!Widget::exists($name)) {
+					return $matches[0];
+				}
+
+				return (new Widget($name))->render();
+
+			},
+			$templateHtml
+		) ?? $templateHtml;
 
 	}
 

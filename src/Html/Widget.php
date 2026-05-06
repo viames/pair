@@ -18,12 +18,18 @@ class Widget {
 	 */
 	const WIDGET_FOLDER = APPLICATION_PATH . '/widgets/';
 
+	/**
+	 * Create a widget reference by file name without extension.
+	 */
 	public function __construct(string $name) {
 
 		$this->name = $name;
 
 	}
 
+	/**
+	 * Return read-only widget metadata.
+	 */
 	public function __get(string $name): mixed {
 
 		return match ($name) {
@@ -33,6 +39,11 @@ class Widget {
 
 	}
 
+	/**
+	 * Returns the list of widget files available in the application.
+	 *
+	 * @return	array<int, string>
+	 */
 	public static function availableWidgets(): array {
 
 		$widgets = [];
@@ -46,6 +57,17 @@ class Widget {
 	}
 
 	/**
+	 * Return true when a safe widget file exists for the provided name.
+	 */
+	public static function exists(string $name): bool {
+
+		$file = self::filePath($name);
+
+		return !is_null($file) and is_file($file);
+
+	}
+
+	/**
 	 * Renders the widget layout and returns it.
 	 * 
 	 * @param	string	Name of widget file without file’s extension (.php).
@@ -55,9 +77,9 @@ class Widget {
 		$logger = Logger::getInstance();
 		$logger->debug('Rendering ' . $this->name . ' widget');
 
-		$file = self::WIDGET_FOLDER . $this->name .'.php';
+		$file = self::filePath((string)$this->name);
 
-		if (!file_exists($file)) {
+		if (is_null($file) or !file_exists($file)) {
 			throw new PairException('Widget file not found: ' . $this->name, ErrorCodes::WIDGET_NOT_FOUND);
 		}
 
@@ -67,6 +89,19 @@ class Widget {
 		$widget = ob_get_clean();
 
 		return $widget;
+
+	}
+
+	/**
+	 * Return the widget file path only for names that cannot escape the widgets directory.
+	 */
+	private static function filePath(string $name): ?string {
+
+		if (!preg_match('/^[A-Za-z0-9_-]+$/', $name)) {
+			return null;
+		}
+
+		return self::WIDGET_FOLDER . $name . '.php';
 
 	}
 
