@@ -128,6 +128,43 @@ PHP);
 	}
 
 	/**
+	 * Verify custom route lookup memoizes repeated checks and clears stale misses when routes change.
+	 */
+	public function testCustomRouteLookupCacheClearsWhenRouteIsAdded(): void {
+
+		$result = $this->runRouterSnippet(<<<'PHP'
+$router = \Pair\Core\Router::getInstance();
+$cache = new \ReflectionProperty($router, 'customRouteMatches');
+
+$miss = $router->getModuleActionFromCustomUrl('/cached');
+$cacheAfterMiss = count($cache->getValue($router));
+
+\Pair\Core\Router::addRoute('/cached', 'default', 'dashboard');
+$cacheAfterAdd = count($cache->getValue($router));
+
+$match = $router->getModuleActionFromCustomUrl('/cached');
+
+print json_encode([
+	'miss' => $miss,
+	'cacheAfterMiss' => $cacheAfterMiss,
+	'cacheAfterAdd' => $cacheAfterAdd,
+	'module' => $match?->module,
+	'action' => $match?->action,
+]);
+PHP);
+
+		$this->assertSame(0, $result['exitCode'], $result['stderr']);
+		$this->assertSame([
+			'miss' => null,
+			'cacheAfterMiss' => 1,
+			'cacheAfterAdd' => 0,
+			'module' => 'dashboard',
+			'action' => 'default',
+		], $this->decodeJson($result['stdout']));
+
+	}
+
+	/**
 	 * Run a Router-focused PHP snippet with the minimal constants required by the singleton constructor.
 	 *
 	 * @param	string	$body	PHP statements to execute after Router constants are prepared.

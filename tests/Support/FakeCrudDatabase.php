@@ -36,6 +36,11 @@ class FakeCrudDatabase extends Database {
 	public array $updatedObjects = [];
 
 	/**
+	 * Number of virtual-generated column checks performed during the current test.
+	 */
+	public int $virtualGeneratedChecks = 0;
+
+	/**
 	 * Install an in-memory SQLite database after executing the provided schema or seed statements.
 	 *
 	 * @param	array<int, string>	$statements	SQL statements executed before exposing the PDO handler to Database::load().
@@ -98,6 +103,8 @@ class FakeCrudDatabase extends Database {
 	 * Pretend no column is virtual-generated so ActiveRecord setters stay purely in-memory during tests.
 	 */
 	public function isVirtualGenerated(string $tableName, string $columnName): bool {
+
+		$this->virtualGeneratedChecks++;
 
 		return false;
 

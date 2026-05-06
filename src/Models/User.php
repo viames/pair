@@ -89,6 +89,20 @@ class User extends ActiveRecord {
 	protected ?string $pwReset = null;
 
 	/**
+	 * Request-local permission decisions keyed by normalized module/action.
+	 *
+	 * @var	array<string, bool>
+	 */
+	private array $accessCache = [];
+
+	/**
+	 * Request-local ACL lookup map grouped by module.
+	 *
+	 * @var	array<string, array{wildcard: bool, default: bool, actions: array<string, bool>}>|null
+	 */
+	private ?array $aclAccessMap = null;
+
+	/**
 	 * Name of related db table.
 	 */
 	const TABLE_NAME = 'users';
@@ -336,6 +350,12 @@ class User extends ActiveRecord {
 			list($module,$action) = explode('/', $module);
 		}
 
+		$accessCacheKey = $module . "\0" . (string)$action;
+
+		if (array_key_exists($accessCacheKey, $this->accessCache)) {
+			return $this->accessCache[$accessCacheKey];
+		}
+
 		// check if it’s a custom route
 		$router = Router::getInstance();
 		$url = '/' . $module . ($action ? '/' . $action : '');
@@ -347,39 +367,35 @@ class User extends ActiveRecord {
 			$action = $res->action;
 		}
 
-		// user module is for login and personal profile
-		if ('user'==$module) {
-			return true;
+		$accessCacheKey = $module . "\0" . (string)$action;
+
+		if (array_key_exists($accessCacheKey, $this->accessCache)) {
+			return $this->accessCache[$accessCacheKey];
 		}
 
-		// acl is a cached Collection of Rule objects
-		$acl = $this->getAcl();
+		// user module is for login and personal profile
+		if ('user'==$module) {
+			return $this->accessCache[$accessCacheKey] = true;
+		}
+
+		$aclMap = $this->getAclAccessMap();
+		$moduleRules = $aclMap[$module] ?? null;
+
+		if (!$moduleRules) {
+			return $this->accessCache[$accessCacheKey] = false;
+		}
+
+		if ($moduleRules['wildcard']) {
+			return $this->accessCache[$accessCacheKey] = true;
+		}
 
 		$actionIsEmpty = (is_null($action) or $action === '');
 
-		// loop through rules in order to find a match
-		foreach ($acl as $rule) {
-			if ($rule->moduleName != $module) {
-				continue;
-			}
-
-			if ($rule->superOnly) {
-				continue;
-			}
-
-			$ruleAction = $rule->action;
-			if (
-				is_null($ruleAction) or
-				$ruleAction === '' or
-				$ruleAction === $action or
-				($ruleAction == 'default' and $actionIsEmpty)
-			) {
-				return true;
-			}
-
+		if ($actionIsEmpty and $moduleRules['default']) {
+			return $this->accessCache[$accessCacheKey] = true;
 		}
 
-		return false;
+		return $this->accessCache[$accessCacheKey] = (!$actionIsEmpty and isset($moduleRules['actions'][(string)$action]));
 
 	}
 
@@ -783,6 +799,51 @@ class User extends ActiveRecord {
 		}
 
 		return $this->getCache('acl');
+
+	}
+
+	/**
+	 * Return an indexed ACL map so repeated menu checks avoid scanning all rules.
+	 *
+	 * @return	array<string, array{wildcard: bool, default: bool, actions: array<string, bool>}>
+	 */
+	private function getAclAccessMap(): array {
+
+		if (!is_null($this->aclAccessMap)) {
+			return $this->aclAccessMap;
+		}
+
+		$this->aclAccessMap = [];
+
+		foreach ($this->getAcl() as $rule) {
+
+			if ($rule->superOnly) {
+				continue;
+			}
+
+			$module = (string)$rule->moduleName;
+
+			if (!isset($this->aclAccessMap[$module])) {
+				$this->aclAccessMap[$module] = [
+					'wildcard' => false,
+					'default' => false,
+					'actions' => [],
+				];
+			}
+
+			$action = $rule->action;
+
+			if (is_null($action) or $action === '') {
+				$this->aclAccessMap[$module]['wildcard'] = true;
+			} else if ('default' === $action) {
+				$this->aclAccessMap[$module]['default'] = true;
+			} else {
+				$this->aclAccessMap[$module]['actions'][(string)$action] = true;
+			}
+
+		}
+
+		return $this->aclAccessMap;
 
 	}
 

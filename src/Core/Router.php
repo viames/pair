@@ -71,6 +71,11 @@ class Router {
 	private array $routes = [];
 
 	/**
+	 * Request-local cache for custom route matches by URL.
+	 */
+	private array $customRouteMatches = [];
+
+	/**
 	 * Flag for show log informations on AJAX calls.
 	 */
 	private bool $sendLog = true;
@@ -159,6 +164,7 @@ class Router {
 		}
 
 		self::$instance->routes[] = $route;
+		self::$instance->customRouteMatches = [];
 
 	}
 
@@ -250,14 +256,21 @@ class Router {
 	 */
 	public function getModuleActionFromCustomUrl(string $url): ?\stdClass {
 
+		if (array_key_exists($url, $this->customRouteMatches)) {
+			return $this->customRouteMatches[$url];
+		}
+
 		foreach ($this->routes as $r) {
 
 			// compare current URL to regex
 			if ($this->routePathMatchesUrl($r->path, $url)) {
+				$this->customRouteMatches[$url] = $r;
 				return $r;
 			}
 
 		}
+
+		$this->customRouteMatches[$url] = null;
 
 		return null;
 

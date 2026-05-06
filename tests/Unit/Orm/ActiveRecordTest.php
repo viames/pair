@@ -30,7 +30,7 @@ class ActiveRecordTest extends TestCase {
 	 */
 	public function testHydrationSkipsUpdatedPropertiesButMutationsAreTracked(): void {
 
-		$this->setDatabaseInstance();
+		$database = $this->setDatabaseInstance();
 
 		$record = new ActiveRecordHydrationRecord((object)[
 			'id' => 10,
@@ -39,10 +39,12 @@ class ActiveRecordTest extends TestCase {
 		]);
 
 		$this->assertSame([], $this->updatedProperties($record));
+		$this->assertSame(0, $database->virtualGeneratedChecks);
 
 		$record->name = 'Changed';
 
 		$this->assertSame(['name'], $this->updatedProperties($record));
+		$this->assertSame(1, $database->virtualGeneratedChecks);
 
 	}
 
