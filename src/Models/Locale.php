@@ -56,6 +56,13 @@ class Locale extends ActiveRecord {
 	const SHARED_CACHE_PROPERTIES = ['languageId', 'countryId'];
 
 	/**
+	 * Process-local cache for locale representations keyed by locale id.
+	 *
+	 * @var	array<int, array{language: string, country: string}>
+	 */
+	private static array $representationCodes = [];
+
+	/**
 	 * Table structure [Field => Type, Null, Key, Default, Extra].
 	 */
 	const TABLE_DESCRIPTION = [
@@ -180,11 +187,49 @@ class Locale extends ActiveRecord {
 			]);
 		}
 
-		$country = $this->getCountry() ?? new Country($this->countryId);
+		$codes = $this->representationCodes();
 
+		return $codes['language'] . $separator . $codes['country'];
+
+	}
+
+	/**
+	 * Return language and country codes for this locale without resolving relation classes repeatedly.
+	 *
+	 * @return	array{language: string, country: string}
+	 */
+	private function representationCodes(): array {
+
+		if (isset($this->id) and isset(self::$representationCodes[$this->id])) {
+			return self::$representationCodes[$this->id];
+		}
+
+		if (isset($this->id)) {
+			$query =
+				'SELECT l.`code` AS `language_code`, c.`code` AS `country_code`
+				FROM `locales` AS lc
+				INNER JOIN `languages` AS l ON lc.`language_id` = l.`id`
+				INNER JOIN `countries` AS c ON lc.`country_id` = c.`id`
+				WHERE lc.`id` = ?
+				LIMIT 1';
+
+			$row = Database::load($query, [$this->id], Database::OBJECT);
+			if ($row) {
+				return self::$representationCodes[$this->id] = [
+					'language' => (string)$row->language_code,
+					'country' => (string)$row->country_code,
+				];
+			}
+		}
+
+		// Fallback for partially initialized Locale instances that do not have an id yet.
+		$country = $this->getCountry() ?? new Country($this->countryId);
 		$language = $this->getLanguage() ?? new Language($this->languageId);
 
-		return $language->code . $separator . $country->code;
+		return [
+			'language' => (string)$language->code,
+			'country' => (string)$country->code,
+		];
 
 	}
 

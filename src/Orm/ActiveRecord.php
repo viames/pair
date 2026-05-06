@@ -100,6 +100,13 @@ abstract class ActiveRecord implements \JsonSerializable {
 	private static array $nullableColumns = [];
 
 	/**
+	 * Process-local map from database table names to ActiveRecord classes.
+	 *
+	 * @var	array<string, class-string<ActiveRecord>>
+	 */
+	private static array $tableClassMap = [];
+
+	/**
 	 * Constructor, initializes the object and populate it if parameter is given.
 	 *
 	 * @param	mixed	$initParam	Db row as stdClass or primary key value(s).
@@ -1926,39 +1933,7 @@ abstract class ActiveRecord implements \JsonSerializable {
 			return null;
 		}
 
-		// class that maps the parent table
-		$parentClass = null;
-
-		// if the class name is specified, it quickly searches the array
-		if (!is_null($className) and is_subclass_of($className, 'Pair\Orm\ActiveRecord') and defined($className . '::TABLE_NAME') and $className::TABLE_NAME == $referencedTable) {
-			$parentClass = $className;
-		// otherwise it must iterate all the loaded classes
-		} else {
-			$loadedClasses = Utilities::getDeclaredClasses();
-			foreach ($loadedClasses as $c) {
-				if (is_subclass_of($c, 'Pair\Orm\ActiveRecord') and defined($c . '::TABLE_NAME') and $c::TABLE_NAME == $referencedTable) {
-					$parentClass = $c;
-					break;
-				}
-			}
-		}
-
-		// class cannot be found
-		if (!$parentClass) {
-
-			// if not found, search in the whole application
-			$classes = Utilities::getActiveRecordClasses();
-
-			// search for required one
-			foreach ($classes as $class => $opts) {
-				if ($opts['tableName'] == $referencedTable) {
-					include_once($opts['folder'] . '/' . $opts['file']);
-					$parentClass = $class;
-					break;
-				}
-			}
-
-		}
+		$parentClass = self::resolveActiveRecordClassForTable($referencedTable, $className);
 
 		// class cannot be found
 		if (!$parentClass) {
@@ -1999,6 +1974,43 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$this->setCache($cacheName, $ret);
 
 		return $ret;
+
+	}
+
+	/**
+	 * Resolve and cache the ActiveRecord class that maps a database table.
+	 *
+	 * @param	string				$tableName	Referenced database table.
+	 * @param	class-string|null	$className	Optional expected class name.
+	 */
+	private static function resolveActiveRecordClassForTable(string $tableName, ?string $className = null): ?string {
+
+		if (!is_null($className) and is_subclass_of($className, self::class) and defined($className . '::TABLE_NAME') and $className::TABLE_NAME == $tableName) {
+			self::$tableClassMap[$tableName] = $className;
+			return $className;
+		}
+
+		if (isset(self::$tableClassMap[$tableName]) and class_exists(self::$tableClassMap[$tableName])) {
+			return self::$tableClassMap[$tableName];
+		}
+
+		foreach (Utilities::getDeclaredClasses() as $declaredClass) {
+			if (is_subclass_of($declaredClass, self::class) and defined($declaredClass . '::TABLE_NAME') and $declaredClass::TABLE_NAME == $tableName) {
+				self::$tableClassMap[$tableName] = $declaredClass;
+				return $declaredClass;
+			}
+		}
+
+		// Fall back to the full application scan only once per unresolved table.
+		foreach (Utilities::getActiveRecordClasses() as $class => $opts) {
+			if ($opts['tableName'] == $tableName) {
+				include_once($opts['folder'] . '/' . $opts['file']);
+				self::$tableClassMap[$tableName] = $class;
+				return $class;
+			}
+		}
+
+		return null;
 
 	}
 
