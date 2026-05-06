@@ -212,7 +212,7 @@ class Database {
 
 		$affected = $stat->rowCount();
 		$stat->closeCursor();
-		$this->logParamQuery($this->query, $affected, $params);
+		$this->logParamQuery($this->query, $affected, $params, $span);
 		self::finishQuerySpan($span, $affected);
 
 		return $affected;
@@ -545,7 +545,8 @@ class Database {
 			// first column of first row
 			case self::RESULT:
 				$res = $stat->fetch(\PDO::FETCH_COLUMN);
-				$count = $self->handler->query('SELECT FOUND_ROWS()')->fetchColumn();
+				// A scalar read touches one row at most; avoid a hidden FOUND_ROWS() round trip.
+				$count = false === $res ? 0 : 1;
 				break;
 
 			// result count as integer
@@ -567,7 +568,7 @@ class Database {
 
 		}
 
-		$self->logParamQuery($query, $count, $params);
+		$self->logParamQuery($query, $count, $params, $span);
 
 		$stat->closeCursor();
 		self::finishQuerySpan($span, (int)$count);
@@ -623,7 +624,7 @@ class Database {
 
 		} finally {
 
-			$self->logParamQuery($query, $count, $params);
+			$self->logParamQuery($query, $count, $params, $span);
 			$stat->closeCursor();
 			self::finishQuerySpan($span, $count);
 
@@ -654,7 +655,7 @@ class Database {
 
 		$res = (int)$stat->fetch(\PDO::FETCH_COLUMN);
 
-		$this->logParamQuery($this->query, $res, $params);
+		$this->logParamQuery($this->query, $res, $params, $span);
 
 		$stat->closeCursor();
 		self::finishQuerySpan($span, $res);
@@ -689,7 +690,7 @@ class Database {
 		$ret = $stat->fetchAll(\PDO::FETCH_OBJ);
 
 		// logBar
-		$this->logParamQuery($this->query, count($ret), $params);
+		$this->logParamQuery($this->query, count($ret), $params, $span);
 
 		$stat->closeCursor();
 		self::finishQuerySpan($span, count($ret));
@@ -722,8 +723,9 @@ class Database {
 		$res = $stat->fetch(\PDO::FETCH_COLUMN);
 
 		// logBar
-		$count = $this->handler->query('SELECT FOUND_ROWS()')->fetchColumn();
-		$this->logParamQuery($this->query, $count, $params);
+		// A scalar read touches one row at most; avoid a hidden FOUND_ROWS() round trip.
+		$count = false === $res ? 0 : 1;
+		$this->logParamQuery($this->query, $count, $params, $span);
 
 		$stat->closeCursor();
 		self::finishQuerySpan($span, (int)$count);
@@ -756,9 +758,9 @@ class Database {
 	 * @param	int		Number of items in result-set or affected rows.
 	 * @param	array	Optional parameters to bind.
 	 */
-	private function logParamQuery(string $query, int $result, array $params = []): void {
+	private function logParamQuery(string $query, int $result, array $params = [], ?ObservabilitySpan $span = null): void {
 
-		LogBar::query($query, $result, $params);
+		LogBar::query($query, $result, $params, $span?->durationMs(), $span?->startedAt());
 
 	}
 
@@ -886,7 +888,7 @@ class Database {
 		$affected = $stat->rowCount();
 
 		$stat->closeCursor();
-		$self->logParamQuery($query, $affected, $params);
+		$self->logParamQuery($query, $affected, $params, $span);
 		self::finishQuerySpan($span, $affected);
 
 		return $affected;

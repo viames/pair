@@ -105,7 +105,9 @@ class LogBar {
 		string $type = 'notice',
 		?string $subtext = null,
 		array $attributes = [],
-		?string $status = null
+		?string $status = null,
+		?float $start = null,
+		?float $duration = null
 	): void {
 
 		if (!$this->isEnabled()) {
@@ -119,8 +121,8 @@ class LogBar {
 		}
 
 		$now = $this->getMicrotime();
-		$duration = abs($now - $this->lastChrono);
-		$start = max(0.0, $now - $this->timeStart - $duration);
+		$duration = $duration ?? abs($now - $this->lastChrono);
+		$start = $start ?? max(0.0, $now - $this->timeStart - $duration);
 
 		$this->events[] = new LogBarEntry(
 			'logbar-event-' . $this->nextEventId++,
@@ -354,7 +356,7 @@ class LogBar {
 	 */
 	final public function isEnabled(): bool {
 
-		if ($this->disabled or 'cli' == php_sapi_name()) {
+		if ($this->disabled or 'cli' == php_sapi_name() or !self::runtimeEnabled()) {
 			return false;
 		}
 
@@ -365,6 +367,30 @@ class LogBar {
 		}
 
 		return true;
+
+	}
+
+	/**
+	 * Return whether LogBar may collect request data in the current runtime.
+	 */
+	private static function runtimeEnabled(): bool {
+
+		$enabled = Env::get('PAIR_LOGBAR_ENABLED');
+
+		if (is_bool($enabled)) {
+			return $enabled;
+		}
+
+		if (is_int($enabled) or is_float($enabled)) {
+			return 0 !== (int)$enabled;
+		}
+
+		if (is_string($enabled) and '' !== trim($enabled)) {
+			return in_array(strtolower(trim($enabled)), ['1', 'true', 'yes', 'on'], true);
+		}
+
+		// Production requests must avoid LogBar collection unless the app opts in explicitly.
+		return 'production' !== Application::getEnvironment();
 
 	}
 
@@ -385,7 +411,7 @@ class LogBar {
 	 *
 	 * @param	array<int|string, mixed>	$params	Bound query parameters.
 	 */
-	final public static function query(string $query, int $rows, array $params = []): void {
+	final public static function query(string $query, int $rows, array $params = [], ?float $durationMs = null, ?float $startedAt = null): void {
 
 		$self = self::getInstance();
 
@@ -395,8 +421,10 @@ class LogBar {
 
 		$description = LogBarSql::render($query, $params, self::showSqlValues());
 		$subtext = $rows . ' ' . (1 === $rows ? 'row' : 'rows');
+		$start = is_null($startedAt) ? null : max(0.0, $startedAt - $self->timeStart);
+		$duration = is_null($durationMs) ? null : max(0.0, $durationMs / 1000);
 
-		$self->addEvent($description, 'query', $subtext, self::queryAttributes($query, $rows));
+		$self->addEvent($description, 'query', $subtext, self::queryAttributes($query, $rows), null, $start, $duration);
 
 	}
 
@@ -473,6 +501,7 @@ class LogBar {
 	final public function reset(): void {
 
 		$this->events = [];
+		$this->disabled = false;
 		$this->eventLimitWarningAdded = false;
 		$this->nextEventId = 1;
 		$this->startChrono();

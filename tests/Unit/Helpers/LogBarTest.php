@@ -25,6 +25,8 @@ class LogBarTest extends TestCase {
 		parent::setUp();
 
 		LogBar::getInstance()->reset();
+		$_ENV['APP_ENV'] = 'development';
+		unset($_ENV['PAIR_LOGBAR_ENABLED']);
 		$_ENV['PAIR_LOGBAR_SLOW_REQUEST_MS'] = 250;
 		$_ENV['PAIR_LOGBAR_SLOW_QUERY_MS'] = 20;
 		$_ENV['PAIR_LOGBAR_QUERY_BUDGET'] = 30;
@@ -164,6 +166,24 @@ class LogBarTest extends TestCase {
 		$this->assertSame(5, $groups[0]['rows']);
 		$this->assertSame('SELECT', $groups[0]['operation']);
 		$this->assertSame('users', $groups[0]['table']);
+
+	}
+
+	/**
+	 * Verify the query API can receive measured database timing without breaking legacy calls.
+	 */
+	public function testQueryPublicApiAcceptsMeasuredTiming(): void {
+
+		$method = new \ReflectionMethod(LogBar::class, 'query');
+		$parameters = $method->getParameters();
+
+		$this->assertSame(5, $method->getNumberOfParameters());
+		$this->assertSame('durationMs', $parameters[3]->getName());
+		$this->assertTrue($parameters[3]->allowsNull());
+		$this->assertTrue($parameters[3]->isDefaultValueAvailable());
+		$this->assertSame('startedAt', $parameters[4]->getName());
+		$this->assertTrue($parameters[4]->allowsNull());
+		$this->assertTrue($parameters[4]->isDefaultValueAvailable());
 
 	}
 
@@ -333,6 +353,35 @@ class LogBarTest extends TestCase {
 
 		LogBar::event('Legacy notice', 'notice', 'subtext');
 		$this->assertSame(0, LogBar::getInstance()->getErrorCount());
+
+	}
+
+	/**
+	 * Verify production requests skip LogBar collection unless explicitly enabled.
+	 */
+	public function testRuntimeCollectionIsDisabledInProductionByDefault(): void {
+
+		$method = new \ReflectionMethod(LogBar::class, 'runtimeEnabled');
+
+		$_ENV['APP_ENV'] = 'production';
+		unset($_ENV['PAIR_LOGBAR_ENABLED']);
+		$this->assertFalse($method->invoke(null));
+
+		$_ENV['PAIR_LOGBAR_ENABLED'] = true;
+		$this->assertTrue($method->invoke(null));
+
+		$_ENV['PAIR_LOGBAR_ENABLED'] = 1;
+		$this->assertTrue($method->invoke(null));
+
+		$_ENV['PAIR_LOGBAR_ENABLED'] = false;
+		$this->assertFalse($method->invoke(null));
+
+		$_ENV['PAIR_LOGBAR_ENABLED'] = 0;
+		$this->assertFalse($method->invoke(null));
+
+		$_ENV['APP_ENV'] = 'development';
+		unset($_ENV['PAIR_LOGBAR_ENABLED']);
+		$this->assertTrue($method->invoke(null));
 
 	}
 

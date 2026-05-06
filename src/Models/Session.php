@@ -39,6 +39,16 @@ class Session extends ActiveRecord {
 	protected ?int $formerUserId = null;
 
 	/**
+	 * Cached current session for the active PHP request.
+	 */
+	private static ?self $currentSession = null;
+
+	/**
+	 * Session id used for the cached current session.
+	 */
+	private static ?string $currentSessionId = null;
+
+	/**
 	 * Name of related db table.
 	 */
 	const TABLE_NAME = 'sessions';
@@ -93,7 +103,21 @@ class Session extends ActiveRecord {
 	 */
 	public static function current(): ?self {
 
-		return Session::find(session_id());
+		$sessionId = session_id();
+
+		if ('' === $sessionId) {
+			return null;
+		}
+
+		if (self::$currentSessionId === $sessionId) {
+			return self::$currentSession;
+		}
+
+		// Cache the ActiveRecord instance because many framework helpers ask for it per request.
+		self::$currentSessionId = $sessionId;
+		self::$currentSession = Session::find($sessionId);
+
+		return self::$currentSession;
 
 	}
 
@@ -115,6 +139,9 @@ class Session extends ActiveRecord {
 		if (PHP_SESSION_ACTIVE === session_status()) {
 			session_destroy();
 		}
+
+		self::$currentSession = null;
+		self::$currentSessionId = null;
 
 	}
 
