@@ -101,6 +101,16 @@ class ApiResponse {
 			'messageKey' => 'AUTH_TOKEN_EXPIRED',
 			'message' => 'Token expired'
 		],
+		'AUTH_REFRESH_TOKEN_MISSING' => [
+			'httpCode' => 400,
+			'messageKey' => 'AUTH_REFRESH_TOKEN_MISSING',
+			'message' => 'Missing refresh token'
+		],
+		'AUTH_REFRESH_TOKEN_INVALID' => [
+			'httpCode' => 401,
+			'messageKey' => 'AUTH_REFRESH_TOKEN_INVALID',
+			'message' => 'Invalid refresh token'
+		],
 		'FORBIDDEN' => [
 			'httpCode' => 403,
 			'messageKey' => 'FORBIDDEN',
@@ -229,7 +239,7 @@ class ApiResponse {
 	/**
 	 * Return a localized API payload message with a safe fallback for CLI and early bootstrap paths.
 	 */
-	public static function localizedMessage(string $key, string|array|null $vars = null, ?string $default = null): string {
+	public static function localizedMessage(string $key, string|\Stringable|int|float|array|null $vars = null, ?string $default = null): string {
 
 		$fallback = $default ?? self::fallbackMessage($key) ?? $key;
 
@@ -333,7 +343,7 @@ class ApiResponse {
 	/**
 	 * Apply placeholder variables when a lightweight Translator test double is in use.
 	 */
-	private static function formatFallbackMessage(string $message, string|array|null $vars = null): string {
+	private static function formatFallbackMessage(string $message, string|\Stringable|int|float|array|null $vars = null): string {
 
 		if (is_null($vars)) {
 			return $message;

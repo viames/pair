@@ -71,6 +71,26 @@ class ThrottleMiddlewareTest extends TestCase {
 	}
 
 	/**
+	 * Verify the middleware accepts the safer session header when legacy sid is absent.
+	 */
+	public function testHandleUsesSessionHeaderWhenQuerySessionIsMissing(): void {
+
+		$_SERVER['REMOTE_ADDR'] = '203.0.113.25';
+		$_SERVER['HTTP_X_PAIR_SESSION'] = 'header-session-123';
+
+		$limiter = new TrackingRateLimiter(new RateLimitResult(true, 60, 59, time() + 60, 1, 'file'));
+		$middleware = $this->newThrottleMiddlewareWithLimiter($limiter);
+
+		$middleware->handle(new Request(), function (Request $request): void {});
+
+		$this->assertSame(
+			'throttle:session:' . hash('sha256', 'header-session-123'),
+			$limiter->lastKey
+		);
+
+	}
+
+	/**
 	 * Verify the middleware uses the bearer token when no session identifier is present.
 	 */
 	public function testHandleUsesBearerTokenWhenSessionIsMissing(): void {

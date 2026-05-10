@@ -18,14 +18,15 @@ class PairAuthService<User>(
         password: String,
         extraPayload: JsonObject = JsonObject(emptyMap())
     ): PairAuthSession<User> {
-        val session = client.sendData(
+        val payload = client.sendData(
             path = "auth/login",
             method = "POST",
             body = loginPayload(email = email, password = password, extraPayload = extraPayload),
-            deserializer = PairAuthSession.serializer(userSerializer)
+            deserializer = PairAuthSessionPayload.serializer(userSerializer)
         )
+        val session = payload.toSession()
 
-        client.setBearerToken(session.token)
+        client.setBearerToken(session.accessToken)
         return session
     }
 
@@ -37,7 +38,7 @@ class PairAuthService<User>(
         privacyAccepted: Boolean,
         extraPayload: JsonObject = JsonObject(emptyMap())
     ): PairAuthSession<User> {
-        val session = client.sendData(
+        val payload = client.sendData(
             path = "auth/register",
             method = "POST",
             body = registerPayload(
@@ -47,10 +48,11 @@ class PairAuthService<User>(
                 privacyAccepted = privacyAccepted,
                 extraPayload = extraPayload
             ),
-            deserializer = PairAuthSession.serializer(userSerializer)
+            deserializer = PairAuthSessionPayload.serializer(userSerializer)
         )
+        val session = payload.toSession()
 
-        client.setBearerToken(session.token)
+        client.setBearerToken(session.accessToken)
         return session
     }
 
@@ -62,12 +64,32 @@ class PairAuthService<User>(
     suspend fun currentUser(): PairCurrentUserResponse<User> =
         currentAuthentication(PairCurrentUserResponse.serializer(userSerializer))
 
+    /** Refreshes the mobile session through Pair's standard `/auth/refresh` endpoint. */
+    suspend fun refresh(refreshToken: String): PairAuthSession<User> {
+        val payload = client.sendData(
+            path = "auth/refresh",
+            method = "POST",
+            body = buildJsonObject {
+                put("refresh_token", refreshToken)
+            },
+            deserializer = PairAuthSessionPayload.serializer(userSerializer)
+        )
+        val session = payload.toSession()
+
+        client.setBearerToken(session.accessToken)
+        return session
+    }
+
     /** Revokes the current token and clears the local Bearer token. */
-    suspend fun logout(): PairEmptyResponse {
+    suspend fun logout(refreshToken: String? = null): PairEmptyResponse {
         val response = client.sendData(
             path = "auth/logout",
             method = "POST",
-            body = buildJsonObject {},
+            body = buildJsonObject {
+                if (!refreshToken.isNullOrBlank()) {
+                    put("refresh_token", refreshToken)
+                }
+            },
             deserializer = PairEmptyResponse.serializer()
         )
 

@@ -179,9 +179,9 @@ abstract class Controller {
 	 * Proxy function to translate a string, used for AJAX return messages.
 	 *
 	 * @param	string	The language key.
-	 * @param	string|array|null	Parameter or list of parameters to bind on translation string (optional).
+	 * @param	string|\Stringable|int|float|array|null	Parameter or list of parameters to bind on translation string (optional).
 	 */
-	public function lang(string $key, string|array|null $vars = null): string {
+	public function lang(string $key, string|\Stringable|int|float|array|null $vars = null): string {
 
 		return Translator::do($key, $vars);
 

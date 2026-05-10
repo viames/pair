@@ -101,4 +101,44 @@ class SpecGeneratorTest extends TestCase {
 
 	}
 
+	/**
+	 * Verify standard mobile auth endpoints can be added as machine-readable OpenAPI paths.
+	 */
+	public function testBuildIncludesStandardMobileAuthPathsAndSchemas(): void {
+
+		$generator = new SpecGenerator('Pair Test API', '1.2.3');
+		$generator->addSecurityScheme('bearerAuth', 'http', [
+			'scheme'       => 'bearer',
+			'bearerFormat' => 'JWT',
+		]);
+		$generator->addMobileAuthPaths('/api/v1');
+
+		$spec = $generator->build();
+
+		$this->assertArrayHasKey('/api/v1/auth/login', $spec['paths']);
+		$this->assertArrayHasKey('/api/v1/auth/register', $spec['paths']);
+		$this->assertArrayHasKey('/api/v1/auth/refresh', $spec['paths']);
+		$this->assertArrayHasKey('/api/v1/auth/me', $spec['paths']);
+		$this->assertArrayHasKey('/api/v1/auth/logout', $spec['paths']);
+		$this->assertSame('mobileAuthRefresh', $spec['paths']['/api/v1/auth/refresh']['post']['operationId']);
+		$this->assertSame(
+			'#/components/schemas/PairAuthSessionEnvelope',
+			$spec['paths']['/api/v1/auth/login']['post']['responses']['200']['content']['application/json']['schema']['$ref']
+		);
+		$this->assertSame(
+			'#/components/schemas/PairAuthRefreshRequest',
+			$spec['paths']['/api/v1/auth/refresh']['post']['requestBody']['content']['application/json']['schema']['$ref']
+		);
+		$this->assertSame(
+			[['bearerAuth' => []]],
+			$spec['paths']['/api/v1/auth/me']['get']['security']
+		);
+		$this->assertArrayHasKey('PairAuthSession', $spec['components']['schemas']);
+		$this->assertArrayHasKey('PairAuthRefreshRequest', $spec['components']['schemas']);
+		$this->assertSame('http', $spec['components']['securitySchemes']['bearerAuth']['type']);
+		$this->assertSame('bearer', $spec['components']['securitySchemes']['bearerAuth']['scheme']);
+		$this->assertSame('JWT', $spec['components']['securitySchemes']['bearerAuth']['bearerFormat']);
+
+	}
+
 }

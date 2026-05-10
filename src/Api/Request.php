@@ -3,6 +3,7 @@
 namespace Pair\Api;
 
 use Pair\Core\Env;
+use Pair\Http\AuthorizationHeader;
 
 /**
  * HTTP request wrapper for API controllers. Provides methods for accessing
@@ -41,6 +42,10 @@ class Request {
 	 */
 	public function header(string $name): ?string {
 
+		if ('authorization' == strtolower($name)) {
+			return AuthorizationHeader::fromGlobals();
+		}
+
 		// convert header name to the $_SERVER format
 		$key = 'HTTP_' . strtoupper(str_replace('-', '_', $name));
 
@@ -62,13 +67,25 @@ class Request {
 	 */
 	public function bearerToken(): ?string {
 
-		$auth = $this->header('Authorization');
+		return AuthorizationHeader::bearerToken($this->header('Authorization'));
 
-		if ($auth and str_starts_with($auth, 'Bearer ')) {
-			return substr($auth, 7);
+	}
+
+	/**
+	 * Return the API session identifier from sid query parameter or X-Pair-Session header.
+	 */
+	public function sessionIdentifier(): ?string {
+
+		$sessionId = trim((string)$this->query('sid', ''));
+
+		if (strlen($sessionId)) {
+			return $sessionId;
 		}
 
-		return null;
+		// Keep query-string sid compatibility while allowing clients to avoid URL leakage.
+		$sessionId = trim((string)($this->header('X-Pair-Session') ?? ''));
+
+		return strlen($sessionId) ? $sessionId : null;
 
 	}
 

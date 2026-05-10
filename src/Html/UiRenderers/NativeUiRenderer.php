@@ -7,13 +7,14 @@ namespace Pair\Html\UiRenderers;
 use Pair\Core\Router;
 use Pair\Helpers\Translator;
 use Pair\Html\FormControl;
+use Pair\Html\UiLogBarRenderer;
 use Pair\Html\UiRenderer;
 use Pair\Html\UiTheme;
 
 /**
  * Native HTML renderer with no framework-specific CSS classes.
  */
-class NativeUiRenderer implements UiRenderer {
+class NativeUiRenderer implements UiRenderer, UiLogBarRenderer {
 
 	/**
 	 * Return the native renderer name.
@@ -121,9 +122,33 @@ class NativeUiRenderer implements UiRenderer {
 	}
 
 	/**
+	 * Return native LogBar chrome classes without framework wrappers.
+	 *
+	 * @return	array{root: string, header: string, body: string}
+	 */
+	public function logBarChromeClasses(): array {
+
+		return [
+			'root' => 'logbar logbar-shell logbar-shell-native',
+			'header' => 'logbar-header',
+			'body' => '',
+		];
+
+	}
+
+	/**
+	 * Native HTML does not expose framework breakpoint names.
+	 */
+	public function supportsLogBarBreakpoints(): bool {
+
+		return false;
+
+	}
+
+	/**
 	 * Return a translated value escaped for HTML attribute context.
 	 */
-	protected function translatedAttribute(string $key, string|array|null $vars = null): string {
+	protected function translatedAttribute(string $key, string|\Stringable|int|float|array|null $vars = null): string {
 
 		return htmlspecialchars(Translator::safeDo($key, $vars), ENT_QUOTES, 'UTF-8');
 

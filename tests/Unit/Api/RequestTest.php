@@ -34,6 +34,38 @@ class RequestTest extends TestCase {
 	}
 
 	/**
+	 * Verify Authorization lookup uses common server fallbacks and case-insensitive bearer parsing.
+	 */
+	public function testBearerTokenUsesSharedAuthorizationParsing(): void {
+
+		$_SERVER['REDIRECT_HTTP_AUTHORIZATION'] = ' bEaReR redirect-token ';
+
+		$request = new Request();
+
+		$this->assertSame('bEaReR redirect-token', $request->header('Authorization'));
+		$this->assertSame('redirect-token', $request->bearerToken());
+
+	}
+
+	/**
+	 * Verify API session identifiers can move out of the query string.
+	 */
+	public function testSessionIdentifierReadsQueryBeforeHeader(): void {
+
+		$_GET['sid'] = 'query-session';
+		$_SERVER['HTTP_X_PAIR_SESSION'] = 'header-session';
+
+		$request = new Request();
+
+		$this->assertSame('query-session', $request->sessionIdentifier());
+
+		unset($_GET['sid']);
+
+		$this->assertSame('header-session', $request->sessionIdentifier());
+
+	}
+
+	/**
 	 * Verify JSON parsing and merged accessors without depending on php://input in the test runner.
 	 */
 	public function testJsonBodyIsMergedOverQueryParameters(): void {

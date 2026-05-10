@@ -35,6 +35,13 @@ class SpecGenerator {
 	private array $customPaths = [];
 
 	/**
+	 * Custom component schemas added manually.
+	 *
+	 * @var array<string, array>
+	 */
+	private array $customSchemas = [];
+
+	/**
 	 * API description.
 	 */
 	private string $description = '';
@@ -187,6 +194,112 @@ class SpecGenerator {
 	}
 
 	/**
+	 * Add the standard Pair mobile authentication paths and schemas.
+	 *
+	 * @param	string	$basePath	API base path, for example `/api` or `/api/v1`.
+	 */
+	public function addMobileAuthPaths(string $basePath = '/api'): void {
+
+		$basePath = trim($basePath, '/');
+		$basePath = ('' === $basePath) ? '' : '/' . $basePath;
+		$tag = 'Authentication';
+
+		$this->ensureTag($tag, 'Mobile authentication');
+
+		// Keep an application-defined bearer scheme when the spec already has one.
+		if (!isset($this->securitySchemes['bearerAuth'])) {
+			$this->addSecurityScheme('bearerAuth', 'http', [
+				'scheme'       => 'bearer',
+				'bearerFormat' => 'Opaque',
+			]);
+		}
+
+		$this->addMobileAuthSchemas();
+
+		$this->addPath($basePath . '/auth/login', 'post', [
+			'tags'        => [$tag],
+			'summary'     => 'Log in and issue a mobile bearer session',
+			'operationId' => 'mobileAuthLogin',
+			'requestBody' => $this->jsonRequestBody('PairAuthLoginRequest'),
+			'responses'   => [
+				'200' => $this->jsonResponse('PairAuthSessionEnvelope', 'Authenticated mobile session'),
+				'400' => ['description' => 'Missing or invalid fields'],
+				'401' => ['description' => 'Invalid credentials'],
+			],
+		]);
+
+		$this->addPath($basePath . '/auth/register', 'post', [
+			'tags'        => [$tag],
+			'summary'     => 'Register and issue a mobile bearer session',
+			'operationId' => 'mobileAuthRegister',
+			'requestBody' => $this->jsonRequestBody('PairAuthRegisterRequest'),
+			'responses'   => [
+				'201' => $this->jsonResponse('PairAuthSessionEnvelope', 'Registered mobile session'),
+				'400' => ['description' => 'Missing or invalid fields'],
+				'501' => ['description' => 'Registration hook is not implemented'],
+			],
+		]);
+
+		$this->addPath($basePath . '/auth/refresh', 'post', [
+			'tags'        => [$tag],
+			'summary'     => 'Rotate a refresh token and issue a fresh mobile bearer session',
+			'operationId' => 'mobileAuthRefresh',
+			'requestBody' => $this->jsonRequestBody('PairAuthRefreshRequest'),
+			'responses'   => [
+				'200' => $this->jsonResponse('PairAuthSessionEnvelope', 'Refreshed mobile session'),
+				'400' => ['description' => 'Missing refresh token'],
+				'401' => ['description' => 'Invalid refresh token'],
+			],
+		]);
+
+		$this->addPath($basePath . '/auth/me', 'get', [
+			'tags'        => [$tag],
+			'summary'     => 'Return the current mobile user snapshot',
+			'operationId' => 'mobileAuthMe',
+			'security'    => [['bearerAuth' => []]],
+			'responses'   => [
+				'200' => $this->jsonResponse('PairCurrentUserEnvelope', 'Current user snapshot'),
+				'401' => ['description' => 'Invalid or missing bearer token'],
+			],
+		]);
+
+		$this->addPath($basePath . '/auth/logout', 'post', [
+			'tags'        => [$tag],
+			'summary'     => 'Revoke the current mobile bearer session',
+			'operationId' => 'mobileAuthLogout',
+			'security'    => [['bearerAuth' => []]],
+			'requestBody' => [
+				'required' => false,
+				'content'  => [
+					'application/json' => [
+						'schema' => ['$ref' => '#/components/schemas/PairAuthLogoutRequest'],
+					],
+				],
+			],
+			'responses'   => [
+				'200' => $this->jsonResponse('PairEmptyDataEnvelope', 'Logout completed'),
+				'401' => ['description' => 'Invalid or missing bearer token'],
+			],
+		]);
+
+	}
+
+	/**
+	 * Add a custom component schema to the generated spec.
+	 */
+	public function addSchema(string $name, array $schema): void {
+
+		$name = trim($name);
+
+		if ('' === $name) {
+			throw new \InvalidArgumentException('OpenAPI schema name cannot be empty');
+		}
+
+		$this->customSchemas[$name] = $schema;
+
+	}
+
+	/**
 	 * Add a security scheme to the spec.
 	 *
 	 * @param	string	$name	Scheme name (e.g. 'bearerAuth').
@@ -278,6 +391,181 @@ class SpecGenerator {
 		}
 
 		return $spec;
+
+	}
+
+	/**
+	 * Register the reusable schemas used by the standard mobile auth endpoints.
+	 */
+	private function addMobileAuthSchemas(): void {
+
+		$this->addSchema('PairAuthUser', [
+			'type' => 'object',
+			'properties' => [
+				'id'       => ['type' => 'integer'],
+				'username' => ['type' => ['string', 'null']],
+				'email'    => ['type' => ['string', 'null'], 'format' => 'email'],
+				'name'     => ['type' => ['string', 'null']],
+				'surname'  => ['type' => ['string', 'null']],
+			],
+			'required' => ['id'],
+			'additionalProperties' => true,
+		]);
+
+		$this->addSchema('PairAuthLoginRequest', [
+			'type' => 'object',
+			'properties' => [
+				'email'       => ['type' => 'string', 'format' => 'email'],
+				'username'    => ['type' => 'string'],
+				'password'    => ['type' => 'string', 'format' => 'password'],
+				'remember_me' => ['type' => 'boolean', 'default' => true],
+				'device_name' => ['type' => 'string', 'maxLength' => 120],
+			],
+			'required' => ['password'],
+			'anyOf' => [
+				['required' => ['email']],
+				['required' => ['username']],
+			],
+			'additionalProperties' => true,
+		]);
+
+		$this->addSchema('PairAuthRegisterRequest', [
+			'type' => 'object',
+			'properties' => [
+				'name'             => ['type' => 'string'],
+				'email'            => ['type' => 'string', 'format' => 'email'],
+				'password'         => ['type' => 'string', 'format' => 'password'],
+				'privacy_accepted' => ['type' => 'boolean'],
+				'remember_me'      => ['type' => 'boolean', 'default' => true],
+				'device_name'      => ['type' => 'string', 'maxLength' => 120],
+			],
+			'required' => ['name', 'email', 'password', 'privacy_accepted'],
+			'additionalProperties' => true,
+		]);
+
+		$this->addSchema('PairAuthRefreshRequest', [
+			'type' => 'object',
+			'properties' => [
+				'refresh_token' => ['type' => 'string'],
+			],
+			'required' => ['refresh_token'],
+			'additionalProperties' => false,
+		]);
+
+		$this->addSchema('PairAuthLogoutRequest', [
+			'type' => 'object',
+			'properties' => [
+				'refresh_token' => ['type' => 'string'],
+			],
+			'additionalProperties' => false,
+		]);
+
+		$this->addSchema('PairAuthSession', [
+			'type' => 'object',
+			'properties' => [
+				'user'          => ['$ref' => '#/components/schemas/PairAuthUser'],
+				'access_token'  => ['type' => 'string'],
+				'refresh_token' => ['type' => 'string'],
+				'expires_in'    => ['type' => 'integer', 'minimum' => 1],
+				'expires_at'    => ['type' => 'string', 'format' => 'date-time'],
+				'token_type'    => ['type' => 'string', 'enum' => ['Bearer']],
+				'context'       => ['type' => 'object', 'additionalProperties' => true],
+			],
+			'required' => ['user', 'access_token', 'expires_in', 'expires_at', 'token_type'],
+			'additionalProperties' => true,
+		]);
+
+		$this->addSchema('PairAuthSessionEnvelope', $this->dataEnvelopeSchema('PairAuthSession'));
+		$this->addSchema('PairCurrentUserEnvelope', [
+			'type' => 'object',
+			'properties' => [
+				'data' => [
+					'type' => 'object',
+					'properties' => [
+						'user'    => ['$ref' => '#/components/schemas/PairAuthUser'],
+						'context' => ['type' => 'object', 'additionalProperties' => true],
+					],
+					'required' => ['user'],
+					'additionalProperties' => true,
+				],
+			],
+			'required' => ['data'],
+			'additionalProperties' => false,
+		]);
+		$this->addSchema('PairEmptyDataEnvelope', [
+			'type' => 'object',
+			'properties' => [
+				'data' => [
+					'type' => 'object',
+					'additionalProperties' => false,
+				],
+			],
+			'required' => ['data'],
+			'additionalProperties' => false,
+		]);
+
+	}
+
+	/**
+	 * Build a standard JSON request body object referencing a component schema.
+	 */
+	private function jsonRequestBody(string $schemaName): array {
+
+		return [
+			'required' => true,
+			'content'  => [
+				'application/json' => [
+					'schema' => ['$ref' => '#/components/schemas/' . $schemaName],
+				],
+			],
+		];
+
+	}
+
+	/**
+	 * Build a standard JSON response object referencing a component schema.
+	 */
+	private function jsonResponse(string $schemaName, string $description): array {
+
+		return [
+			'description' => $description,
+			'content' => [
+				'application/json' => [
+					'schema' => ['$ref' => '#/components/schemas/' . $schemaName],
+				],
+			],
+		];
+
+	}
+
+	/**
+	 * Build a standard Pair data-envelope schema around one component schema.
+	 */
+	private function dataEnvelopeSchema(string $schemaName): array {
+
+		return [
+			'type' => 'object',
+			'properties' => [
+				'data' => ['$ref' => '#/components/schemas/' . $schemaName],
+			],
+			'required' => ['data'],
+			'additionalProperties' => false,
+		];
+
+	}
+
+	/**
+	 * Add a tag when it does not already exist.
+	 */
+	private function ensureTag(string $name, string $description = ''): void {
+
+		foreach ($this->tags as $tag) {
+			if (($tag['name'] ?? null) === $name) {
+				return;
+			}
+		}
+
+		$this->addTag($name, $description);
 
 	}
 
@@ -578,7 +866,7 @@ class SpecGenerator {
 	 */
 	private function buildSchemas(): array {
 
-		$schemas = [];
+		$schemas = $this->customSchemas;
 
 		foreach ($this->resources as $slug => $resource) {
 

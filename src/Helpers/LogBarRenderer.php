@@ -70,27 +70,7 @@ final readonly class LogBarRenderer {
 	 */
 	private function chromeClasses(): array {
 
-		if (UiTheme::isBootstrap()) {
-			return [
-				'root' => 'card mt-5 logbar logbar-shell logbar-shell-bootstrap',
-				'header' => 'card-header logbar-header',
-				'body' => 'card-body',
-			];
-		}
-
-		if (UiTheme::isBulma()) {
-			return [
-				'root' => 'card logbar logbar-shell logbar-shell-bulma',
-				'header' => 'card-header logbar-header',
-				'body' => 'card-content',
-			];
-		}
-
-		return [
-			'root' => 'logbar logbar-shell logbar-shell-native',
-			'header' => 'logbar-header',
-			'body' => '',
-		];
+		return UiTheme::logBarChromeClasses();
 
 	}
 
@@ -157,7 +137,7 @@ final readonly class LogBarRenderer {
 	 */
 	private function buildBreakpointContextHtml(): string {
 
-		if (!UiTheme::isBootstrap() and !UiTheme::isBulma()) {
+		if (!UiTheme::supportsLogBarBreakpoints()) {
 			return '';
 		}
 

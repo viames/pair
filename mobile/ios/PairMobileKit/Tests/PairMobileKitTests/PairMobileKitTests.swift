@@ -8,7 +8,7 @@ final class PairMobileKitTests: XCTestCase {
 		let transport = MockTransport()
 		transport.enqueue(
 			statusCode: 200,
-			body: #"{"data":{"user":{"id":7,"email":"mario@example.test","name":"Mario Rossi"},"token":"plain-token"}}"#
+			body: #"{"data":{"user":{"id":7,"email":"mario@example.test","name":"Mario Rossi"},"access_token":"plain-token","refresh_token":"refresh-token","expires_in":3600}}"#
 		)
 		let client = PairAPIClient(apiBaseURL: URL(string: "https://example.test/api/v1")!, transport: transport)
 		let auth = PairAuthService<TestUser>(client: client)
@@ -25,7 +25,8 @@ final class PairMobileKitTests: XCTestCase {
 		XCTAssertEqual(body["email"] as? String, "mario@example.test")
 		XCTAssertEqual(body["remember_me"] as? Bool, true)
 		XCTAssertEqual(body["tenant"] as? String, "crotone")
-		XCTAssertEqual(session.token, "plain-token")
+		XCTAssertEqual(session.accessToken, "plain-token")
+		XCTAssertEqual(session.refreshToken, "refresh-token")
 		XCTAssertEqual(client.currentBearerToken(), "plain-token")
 	}
 
@@ -33,7 +34,7 @@ final class PairMobileKitTests: XCTestCase {
 		let transport = MockTransport()
 		transport.enqueue(
 			statusCode: 201,
-			body: #"{"data":{"user":{"id":8,"email":"luisa@example.test","name":"Luisa Bianchi"},"token":"register-token"}}"#
+			body: #"{"data":{"user":{"id":8,"email":"luisa@example.test","name":"Luisa Bianchi"},"access_token":"register-token","expires_in":3600}}"#
 		)
 		let client = PairAPIClient(apiBaseURL: URL(string: "https://example.test/api/v1")!, transport: transport)
 		let auth = PairAuthService<TestUser>(client: client)
@@ -51,6 +52,46 @@ final class PairMobileKitTests: XCTestCase {
 		XCTAssertEqual(body["privacy_accepted"] as? Bool, true)
 		XCTAssertEqual(body["remember_me"] as? Bool, true)
 		XCTAssertEqual(client.currentBearerToken(), "register-token")
+	}
+
+	func testRefreshPostsRefreshTokenAndStoresBearerToken() async throws {
+		let transport = MockTransport()
+		transport.enqueue(
+			statusCode: 200,
+			body: #"{"data":{"user":{"id":9,"email":"refresh@example.test","name":"Refresh User"},"access_token":"new-access-token","refresh_token":"new-refresh-token","expires_in":900}}"#
+		)
+		let client = PairAPIClient(apiBaseURL: URL(string: "https://example.test/api/v1")!, transport: transport)
+		let auth = PairAuthService<TestUser>(client: client)
+
+		let session = try await auth.refresh(refreshToken: "old-refresh-token")
+
+		let request = try XCTUnwrap(transport.requests.first)
+		let body = try decodedBody(request)
+		XCTAssertEqual(request.url?.absoluteString, "https://example.test/api/v1/auth/refresh")
+		XCTAssertEqual(body["refresh_token"] as? String, "old-refresh-token")
+		XCTAssertEqual(session.accessToken, "new-access-token")
+		XCTAssertEqual(session.refreshToken, "new-refresh-token")
+		XCTAssertEqual(client.currentBearerToken(), "new-access-token")
+	}
+
+	func testLogoutCanPostRefreshTokenAndClearBearerToken() async throws {
+		let transport = MockTransport()
+		transport.enqueue(statusCode: 200, body: #"{"data":{}}"#)
+		let client = PairAPIClient(
+			apiBaseURL: URL(string: "https://example.test/api/v1")!,
+			bearerToken: "access-token",
+			transport: transport
+		)
+		let auth = PairAuthService<TestUser>(client: client)
+
+		try await auth.logout(refreshToken: "refresh-token")
+
+		let request = try XCTUnwrap(transport.requests.first)
+		let body = try decodedBody(request)
+		XCTAssertEqual(request.url?.absoluteString, "https://example.test/api/v1/auth/logout")
+		XCTAssertEqual(body["refresh_token"] as? String, "refresh-token")
+		XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer access-token")
+		XCTAssertNil(client.currentBearerToken())
 	}
 
 	func testAPIClientBuildsQueryAuthorizationAndDoesNotSetCookies() async throws {
@@ -130,19 +171,20 @@ final class PairMobileKitTests: XCTestCase {
 		let service = "test.pair.mobile.\(UUID().uuidString)"
 		let store = PairKeychainStore<PairStoredAuthSession<TestUser, TestContext>>(service: service)
 		let snapshot = PairStoredAuthSession(
-			session: PairAuthSession(
-				user: TestUser(id: 11, email: "keychain@example.test", name: "Key Chain"),
-				token: "stored-token"
-			),
-			defaultContext: TestContext(slug: "crotone")
+			user: TestUser(id: 11, email: "keychain@example.test", name: "Key Chain"),
+			accessToken: "stored-token",
+			refreshToken: "stored-refresh-token",
+			expiresAt: managedNow.addingTimeInterval(600),
+			context: TestContext(slug: "crotone")
 		)
 
 		await store.clear()
 		await store.save(snapshot)
 
 		let restored = await store.load()
-		XCTAssertEqual(restored?.session.token, "stored-token")
-		XCTAssertEqual(restored?.defaultContext?.slug, "crotone")
+		XCTAssertEqual(restored?.accessToken, "stored-token")
+		XCTAssertEqual(restored?.refreshToken, "stored-refresh-token")
+		XCTAssertEqual(restored?.context?.slug, "crotone")
 
 		await store.clear()
 		let clearedSnapshot = await store.load()
@@ -190,53 +232,270 @@ final class PairMobileKitTests: XCTestCase {
 		XCTAssertNil(store.load(account: account))
 	}
 
-	func testSessionBootstrapperHandlesRestoredInvalidatedAndOfflineStates() async throws {
-		let service = "test.pair.bootstrap.\(UUID().uuidString)"
-		let store = PairKeychainStore<PairStoredAuthSession<TestUser, TestContext>>(service: service)
-		let bootstrapper = PairSessionBootstrapper(store: store)
-		let snapshot = PairStoredAuthSession(
-			session: PairAuthSession(
-				user: TestUser(id: 12, email: "boot@example.test", name: "Boot"),
-				token: "boot-token"
-			),
-			defaultContext: TestContext(slug: "abano-terme")
-		)
+	func testAuthSessionManagerBootstrapWithMissingSnapshot() async throws {
+		let (store, manager) = makeAuthSessionManager()
+
+		await store.clear()
+
+		let result = await manager.bootstrap { session in
+			XCTFail("Validation should not run without a snapshot.")
+			return session
+		} refresh: { session in
+			XCTFail("Refresh should not run without a snapshot.")
+			return session
+		}
+
+		if case .missing = result {
+			let storedSession = await store.load()
+			XCTAssertNil(storedSession)
+		} else {
+			XCTFail("Expected a missing bootstrap result.")
+		}
+	}
+
+	func testAuthSessionManagerBootstrapWithValidSession() async throws {
+		let (store, manager) = makeAuthSessionManager()
+		let snapshot = makeManagedSnapshot(accessToken: "valid-token", expiresAt: managedNow.addingTimeInterval(600))
 
 		await store.save(snapshot)
-		let restored = await bootstrapper.bootstrap { saved in
+
+		let result = await manager.bootstrap { session in
 			PairStoredAuthSession(
-				session: PairAuthSession(user: saved.session.user, token: "fresh-token"),
-				defaultContext: saved.defaultContext
+				user: session.user,
+				accessToken: "validated-token",
+				refreshToken: session.refreshToken,
+				expiresAt: session.expiresAt,
+				context: session.context
 			)
-		}
-		if case .restored(let value) = restored {
-			XCTAssertEqual(value.session.token, "fresh-token")
-		} else {
-			XCTFail("Expected validated restoration.")
+		} refresh: { session in
+			XCTFail("Refresh should not run for a valid token.")
+			return session
 		}
 
-		await store.save(snapshot)
-		let invalidated = await bootstrapper.bootstrap { _ in
-			throw PairAPIError.server(statusCode: 401, payload: nil)
-		}
-		if case .invalidated = invalidated {
-			let clearedSnapshot = await store.load()
-			XCTAssertNil(clearedSnapshot)
+		if case .valid(let session) = result {
+			let storedSession = await store.load()
+			XCTAssertEqual(session.accessToken, "validated-token")
+			XCTAssertEqual(storedSession?.accessToken, "validated-token")
 		} else {
-			XCTFail("Expected session invalidation.")
-		}
-
-		await store.save(snapshot)
-		let offline = await bootstrapper.bootstrap { _ in
-			throw URLError(.notConnectedToInternet)
-		}
-		if case .offline(let value) = offline {
-			XCTAssertEqual(value.session.token, "boot-token")
-		} else {
-			XCTFail("Expected offline restoration.")
+			XCTFail("Expected a valid bootstrap result.")
 		}
 
 		await store.clear()
+	}
+
+	func testAuthSessionManagerBootstrapRefreshesExpiredSessionBeforeValidation() async throws {
+		let (store, manager) = makeAuthSessionManager()
+		let recorder = RefreshRecorder()
+		let snapshot = makeManagedSnapshot(accessToken: "expired-token", expiresAt: managedNow.addingTimeInterval(-1))
+
+		await store.save(snapshot)
+
+		let result = await manager.bootstrap { session in
+			XCTAssertEqual(session.accessToken, "bootstrap-refreshed-token")
+
+			return session
+		} refresh: { session in
+			try await recorder.refresh(
+				session,
+				accessToken: "bootstrap-refreshed-token",
+				refreshToken: "bootstrap-rotated-refresh",
+				expiresAt: managedNow.addingTimeInterval(900)
+			)
+		}
+
+		if case .valid(let session) = result {
+			let refreshCalls = await recorder.callCount()
+			let storedSession = await store.load()
+			XCTAssertEqual(session.accessToken, "bootstrap-refreshed-token")
+			XCTAssertEqual(refreshCalls, 1)
+			XCTAssertEqual(storedSession?.accessToken, "bootstrap-refreshed-token")
+			XCTAssertEqual(storedSession?.refreshToken, "bootstrap-rotated-refresh")
+		} else {
+			XCTFail("Expected bootstrap to refresh and validate the session.")
+		}
+
+		await store.clear()
+	}
+
+	func testAuthSessionManagerBootstrapOfflinePreservesSnapshot() async throws {
+		let (store, manager) = makeAuthSessionManager()
+		let snapshot = makeManagedSnapshot(accessToken: "offline-token", expiresAt: managedNow.addingTimeInterval(600))
+
+		await store.save(snapshot)
+
+		let result = await manager.bootstrap { _ in
+			throw URLError(.notConnectedToInternet)
+		} refresh: { session in
+			XCTFail("Refresh should not run for a valid token.")
+			return session
+		}
+
+		if case .offline(let session) = result {
+			let storedSession = await store.load()
+			XCTAssertEqual(session.accessToken, "offline-token")
+			XCTAssertEqual(storedSession?.accessToken, "offline-token")
+		} else {
+			XCTFail("Expected an offline bootstrap result.")
+		}
+
+		await store.clear()
+	}
+
+	func testAuthSessionManagerBootstrapAuthFailureClearsSnapshot() async throws {
+		let (store, manager) = makeAuthSessionManager()
+		let snapshot = makeManagedSnapshot(accessToken: "rejected-token", expiresAt: managedNow.addingTimeInterval(600))
+
+		await store.save(snapshot)
+
+		let result = await manager.bootstrap { _ in
+			throw PairAPIError.server(statusCode: 401, payload: nil)
+		} refresh: { session in
+			XCTFail("Refresh should not run for a valid token.")
+			return session
+		}
+
+		if case .invalidated = result {
+			let storedSession = await store.load()
+			XCTAssertNil(storedSession)
+		} else {
+			XCTFail("Expected an invalidated bootstrap result.")
+		}
+	}
+
+	func testAuthSessionManagerValidTokenDoesNotCallRefresh() async throws {
+		let (store, manager) = makeAuthSessionManager()
+		let recorder = RefreshRecorder()
+		let snapshot = makeManagedSnapshot(accessToken: "still-valid", expiresAt: managedNow.addingTimeInterval(600))
+
+		await store.save(snapshot)
+
+		let result = await manager.validAccessToken { session in
+			try await recorder.refresh(session, accessToken: "unused-token", expiresAt: managedNow.addingTimeInterval(900))
+		}
+
+		if case .valid(let accessToken, _) = result {
+			let refreshCalls = await recorder.callCount()
+			XCTAssertEqual(accessToken, "still-valid")
+			XCTAssertEqual(refreshCalls, 0)
+		} else {
+			XCTFail("Expected a valid token result.")
+		}
+
+		await store.clear()
+	}
+
+	func testAuthSessionManagerExpiredTokenCallsRefresh() async throws {
+		let (store, manager) = makeAuthSessionManager()
+		let recorder = RefreshRecorder()
+		let snapshot = makeManagedSnapshot(accessToken: "expired-token", expiresAt: managedNow.addingTimeInterval(-1))
+
+		await store.save(snapshot)
+
+		let result = await manager.validAccessToken { session in
+			try await recorder.refresh(
+				session,
+				accessToken: "refreshed-token",
+				refreshToken: "rotated-refresh-token",
+				expiresAt: managedNow.addingTimeInterval(900)
+			)
+		}
+
+		if case .valid(let accessToken, let session) = result {
+			let refreshCalls = await recorder.callCount()
+			let storedSession = await store.load()
+			XCTAssertEqual(accessToken, "refreshed-token")
+			XCTAssertEqual(session.refreshToken, "rotated-refresh-token")
+			XCTAssertEqual(refreshCalls, 1)
+			XCTAssertEqual(storedSession?.accessToken, "refreshed-token")
+			XCTAssertEqual(storedSession?.refreshToken, "rotated-refresh-token")
+		} else {
+			XCTFail("Expected a refreshed token result.")
+		}
+
+		await store.clear()
+	}
+
+	func testAuthSessionManagerConcurrentRefreshesAreCoalesced() async throws {
+		let (store, manager) = makeAuthSessionManager()
+		let recorder = RefreshRecorder(delayNanoseconds: 50_000_000)
+		let snapshot = makeManagedSnapshot(accessToken: "expired-token", expiresAt: managedNow.addingTimeInterval(-1))
+
+		await store.save(snapshot)
+
+		async let first = manager.validAccessToken { session in
+			try await recorder.refresh(session, accessToken: "shared-token", expiresAt: managedNow.addingTimeInterval(900))
+		}
+		async let second = manager.validAccessToken { session in
+			try await recorder.refresh(session, accessToken: "shared-token", expiresAt: managedNow.addingTimeInterval(900))
+		}
+		async let third = manager.validAccessToken { session in
+			try await recorder.refresh(session, accessToken: "shared-token", expiresAt: managedNow.addingTimeInterval(900))
+		}
+
+		let results = await [first, second, third]
+
+		for result in results {
+			if case .valid(let accessToken, _) = result {
+				XCTAssertEqual(accessToken, "shared-token")
+			} else {
+				XCTFail("Expected every caller to receive the shared refreshed token.")
+			}
+		}
+
+		let refreshCalls = await recorder.callCount()
+		let storedSession = await store.load()
+		XCTAssertEqual(refreshCalls, 1)
+		XCTAssertEqual(storedSession?.accessToken, "shared-token")
+
+		await store.clear()
+	}
+
+	func testAuthSessionManagerRefreshNetworkFailureKeepsSnapshot() async throws {
+		let (store, manager) = makeAuthSessionManager()
+		let snapshot = makeManagedSnapshot(accessToken: "expired-token", expiresAt: managedNow.addingTimeInterval(-1))
+
+		await store.save(snapshot)
+
+		let result = await manager.validAccessToken { _ in
+			throw URLError(.timedOut)
+		}
+
+		if case .offline(let session) = result {
+			let storedSession = await store.load()
+			XCTAssertEqual(session.accessToken, "expired-token")
+			XCTAssertEqual(storedSession?.accessToken, "expired-token")
+		} else {
+			XCTFail("Expected an offline token result.")
+		}
+
+		await store.clear()
+	}
+
+	func testAuthSessionManagerRefreshAuthFailureClearsSnapshot() async throws {
+		let (store, manager) = makeAuthSessionManager()
+		let snapshot = makeManagedSnapshot(accessToken: "expired-token", expiresAt: managedNow.addingTimeInterval(-1))
+
+		await store.save(snapshot)
+
+		let result = await manager.validAccessToken { _ in
+			throw PairAPIError.server(statusCode: 401, payload: nil)
+		}
+
+		if case .invalidated = result {
+			let storedSession = await store.load()
+			XCTAssertNil(storedSession)
+		} else {
+			XCTFail("Expected an invalidated token result.")
+		}
+	}
+
+	func testAuthSessionDecodesRefreshTokenAndExpiresIn() throws {
+		let data = Data(#"{"user":{"id":17,"email":"token@example.test","name":"Token"},"access_token":"access-token","refresh_token":"refresh-token","expires_in":120}"#.utf8)
+		let session = try JSONDecoder().decode(PairAuthSession<TestUser>.self, from: data)
+
+		XCTAssertEqual(session.accessToken, "access-token")
+		XCTAssertEqual(session.refreshToken, "refresh-token")
+		XCTAssertNotNil(session.expiresAt)
 	}
 }
 
@@ -257,6 +516,71 @@ private struct TestIdentifier: Decodable, Equatable, Sendable {
 private struct TestDatedSnapshot: Codable, Equatable, Sendable {
 	let token: String
 	let expiresAt: Date
+}
+
+private let managedNow = Date(timeIntervalSince1970: 1_811_337_600)
+
+private typealias ManagedStore = PairKeychainStore<PairStoredAuthSession<TestUser, TestContext>>
+private typealias ManagedManager = PairAuthSessionManager<TestUser, TestContext>
+
+/// Creates a manager and Keychain store with an isolated service for each test.
+private func makeAuthSessionManager() -> (ManagedStore, ManagedManager) {
+	let store = ManagedStore(service: "test.pair.auth-manager.\(UUID().uuidString)")
+	let manager = ManagedManager(store: store, refreshLeeway: 60, now: { managedNow })
+
+	return (store, manager)
+}
+
+/// Creates a managed auth snapshot with a default refresh token and context.
+private func makeManagedSnapshot(
+	accessToken: String,
+	refreshToken: String? = "refresh-token",
+	expiresAt: Date = managedNow.addingTimeInterval(600)
+) -> PairStoredAuthSession<TestUser, TestContext> {
+	PairStoredAuthSession(
+		user: TestUser(id: 15, email: "managed@example.test", name: "Managed"),
+		accessToken: accessToken,
+		refreshToken: refreshToken,
+		expiresAt: expiresAt,
+		context: TestContext(slug: "crotone")
+	)
+}
+
+private actor RefreshRecorder {
+	private let delayNanoseconds: UInt64
+	private var calls = 0
+
+	/// Initializes the recorder with an optional artificial refresh delay.
+	init(delayNanoseconds: UInt64 = 0) {
+		self.delayNanoseconds = delayNanoseconds
+	}
+
+	/// Returns the number of refresh operations performed.
+	func callCount() -> Int {
+		calls
+	}
+
+	/// Records a refresh and returns a rotated session snapshot.
+	func refresh(
+		_ session: PairStoredAuthSession<TestUser, TestContext>,
+		accessToken: String,
+		refreshToken: String? = "refresh-token",
+		expiresAt: Date
+	) async throws -> PairStoredAuthSession<TestUser, TestContext> {
+		calls += 1
+
+		if delayNanoseconds > 0 {
+			try await Task.sleep(nanoseconds: delayNanoseconds)
+		}
+
+		return PairStoredAuthSession(
+			user: session.user,
+			accessToken: accessToken,
+			refreshToken: refreshToken,
+			expiresAt: expiresAt,
+			context: session.context
+		)
+	}
 }
 
 private final class MockTransport: PairHTTPTransport, @unchecked Sendable {

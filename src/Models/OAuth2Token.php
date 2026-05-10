@@ -3,6 +3,7 @@
 namespace Pair\Models;
 
 use Pair\Core\Env;
+use Pair\Http\AuthorizationHeader;
 use Pair\Orm\ActiveRecord;
 use Pair\Orm\Database;
 
@@ -83,28 +84,7 @@ class OAuth2Token extends ActiveRecord {
 	 */
 	public static function basicCredentials(): ?array {
 
-		$header = self::getAuthorizationHeader();
-
-		if (!$header or !preg_match('/^\s*Basic\s+(\S+)\s*$/i', $header, $matches)) {
-			return null;
-		}
-
-		$decoded = base64_decode($matches[1], true);
-
-		if (false === $decoded or !str_contains($decoded, ':')) {
-			return null;
-		}
-
-		list($clientId, $clientSecret) = explode(':', $decoded, 2);
-
-		if ('' === trim($clientId) or '' === trim($clientSecret)) {
-			return null;
-		}
-
-		return [
-			'id'		=> trim($clientId),
-			'secret'	=> trim($clientSecret)
-		];
+		return AuthorizationHeader::basicCredentials(self::getAuthorizationHeader());
 
 	}
 
@@ -115,13 +95,7 @@ class OAuth2Token extends ActiveRecord {
 	 */
 	public static function bearerToken(): ?string {
 
-		$header = self::getAuthorizationHeader();
-
-		if (!$header or !preg_match('/^\s*Bearer\s+(\S+)\s*$/i', $header, $matches)) {
-			return null;
-		}
-
-		return trim($matches[1]);
+		return AuthorizationHeader::bearerToken(self::getAuthorizationHeader());
 
 	}
 
@@ -213,31 +187,7 @@ class OAuth2Token extends ActiveRecord {
 	 */
 	private static function getAuthorizationHeader(): ?string {
 
-		if (isset($_SERVER['Authorization'])) {
-			return trim((string)$_SERVER['Authorization']);
-		}
-
-		if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
-			return trim((string)$_SERVER['HTTP_AUTHORIZATION']);
-		}
-
-		if (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
-			return trim((string)$_SERVER['REDIRECT_HTTP_AUTHORIZATION']);
-		}
-
-		if (function_exists('apache_request_headers')) {
-
-			$requestHeaders = apache_request_headers();
-
-			foreach ($requestHeaders as $name => $value) {
-				if ('authorization' == strtolower((string)$name)) {
-					return trim((string)$value);
-				}
-			}
-
-		}
-
-		return null;
+		return AuthorizationHeader::fromGlobals();
 
 	}
 

@@ -27,7 +27,7 @@ public struct PairAuthService<User: Codable & Sendable>: Sendable {
 			body: payload
 		)
 
-		client.setBearerToken(session.token)
+		client.setBearerToken(session.accessToken)
 		return session
 	}
 
@@ -53,7 +53,7 @@ public struct PairAuthService<User: Codable & Sendable>: Sendable {
 			body: payload
 		)
 
-		client.setBearerToken(session.token)
+		client.setBearerToken(session.accessToken)
 		return session
 	}
 
@@ -62,22 +62,68 @@ public struct PairAuthService<User: Codable & Sendable>: Sendable {
 		try await client.sendData(path: "auth/me")
 	}
 
+	/// Refreshes the mobile session through Pair's standard `/auth/refresh` endpoint.
+	@discardableResult
+	public func refresh(refreshToken: String) async throws -> PairAuthSession<User> {
+		let session: PairAuthSession<User> = try await client.sendData(
+			path: "auth/refresh",
+			method: "POST",
+			body: PairRefreshRequest(refreshToken: refreshToken)
+		)
+
+		client.setBearerToken(session.accessToken)
+		return session
+	}
+
 	/// Revokes the current token and clears the local Bearer token.
 	@discardableResult
-	public func logout<Response: Decodable & Sendable>(as responseType: Response.Type) async throws -> Response {
-		let response: Response = try await client.sendData(
-			path: "auth/logout",
-			method: "POST",
-			body: PairEmptyBody()
-		)
+	public func logout<Response: Decodable & Sendable>(
+		refreshToken: String? = nil,
+		as responseType: Response.Type
+	) async throws -> Response {
+		let response: Response
+
+		if let refreshToken {
+			response = try await client.sendData(
+				path: "auth/logout",
+				method: "POST",
+				body: PairLogoutRequest(refreshToken: refreshToken)
+			)
+		} else {
+			response = try await client.sendData(
+				path: "auth/logout",
+				method: "POST",
+				body: PairEmptyBody()
+			)
+		}
 
 		client.setBearerToken(nil)
 		return response
 	}
 
 	/// Revokes the current token when the backend returns an empty or ignorable payload.
-	public func logout() async throws {
-		let _: PairEmptyResponse = try await logout(as: PairEmptyResponse.self)
+	public func logout(refreshToken: String? = nil) async throws {
+		let _: PairEmptyResponse = try await logout(refreshToken: refreshToken, as: PairEmptyResponse.self)
+	}
+}
+
+private struct PairRefreshRequest: Encodable {
+	let refreshToken: String
+
+	/// Encodes the refresh token using Pair's snake-case API contract.
+	func encode(to encoder: Encoder) throws {
+		var container = encoder.container(keyedBy: PairDynamicCodingKey.self)
+		try container.encode(refreshToken, forKey: PairDynamicCodingKey("refresh_token"))
+	}
+}
+
+private struct PairLogoutRequest: Encodable {
+	let refreshToken: String
+
+	/// Encodes logout with an optional refresh-token revocation request.
+	func encode(to encoder: Encoder) throws {
+		var container = encoder.container(keyedBy: PairDynamicCodingKey.self)
+		try container.encode(refreshToken, forKey: PairDynamicCodingKey("refresh_token"))
 	}
 }
 

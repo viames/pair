@@ -21,6 +21,11 @@ class EnvTest extends TestCase {
 
 		$this->assertSame('Pair Application', Env::get('APP_NAME'));
 		$this->assertFalse(Env::get('APP_DEBUG'));
+		$this->assertTrue(Env::get('PAIR_AUTH_RATE_LIMIT_ENABLED'));
+		$this->assertSame(10, Env::get('PAIR_AUTH_RATE_LIMIT_MAX_ATTEMPTS'));
+		$this->assertSame(900, Env::get('PAIR_AUTH_RATE_LIMIT_DECAY_SECONDS'));
+		$this->assertSame(900, Env::get('PAIR_MOBILE_ACCESS_TOKEN_LIFETIME'));
+		$this->assertSame(2592000, Env::get('PAIR_MOBILE_REFRESH_TOKEN_LIFETIME'));
 		$this->assertFalse(Env::get('PAIR_OBSERVABILITY_ENABLED'));
 		$this->assertTrue(Env::get('PAIR_OBSERVABILITY_DEBUG_HEADERS'));
 		$this->assertSame(1.0, Env::get('PAIR_OBSERVABILITY_TRACE_SAMPLE_RATE'));

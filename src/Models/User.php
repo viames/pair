@@ -3,6 +3,7 @@
 namespace Pair\Models;
 
 use Pair\Core\Application;
+use Pair\Core\AuthAttemptLimiter;
 use Pair\Core\Env;
 use Pair\Core\Router;
 use Pair\Helpers\Translator;
@@ -116,6 +117,21 @@ class User extends ActiveRecord {
 	 * Properties that are stored in the shared cache.
 	 */
 	const SHARED_CACHE_PROPERTIES = ['groupId', 'localeId'];
+
+	/**
+	 * Argon2id memory cost in KiB for newly generated password hashes.
+	 */
+	private const ARGON2ID_MEMORY_COST = 19456;
+
+	/**
+	 * Argon2id iteration cost for newly generated password hashes.
+	 */
+	private const ARGON2ID_TIME_COST = 2;
+
+	/**
+	 * Argon2id parallelism for newly generated password hashes.
+	 */
+	private const ARGON2ID_THREADS = 1;
 
 	/**
 	 * Magic getter for virtual and inherited properties.
@@ -539,14 +555,26 @@ class User extends ActiveRecord {
 
 		$genericMessage = Translator::do('AUTHENTICATION_FAILED');
 
+		// track ip address and user_agent for audit
+		$ipAddress = $_SERVER['REMOTE_ADDR'] ?? null;
+		$userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
+		$attemptLimiter = AuthAttemptLimiter::login();
+		$attempt = $attemptLimiter->attempt('login', $username, $ipAddress);
+
+		// Fail closed with the generic message so rate limits do not reveal account existence.
+		if (!$attempt->allowed) {
+			Audit::loginFailed($username, $ipAddress, $userAgent);
+
+			$ret->error = true;
+			$ret->message = $genericMessage;
+
+			return $ret;
+		}
+
 		$query = 'SELECT * FROM `users` WHERE `' . (Env::get('PAIR_AUTH_BY_EMAIL') ? 'email' : 'username') . '` = ?';
 
 		// load user row
 		$row = Database::load($query, [$username], Database::OBJECT);
-
-		// track ip address and user_agent for audit
-		$ipAddress = $_SERVER['REMOTE_ADDR'] ?? null;
-		$userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
 
 		if (is_object($row)) {
 
@@ -592,6 +620,9 @@ class User extends ActiveRecord {
 			// login ok
 			} else {
 
+				// Upgrade legacy password hashes after the password has already been verified.
+				$user->rehashPasswordIfNeeded($password);
+
 				// hook for tasks to be executed before login
 				$user->beforeLogin();
 
@@ -600,6 +631,7 @@ class User extends ActiveRecord {
 				$ret->userId = $user->id;
 				$ret->sessionId = session_id();
 				$user->resetFaults();
+				$attemptLimiter->clear('login', $username, $ipAddress);
 
 				// clear any password-reset
 				if (!is_null($user->pwReset)) {
@@ -625,6 +657,85 @@ class User extends ActiveRecord {
 			$ret->message = $genericMessage;
 
 		}
+
+		return $ret;
+
+	}
+
+	/**
+	 * Verifies local credentials for token-based API login without creating a PHP session.
+	 *
+	 * @param	string	$username	Username or email, depending on PAIR_AUTH_BY_EMAIL.
+	 * @param	string	$password	Plain text password.
+	 * @return	\stdClass			Object with error, message and userId properties.
+	 */
+	public static function doTokenLogin(string $username, string $password): \stdClass {
+
+		$ret = new \stdClass();
+
+		$ret->error = false;
+		$ret->message = null;
+		$ret->userId = null;
+
+		$genericMessage = Translator::safeDo('AUTHENTICATION_FAILED');
+
+		// track ip address and user_agent for audit
+		$ipAddress = $_SERVER['REMOTE_ADDR'] ?? null;
+		$userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
+		$attemptLimiter = AuthAttemptLimiter::login();
+		$attempt = $attemptLimiter->attempt('login', $username, $ipAddress);
+
+		// Fail closed with the generic message so rate limits do not reveal account existence.
+		if (!$attempt->allowed) {
+			Audit::loginFailed($username, $ipAddress, $userAgent);
+
+			$ret->error = true;
+			$ret->message = $genericMessage;
+
+			return $ret;
+		}
+
+		$query = 'SELECT * FROM `users` WHERE `' . (Env::get('PAIR_AUTH_BY_EMAIL') ? 'email' : 'username') . '` = ?';
+		$row = Database::load($query, [$username], Database::OBJECT);
+
+		if (!is_object($row)) {
+			Audit::loginFailed($username, $ipAddress, $userAgent);
+
+			$ret->error = true;
+			$ret->message = $genericMessage;
+
+			return $ret;
+		}
+
+		$user = new static($row);
+
+		if ($user->faults > 9 or '0' == $user->enabled or !User::checkPassword($password, $user->hash)) {
+			$ret->error = true;
+			$ret->message = $genericMessage;
+			$user->addFault();
+
+			Audit::loginFailed($username, $ipAddress, $userAgent);
+			$user->afterLoginFailed();
+
+			return $ret;
+		}
+
+		// Upgrade legacy password hashes without creating a PHP web session for token login.
+		$user->rehashPasswordIfNeeded($password);
+
+		$user->beforeLogin();
+		$ret->userId = $user->id;
+		$user->resetFaults();
+		$attemptLimiter->clear('login', $username, $ipAddress);
+
+		if (!is_null($user->pwReset)) {
+			$user->pwReset = null;
+		}
+
+		$user->lastLogin = new \DateTime();
+		$user->update(['lastLogin', 'pwReset']);
+		$user->afterLogin();
+		Audit::loginSuccessful($user, $ipAddress, $userAgent);
 
 		return $ret;
 
@@ -909,12 +1020,20 @@ class User extends ActiveRecord {
 	}
 
 	/**
-	 * Creates and returns a bcrypt password hash.
+	 * Creates and returns a password hash using the strongest available local algorithm.
 	 *
 	 * @param	string	The user password.
 	 * @return	string	Hashed password.
 	 */
 	public static function getHashedPasswordWithSalt(string $password): string {
+
+		if (defined('PASSWORD_ARGON2ID')) {
+			$hash = password_hash($password, PASSWORD_ARGON2ID, self::passwordHashOptions(PASSWORD_ARGON2ID));
+
+			if (is_string($hash) and '' !== $hash) {
+				return $hash;
+			}
+		}
 
 		$hash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
 
@@ -929,6 +1048,52 @@ class User extends ActiveRecord {
 		}
 
 		return $hash;
+
+	}
+
+	/**
+	 * Returns the options used by the current preferred password hash algorithm.
+	 */
+	private static function passwordHashOptions(string|int|null $algorithm = null): array {
+
+		$algorithm = $algorithm ?? (defined('PASSWORD_ARGON2ID') ? PASSWORD_ARGON2ID : PASSWORD_BCRYPT);
+
+		if (defined('PASSWORD_ARGON2ID') and PASSWORD_ARGON2ID === $algorithm) {
+			return [
+				'memory_cost' => self::ARGON2ID_MEMORY_COST,
+				'time_cost' => self::ARGON2ID_TIME_COST,
+				'threads' => self::ARGON2ID_THREADS,
+			];
+		}
+
+		return ['cost' => 12];
+
+	}
+
+	/**
+	 * Returns true when a stored hash should be upgraded to the current preferred algorithm.
+	 */
+	private static function passwordNeedsRehash(string $hash): bool {
+
+		if (defined('PASSWORD_ARGON2ID')) {
+			return password_needs_rehash($hash, PASSWORD_ARGON2ID, self::passwordHashOptions(PASSWORD_ARGON2ID));
+		}
+
+		return password_needs_rehash($hash, PASSWORD_BCRYPT, self::passwordHashOptions(PASSWORD_BCRYPT));
+
+	}
+
+	/**
+	 * Upgrades a verified password hash in place when the stored algorithm is outdated.
+	 */
+	private function rehashPasswordIfNeeded(string $password): void {
+
+		if (!isset($this->hash) or !self::passwordNeedsRehash((string)$this->hash)) {
+			return;
+		}
+
+		$this->hash = static::getHashedPasswordWithSalt($password);
+		$this->update('hash');
 
 	}
 

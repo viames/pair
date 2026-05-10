@@ -93,4 +93,28 @@ class BootstrapUiRenderer extends NativeUiRenderer {
 
 	}
 
+	/**
+	 * Return Bootstrap-compatible LogBar chrome classes.
+	 *
+	 * @return	array{root: string, header: string, body: string}
+	 */
+	public function logBarChromeClasses(): array {
+
+		return [
+			'root' => 'card mt-5 logbar logbar-shell logbar-shell-bootstrap',
+			'header' => 'card-header logbar-header',
+			'body' => 'card-body',
+		];
+
+	}
+
+	/**
+	 * Bootstrap exposes named breakpoints consumed by the LogBar helper.
+	 */
+	public function supportsLogBarBreakpoints(): bool {
+
+		return true;
+
+	}
+
 }

@@ -6,9 +6,10 @@ It includes:
 
 - JSON API client with Bearer auth;
 - OkHttp transport with cookies disabled and HTTP cache enabled;
-- login and registration with `remember_me=true`;
+- login, registration, refresh, and logout with `remember_me=true`;
+- short-lived access-token sessions with optional persistent refresh tokens;
 - migratable session storage based on private `SharedPreferences`;
-- startup session bootstrap;
+- verified startup session bootstrap with single-flight refresh;
 - remote image bytes and bitmap loading through the shared HTTP cache.
 
 The library does not include domain models or UI. Android apps should keep their own Compose, XML, navigation, and feature models.
@@ -37,9 +38,7 @@ val session = pair.auth.login(
     password = "password"
 )
 
-pair.sessionStore.save(
-    pair.storedSession(session = session, defaultContext = "crotone")
-)
+pair.sessionManager.save(pair.storedSession(session = session, context = "crotone"))
 ```
 
 ## Extra Payload
@@ -63,12 +62,16 @@ val session = pair.auth.login(
 
 ```kotlin
 when (val result = pair.bootstrapWithCurrentUser()) {
-    PairSessionBootstrapResult.Missing -> Unit
-    is PairSessionBootstrapResult.Restored -> openApp(result.snapshot)
-    PairSessionBootstrapResult.Invalidated -> openLogin()
-    is PairSessionBootstrapResult.Offline -> openApp(result.snapshot)
+    PairAuthSessionManagerResult.Missing -> openLogin()
+    is PairAuthSessionManagerResult.Valid -> openApp(result.session)
+    is PairAuthSessionManagerResult.Offline -> openApp(result.session)
+    PairAuthSessionManagerResult.Invalidated -> openLogin()
 }
 ```
+
+`PairAuthSession` expects mobile auth responses with `access_token`, optional `refresh_token`, and either `expires_at` or `expires_in`. `PairStoredAuthSession` stores the same token metadata with the user snapshot and optional application context.
+
+Use `PairAuthSessionManager.validAccessToken(refresh:)` before authenticated API calls. If the access token is expired or near expiration, concurrent callers wait for the same refresh operation instead of rotating the refresh token multiple times.
 
 ## Storage Strategy
 
@@ -81,4 +84,3 @@ Projects that prefer a device-only token can provide their own `PairSessionStore
 ```sh
 ./gradlew testDebugUnitTest
 ```
-

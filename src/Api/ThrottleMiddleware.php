@@ -56,9 +56,9 @@ class ThrottleMiddleware implements Middleware {
 	 */
 	private function resolveKey(Request $request): string {
 
-		$sessionId = trim((string)$request->query('sid', ''));
+		$sessionId = $request->sessionIdentifier();
 
-		if (strlen($sessionId)) {
+		if (!is_null($sessionId)) {
 			return 'throttle:session:' . hash('sha256', $sessionId);
 		}
 

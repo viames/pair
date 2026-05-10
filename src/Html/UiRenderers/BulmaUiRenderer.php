@@ -148,4 +148,28 @@ class BulmaUiRenderer extends NativeUiRenderer {
 
 	}
 
+	/**
+	 * Return Bulma-compatible LogBar chrome classes.
+	 *
+	 * @return	array{root: string, header: string, body: string}
+	 */
+	public function logBarChromeClasses(): array {
+
+		return [
+			'root' => 'card logbar logbar-shell logbar-shell-bulma',
+			'header' => 'card-header logbar-header',
+			'body' => 'card-content',
+		];
+
+	}
+
+	/**
+	 * Bulma exposes named breakpoints consumed by the LogBar helper.
+	 */
+	public function supportsLogBarBreakpoints(): bool {
+
+		return true;
+
+	}
+
 }

@@ -15,6 +15,25 @@ use Pair\Tests\Support\TestCase;
 class UserTest extends TestCase {
 
 	/**
+	 * Verify new password hashes use the preferred local algorithm and remain verifiable.
+	 */
+	public function testPasswordHashUsesPreferredAlgorithmAndVerifies(): void {
+
+		$hash = User::getHashedPasswordWithSalt('correct-password');
+		$info = password_get_info($hash);
+
+		if (defined('PASSWORD_ARGON2ID')) {
+			$this->assertSame('argon2id', $info['algoName']);
+		} else {
+			$this->assertSame('bcrypt', $info['algoName']);
+		}
+
+		$this->assertTrue(User::checkPassword('correct-password', $hash));
+		$this->assertFalse(User::checkPassword('wrong-password', $hash));
+
+	}
+
+	/**
 	 * Verify ACL checks use the same wildcard, default-action, and exact-action semantics.
 	 */
 	public function testCanAccessUsesIndexedAclRules(): void {

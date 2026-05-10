@@ -2,12 +2,13 @@
 
 namespace Pair\Api;
 
-use Pair\Core\Env;
 use Pair\Core\Application;
+use Pair\Core\Env;
 use Pair\Exceptions\PairException;
 use Pair\Http\JsonResponse;
 use Pair\Http\ResponseInterface;
 use Pair\Http\TextResponse;
+use Pair\Models\ApiToken;
 use Pair\Models\Session;
 use Pair\Models\User;
 use Pair\Services\WhatsAppCloudClient;
@@ -24,6 +25,11 @@ abstract class ApiController extends Controller {
 	 * The Bearer token string for OAuth2 authentication.
 	 */
 	protected ?string $bearerToken = null;
+
+	/**
+	 * The mobile/API token row resolved from the Bearer token.
+	 */
+	protected ?ApiToken $apiToken = null;
 
 	/**
 	 * The session object for session-based authentication.
@@ -72,6 +78,15 @@ abstract class ApiController extends Controller {
 	public function setBearerToken(string $bearerToken): void {
 
 		$this->bearerToken = $bearerToken;
+
+	}
+
+	/**
+	 * Set the mobile/API token row resolved during bootstrap.
+	 */
+	public function setApiToken(ApiToken $apiToken): void {
+
+		$this->apiToken = $apiToken;
 
 	}
 
@@ -249,6 +264,48 @@ abstract class ApiController extends Controller {
 	}
 
 	/**
+	 * Ready-to-use mobile auth endpoint for login, refresh, current user and logout.
+	 *
+	 * Routes:
+	 * - POST /api/auth/login
+	 * - POST /api/auth/register
+	 * - POST /api/auth/refresh
+	 * - GET  /api/auth/me
+	 * - POST /api/auth/logout
+	 */
+	public function authAction(): ResponseInterface {
+
+		$operation = strtolower((string)($this->router->getParam('operation') ?: $this->router->getParam(0)));
+		$method = strtoupper($this->request->method());
+
+		if ('login' == $operation and 'POST' == $method) {
+			return $this->mobileAuthLogin();
+		}
+
+		if ('register' == $operation and 'POST' == $method) {
+			return $this->mobileAuthRegister();
+		}
+
+		if ('refresh' == $operation and 'POST' == $method) {
+			return $this->mobileAuthRefresh();
+		}
+
+		if ('me' == $operation and 'GET' == $method) {
+			return $this->mobileAuthMe();
+		}
+
+		if ('logout' == $operation and in_array($method, ['POST', 'DELETE'])) {
+			return $this->mobileAuthLogout();
+		}
+
+		return $this->errorResponse('NOT_FOUND', [
+			'action' => 'auth',
+			'operation' => $operation,
+		]);
+
+	}
+
+	/**
 	 * Register the default middleware stack for API controllers.
 	 */
 	protected function registerDefaultMiddleware(): void {
@@ -293,6 +350,43 @@ abstract class ApiController extends Controller {
 	}
 
 	/**
+	 * Return the public user snapshot sent to mobile clients.
+	 *
+	 * @return	array<string, mixed>
+	 */
+	protected function mobileAuthUserSnapshot(User $user): array {
+
+		return [
+			'id'		=> (int)$user->id,
+			'username'	=> (string)$user->username,
+			'email'		=> $user->email,
+			'name'		=> (string)$user->name,
+			'surname'	=> (string)$user->surname,
+		];
+
+	}
+
+	/**
+	 * Return optional application context for mobile auth responses.
+	 *
+	 * @return	array<string, mixed>|null
+	 */
+	protected function mobileAuthContext(User $user): ?array {
+
+		return null;
+
+	}
+
+	/**
+	 * Create a user for mobile registration. Applications should override this hook.
+	 */
+	protected function mobileAuthRegisterUser(array $body): User|ApiErrorResponse {
+
+		return $this->errorResponse('NOT_IMPLEMENTED');
+
+	}
+
+	/**
 	 * Run the middleware pipeline, then execute the destination callable.
 	 *
 	 * @param	callable	$destination	The final action to execute after all middleware.
@@ -323,6 +417,236 @@ abstract class ApiController extends Controller {
 	protected function jsonResponse(\stdClass|array|null $payload, int $httpCode = 200): JsonResponse {
 
 		return new JsonResponse($payload, $httpCode);
+
+	}
+
+	/**
+	 * Handle POST /api/auth/login without creating or mutating PHP web sessions.
+	 */
+	private function mobileAuthLogin(): ResponseInterface {
+
+		$body = $this->requireJsonPostOrResponse();
+
+		if ($body instanceof ApiErrorResponse) {
+			return $body;
+		}
+
+		$identifier = trim((string)($body['email'] ?? $body['username'] ?? ''));
+		$password = (string)($body['password'] ?? '');
+
+		if ('' === $identifier or '' === $password) {
+			return $this->errorResponse('AUTH_MISSING_FIELDS');
+		}
+
+		$userClass = Application::getInstance()->userClass;
+		$result = $userClass::doTokenLogin($identifier, $password);
+
+		if ($result->error) {
+			return $this->errorResponse('AUTH_INVALID_CREDENTIALS');
+		}
+
+		$user = new $userClass((int)$result->userId);
+
+		if (!$user instanceof User or !$user->isLoaded()) {
+			return $this->errorResponse('AUTH_INVALID_CREDENTIALS');
+		}
+
+		return $this->issueMobileAuthResponse($user, $body);
+
+	}
+
+	/**
+	 * Handle POST /api/auth/register through an application-provided user creation hook.
+	 */
+	private function mobileAuthRegister(): ResponseInterface {
+
+		$body = $this->requireJsonPostOrResponse();
+
+		if ($body instanceof ApiErrorResponse) {
+			return $body;
+		}
+
+		$user = $this->mobileAuthRegisterUser($body);
+
+		if ($user instanceof ApiErrorResponse) {
+			return $user;
+		}
+
+		if (!$user->isLoaded()) {
+			return $this->errorResponse('INVALID_OBJECT_DATA');
+		}
+
+		return $this->issueMobileAuthResponse($user, $body, 201);
+
+	}
+
+	/**
+	 * Handle POST /api/auth/refresh with rotating refresh tokens.
+	 */
+	private function mobileAuthRefresh(): ResponseInterface {
+
+		$body = $this->requireJsonPostOrResponse();
+
+		if ($body instanceof ApiErrorResponse) {
+			return $body;
+		}
+
+		$refreshToken = trim((string)($body['refresh_token'] ?? ''));
+
+		if ('' === $refreshToken) {
+			return $this->errorResponse('AUTH_REFRESH_TOKEN_MISSING');
+		}
+
+		$issued = ApiToken::refresh($refreshToken);
+
+		if (!$issued) {
+			return $this->errorResponse('AUTH_REFRESH_TOKEN_INVALID');
+		}
+
+		$user = $issued['token']->getUser();
+
+		if (!$user or !$this->mobileAuthUserCanUseTokens($user)) {
+			$issued['token']->revoke();
+			return $this->errorResponse('AUTH_REFRESH_TOKEN_INVALID');
+		}
+
+		return $this->dataResponse($this->mobileAuthPayload($user, $issued));
+
+	}
+
+	/**
+	 * Handle GET /api/auth/me for verified startup bootstrap.
+	 */
+	private function mobileAuthMe(): ResponseInterface {
+
+		$user = $this->requireAuthOrResponse();
+
+		if ($user instanceof ApiErrorResponse) {
+			return $user;
+		}
+
+		$payload = [
+			'user' => $this->mobileAuthUserSnapshot($user),
+		];
+
+		$context = $this->mobileAuthContext($user);
+
+		if (!is_null($context)) {
+			$payload['context'] = $context;
+		}
+
+		return $this->dataResponse($payload);
+
+	}
+
+	/**
+	 * Handle POST or DELETE /api/auth/logout by revoking the current token and optional refresh token.
+	 */
+	private function mobileAuthLogout(): ResponseInterface {
+
+		$body = [];
+
+		if ($this->request->isJson()) {
+			$decoded = $this->request->json();
+			$body = is_array($decoded) ? $decoded : [];
+		}
+
+		if ($this->apiToken) {
+			$this->apiToken->revoke();
+		}
+
+		$refreshToken = trim((string)($body['refresh_token'] ?? ''));
+
+		if ('' !== $refreshToken) {
+			ApiToken::revokeByRefreshToken($refreshToken);
+		}
+
+		return $this->dataResponse(new \stdClass());
+
+	}
+
+	/**
+	 * Issue a new mobile bearer session response for an authenticated user.
+	 */
+	private function issueMobileAuthResponse(User $user, array $body, int $httpCode = 200): ResponseInterface {
+
+		$remember = $this->truthy($body['remember_me'] ?? true);
+		$issued = ApiToken::issueForUser(
+			$user,
+			$remember,
+			$this->metadataString($body['device_name'] ?? $body['deviceName'] ?? null),
+			$_SERVER['REMOTE_ADDR'] ?? null,
+			$_SERVER['HTTP_USER_AGENT'] ?? null
+		);
+
+		return $this->dataResponse($this->mobileAuthPayload($user, $issued), httpCode: $httpCode);
+
+	}
+
+	/**
+	 * Build the standard mobile auth payload from an issued token pair.
+	 *
+	 * @param	array{token: ApiToken, accessToken: string, refreshToken: string|null}	$issued	Issued token data.
+	 * @return	array<string, mixed>
+	 */
+	private function mobileAuthPayload(User $user, array $issued): array {
+
+		$payload = [
+			'user'			=> $this->mobileAuthUserSnapshot($user),
+			'access_token'	=> $issued['accessToken'],
+			'expires_in'	=> ApiToken::getAccessLifetimeSeconds(),
+			'expires_at'	=> $issued['token']->accessExpiresAtIso(),
+			'token_type'	=> 'Bearer',
+		];
+
+		if ($issued['refreshToken']) {
+			$payload['refresh_token'] = $issued['refreshToken'];
+		}
+
+		$context = $this->mobileAuthContext($user);
+
+		if (!is_null($context)) {
+			$payload['context'] = $context;
+		}
+
+		return $payload;
+
+	}
+
+	/**
+	 * Return true when the user may keep using API tokens.
+	 */
+	private function mobileAuthUserCanUseTokens(User $user): bool {
+
+		return $user->isLoaded() and (bool)$user->enabled and (int)$user->faults <= 9;
+
+	}
+
+	/**
+	 * Normalize a boolean-like request value.
+	 */
+	private function truthy(mixed $value): bool {
+
+		if (is_bool($value)) {
+			return $value;
+		}
+
+		if (is_numeric($value)) {
+			return 0 !== (int)$value;
+		}
+
+		return in_array(strtolower(trim((string)$value)), ['1', 'true', 'yes', 'on'], true);
+
+	}
+
+	/**
+	 * Return an optional string metadata value from a request field.
+	 */
+	private function metadataString(mixed $value): ?string {
+
+		$value = trim((string)$value);
+
+		return strlen($value) ? $value : null;
 
 	}
 

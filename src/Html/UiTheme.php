@@ -3,9 +3,6 @@
 namespace Pair\Html;
 
 use Pair\Core\Router;
-use Pair\Html\UiRenderers\BootstrapUiRenderer;
-use Pair\Html\UiRenderers\BulmaUiRenderer;
-use Pair\Html\UiRenderers\NativeUiRenderer;
 
 /**
  * Resolve the active UI renderer and keep the legacy theme facade compatible.
@@ -28,9 +25,27 @@ final class UiTheme {
 	public const BULMA = 'bulma';
 
 	/**
+	 * Built-in renderer classes loaded only when their UI framework is selected.
+	 *
+	 * @var	array<string, class-string<UiRenderer>>
+	 */
+	private const BUILT_IN_RENDERERS = [
+		self::NATIVE => 'Pair\Html\UiRenderers\NativeUiRenderer',
+		self::BOOTSTRAP => 'Pair\Html\UiRenderers\BootstrapUiRenderer',
+		self::BULMA => 'Pair\Html\UiRenderers\BulmaUiRenderer',
+	];
+
+	/**
 	 * Runtime override for the active UI renderer.
 	 */
 	private static ?string $currentTheme = null;
+
+	/**
+	 * Registered UI renderer classes keyed by renderer name.
+	 *
+	 * @var	array<string, class-string<UiRenderer>>
+	 */
+	private static array $rendererClasses = self::BUILT_IN_RENDERERS;
 
 	/**
 	 * Registered UI renderers keyed by renderer name.
@@ -66,6 +81,7 @@ final class UiTheme {
 	public static function reset(): void {
 
 		self::$currentTheme = null;
+		self::$rendererClasses = self::BUILT_IN_RENDERERS;
 		self::$renderers = [];
 
 	}
@@ -81,15 +97,33 @@ final class UiTheme {
 	}
 
 	/**
+	 * Register or replace a UI renderer class to be instantiated only when selected.
+	 *
+	 * @param	string					$name		Renderer name used by Application::uiFramework().
+	 * @param	class-string<UiRenderer>	$className	Renderer class name.
+	 */
+	public static function registerRendererClass(string $name, string $className): void {
+
+		$name = self::normalizeRendererName($name);
+		$className = ltrim(trim($className), '\\');
+
+		if ('' === $className) {
+			throw new \InvalidArgumentException('Invalid UI renderer class name');
+		}
+
+		self::$rendererClasses[$name] = $className;
+		unset(self::$renderers[$name]);
+
+	}
+
+	/**
 	 * Return the active or requested UI renderer.
 	 */
 	public static function renderer(?string $theme = null): UiRenderer {
 
-		self::ensureDefaultRenderers();
-
 		$name = self::normalizeTheme($theme ?? self::$currentTheme);
 
-		return self::$renderers[$name];
+		return self::resolveRenderer($name);
 
 	}
 
@@ -100,7 +134,9 @@ final class UiTheme {
 	 */
 	public static function renderers(): array {
 
-		self::ensureDefaultRenderers();
+		foreach (array_keys(self::$rendererClasses) as $name) {
+			self::resolveRenderer($name);
+		}
 
 		return self::$renderers;
 
@@ -218,15 +254,34 @@ final class UiTheme {
 	}
 
 	/**
-	 * Ensure built-in renderers exist before resolving a renderer name.
+	 * Return LogBar chrome classes from the active renderer when supported.
+	 *
+	 * @return	array{root: string, header: string, body: string}
 	 */
-	private static function ensureDefaultRenderers(): void {
+	public static function logBarChromeClasses(): array {
 
-		if (!count(self::$renderers)) {
-			self::registerRenderer(new NativeUiRenderer());
-			self::registerRenderer(new BootstrapUiRenderer());
-			self::registerRenderer(new BulmaUiRenderer());
+		$renderer = self::renderer();
+
+		if ($renderer instanceof UiLogBarRenderer) {
+			return $renderer->logBarChromeClasses();
 		}
+
+		return self::nativeLogBarRenderer()->logBarChromeClasses();
+
+	}
+
+	/**
+	 * Return true when the active renderer exposes named LogBar breakpoints.
+	 */
+	public static function supportsLogBarBreakpoints(): bool {
+
+		$renderer = self::renderer();
+
+		if ($renderer instanceof UiLogBarRenderer) {
+			return $renderer->supportsLogBarBreakpoints();
+		}
+
+		return false;
 
 	}
 
@@ -237,8 +292,6 @@ final class UiTheme {
 	 * @param	bool		$strict	When true, invalid values raise an exception.
 	 */
 	private static function normalizeTheme(?string $theme, bool $strict = false): string {
-
-		self::ensureDefaultRenderers();
 
 		$theme = strtolower(trim((string)$theme));
 
@@ -252,7 +305,7 @@ final class UiTheme {
 
 		$theme = self::normalizeRendererName($theme);
 
-		if (array_key_exists($theme, self::$renderers)) {
+		if (array_key_exists($theme, self::$renderers) or array_key_exists($theme, self::$rendererClasses)) {
 			return $theme;
 		}
 
@@ -276,6 +329,59 @@ final class UiTheme {
 		}
 
 		return $name;
+
+	}
+
+	/**
+	 * Resolve and cache one UI renderer instance by name.
+	 */
+	private static function resolveRenderer(string $name): UiRenderer {
+
+		if (array_key_exists($name, self::$renderers)) {
+			return self::$renderers[$name];
+		}
+
+		if (!array_key_exists($name, self::$rendererClasses)) {
+			throw new \InvalidArgumentException('Unsupported UI framework: ' . $name);
+		}
+
+		$className = self::$rendererClasses[$name];
+
+		// Validate and instantiate renderer classes only at first use so unselected frameworks stay unloaded.
+		if (!class_exists($className)) {
+			throw new \InvalidArgumentException('UI renderer class not found: ' . $className);
+		}
+
+		$renderer = new $className();
+
+		if (!$renderer instanceof UiRenderer) {
+			throw new \InvalidArgumentException('UI renderer class must implement ' . UiRenderer::class . ': ' . $className);
+		}
+
+		$rendererName = self::normalizeRendererName($renderer->name());
+
+		if ($rendererName !== $name) {
+			throw new \InvalidArgumentException('UI renderer name mismatch: expected ' . $name . ', got ' . $rendererName);
+		}
+
+		self::$renderers[$name] = $renderer;
+
+		return $renderer;
+
+	}
+
+	/**
+	 * Return the native renderer as the compatibility fallback for optional UI hooks.
+	 */
+	private static function nativeLogBarRenderer(): UiLogBarRenderer {
+
+		$renderer = self::resolveRenderer(self::NATIVE);
+
+		if (!$renderer instanceof UiLogBarRenderer) {
+			throw new \LogicException('Native UI renderer must provide LogBar chrome defaults');
+		}
+
+		return $renderer;
 
 	}
 

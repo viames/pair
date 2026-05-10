@@ -239,11 +239,11 @@ class Translator {
 	 * from default, else return the key string.
 	 *
 	 * @param	string	The language key.
-	 * @param	string|array|null	Parameter or list of parameters to bind on string (optional).
+	 * @param	string|\Stringable|int|float|array|null	Parameter or list of parameters to bind on string (optional).
 	 * @param	bool	Show a warning if string is not found (optional).
 	 * @param	string|callable	What to return if string is not found (optional).
 	 */
-	public static function do(string $key, string|array|null $vars = null, bool $warning = true, string|Callable|null $default = null): string {
+	public static function do(string $key, string|\Stringable|int|float|array|null $vars = null, bool $warning = true, string|Callable|null $default = null): string {
 
 		$self = static::getInstance();
 
@@ -288,18 +288,15 @@ class Translator {
 
 		}
 
-		// vars is optional
-		if (!is_null($vars)) {
+		$formatVars = self::normalizeFormatVariables($vars);
 
-			// force a single string to be the expected array
-			if (!is_array($vars)) {
-				$vars = [(string)$vars];
-			}
+		// vars is optional
+		if (!is_null($formatVars)) {
 
 			// binds of parameters on %s placeholders
 			try {
 
-				$string = vsprintf($string, $vars);
+				$string = vsprintf($string, $formatVars);
 
 			} catch (\ValueError $e) {
 
@@ -323,7 +320,7 @@ class Translator {
 	 * This is intended for low-level API and rendering paths that may also run in CLI tests before
 	 * an application database has been configured.
 	 */
-	public static function safeDo(string $key, string|array|null $vars = null, ?string $default = null): string {
+	public static function safeDo(string $key, string|\Stringable|int|float|array|null $vars = null, ?string $default = null): string {
 
 		$fallback = $default ?? self::safeFallbackString($key) ?? $key;
 
@@ -359,21 +356,38 @@ class Translator {
 	/**
 	 * Apply vsprintf-style variables to a fallback string without raising formatting errors.
 	 */
-	private static function formatString(string $string, string|array|null $vars = null): string {
+	private static function formatString(string $string, string|\Stringable|int|float|array|null $vars = null): string {
 
-		if (is_null($vars)) {
+		$formatVars = self::normalizeFormatVariables($vars);
+
+		if (is_null($formatVars)) {
 			return $string;
-		}
-
-		if (!is_array($vars)) {
-			$vars = [(string)$vars];
 		}
 
 		try {
-			return vsprintf($string, $vars);
+			return vsprintf($string, $formatVars);
 		} catch (\ValueError) {
 			return $string;
 		}
+
+	}
+
+	/**
+	 * Normalize a single scalar placeholder value to the array expected by vsprintf.
+	 *
+	 * @param	string|\Stringable|int|float|array|null	Parameter or list of parameters to bind on string.
+	 */
+	private static function normalizeFormatVariables(string|\Stringable|int|float|array|null $vars): ?array {
+
+		if (is_null($vars)) {
+			return null;
+		}
+
+		if (is_array($vars)) {
+			return $vars;
+		}
+
+		return [(string)$vars];
 
 	}
 

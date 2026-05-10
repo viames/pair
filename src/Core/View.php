@@ -264,10 +264,10 @@ abstract class View {
 	 * Proxy function that returns a translated string.
 	 *
 	 * @param	string	The language key.
-	 * @param	string|array|null	List of parameters to bind on string (optional).
+	 * @param	string|\Stringable|int|float|array|null	List of parameters to bind on string (optional).
 	 * @param	bool	Show a warning if the key is not found.
 	 */
-	public function lang(string $key, string|array|null $vars = null, bool $warning = true): string {
+	public function lang(string $key, string|\Stringable|int|float|array|null $vars = null, bool $warning = true): string {
 
 		return Translator::do($key, $vars, $warning);
 

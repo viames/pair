@@ -4,6 +4,8 @@ namespace Pair\Core;
 
 use Pair\Api\ApiErrorResponse;
 use Pair\Api\ApiResponse;
+use Pair\Api\RateLimiter;
+use Pair\Api\Request;
 use Pair\Exceptions\AppException;
 use Pair\Exceptions\CriticalException;
 use Pair\Exceptions\ErrorCodes;
@@ -18,6 +20,7 @@ use Pair\Html\SweetToast;
 use Pair\Html\TemplateRenderer;
 use Pair\Html\UiTheme;
 use Pair\Html\Widget;
+use Pair\Models\ApiToken;
 use Pair\Models\Audit;
 use Pair\Models\OAuth2Token;
 use Pair\Models\Session;
@@ -1055,8 +1058,10 @@ class Application {
 		// require controller file
 		require $controllerFile;
 
-		// get SID via GET
-		$sid = Router::get('sid');
+		$request = new Request();
+
+		// Resolve API session from legacy router sid, query sid, or the safer X-Pair-Session header.
+		$sid = trim((string)(Router::get('sid') ?? '')) ?: $request->sessionIdentifier();
 
 		// read the Bearer token via HTTP header
 		$bearerToken = OAuth2Token::bearerToken();
@@ -1085,8 +1090,22 @@ class Application {
 		// check for Oauth2 Bearer token via http header
 		if ($bearerToken) {
 
-			if (!OAuth2Token::isValid($bearerToken)) {
-				sleep(3);
+			$apiToken = ApiToken::getActiveByAccessToken($bearerToken);
+
+			if ($apiToken) {
+
+				$user = $apiToken->getUser();
+
+				if (!$user or !(bool)$user->enabled or (int)$user->faults > 9) {
+					$apiToken->revoke();
+					OAuth2Token::unauthorized(ApiResponse::localizedMessage('AUTHENTICATION_FAILED'));
+				}
+
+				$this->setCurrentUser($user);
+				$apiCtl->setApiToken($apiToken);
+
+			} else if (!OAuth2Token::isValid($bearerToken)) {
+				$this->guardInvalidBearerRateLimit($request);
 				OAuth2Token::unauthorized(ApiResponse::localizedMessage('AUTHENTICATION_FAILED'));
 			}
 
@@ -1097,13 +1116,9 @@ class Application {
 
 			$param = $router->getParam('operation') ?: $router->getParam(0);
 
-			if ('login' == $param) {
+			if ('login' == $param or 'register' == $param) {
 
-				// destroy the current session
-				Session::destroy();
-
-				// Start a new native session with Pair's app-scoped cookie settings.
-				static::startNativeSession();
+				// Mobile auth is bearer-based and must not create PHP session cookies.
 
 			} else if ('logout' == $param) {
 
@@ -1112,9 +1127,7 @@ class Application {
 
 			} else if ('refresh' == $param) {
 
-				// Ensure refresh flows can renew a session from a token without requiring a bearer first.
-				Session::destroy();
-				static::startNativeSession();
+				// Mobile refresh uses refresh tokens and must not create PHP session cookies.
 
 			} else {
 
@@ -1291,6 +1304,33 @@ class Application {
 		$response = new ApiErrorResponse($errorCode, $errorMessage, $httpCode, $extra);
 		$response->send();
 		exit();
+
+	}
+
+	/**
+	 * Apply API rate limiting to invalid bearer-token attempts before returning 401.
+	 */
+	private function guardInvalidBearerRateLimit(Request $request): void {
+
+		if (!Env::get('PAIR_API_RATE_LIMIT_ENABLED')) {
+			return;
+		}
+
+		$maxAttempts = max(1, intval(Env::get('PAIR_API_RATE_LIMIT_MAX_ATTEMPTS') ?? 60));
+		$decaySeconds = max(1, intval(Env::get('PAIR_API_RATE_LIMIT_DECAY_SECONDS') ?? 60));
+		$limiter = new RateLimiter($maxAttempts, $decaySeconds);
+
+		// Key invalid bearer attempts by client address so random-token floods cannot bypass the limiter.
+		$key = 'api:invalid_bearer:' . hash('sha256', $request->ip());
+		$result = $limiter->attempt($key);
+		$result->applyHeaders();
+
+		if (!$result->allowed) {
+			$this->sendApiError('TOO_MANY_REQUESTS', ApiResponse::localizedMessage('TOO_MANY_REQUESTS'), 429, [
+				'retryAfter'	=> $result->retryAfter,
+				'resetAt'		=> $result->resetAt,
+			]);
+		}
 
 	}
 
