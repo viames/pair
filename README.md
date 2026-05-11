@@ -5,6 +5,14 @@
 [![Latest Unstable Version](https://poser.pugx.org/viames/pair/v/unstable)](https://packagist.org/packages/viames/pair)
 [![License](https://poser.pugx.org/viames/pair/license)](https://packagist.org/packages/viames/pair)
 
+## Current Versions
+
+Pair 2 and Pair 3 are stable framework generations and remain suitable for existing applications that already depend on them.
+
+For new applications, **Pair 4 is the recommended framework generation**. It brings the most complete evolution of the project, with a modernized application architecture, improved development workflows, stronger conventions, updated framework services, and a broader set of built-in features for building maintainable server-side web applications.
+
+Applications based on Pair 1.x can be upgraded progressively. The independent script `pair_2_upgrade.php` supports the first migration step from Pair 1.x to Pair 2, after which applications can continue moving through the stable generations toward Pair 4.
+
 ## Features
 
 Pair is simple and fast, few frills, maybe none. It was written with simplicity in mind, while trying to achieve the most frequent needs of web applications. It implements [Model-View-Controller](https://en.wikipedia.org/wiki/Model-View-Controller) pattern and a search friendly [route logic](https://github.com/viames/pair/wiki/Router) by default.
@@ -89,7 +97,7 @@ Please consult the [Wiki](https://github.com/viames/pair/wiki) of this project. 
 | ---      |    :---:    |  :---:  | ---                    |
 | Apache   | 2.4+        | 2.2     | `modules:` mod_rewrite |
 | MySQL    | 8.0         | 5.6     | `character_set:` utf8mb4 <br> `collation:` utf8mb4\_unicode_ci <br> `storage_engine:` InnoDB |
-| PHP      | 7.3+        | 7.0     | `extensions:` fileinfo, json, pcre, PDO, pdo_mysql, Reflection |
+| PHP      | 8.4+        | 8.3     | `extensions:` curl, intl, json, mbstring, PDO, pdo_mysql |
 
 ## Examples
 
