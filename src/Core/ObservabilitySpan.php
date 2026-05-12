@@ -35,7 +35,8 @@ final class ObservabilitySpan {
 		private string $name,
 		array $attributes,
 		private string $correlationId,
-		private float $startedAt
+		private float $startedAt,
+		private bool $recordable = true
 	) {
 
 		$this->attributes = $attributes;
@@ -115,6 +116,15 @@ final class ObservabilitySpan {
 	public function name(): string {
 
 		return $this->name;
+
+	}
+
+	/**
+	 * Return true when this span should be retained or forwarded by Observability.
+	 */
+	public function recordable(): bool {
+
+		return $this->recordable;
 
 	}
 

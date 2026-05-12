@@ -121,6 +121,25 @@ final class PairMobileKitTests: XCTestCase {
 		XCTAssertNil(request.value(forHTTPHeaderField: "Cookie"))
 	}
 
+	@MainActor
+	func testRemoteImageRequestKeepsCachePolicyAndAppliesHostHeaders() throws {
+		let url = try XCTUnwrap(URL(string: "https://example.test/files/productImage/7"))
+		let request = PairRemoteImageCache.makeRequest(
+			for: url,
+			headers: [
+				"Authorization": "Bearer image-token",
+				"X-Empty": "   ",
+			]
+		)
+
+		XCTAssertEqual(request.url, url)
+		XCTAssertEqual(request.cachePolicy, .returnCacheDataElseLoad)
+		XCTAssertEqual(request.value(forHTTPHeaderField: "Accept"), "image/avif,image/webp,image/apng,image/*,*/*;q=0.8")
+		XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer image-token")
+		XCTAssertNil(request.value(forHTTPHeaderField: "X-Empty"))
+		XCTAssertNil(request.value(forHTTPHeaderField: "Cookie"))
+	}
+
 	func testPairJSONValueSupportsNestedExtraPayloads() throws {
 		let payload: [String: PairJSONValue] = [
 			"tenant": "crotone",

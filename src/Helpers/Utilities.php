@@ -1351,8 +1351,7 @@ class Utilities {
 		}
 
 		// contains events registered by LogBar, if active
-		$logBar = LogBar::getInstance();
-		$eventList = $logBar->renderForAjax();
+		$eventList = LogBar::isRuntimeAvailable() ? LogBar::getInstance()->renderForAjax() : '';
 		if ($eventList) {
 			$ret->logBar = $eventList;
 		}

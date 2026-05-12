@@ -17,6 +17,11 @@ use Pair\Helpers\LogBar;
 class Database {
 
 	/**
+	 * Number of single table checks before loading the full table list becomes cheaper.
+	 */
+	private const TABLE_EXISTS_BULK_LOAD_THRESHOLD = 8;
+
+	/**
 	 * Singleton object for database.
 	 */
 	protected static ?self $instance = null;
@@ -35,6 +40,28 @@ class Database {
 	 * List of temporary table structures (describe, foreignKeys, inverseForeignKeys).
 	 */
 	private array $definitions = [];
+
+	/**
+	 * Request-local cache for table existence checks.
+	 *
+	 * @var	array<string, bool>
+	 */
+	private array $tableExistsCache = [];
+
+	/**
+	 * Tracks whether the full table list was loaded for existence checks.
+	 */
+	private bool $tableExistsCacheLoaded = false;
+
+	/**
+	 * Number of uncached table existence checks made during the current request.
+	 */
+	private int $tableExistsLookupCount = 0;
+
+	/**
+	 * Request-local cache for the MySQL server version.
+	 */
+	private false|string|null $mysqlVersion = null;
 
 	/**
 	 * Constant for array of objects return of the load() method.
@@ -171,6 +198,8 @@ class Database {
 	public function disconnect(): void {
 
 		unset($this->handler);
+		$this->clearSchemaMetadataCache();
+		$this->mysqlVersion = null;
 
 		$logger = Logger::getInstance();
 		$logger->info('Database connection closed');
@@ -207,6 +236,7 @@ class Database {
 			$stat->execute($params);
 		} catch (\PDOException $e) {
 			self::finishQuerySpan($span, 0, 'error', $e);
+			$this->logFailedParamQuery($this->query, $params, $span, $e);
 			self::throwQueryException($e);
 		}
 
@@ -214,6 +244,7 @@ class Database {
 		$stat->closeCursor();
 		$this->logParamQuery($this->query, $affected, $params, $span);
 		self::finishQuerySpan($span, $affected);
+		$this->clearSchemaMetadataCacheForQuery($this->query);
 
 		return $affected;
 
@@ -320,8 +351,12 @@ class Database {
 	 */
 	public function getMysqlVersion(): false|string {
 
-		$this->setQuery('SELECT VERSION()');
-		return $this->loadResult();
+		if (is_null($this->mysqlVersion)) {
+			$this->setQuery('SELECT VERSION()');
+			$this->mysqlVersion = $this->loadResult();
+		}
+
+		return $this->mysqlVersion;
 
 	}
 
@@ -516,6 +551,7 @@ class Database {
 		} catch (\PDOException $e) {
 
 			self::finishQuerySpan($span, 0, 'error', $e);
+			$self->logFailedParamQuery($query, $params, $span, $e);
 			self::throwQueryException($e);
 
 		}
@@ -601,6 +637,7 @@ class Database {
 		} catch (\PDOException $e) {
 
 			self::finishQuerySpan($span, 0, 'error', $e);
+			$self->logFailedParamQuery($query, $params, $span, $e);
 			self::throwQueryException($e);
 
 		}
@@ -650,6 +687,7 @@ class Database {
 			$stat->execute($params);
 		} catch (\PDOException $e) {
 			self::finishQuerySpan($span, 0, 'error', $e);
+			$this->logFailedParamQuery($this->query, $params, $span, $e);
 			self::throwQueryException($e);
 		}
 
@@ -684,6 +722,7 @@ class Database {
 			$stat->execute($params);
 		} catch (\PDOException $e) {
 			self::finishQuerySpan($span, 0, 'error', $e);
+			$this->logFailedParamQuery($this->query, $params, $span, $e);
 			self::throwQueryException($e);
 		}
 
@@ -717,6 +756,7 @@ class Database {
 			$stat->execute((array)$params);
 		} catch (\PDOException $e) {
 			self::finishQuerySpan($span, 0, 'error', $e);
+			$this->logFailedParamQuery($this->query, $params, $span, $e);
 			self::throwQueryException($e);
 		}
 
@@ -760,7 +800,28 @@ class Database {
 	 */
 	private function logParamQuery(string $query, int $result, array $params = [], ?ObservabilitySpan $span = null): void {
 
+		if (!LogBar::isRuntimeAvailable()) {
+			return;
+		}
+
 		LogBar::query($query, $result, $params, $span?->durationMs(), $span?->startedAt());
+
+	}
+
+	/**
+	 * Record a failed database query in LogBar before the exception is rethrown.
+	 *
+	 * @param	string			$query	SQL query.
+	 * @param	array			$params	Optional parameters to bind.
+	 * @param	\PDOException	$exception	Query failure raised by PDO.
+	 */
+	private function logFailedParamQuery(string $query, array $params, ObservabilitySpan $span, \PDOException $exception): void {
+
+		if (!LogBar::isRuntimeAvailable()) {
+			return;
+		}
+
+		LogBar::query($query, 0, $params, $span->durationMs(), $span->startedAt(), 'error', $exception->getMessage());
 
 	}
 
@@ -771,6 +832,10 @@ class Database {
 	 * @param	int		Number of items in result-set or affected rows.
 	 */
 	private function logQuery(string $query, int $result): void {
+
+		if (!LogBar::isRuntimeAvailable()) {
+			return;
+		}
 
 		LogBar::query($query, $result);
 
@@ -793,6 +858,10 @@ class Database {
 	 * Start an observability span for one database query using only safe metadata.
 	 */
 	private static function startQuerySpan(string $query, ?int $option = null): ObservabilitySpan {
+
+		if (!Observability::traceRecordingConfigured()) {
+			return new ObservabilitySpan('db.query', [], '', microtime(true), false);
+		}
 
 		$attributes = [
 			'operation' => self::queryOperation($query),
@@ -881,6 +950,7 @@ class Database {
 			$stat->execute((array)$params);
 		} catch (\PDOException $e) {
 			self::finishQuerySpan($span, 0, 'error', $e);
+			$self->logFailedParamQuery($query, $params, $span, $e);
 			self::throwQueryException($e);
 		}
 
@@ -890,6 +960,7 @@ class Database {
 		$stat->closeCursor();
 		$self->logParamQuery($query, $affected, $params, $span);
 		self::finishQuerySpan($span, $affected);
+		$self->clearSchemaMetadataCacheForQuery($query);
 
 		return $affected;
 
@@ -1001,8 +1072,87 @@ class Database {
 	 */
 	public function tableExists(string $tableName): bool {
 
+		if (array_key_exists($tableName, $this->tableExistsCache)) {
+			return $this->tableExistsCache[$tableName];
+		}
+
+		if ($this->tableExistsCacheLoaded) {
+			$this->tableExistsCache[$tableName] = false;
+			return false;
+		}
+
+		$this->tableExistsLookupCount++;
+
+		if ($this->tableExistsLookupCount >= self::TABLE_EXISTS_BULK_LOAD_THRESHOLD) {
+			$this->loadTableExistsCache();
+
+			if (!array_key_exists($tableName, $this->tableExistsCache)) {
+				$this->tableExistsCache[$tableName] = false;
+			}
+
+			return $this->tableExistsCache[$tableName];
+		}
+
+		return $this->tableExistsCache[$tableName] = $this->loadSingleTableExists($tableName);
+
+	}
+
+	/**
+	 * Check one table name without loading the whole schema list.
+	 */
+	private function loadSingleTableExists(string $tableName): bool {
+
 		$this->setQuery('SHOW TABLES LIKE ?');
+
 		return (bool)$this->loadResult([$tableName]);
+
+	}
+
+	/**
+	 * Load all visible table names once so repeated checks avoid one query per table.
+	 */
+	private function loadTableExistsCache(): void {
+
+		$tableNames = self::load('SHOW TABLES', [], self::RESULT_LIST);
+		$this->tableExistsCache = [];
+
+		foreach ((array)$tableNames as $tableName) {
+			$this->tableExistsCache[(string)$tableName] = true;
+		}
+
+		$this->tableExistsCacheLoaded = true;
+
+	}
+
+	/**
+	 * Clear cached schema metadata for a query when it may change table structure.
+	 */
+	private function clearSchemaMetadataCacheForQuery(string $query): void {
+
+		if (self::isSchemaMutationQuery($query)) {
+			$this->clearSchemaMetadataCache();
+		}
+
+	}
+
+	/**
+	 * Clear request-local metadata that depends on the current database schema.
+	 */
+	private function clearSchemaMetadataCache(): void {
+
+		$this->definitions = [];
+		$this->tableExistsCache = [];
+		$this->tableExistsCacheLoaded = false;
+		$this->tableExistsLookupCount = 0;
+
+	}
+
+	/**
+	 * Return true when a SQL statement can change database table metadata.
+	 */
+	private static function isSchemaMutationQuery(string $query): bool {
+
+		return 1 === preg_match('/^\s*(?:(?:CREATE|ALTER|DROP|RENAME)\s+(?:TEMPORARY\s+)?(?:TABLE|DATABASE|INDEX|VIEW)\b|TRUNCATE\s+(?:TABLE\s+)?[`A-Za-z0-9_.]+)/i', $query);
 
 	}
 

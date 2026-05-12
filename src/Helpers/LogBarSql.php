@@ -17,7 +17,16 @@ final class LogBarSql {
 	 */
 	public static function fingerprint(string $query): string {
 
-		return substr(hash('sha1', self::fingerprintSource($query)), 0, 16);
+		return self::fingerprintFromNormalized(self::normalize($query));
+
+	}
+
+	/**
+	 * Return a stable short fingerprint for an already normalized query.
+	 */
+	public static function fingerprintFromNormalized(string $query): string {
+
+		return substr(hash('sha1', self::fingerprintSourceFromNormalized($query)), 0, 16);
 
 	}
 
@@ -131,7 +140,16 @@ final class LogBarSql {
 	 */
 	private static function fingerprintSource(string $query): string {
 
-		return strtolower(self::collapsePlaceholderLists(self::normalize($query)));
+		return self::fingerprintSourceFromNormalized(self::normalize($query));
+
+	}
+
+	/**
+	 * Return the fingerprint input for a query that already has placeholders and collapsed values.
+	 */
+	private static function fingerprintSourceFromNormalized(string $query): string {
+
+		return strtolower(self::collapsePlaceholderLists(self::collapseWhitespace($query)));
 
 	}
 

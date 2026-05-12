@@ -501,28 +501,30 @@ class Translator {
 		$commonLanguageFolder = APPLICATION_PATH . '/translations/';
 
 		$languageFiles = [];
+		$currentRepresentation = $this->currentLocale->getRepresentation();
+		$defaultRepresentation = $this->defaultLocale->getRepresentation();
 
 		// if module is set, loads its module strings
 		if (isset($this->module) and $this->module) {
-			$languageFiles[] = APPLICATION_PATH . '/modules/' . strtolower($this->module) . '/translations/' . $this->currentLocale->getRepresentation() . '.ini';
+			$languageFiles[] = APPLICATION_PATH . '/modules/' . strtolower($this->module) . '/translations/' . $currentRepresentation . '.ini';
 		}
 
 		// common translation strings in current language
-		$languageFiles[] = $commonLanguageFolder . $this->currentLocale->getRepresentation() . '.ini';
+		$languageFiles[] = $commonLanguageFolder . $currentRepresentation . '.ini';
 
 		// pair strings in current language loaded later as fallback
-		$languageFiles[] = $pairLanguageFolder . $this->currentLocale->getRepresentation() . '.ini';
+		$languageFiles[] = $pairLanguageFolder . $currentRepresentation . '.ini';
 
 		// if current language is different by default language, will load default strings
-		if ($this->currentLocale->getRepresentation() != $this->defaultLocale->getRepresentation()) {
+		if ($currentRepresentation != $defaultRepresentation) {
 
 			// if module is not set, won’t find language file
 			if (isset($this->module) and $this->module) {
-				$languageFiles[] = APPLICATION_PATH . '/modules/' . strtolower($this->module) . '/translations/' . $this->defaultLocale->getRepresentation() . '.ini';
+				$languageFiles[] = APPLICATION_PATH . '/modules/' . strtolower($this->module) . '/translations/' . $defaultRepresentation . '.ini';
 			}
 
-			$languageFiles[] = $commonLanguageFolder . $this->defaultLocale->getRepresentation() . '.ini';
-			$languageFiles[] = $pairLanguageFolder . $this->defaultLocale->getRepresentation() . '.ini';
+			$languageFiles[] = $commonLanguageFolder . $defaultRepresentation . '.ini';
+			$languageFiles[] = $pairLanguageFolder . $defaultRepresentation . '.ini';
 
 		}
 

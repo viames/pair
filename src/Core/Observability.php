@@ -132,6 +132,11 @@ final class Observability {
 	 */
 	public static function finish(ObservabilitySpan $span, array $attributes = [], string $status = 'ok'): void {
 
+		if (!$span->recordable()) {
+			$span->finish(self::sanitizeAttributes($attributes), $status);
+			return;
+		}
+
 		if (!self::shouldRecordTrace()) {
 			return;
 		}
@@ -155,6 +160,23 @@ final class Observability {
 		}
 
 		return (bool)Env::get('PAIR_OBSERVABILITY_ENABLED') || self::debugHeadersEnabled();
+
+	}
+
+	/**
+	 * Return true when trace retention or export has been explicitly configured.
+	 */
+	public static function traceRecordingConfigured(): bool {
+
+		if (!is_null(self::$enabled)) {
+			return self::$enabled;
+		}
+
+		if (self::$adapter) {
+			return true;
+		}
+
+		return (bool)Env::get('PAIR_OBSERVABILITY_ENABLED');
 
 	}
 
@@ -255,7 +277,7 @@ final class Observability {
 	public static function start(string $name, array $attributes = []): ObservabilitySpan {
 
 		if (!self::shouldRecordTrace()) {
-			return new ObservabilitySpan($name, [], '', microtime(true));
+			return new ObservabilitySpan($name, [], '', microtime(true), false);
 		}
 
 		return new ObservabilitySpan(

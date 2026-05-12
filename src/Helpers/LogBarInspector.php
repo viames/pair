@@ -8,6 +8,16 @@ namespace Pair\Helpers;
 final readonly class LogBarInspector {
 
 	/**
+	 * Minimum DB share before a request can be considered DB-bound.
+	 */
+	private const DATABASE_BOUND_PERCENT = 50.0;
+
+	/**
+	 * Absolute DB time floor for percentage-based DB-bound warnings.
+	 */
+	private const MINIMUM_DATABASE_BOUND_MS = 50.0;
+
+	/**
 	 * Build the inspector with runtime thresholds.
 	 */
 	public function __construct(
@@ -56,9 +66,11 @@ final readonly class LogBarInspector {
 		$queryGroups = $this->queryGroups($entries);
 		$memoryLimitPercent = $memoryLimitBytes > 0 ? ($memoryPeakBytes / $memoryLimitBytes * 100) : 0.0;
 		$queryPercent = $totalSeconds > 0 ? ($querySeconds / $totalSeconds * 100) : 0.0;
+		$dbBoundRequest = $this->isDbBoundRequest($querySeconds * 1000, $queryPercent);
 
 		$data = [
 			'apiSeconds' => $apiSeconds,
+			'dbBoundRequest' => $dbBoundRequest,
 			'events' => $entries,
 			'errorCount' => $errorCount,
 			'memoryLimitBytes' => $memoryLimitBytes,
@@ -98,6 +110,28 @@ final readonly class LogBarInspector {
 	}
 
 	/**
+	 * Return true when DB time is both dominant and large enough to be actionable.
+	 */
+	private function isDbBoundRequest(float $queryMs, float $queryPercent): bool {
+
+		if ($queryPercent <= self::DATABASE_BOUND_PERCENT) {
+			return false;
+		}
+
+		return $queryMs >= $this->databaseBoundMinimumMs();
+
+	}
+
+	/**
+	 * Return the absolute floor used by percentage-based DB-bound warnings.
+	 */
+	private function databaseBoundMinimumMs(): float {
+
+		return max(self::MINIMUM_DATABASE_BOUND_MS, $this->slowQueryMs * 2.0);
+
+	}
+
+	/**
 	 * Build automatic findings for the overview pane.
 	 *
 	 * @param	array<string, mixed>	$data	Inspector summary data.
@@ -121,7 +155,7 @@ final readonly class LogBarInspector {
 			];
 		}
 
-		if ($queryMs > 0 and $queryPercent > 50.0) {
+		if (!empty($data['dbBoundRequest'])) {
 			$findings[] = [
 				'actionLabel' => 'Open queries',
 				'type' => 'warning',
@@ -237,36 +271,43 @@ final readonly class LogBarInspector {
 			}
 
 			$attributes = $entry->attributes;
-			$sql = (string)($attributes['normalizedSql'] ?? $entry->description);
+			$normalizedSql = (string)($attributes['normalizedSql'] ?? $entry->description);
+			// Keep normalized SQL for grouping metadata while showing the rendered query preview.
+			$sql = $entry->description;
 			$fingerprint = (string)($attributes['fingerprint'] ?? LogBarSql::fingerprint($sql));
+			$parameterFingerprint = (string)($attributes['parameterFingerprint'] ?? '');
+			$groupKey = $parameterFingerprint ? $fingerprint . ':' . $parameterFingerprint : $fingerprint;
 			$rows = is_numeric($attributes['rows'] ?? null) ? (int)$attributes['rows'] : (self::rowsFromSubtext($entry->subtext) ?? 0);
 
-			if (!isset($groups[$fingerprint])) {
-				$groups[$fingerprint] = [
+			if (!isset($groups[$groupKey])) {
+				$groups[$groupKey] = [
 					'avgMs' => 0.0,
 					'count' => 0,
 					'fingerprint' => $fingerprint,
+					'groupKey' => $groupKey,
 					'maxMs' => 0.0,
-					'occurrences' => [],
-					'operation' => (string)($attributes['operation'] ?? LogBarSql::operation($sql)),
+					'operation' => (string)($attributes['operation'] ?? LogBarSql::operation($normalizedSql)),
 					'rows' => 0,
 					'searchText' => '',
 					'sql' => $sql,
-					'table' => (string)($attributes['table'] ?? LogBarSql::table($sql)),
+					'status' => $entry->status,
+					'table' => (string)($attributes['table'] ?? LogBarSql::table($normalizedSql)),
 					'totalMs' => 0.0,
 				];
 			}
 
-			$groups[$fingerprint]['count']++;
-			$groups[$fingerprint]['totalMs'] += $entry->durationMs();
-			$groups[$fingerprint]['maxMs'] = max((float)$groups[$fingerprint]['maxMs'], $entry->durationMs());
-			$groups[$fingerprint]['rows'] += $rows;
-			$groups[$fingerprint]['occurrences'][] = [
-				'durationMs' => $entry->durationMs(),
-				'rows' => $rows,
-				'searchText' => $entry->searchText(),
-				'sql' => $entry->description,
-			];
+			if ('ok' !== $entry->status) {
+				$groups[$groupKey]['status'] = $entry->status;
+			}
+
+			if (isset($attributes['error'])) {
+				$groups[$groupKey]['error'] = (string)$attributes['error'];
+			}
+
+			$groups[$groupKey]['count']++;
+			$groups[$groupKey]['totalMs'] += $entry->durationMs();
+			$groups[$groupKey]['maxMs'] = max((float)$groups[$groupKey]['maxMs'], $entry->durationMs());
+			$groups[$groupKey]['rows'] += $rows;
 
 		}
 
@@ -276,6 +317,8 @@ final readonly class LogBarInspector {
 				$group['operation'],
 				$group['table'],
 				$group['sql'],
+				$group['status'],
+				$group['error'] ?? '',
 				$group['fingerprint'],
 			]);
 		}

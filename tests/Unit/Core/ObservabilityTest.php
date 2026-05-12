@@ -210,6 +210,22 @@ class ObservabilityTest extends TestCase {
 	}
 
 	/**
+	 * Verify debug headers alone do not require high-volume subsystems to retain spans.
+	 */
+	public function testDebugHeadersDoNotConfigureTraceRecording(): void {
+
+		$_ENV['APP_DEBUG'] = true;
+		$_ENV['PAIR_OBSERVABILITY_DEBUG_HEADERS'] = true;
+
+		$this->assertFalse(Observability::traceRecordingConfigured());
+
+		Observability::enable();
+
+		$this->assertTrue(Observability::traceRecordingConfigured());
+
+	}
+
+	/**
 	 * Verify debug headers stay hidden when APP_DEBUG is disabled.
 	 */
 	public function testDebugHeadersStayHiddenOutsideDebugMode(): void {

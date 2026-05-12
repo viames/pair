@@ -63,6 +63,16 @@ class Locale extends ActiveRecord {
 	private static array $representationCodes = [];
 
 	/**
+	 * Request-local cached default locale snapshot.
+	 */
+	private static ?self $defaultLocale = null;
+
+	/**
+	 * Tracks whether the default locale lookup already ran in the current request.
+	 */
+	private static bool $defaultLocaleLoaded = false;
+
+	/**
 	 * Table structure [Field => Type, Null, Key, Default, Extra].
 	 */
 	const TABLE_DESCRIPTION = [
@@ -123,7 +133,14 @@ class Locale extends ActiveRecord {
 
 	}
 
+	/**
+	 * Keep locale-level singleton flags consistent before saving locale changes.
+	 */
 	protected function beforeStore(): void {
+
+		// Locale changes can affect the default locale returned later in the same request.
+		self::clearDefaultLocaleCache();
+		self::clearRepresentationCodesCache();
 
 		// only one row can be appDefault
 		if ($this->appDefault) {
@@ -142,7 +159,32 @@ class Locale extends ActiveRecord {
 	 */
 	public static function getDefault(): ?Locale {
 
-		return static::getObjectByQuery('SELECT * FROM `locales` WHERE `app_default` = 1');
+		if (!self::$defaultLocaleLoaded) {
+			self::$defaultLocale = static::getObjectByQuery('SELECT * FROM `locales` WHERE `app_default` = 1');
+			self::$defaultLocaleLoaded = true;
+		}
+
+		// Return a clone so callers cannot mutate the shared request-local snapshot.
+		return self::$defaultLocale ? clone self::$defaultLocale : null;
+
+	}
+
+	/**
+	 * Clears the request-local default locale lookup cache.
+	 */
+	private static function clearDefaultLocaleCache(): void {
+
+		self::$defaultLocale = null;
+		self::$defaultLocaleLoaded = false;
+
+	}
+
+	/**
+	 * Clears the request-local representation code lookup cache.
+	 */
+	private static function clearRepresentationCodesCache(): void {
+
+		self::$representationCodes = [];
 
 	}
 
@@ -200,35 +242,95 @@ class Locale extends ActiveRecord {
 	 */
 	private function representationCodes(): array {
 
-		if (isset($this->id) and isset(self::$representationCodes[$this->id])) {
-			return self::$representationCodes[$this->id];
+		$localeId = isset($this->id) ? (int)$this->id : 0;
+
+		if ($localeId > 0 and isset(self::$representationCodes[$localeId])) {
+			return self::$representationCodes[$localeId];
 		}
 
-		if (isset($this->id)) {
-			$query =
-				'SELECT l.`code` AS `language_code`, c.`code` AS `country_code`
-				FROM `locales` AS lc
-				INNER JOIN `languages` AS l ON lc.`language_id` = l.`id`
-				INNER JOIN `countries` AS c ON lc.`country_id` = c.`id`
-				WHERE lc.`id` = ?
-				LIMIT 1';
+		if ($localeId > 0) {
+			$codes = $this->loadRepresentationCodes();
 
-			$row = Database::load($query, [$this->id], Database::OBJECT);
-			if ($row) {
-				return self::$representationCodes[$this->id] = [
-					'language' => (string)$row->language_code,
-					'country' => (string)$row->country_code,
-				];
+			if ($codes) {
+				return self::$representationCodes[$localeId] = $codes;
 			}
 		}
 
-		// Fallback for partially initialized Locale instances that do not have an id yet.
-		$country = $this->getCountry() ?? new Country($this->countryId);
-		$language = $this->getLanguage() ?? new Language($this->languageId);
+		// Fallback for partially initialized Locale instances without triggering relation discovery.
+		$codes = $this->loadRepresentationCodesByRelationIds();
+
+		if ($codes) {
+			return $codes;
+		}
+
+		$country = new Country($this->countryId);
+		$language = new Language($this->languageId);
 
 		return [
 			'language' => (string)$language->code,
 			'country' => (string)$country->code,
+		];
+
+	}
+
+	/**
+	 * Load language and country codes only for this locale id.
+	 *
+	 * @return	null|array{language: string, country: string}
+	 */
+	private function loadRepresentationCodes(): ?array {
+
+		$query =
+			'SELECT l.`code` AS `language_code`, c.`code` AS `country_code`
+			FROM `locales` AS lc
+			INNER JOIN `languages` AS l ON lc.`language_id` = l.`id`
+			INNER JOIN `countries` AS c ON lc.`country_id` = c.`id`
+			WHERE lc.`id` = ?
+			LIMIT 1';
+
+		$row = Database::load($query, [$this->id], Database::OBJECT);
+
+		if (!$row) {
+			return null;
+		}
+
+		return [
+			'language' => (string)$row->language_code,
+			'country' => (string)$row->country_code,
+		];
+
+	}
+
+	/**
+	 * Load language and country codes from relation ids when the locale has not been persisted yet.
+	 *
+	 * @return	null|array{language: string, country: string}
+	 */
+	private function loadRepresentationCodesByRelationIds(): ?array {
+
+		$languageId = isset($this->languageId) ? (int)$this->languageId : 0;
+		$countryId = isset($this->countryId) ? (int)$this->countryId : 0;
+
+		if ($languageId <= 0 or $countryId <= 0) {
+			return null;
+		}
+
+		$query =
+			'SELECT l.`code` AS `language_code`, c.`code` AS `country_code`
+			FROM `languages` AS l
+			INNER JOIN `countries` AS c ON c.`id` = ?
+			WHERE l.`id` = ?
+			LIMIT 1';
+
+		$row = Database::load($query, [$countryId, $languageId], Database::OBJECT);
+
+		if (!$row) {
+			return null;
+		}
+
+		return [
+			'language' => (string)$row->language_code,
+			'country' => (string)$row->country_code,
 		];
 
 	}

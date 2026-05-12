@@ -78,7 +78,7 @@ abstract class Controller {
 		}
 
 		// add ajax diagnostics outside the domain payload.
-		$eventList = LogBar::getInstance()->renderForAjax();
+		$eventList = LogBar::isRuntimeAvailable() ? LogBar::getInstance()->renderForAjax() : '';
 
 		if ($eventList) {
 			$meta['logBar'] = $eventList;
@@ -143,7 +143,7 @@ abstract class Controller {
 		}
 
 		// preserve the ajax diagnostics field used by legacy clients.
-		$eventList = LogBar::getInstance()->renderForAjax();
+		$eventList = LogBar::isRuntimeAvailable() ? LogBar::getInstance()->renderForAjax() : '';
 
 		if ($eventList) {
 			$payload['logBar'] = $eventList;
@@ -174,7 +174,7 @@ abstract class Controller {
 		}
 
 		// RFC 9457 allows extension members, so ajax diagnostics remain available.
-		$eventList = LogBar::getInstance()->renderForAjax();
+		$eventList = LogBar::isRuntimeAvailable() ? LogBar::getInstance()->renderForAjax() : '';
 
 		if ($eventList) {
 			$payload['logBar'] = $eventList;

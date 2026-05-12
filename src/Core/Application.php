@@ -1052,8 +1052,10 @@ class Application {
 			return;
 		}
 
-		$this->logBar = LogBar::getInstance();
-		$this->logBar->disable();
+		if (LogBar::isRuntimeAvailable()) {
+			$this->logBar = LogBar::getInstance();
+			$this->logBar->disable();
+		}
 
 		// require controller file
 		require $controllerFile;
@@ -1412,8 +1414,8 @@ class Application {
 		// Start or resume the app-scoped native PHP session.
 		static::startNativeSession();
 
-		// get existing previous session
-		$this->session = Session::find(session_id());
+		// get existing previous session through the request-local cache
+		$this->session = Session::current();
 
 		// session time length in minutes
 		$sessionTime = max(1, (int)Options::get('session_time'));
@@ -1472,6 +1474,15 @@ class Application {
 			$this->redirect($this->accessDeniedRedirectUrl($user, $resource, $this->session));
 
 			}
+
+	}
+
+	/**
+	 * Resolve LogBar visibility once user and option visibility are known.
+	 */
+	private function resolveLogBarVisibility(): void {
+
+		LogBar::resolveRequestVisibility();
 
 	}
 
@@ -2010,6 +2021,7 @@ class Application {
 
 		if (!static::isCli()) {
 			$this->initializeSession();
+			$this->resolveLogBarVisibility();
 		}
 
 		$this->runController();
@@ -2143,7 +2155,7 @@ class Application {
 				// Non-page responses already own the full body and must bypass template wrapping.
 				$this->shouldWrapResponseInTemplate = $response instanceof PageResponse;
 				$response->send();
-				$this->logBar = LogBar::getInstance();
+				$this->logBar = LogBar::isRuntimeAvailable() ? LogBar::getInstance() : null;
 				return;
 			}
 
@@ -2155,7 +2167,7 @@ class Application {
 			if (!method_exists($controller, 'renderView')) {
 				if ($actionFailed) {
 					// Explicit Pair v4 controllers have no legacy view fallback after an action failure.
-					$this->logBar = LogBar::getInstance();
+					$this->logBar = LogBar::isRuntimeAvailable() ? LogBar::getInstance() : null;
 					return;
 				}
 
@@ -2172,7 +2184,7 @@ class Application {
 				PairException::frontEnd($e);
 			}
 
-			$this->logBar = LogBar::getInstance();
+			$this->logBar = LogBar::isRuntimeAvailable() ? LogBar::getInstance() : null;
 
 		}
 

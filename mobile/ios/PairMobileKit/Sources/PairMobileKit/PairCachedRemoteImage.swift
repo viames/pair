@@ -12,6 +12,7 @@ fileprivate typealias PairPlatformImage = NSImage
 /// Remote image cache with fast memory storage, disk URLCache, and cookie-free requests.
 @MainActor
 public enum PairRemoteImageCache {
+	private static let defaultAcceptHeader = "image/avif,image/webp,image/apng,image/*,*/*;q=0.8"
 	private static let memoryCache = NSCache<NSString, PairPlatformImage>()
 	private static let diskCache = URLCache(
 		memoryCapacity: 24 * 1024 * 1024,
@@ -43,14 +44,12 @@ public enum PairRemoteImageCache {
 	}
 
 	/// Downloads the image through URLCache and then keeps it in memory.
-	fileprivate static func downloadImage(from url: URL) async throws -> PairPlatformImage {
+	fileprivate static func downloadImage(from url: URL, headers: [String: String] = [:]) async throws -> PairPlatformImage {
 		if let cachedImage = image(for: url) {
 			return cachedImage
 		}
 
-		var request = URLRequest(url: url, cachePolicy: .returnCacheDataElseLoad)
-		request.setValue("image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8", forHTTPHeaderField: "Accept")
-
+		let request = makeRequest(for: url, headers: headers)
 		let (data, response) = try await session.data(for: request)
 
 		guard let httpResponse = response as? HTTPURLResponse,
@@ -64,6 +63,18 @@ public enum PairRemoteImageCache {
 		return image
 	}
 
+	/// Builds the URLRequest used by the remote image cache, including optional host-app headers.
+	static func makeRequest(for url: URL, headers: [String: String] = [:]) -> URLRequest {
+		var request = URLRequest(url: url, cachePolicy: .returnCacheDataElseLoad)
+		request.setValue(defaultAcceptHeader, forHTTPHeaderField: "Accept")
+
+		for (field, value) in pairNormalizedRemoteImageHeaders(headers) {
+			request.setValue(value, forHTTPHeaderField: field)
+		}
+
+		return request
+	}
+
 	/// Builds a stable key from the absolute URL.
 	private static func cacheKey(for url: URL) -> NSString {
 		url.absoluteString as NSString
@@ -73,22 +84,33 @@ public enum PairRemoteImageCache {
 /// AsyncImage alternative that reuses the package-level Pair cache.
 public struct PairCachedRemoteImage<Content: View, Placeholder: View>: View {
 	private let url: URL?
+	private let headers: [String: String]
 	private let content: (Image) -> Content
 	private let placeholder: () -> Placeholder
 
 	@State private var image: PairPlatformImage?
 
-	private var loadIdentifier: String {
-		url?.absoluteString ?? ""
+	private var loadIdentifier: Int {
+		var hasher = Hasher()
+		hasher.combine(url?.absoluteString ?? "")
+
+		for (field, value) in headers.sorted(by: { $0.key.localizedCaseInsensitiveCompare($1.key) == .orderedAscending }) {
+			hasher.combine(field.lowercased())
+			hasher.combine(value)
+		}
+
+		return hasher.finalize()
 	}
 
 	/// Initializes the loader with an optional URL, content, and placeholder.
 	public init(
 		url: URL?,
+		headers: [String: String] = [:],
 		@ViewBuilder content: @escaping (Image) -> Content,
 		@ViewBuilder placeholder: @escaping () -> Placeholder
 	) {
 		self.url = url
+		self.headers = pairNormalizedRemoteImageHeaders(headers)
 		self.content = content
 		self.placeholder = placeholder
 	}
@@ -122,7 +144,7 @@ public struct PairCachedRemoteImage<Content: View, Placeholder: View>: View {
 		image = nil
 
 		do {
-			let downloadedImage = try await PairRemoteImageCache.downloadImage(from: url)
+			let downloadedImage = try await PairRemoteImageCache.downloadImage(from: url, headers: headers)
 
 			if !Task.isCancelled {
 				image = downloadedImage
@@ -131,6 +153,18 @@ public struct PairCachedRemoteImage<Content: View, Placeholder: View>: View {
 			if !Task.isCancelled {
 				image = nil
 			}
+		}
+	}
+}
+
+/// Removes empty HTTP header names and values before building image requests.
+fileprivate func pairNormalizedRemoteImageHeaders(_ headers: [String: String]) -> [String: String] {
+	headers.reduce(into: [:]) { normalizedHeaders, header in
+		let field = header.key.trimmingCharacters(in: .whitespacesAndNewlines)
+		let value = header.value.trimmingCharacters(in: .whitespacesAndNewlines)
+
+		if !field.isEmpty && !value.isEmpty {
+			normalizedHeaders[field] = value
 		}
 	}
 }

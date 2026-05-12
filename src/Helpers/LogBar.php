@@ -82,6 +82,23 @@ class LogBar {
 	private int $nextEventId = 1;
 
 	/**
+	 * Request-local cache for SQL metadata that is expensive to derive repeatedly.
+	 *
+	 * @var	array<string, array<string, mixed>>
+	 */
+	private static array $queryAttributeCache = [];
+
+	/**
+	 * Request-local visibility decision, resolved after the session is known.
+	 */
+	private static ?bool $requestCanBeShown = null;
+
+	/**
+	 * Tracks visibility resolution so helper queries do not bootstrap LogBar recursively.
+	 */
+	private static bool $resolvingRequestVisibility = false;
+
+	/**
 	 * Disabled constructor.
 	 */
 	private function __construct() {}
@@ -145,8 +162,45 @@ class LogBar {
 	 */
 	public function canBeShown(): bool {
 
+		return self::currentRequestCanBeShown();
+
+	}
+
+	/**
+	 * Return the cached request visibility, resolving it once if needed.
+	 */
+	private static function currentRequestCanBeShown(): bool {
+
+		if (is_bool(self::$requestCanBeShown)) {
+			return self::$requestCanBeShown;
+		}
+
+		if ('cli' == php_sapi_name() or !self::runtimeEnabled()) {
+			self::$requestCanBeShown = false;
+			return false;
+		}
+
+		self::$resolvingRequestVisibility = true;
+
+		try {
+			self::$requestCanBeShown = self::canBeShownForCurrentSession();
+		} finally {
+			self::$resolvingRequestVisibility = false;
+		}
+
+		return self::$requestCanBeShown;
+
+	}
+
+	/**
+	 * Check if the log can appear for the current session without requiring an instance.
+	 */
+	private static function canBeShownForCurrentSession(): bool {
+
+		$user = User::current();
+
 		// The LogBar is intentionally restricted to super users with the show_log option.
-		if (User::current() and Options::get('show_log')) {
+		if ($user and Options::get('show_log')) {
 
 			$session = Session::current();
 
@@ -155,7 +209,7 @@ class LogBar {
 				return ($formerUser ? $formerUser->super : false);
 			}
 
-			return (bool)User::current()->super;
+			return (bool)$user->super;
 
 		}
 
@@ -198,6 +252,10 @@ class LogBar {
 	 * @param	null|string	$subtext		Optional additional text.
 	 */
 	final public static function event(string $description, string $type = 'notice', ?string $subtext = null): void {
+
+		if (!self::isRuntimeAvailable()) {
+			return;
+		}
 
 		$self = self::getInstance();
 
@@ -257,6 +315,23 @@ class LogBar {
 		}
 
 		return self::$instance;
+
+	}
+
+	/**
+	 * Return true when the current PHP runtime may initialize LogBar collection.
+	 */
+	final public static function isRuntimeAvailable(): bool {
+
+		if ('cli' == php_sapi_name() or !self::runtimeEnabled()) {
+			return false;
+		}
+
+		if (self::$resolvingRequestVisibility) {
+			return false;
+		}
+
+		return false !== self::$requestCanBeShown;
 
 	}
 
@@ -356,7 +431,7 @@ class LogBar {
 	 */
 	final public function isEnabled(): bool {
 
-		if ($this->disabled or 'cli' == php_sapi_name() or !self::runtimeEnabled()) {
+		if ($this->disabled or !self::isRuntimeAvailable()) {
 			return false;
 		}
 
@@ -411,7 +486,11 @@ class LogBar {
 	 *
 	 * @param	array<int|string, mixed>	$params	Bound query parameters.
 	 */
-	final public static function query(string $query, int $rows, array $params = [], ?float $durationMs = null, ?float $startedAt = null): void {
+	final public static function query(string $query, int $rows, array $params = [], ?float $durationMs = null, ?float $startedAt = null, ?string $status = null, ?string $error = null): void {
+
+		if (!self::isRuntimeAvailable()) {
+			return;
+		}
 
 		$self = self::getInstance();
 
@@ -419,12 +498,18 @@ class LogBar {
 			return;
 		}
 
-		$description = LogBarSql::render($query, $params, self::showSqlValues());
+		$normalizedSql = LogBarSql::normalize($query);
+		$description = self::showSqlValues() ? LogBarSql::render($query, $params, true) : $normalizedSql;
 		$subtext = $rows . ' ' . (1 === $rows ? 'row' : 'rows');
 		$start = is_null($startedAt) ? null : max(0.0, $startedAt - $self->timeStart);
 		$duration = is_null($durationMs) ? null : max(0.0, $durationMs / 1000);
+		$attributes = self::queryAttributes($query, $rows, $normalizedSql, $params);
 
-		$self->addEvent($description, 'query', $subtext, self::queryAttributes($query, $rows), null, $start, $duration);
+		if (is_string($error) and '' !== trim($error)) {
+			$attributes['error'] = $error;
+		}
+
+		$self->addEvent($description, 'query', $subtext, $attributes, $status, $start, $duration);
 
 	}
 
@@ -433,15 +518,65 @@ class LogBar {
 	 *
 	 * @return	array<string, mixed>
 	 */
-	private static function queryAttributes(string $query, ?int $rows = null): array {
+	private static function queryAttributes(string $query, ?int $rows = null, ?string $normalizedSql = null, array $params = []): array {
 
-		return [
-			'fingerprint' => LogBarSql::fingerprint($query),
-			'normalizedSql' => LogBarSql::normalize($query),
-			'operation' => LogBarSql::operation($query),
-			'rows' => $rows,
-			'table' => LogBarSql::table($query),
-		];
+		$normalizedSql = $normalizedSql ?? LogBarSql::normalize($query);
+		$cacheKey = $normalizedSql;
+
+		if (!isset(self::$queryAttributeCache[$cacheKey])) {
+			self::$queryAttributeCache[$cacheKey] = [
+				'fingerprint' => LogBarSql::fingerprintFromNormalized($normalizedSql),
+				'normalizedSql' => $normalizedSql,
+				'operation' => LogBarSql::operation($query),
+				'table' => LogBarSql::table($query),
+			];
+		}
+
+		$attributes = self::$queryAttributeCache[$cacheKey];
+		$attributes['rows'] = $rows;
+		$attributes['parameterFingerprint'] = self::parameterFingerprint($params);
+
+		return $attributes;
+
+	}
+
+	/**
+	 * Return a non-rendered hash that distinguishes identical SQL with different bound parameters.
+	 *
+	 * @param	array<int|string, mixed>	$params	Bound query parameters.
+	 */
+	private static function parameterFingerprint(array $params): string {
+
+		if (!count($params)) {
+			return '';
+		}
+
+		ksort($params);
+		$parts = [];
+
+		foreach ($params as $name => $value) {
+			$parts[] = (string)$name . ':' . get_debug_type($value) . ':' . self::parameterFingerprintValue($value);
+		}
+
+		return substr(hash('sha1', implode('|', $parts)), 0, 16);
+
+	}
+
+	/**
+	 * Convert one parameter value into a hashable representation without exposing it to LogBar output.
+	 */
+	private static function parameterFingerprintValue(mixed $value): string {
+
+		if (is_null($value) or is_bool($value) or is_int($value) or is_float($value) or is_string($value)) {
+			return hash('sha1', json_encode($value, JSON_PARTIAL_OUTPUT_ON_ERROR) ?: get_debug_type($value));
+		}
+
+		if (is_array($value)) {
+			ksort($value);
+			return hash('sha1', json_encode($value, JSON_PARTIAL_OUTPUT_ON_ERROR) ?: 'array');
+		}
+
+		return hash('sha1', get_debug_type($value));
 
 	}
 
@@ -504,7 +639,19 @@ class LogBar {
 		$this->disabled = false;
 		$this->eventLimitWarningAdded = false;
 		$this->nextEventId = 1;
+		self::$queryAttributeCache = [];
+		self::$requestCanBeShown = null;
+		self::$resolvingRequestVisibility = false;
 		$this->startChrono();
+
+	}
+
+	/**
+	 * Resolve the current request visibility without starting the LogBar timer.
+	 */
+	final public static function resolveRequestVisibility(): void {
+
+		self::currentRequestCanBeShown();
 
 	}
 
@@ -513,7 +660,7 @@ class LogBar {
 	 */
 	final public function registerAssets(string $assetsPath = ''): void {
 
-		if ($this->assetsRegistered) {
+		if ($this->assetsRegistered or !$this->isEnabled() or !$this->canBeShown()) {
 			return;
 		}
 
@@ -692,17 +839,21 @@ class LogBar {
 	}
 
 	/**
-	 * Return whether SQL values are explicitly allowed in LogBar previews.
+	 * Return whether SQL values are allowed in LogBar previews.
 	 */
 	private static function showSqlValues(): bool {
 
 		$value = Env::get('PAIR_LOGBAR_SHOW_SQL_VALUES');
 
+		if (is_null($value) or '' === trim((string)$value)) {
+			return true;
+		}
+
 		if (is_bool($value)) {
 			return $value;
 		}
 
-		return in_array(strtolower((string)$value), ['1', 'true', 'yes', 'on'], true);
+		return !in_array(strtolower(trim((string)$value)), ['0', 'false', 'no', 'off'], true);
 
 	}
 

@@ -181,6 +181,77 @@
   }
 
   /**
+   * Lazily build the full SQL detail for an expanded query group.
+   * @param {Element} group
+   */
+  function renderQueryDetail(group) {
+    const target = group.querySelector("[data-logbar-query-detail]");
+    const preview = group.querySelector(".logbar-sql-preview");
+    const sql = preview ? preview.textContent || "" : "";
+
+    if (!target || target.getAttribute("data-logbar-detail-rendered") === "1" || !sql) return;
+
+    const wrap = document.createElement("div");
+    const button = document.createElement("button");
+    const icon = document.createElement("span");
+    const pre = document.createElement("pre");
+    const code = document.createElement("code");
+
+    wrap.className = "logbar-query-fullsql-wrap";
+    button.type = "button";
+    button.className = "logbar-query-copy";
+    button.setAttribute("data-logbar-copy-value", sql);
+    button.setAttribute("aria-label", "Copy full query");
+    button.setAttribute("title", "Copy query");
+    icon.setAttribute("aria-hidden", "true");
+    pre.className = "logbar-query-fullsql";
+    code.textContent = sql;
+
+    button.appendChild(icon);
+    pre.appendChild(code);
+    wrap.appendChild(button);
+    wrap.appendChild(pre);
+    target.appendChild(wrap);
+    target.setAttribute("data-logbar-detail-rendered", "1");
+  }
+
+  /**
+   * Reflect one query detail state on its ellipsis button without layout measurements.
+   * @param {Element} group
+   * @param {boolean} expanded
+   */
+  function setQueryDetailButtonState(group, expanded) {
+    const button = group.querySelector("[data-logbar-query-detail-toggle]");
+
+    if (!button) return;
+
+    button.classList.toggle(button.getAttribute("data-logbar-query-detail-active-class") || "active", expanded);
+    button.setAttribute("aria-expanded", expanded ? "true" : "false");
+    button.setAttribute("title", expanded ? "Hide full query" : "Show full query");
+  }
+
+  /**
+   * Open or close a query detail pane from its ellipsis button.
+   * @param {Element} button
+   */
+  function toggleQueryDetail(button) {
+    const group = button.closest("[data-logbar-query-group]");
+    let expanded = false;
+
+    if (!group) return;
+
+    if (group.hasAttribute("open")) {
+      group.removeAttribute("open");
+    } else {
+      group.setAttribute("open", "");
+      renderQueryDetail(group);
+      expanded = true;
+    }
+
+    setQueryDetailButtonState(group, expanded);
+  }
+
+  /**
    * Update every LogBar breakpoint metric currently available in the document.
    */
   function updateAllBreakpoints() {
@@ -222,22 +293,19 @@
       button.classList.toggle("active", active);
       button.setAttribute("aria-selected", active ? "true" : "false");
     });
+
   }
 
   /**
-   * Apply text, type, and query filters to visible rows.
+   * Apply text and issue filters to visible rows.
    * @param {Element} logbar
    */
   function applyFilters(logbar) {
     const searchControl = logbar.querySelector("[data-logbar-search]");
-    const typeControl = logbar.querySelector("[data-logbar-type-filter]");
-    const queriesOnlyControl = logbar.querySelector("[data-logbar-queries-only]");
     const warningsOnlyControl = logbar.querySelector("[data-logbar-warnings-only]");
     const duplicatesOnlyControl = logbar.querySelector("[data-logbar-duplicates-only]");
     const body = logbar.querySelector(".logbar-body");
     const search = ((searchControl && searchControl.value) || "").toLowerCase();
-    const type = (typeControl && typeControl.value) || "";
-    const queriesOnly = !!(queriesOnlyControl && queriesOnlyControl.checked);
     const warningsOnly = !!(warningsOnlyControl && warningsOnlyControl.checked);
     const duplicatesOnly = !!(duplicatesOnlyControl && duplicatesOnlyControl.checked);
     const queryRowsVisible = !body || body.classList.contains("logbar-show-queries") || body.classList.contains("show-queries");
@@ -248,9 +316,8 @@
       let hidden = false;
 
       if (search && text.indexOf(search) === -1) hidden = true;
-      if (type && rowType !== type) hidden = true;
-      if (queriesOnly && rowType !== "query") hidden = true;
       if (warningsOnly && rowType !== "warning" && rowType !== "error") hidden = true;
+      if (duplicatesOnly && row.getAttribute("data-logbar-duplicate") !== "1") hidden = true;
       if (!queryRowsVisible && rowType === "query") hidden = true;
 
       row.hidden = hidden;
@@ -258,11 +325,11 @@
 
     logbar.querySelectorAll("[data-logbar-query-group]").forEach(function (group) {
       const text = (group.getAttribute("data-logbar-text") || "").toLowerCase();
+      const status = group.getAttribute("data-logbar-status") || "";
       let hidden = false;
 
       if (search && text.indexOf(search) === -1) hidden = true;
-      if (type && type !== "query") hidden = true;
-      if (warningsOnly) hidden = true;
+      if (warningsOnly && status !== "warning" && status !== "error") hidden = true;
       if (duplicatesOnly && group.getAttribute("data-logbar-duplicate") !== "1") hidden = true;
 
       group.hidden = hidden;
@@ -279,6 +346,8 @@
     for (const group of groups) {
       if (!group.hidden) {
         group.setAttribute("open", "");
+        renderQueryDetail(group);
+        setQueryDetailButtonState(group, true);
         return;
       }
     }
@@ -293,8 +362,6 @@
     const tabName = button.getAttribute("data-logbar-finding-tab") || "overview";
     const safeTabName = logbar.querySelector('[data-logbar-tab="' + tabName + '"]') ? tabName : "overview";
     const searchControl = logbar.querySelector("[data-logbar-search]");
-    const typeControl = logbar.querySelector("[data-logbar-type-filter]");
-    const queriesOnlyControl = logbar.querySelector("[data-logbar-queries-only]");
     const warningsOnlyControl = logbar.querySelector("[data-logbar-warnings-only]");
     const duplicatesOnlyControl = logbar.querySelector("[data-logbar-duplicates-only]");
 
@@ -302,8 +369,6 @@
 
     // Reset manual filters before applying the finding so old filters cannot hide the target rows.
     if (searchControl) searchControl.value = button.getAttribute("data-logbar-finding-search") || "";
-    if (typeControl) typeControl.value = button.getAttribute("data-logbar-finding-type") || "";
-    if (queriesOnlyControl) queriesOnlyControl.checked = button.getAttribute("data-logbar-finding-queries-only") === "1";
     if (warningsOnlyControl) warningsOnlyControl.checked = button.getAttribute("data-logbar-finding-warnings-only") === "1";
     if (duplicatesOnlyControl) duplicatesOnlyControl.checked = button.getAttribute("data-logbar-finding-duplicates-only") === "1";
 
@@ -333,21 +398,32 @@
   }
 
   /**
-   * Toggle query rows and persist the query visibility cookie.
+   * Open the LogBar details directly on the aggregated query list.
    * @param {Element} logbar
    */
-  function toggleQueries(logbar) {
+  function showQueries(logbar) {
     const body = logbar.querySelector(".logbar-body");
     const queryToggle = logbar.querySelector("[data-logbar-query-toggle]");
+    const detailsToggle = logbar.querySelector("#toggle-events");
 
     if (!body || !queryToggle) return;
 
-    const showQueries = body.classList.toggle("logbar-show-queries");
+    body.classList.remove("hidden");
 
     // Keep the legacy class in sync for older injected AJAX rows and custom themes.
-    body.classList.toggle("show-queries", showQueries);
-    queryToggle.classList.toggle("active", showQueries);
-    writeCookie("LogBarShowQueries", showQueries ? "1" : "0");
+    body.classList.add("logbar-show-queries");
+    body.classList.add("show-queries");
+    queryToggle.classList.add("active");
+
+    if (detailsToggle) {
+      detailsToggle.classList.add("expanded");
+      detailsToggle.setAttribute("aria-expanded", "true");
+      detailsToggle.textContent = "Hide details";
+    }
+
+    writeCookie("LogBarShowEvents", "1");
+    writeCookie("LogBarShowQueries", "1");
+    setActiveTab(logbar, "queries");
     applyFilters(logbar);
   }
 
@@ -397,7 +473,7 @@
    * @param {MouseEvent} event
    */
   function handleClick(event) {
-    const target = event.target && typeof event.target.closest === "function" ? event.target.closest("#toggle-events, [data-logbar-tab-button], [data-logbar-query-toggle], [data-logbar-copy-value], [data-logbar-finding-action]") : null;
+    const target = event.target && typeof event.target.closest === "function" ? event.target.closest("#toggle-events, [data-logbar-tab-button], [data-logbar-query-toggle], [data-logbar-query-detail-toggle], [data-logbar-copy-value], [data-logbar-finding-action], .logbar-query-summary") : null;
     const logbar = logbarRoot(target);
 
     if (!target || !logbar) return;
@@ -414,6 +490,12 @@
       return;
     }
 
+    if (target.hasAttribute("data-logbar-query-detail-toggle")) {
+      event.preventDefault();
+      toggleQueryDetail(target);
+      return;
+    }
+
     if (target.id === "toggle-events") {
       event.preventDefault();
       toggleEvents(logbar);
@@ -422,7 +504,7 @@
 
     if (target.hasAttribute("data-logbar-query-toggle")) {
       event.preventDefault();
-      toggleQueries(logbar);
+      showQueries(logbar);
       return;
     }
 
@@ -430,6 +512,11 @@
       event.preventDefault();
       setActiveTab(logbar, target.getAttribute("data-logbar-tab-button") || "overview");
       applyFilters(logbar);
+      return;
+    }
+
+    if (target.classList.contains("logbar-query-summary")) {
+      event.preventDefault();
     }
   }
 
@@ -438,7 +525,7 @@
    * @param {Event} event
    */
   function handleFilterEvent(event) {
-    const target = event.target && typeof event.target.closest === "function" ? event.target.closest("[data-logbar-search], [data-logbar-type-filter], [data-logbar-queries-only], [data-logbar-warnings-only], [data-logbar-duplicates-only]") : null;
+    const target = event.target && typeof event.target.closest === "function" ? event.target.closest("[data-logbar-search], [data-logbar-warnings-only], [data-logbar-duplicates-only]") : null;
     const logbar = logbarRoot(target);
 
     if (!target || !logbar) return;

@@ -312,21 +312,23 @@ body[data-bs-theme="dark"] #logbar {
 }
 
 #logbar .logbar-context-item {
-    align-items: baseline;
+    align-items: center;
     background: var(--pair-logbar-bg-soft);
     border: 1px solid var(--pair-logbar-border-soft);
     border-radius: 6px;
+    box-sizing: border-box;
     display: inline-flex;
     gap: 0.32rem;
+    min-height: 2rem;
     min-width: 0;
-    padding: 0.22rem 0.48rem;
+    padding: 0.4rem 0.52rem;
 }
 
 #logbar .logbar-context-label {
     color: var(--pair-logbar-muted);
     font-size: 0.62rem;
     font-weight: 750;
-    line-height: 1.2;
+    line-height: 1;
     text-transform: uppercase;
 }
 
@@ -335,7 +337,7 @@ body[data-bs-theme="dark"] #logbar {
     display: inline-block;
     font-size: 0.72rem;
     font-weight: 750;
-    line-height: 1.2;
+    line-height: 1;
     max-width: 14rem;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -347,12 +349,15 @@ body[data-bs-theme="dark"] #logbar {
 }
 
 #logbar .logbar-context-copy {
+    align-items: center;
     appearance: none;
     background: transparent;
     border: 0;
     color: inherit;
     cursor: pointer;
+    display: inline-flex;
     font: inherit;
+    line-height: 1;
     margin: 0;
     padding: 0;
 }
@@ -407,6 +412,10 @@ body[data-bs-theme="dark"] #logbar {
     background: var(--pair-logbar-bg-card);
     border: 1px solid var(--pair-logbar-border);
     border-radius: 7px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 4.25rem;
     min-width: 0;
     padding: 0.5rem 0.65rem;
 }
@@ -445,12 +454,6 @@ body[data-bs-theme="dark"] #logbar {
 
 #logbar .logbar-metric.database {
     cursor: pointer;
-}
-
-#logbar .logbar-metric.database.active,
-#logbar .logbar-metric.database:hover {
-    border-color: var(--pair-logbar-query);
-    box-shadow: inset 0 0 0 1px rgba(120, 200, 138, 0.28);
 }
 
 #logbar .logbar-metric.warning {
@@ -641,10 +644,6 @@ body[data-bs-theme="dark"] #logbar {
     text-transform: none;
 }
 
-#logbar.logbar-tab-queries .logbar-filter-query-events {
-    display: none;
-}
-
 #logbar .logbar-section-title {
     color: var(--pair-logbar-muted);
     font-size: 0.74rem;
@@ -766,6 +765,20 @@ body[data-bs-theme="dark"] #logbar {
     color: var(--pair-logbar-muted);
 }
 
+#logbar .logbar-event-message > span,
+#logbar .logbar-timeline-text > span {
+    display: block;
+    min-width: 0;
+}
+
+#logbar .logbar-event-meta {
+    color: var(--pair-logbar-muted);
+    display: block;
+    font-size: 0.68rem;
+    line-height: 1.35;
+    margin-top: 0.12rem;
+}
+
 #logbar .logbar-type-api .logbar-event-type {
     color: var(--pair-logbar-api);
 }
@@ -841,8 +854,8 @@ body[data-bs-theme="dark"] #logbar {
 #logbar .logbar-query-summary {
     display: grid;
     gap: 0.55rem;
-    grid-template-columns: 4.3rem 5.2rem 5.2rem 5.2rem 4.5rem 5.3rem 7.5rem minmax(14rem, 1fr);
-    min-width: 58rem;
+    grid-template-columns: 4.3rem 5.2rem 4.5rem 5.3rem 7.5rem minmax(18rem, 1fr);
+    min-width: 48rem;
 }
 
 #logbar .logbar-query-head {
@@ -857,7 +870,7 @@ body[data-bs-theme="dark"] #logbar {
     border: 1px solid var(--pair-logbar-border);
     border-radius: 8px;
     margin-bottom: 0.55rem;
-    min-width: 58rem;
+    min-width: 48rem;
     overflow: hidden;
 }
 
@@ -873,11 +886,16 @@ body[data-bs-theme="dark"] #logbar {
     box-shadow: inset 0 0 0 1px rgba(240, 185, 93, 0.18);
 }
 
+#logbar .logbar-query-group.logbar-query-error {
+    border-color: var(--pair-logbar-error);
+    box-shadow: inset 0 0 0 1px rgba(196, 79, 95, 0.18);
+}
+
 #logbar .logbar-query-summary {
     align-items: center;
-    cursor: pointer;
+    cursor: default;
     list-style: none;
-    padding: 0.65rem 0.8rem 0.65rem 1.25rem;
+    padding: 0.65rem 0.8rem;
     position: relative;
 }
 
@@ -885,30 +903,27 @@ body[data-bs-theme="dark"] #logbar {
     display: none;
 }
 
-#logbar .logbar-query-summary::before {
-    color: var(--pair-logbar-muted);
-    content: "\f0da";
-    font-family: "Font Awesome 6 Pro", "Font Awesome 6 Free";
-    left: 0.62rem;
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-}
-
-#logbar .logbar-query-group[open] .logbar-query-summary::before {
-    content: "\f0d7";
-}
-
 #logbar .logbar-query-cell strong {
     display: block;
     font-size: 0.9rem;
-    font-weight: 750;
+    font-weight: 600;
     line-height: 1.25;
     margin-top: 0.12rem;
 }
 
+#logbar .logbar-query-cell small {
+    font-weight: 600;
+}
+
+#logbar .logbar-query-cell:first-child strong {
+    font-weight: 650;
+}
+
 #logbar .logbar-query-sql {
-    display: block;
+    align-items: center;
+    display: grid;
+    gap: 0.32rem;
+    grid-template-columns: minmax(0, 1fr) auto;
     min-width: 0;
 }
 
@@ -916,6 +931,7 @@ body[data-bs-theme="dark"] #logbar {
     display: flex;
     flex-wrap: wrap;
     gap: 0.28rem;
+    grid-column: 1 / -1;
     margin-bottom: 0.28rem;
 }
 
@@ -938,25 +954,88 @@ body[data-bs-theme="dark"] #logbar {
     color: var(--pair-logbar-warning);
 }
 
+#logbar .logbar-query-badge-error {
+    border-color: rgba(196, 79, 95, 0.5);
+    color: var(--pair-logbar-error);
+}
+
 #logbar .logbar-sql-preview,
 #logbar .logbar-query-occurrence code {
     color: var(--pair-logbar-text);
+    font-weight: 450;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-#logbar .logbar-query-duplicate-over-budget .logbar-sql-preview,
-#logbar .logbar-query-expensive .logbar-sql-preview {
-    display: block;
-    line-height: 1.38;
-    max-height: 2.8em;
-    white-space: normal;
+#logbar.logbar-shell-native [data-logbar-query-detail-toggle] {
+    align-items: center;
+    appearance: none;
+    background: transparent;
+    border: 1px solid var(--pair-logbar-border);
+    border-radius: 999px;
+    color: var(--pair-logbar-muted);
+    cursor: pointer;
+    display: inline-flex;
+    font-size: 0.72rem;
+    font-weight: 650;
+    height: 1.35rem;
+    justify-content: center;
+    line-height: 1;
+    min-width: 1.65rem;
+    padding: 0 0.34rem 0.12rem;
+}
+
+#logbar.logbar-shell-native [data-logbar-query-detail-toggle]:hover,
+#logbar.logbar-shell-native [data-logbar-query-detail-toggle]:focus-visible {
+    border-color: var(--pair-logbar-accent);
+    color: var(--pair-logbar-accent);
+    outline: 0;
+}
+
+#logbar.logbar-shell-native [data-logbar-query-detail-toggle].logbar-query-detail-toggle-warning {
+    border-color: var(--pair-logbar-warning);
+    color: var(--pair-logbar-warning);
+}
+
+#logbar.logbar-shell-native [data-logbar-query-detail-toggle].logbar-query-detail-toggle-danger {
+    border-color: var(--pair-logbar-error);
+    color: var(--pair-logbar-error);
+}
+
+#logbar.logbar-shell-native [data-logbar-query-detail-toggle].active,
+#logbar.logbar-shell-native .logbar-query-group[open] [data-logbar-query-detail-toggle] {
+    background: var(--pair-logbar-accent);
+    border-color: var(--pair-logbar-accent);
+    color: var(--pair-logbar-accent-text);
+}
+
+#logbar.logbar-shell-native [data-logbar-query-detail-toggle].logbar-query-detail-toggle-warning.active,
+#logbar.logbar-shell-native .logbar-query-group[open] [data-logbar-query-detail-toggle].logbar-query-detail-toggle-warning {
+    background: var(--pair-logbar-warning);
+    border-color: var(--pair-logbar-warning);
+    color: var(--pair-logbar-accent-text);
+}
+
+#logbar.logbar-shell-native [data-logbar-query-detail-toggle].logbar-query-detail-toggle-danger.active,
+#logbar.logbar-shell-native .logbar-query-group[open] [data-logbar-query-detail-toggle].logbar-query-detail-toggle-danger {
+    background: var(--pair-logbar-error);
+    border-color: var(--pair-logbar-error);
+    color: var(--pair-logbar-accent-text);
 }
 
 #logbar .logbar-query-occurrences {
     border-top: 1px solid var(--pair-logbar-border);
     padding: 0.55rem 0.8rem 0.7rem;
+}
+
+#logbar .logbar-query-occurrences:empty {
+    display: none;
+}
+
+#logbar .logbar-query-fullsql-wrap {
+    position: relative;
 }
 
 #logbar .logbar-query-fullsql {
@@ -969,8 +1048,40 @@ body[data-bs-theme="dark"] #logbar {
     margin: 0 0 0.55rem;
     max-height: 14rem;
     overflow: auto;
-    padding: 0.65rem;
+    padding: 0.65rem 2.35rem 0.65rem 0.65rem;
     white-space: pre-wrap;
+}
+
+#logbar .logbar-query-copy {
+    align-items: center;
+    appearance: none;
+    background: var(--pair-logbar-bg-card);
+    border: 1px solid var(--pair-logbar-border);
+    border-radius: 6px;
+    color: var(--pair-logbar-muted);
+    cursor: pointer;
+    display: inline-flex;
+    height: 1.55rem;
+    justify-content: center;
+    position: absolute;
+    right: 0.45rem;
+    top: 0.45rem;
+    width: 1.55rem;
+    z-index: 1;
+}
+
+#logbar .logbar-query-copy span::before {
+    content: "\f0c5";
+    font-family: "Font Awesome 6 Pro", "Font Awesome 6 Free";
+    font-size: 0.78rem;
+}
+
+#logbar .logbar-query-copy:hover,
+#logbar .logbar-query-copy:focus-visible,
+#logbar .logbar-query-copy.copied {
+    border-color: var(--pair-logbar-accent);
+    color: var(--pair-logbar-accent);
+    outline: 0;
 }
 
 #logbar .logbar-query-occurrence {
@@ -1034,6 +1145,11 @@ body[data-bs-theme="dark"] #logbar {
 #logbar .logbar-timeline-text {
     color: var(--pair-logbar-muted);
     font-size: 0.8rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#logbar .logbar-timeline-text > span {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

@@ -37,7 +37,7 @@ class EnvTest extends TestCase {
 		$this->assertSame(30, Env::get('PAIR_LOGBAR_QUERY_BUDGET'));
 		$this->assertSame(3, Env::get('PAIR_LOGBAR_DUPLICATE_QUERY_BUDGET'));
 		$this->assertSame(500, Env::get('PAIR_LOGBAR_MAX_EVENTS'));
-		$this->assertFalse(Env::get('PAIR_LOGBAR_SHOW_SQL_VALUES'));
+		$this->assertTrue(Env::get('PAIR_LOGBAR_SHOW_SQL_VALUES'));
 		$this->assertSame('', Env::get('SENTRY_DSN'));
 		$this->assertSame('', Env::get('SENTRY_ENVIRONMENT'));
 		$this->assertSame('', Env::get('SENTRY_RELEASE'));

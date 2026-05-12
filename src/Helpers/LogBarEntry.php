@@ -53,6 +53,7 @@ final readonly class LogBarEntry {
 			(string)($this->attributes['operation'] ?? ''),
 			(string)($this->attributes['table'] ?? ''),
 			(string)($this->attributes['normalizedSql'] ?? ''),
+			(string)($this->attributes['fingerprint'] ?? ''),
 		]));
 
 	}

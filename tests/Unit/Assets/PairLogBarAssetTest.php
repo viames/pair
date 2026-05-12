@@ -23,7 +23,8 @@ class PairLogBarAssetTest extends TestCase {
 		$this->assertStringContainsString('const BULMA_BREAKPOINTS', $source);
 		$this->assertStringContainsString('{ name: "desktop", min: 1024 }', $source);
 		$this->assertStringContainsString('metric.querySelector(".logbar-context-value")', $source);
-		$this->assertStringContainsString('window.addEventListener("resize", scheduleBreakpointUpdate);', $source);
+		$this->assertStringContainsString('window.addEventListener("resize", scheduleBreakpointUpdate)', $source);
+		$this->assertStringContainsString('global.requestAnimationFrame ? global.requestAnimationFrame(refresh) : global.setTimeout(refresh, 16)', $source);
 
 	}
 
@@ -50,8 +51,42 @@ class PairLogBarAssetTest extends TestCase {
 		$this->assertStringContainsString('[data-logbar-finding-action]', $source);
 		$this->assertStringContainsString('function applyFindingAction(logbar, button)', $source);
 		$this->assertStringContainsString('data-logbar-finding-duplicates-only', $source);
+		$this->assertStringContainsString('row.getAttribute("data-logbar-duplicate") !== "1"', $source);
 		$this->assertStringContainsString('function openFirstVisibleQueryGroup(logbar)', $source);
 		$this->assertStringContainsString('logbar.classList.toggle("logbar-tab-" + name, name === tabName)', $source);
+
+	}
+
+	/**
+	 * Verify the DB metric opens the query pane instead of toggling an invisible state.
+	 */
+	public function testDatabaseMetricOpensQueryPane(): void {
+
+		$source = $this->pairLogBarSource();
+
+		$this->assertStringContainsString('[data-logbar-query-toggle]', $source);
+		$this->assertStringContainsString('function showQueries(logbar)', $source);
+		$this->assertStringContainsString('body.classList.remove("hidden")', $source);
+		$this->assertStringContainsString('setActiveTab(logbar, "queries")', $source);
+		$this->assertStringContainsString('writeCookie("LogBarShowEvents", "1")', $source);
+
+	}
+
+	/**
+	 * Verify SQL previews use explicit ellipsis controls without layout measurement.
+	 */
+	public function testQueryDetailTogglesAreHandledByLogBarClient(): void {
+
+		$source = $this->pairLogBarSource();
+
+		$this->assertStringContainsString('[data-logbar-query-detail-toggle]', $source);
+		$this->assertStringContainsString('data-logbar-query-detail-active-class', $source);
+		$this->assertStringContainsString('function renderQueryDetail(group)', $source);
+		$this->assertStringContainsString('function setQueryDetailButtonState(group, expanded)', $source);
+		$this->assertStringContainsString('function toggleQueryDetail(button)', $source);
+		$this->assertStringNotContainsString('scrollWidth', $source);
+		$this->assertStringNotContainsString('scrollHeight', $source);
+		$this->assertStringContainsString('.logbar-query-summary', $source);
 
 	}
 

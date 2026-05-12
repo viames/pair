@@ -11,7 +11,9 @@ trait LogTrait {
 	 */
 	public function disableLogBar(): void {
 
-		LogBar::getInstance()->disable();
+		if (LogBar::isRuntimeAvailable()) {
+			LogBar::getInstance()->disable();
+		}
 
 	}
 
@@ -33,6 +35,9 @@ trait LogTrait {
 
 	}
 
+	/**
+	 * Add a warning to the log bar.
+	 */
 	public function logWarning(string $description, string $subtext = ''): void {
 
 		LogBar::event($description, 'warning', $subtext);

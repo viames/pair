@@ -27,17 +27,19 @@ final readonly class LogBarRenderer {
 		$bodyClasses = 'logbar-body' . ($showQueries ? ' logbar-show-queries' : '') . ($showEvents ? '' : ' hidden');
 		$memory = $this->memoryLabel((int)$data['memoryPeakBytes'], (int)$data['memoryLimitBytes']);
 		$chrome = $this->chromeClasses();
-		$showEventPanes = $this->hasRenderableEventRows($data['events'], $showQueries);
+		$showEventPanes = $this->hasRenderableEventRows($data['events']);
+		$dbMetricClass = !empty($data['dbBoundRequest']) ? 'warning database' : 'database';
+		$routeHtml = $this->buildRouteHtml($route);
 
 		$ret = '<div class="' . $this->escapeAttribute($chrome['root']) . '" id="logbar" data-logbar-root data-logbar-ui="' . $this->escapeAttribute(UiTheme::current()) . '">';
 		$ret .= '<div class="' . $this->escapeAttribute($chrome['header']) . '">';
 		$ret .= '<div class="logbar-titlebar">';
-		$ret .= '<div class="logbar-heading"><h4>Pair LogBar</h4><div class="logbar-route">' . $this->escape($route ?: 'request inspector') . '</div>' . $this->buildRuntimeContextHtml($correlationId) . '</div>';
+		$ret .= '<div class="logbar-heading"><h4>Pair LogBar</h4>' . $routeHtml . $this->buildRuntimeContextHtml($correlationId) . '</div>';
 		$ret .= '<button type="button" id="toggle-events" class="logbar-toggle' . ($showEvents ? ' expanded' : '') . '" aria-expanded="' . ($showEvents ? 'true' : 'false') . '">' . ($showEvents ? 'Hide details' : 'Show details') . '</button>';
 		$ret .= '</div>';
 		$ret .= '<div class="logbar-metrics">';
 		$ret .= $this->buildMetricHtml('Total', $this->formatChrono((float)$data['totalSeconds']), ((float)$data['totalMs'] >= (int)$data['slowRequestMs'] ? 'slow request' : 'request time'), ((float)$data['totalMs'] >= (int)$data['slowRequestMs'] ? 'warning' : ''));
-		$ret .= $this->buildMetricHtml('DB', $this->formatChrono((float)$data['querySeconds']), round((float)$data['queryPercent']) . '% of request', ((float)$data['queryPercent'] > 50.0 ? 'warning database' : 'database'), ' data-logbar-query-toggle="1"');
+		$ret .= $this->buildMetricHtml('DB', $this->formatChrono((float)$data['querySeconds']), round((float)$data['queryPercent']) . '% of request', $dbMetricClass, ' data-logbar-query-toggle="1"');
 		$ret .= $this->buildMetricHtml('Queries', (string)$data['queryCount'], 'budget ' . (int)$data['queryBudget'], ((int)$data['queryCount'] > (int)$data['queryBudget'] ? 'warning' : ''));
 		$ret .= $this->buildMetricHtml('Memory', $memory['value'], $memory['subtext'], ((float)$data['memoryLimitPercent'] >= (float)$data['memoryNearLimitRatio'] ? 'warning' : ''));
 		$ret .= $this->buildMetricHtml('Warnings', (string)$data['warningCount'], ((int)$data['warningCount'] ? 'needs review' : 'none'), ((int)$data['warningCount'] ? 'warning' : ''));
@@ -47,7 +49,7 @@ final readonly class LogBarRenderer {
 		$ret .= '<div class="' . $this->escapeAttribute(trim($chrome['body'] . ' ' . $bodyClasses)) . '">';
 		$ret .= $this->buildDiagnosticBannerHtml($data);
 		$ret .= $this->buildTabsHtml($showEventPanes);
-		$ret .= $this->buildFiltersHtml($data['types']);
+		$ret .= $this->buildFiltersHtml();
 		$ret .= '<div class="logbar-panes">';
 		$ret .= '<section data-logbar-tab="overview">' . $this->buildOverviewHtml($data) . '</section>';
 		if ($showEventPanes) {
@@ -89,6 +91,21 @@ final readonly class LogBarRenderer {
 		}
 
 		return $log;
+
+	}
+
+	/**
+	 * Build the route label when a meaningful request route is available.
+	 */
+	private function buildRouteHtml(string $route): string {
+
+		$route = trim($route);
+
+		if ('' === $route or 'request inspector' === $route) {
+			return '';
+		}
+
+		return '<div class="logbar-route">' . $this->escape($route) . '</div>';
 
 	}
 
@@ -179,14 +196,7 @@ final readonly class LogBarRenderer {
 	private function buildDiagnosticBannerHtml(array $data): string {
 
 		if (!count($data['findings'])) {
-			return
-				'<div class="logbar-diagnostic-banner logbar-diagnostic-ok">' .
-					'<div class="logbar-diagnostic-title">' .
-						'<span class="logbar-severity-badge logbar-severity-ok">OK</span>' .
-						'<strong>No automatic findings</strong>' .
-					'</div>' .
-					'<span>Request timings are within configured LogBar thresholds.</span>' .
-				'</div>';
+			return '';
 		}
 
 		$primary = $data['findings'][0];
@@ -214,10 +224,10 @@ final readonly class LogBarRenderer {
 	/**
 	 * Build one compact event row for chronological and AJAX output.
 	 */
-	private function buildEventHtml(LogBarEntry $entry, string $eventDomId = '', bool $withData = true, string $classOverride = ''): string {
+	private function buildEventHtml(LogBarEntry $entry, string $eventDomId = '', bool $withData = true, string $classOverride = '', bool $isDuplicate = false): string {
 
 		$data = $withData
-			? ' data-logbar-row="1" data-logbar-type="' . $this->escapeAttribute($entry->type) . '" data-logbar-text="' . $this->escapeAttribute($entry->searchText()) . '"'
+			? ' data-logbar-row="1" data-logbar-type="' . $this->escapeAttribute($entry->type) . '" data-logbar-duplicate="' . ($isDuplicate ? '1' : '0') . '" data-logbar-text="' . $this->escapeAttribute($entry->searchText()) . '"'
 			: '';
 		$domId = strlen($eventDomId) ? ' id="' . $this->escapeAttribute($eventDomId) . '"' : '';
 		$class = $classOverride ?: 'logbar-type-' . $entry->type . ($this->inspector->isSlowEntry($entry) ? ' logbar-slow' : '');
@@ -226,9 +236,46 @@ final readonly class LogBarRenderer {
 			'<div' . $domId . $data . ' class="logbar-event ' . $this->escapeAttribute($class) . '">' .
 				'<span class="logbar-duration time">' . $this->escape($this->formatChrono($entry->duration)) . '</span>' .
 				'<span class="logbar-event-type">' . $this->escape($entry->type) . '</span>' .
-				'<span class="logbar-event-message">' . $this->escape($entry->description) . '</span>' .
-				($entry->subtext ? ' <span class="logbar-event-subtext">| ' . $this->escape($entry->subtext) . '</span>' : '') .
+				'<span class="logbar-event-message"><span>' . $this->escape($entry->description) . '</span>' . $this->buildEventMetaHtml($entry) . '</span>' .
 			'</div>';
+
+	}
+
+	/**
+	 * Build cheap event detail from metadata already collected by LogBar.
+	 */
+	private function buildEventMetaHtml(LogBarEntry $entry): string {
+
+		$parts = [
+			'start ' . $this->formatMilliseconds($entry->start * 1000),
+		];
+
+		if ($entry->subtext) {
+			$parts[] = $entry->subtext;
+		}
+
+		if ('ok' !== $entry->status) {
+			$parts[] = 'status ' . $entry->status;
+		}
+
+		if ($entry->isQuery()) {
+			$label = trim(((string)($entry->attributes['operation'] ?? '') ?: 'SQL') . ' ' . (string)($entry->attributes['table'] ?? ''));
+			$fingerprint = (string)($entry->attributes['fingerprint'] ?? '');
+
+			if ($label) {
+				$parts[] = $label;
+			}
+
+			if (is_numeric($entry->attributes['rows'] ?? null)) {
+				$parts[] = $this->countLabel((int)$entry->attributes['rows'], 'row');
+			}
+
+			if (strlen($fingerprint)) {
+				$parts[] = 'fp ' . $fingerprint;
+			}
+		}
+
+		return '<small class="logbar-event-meta">' . $this->escape(implode(' | ', array_unique($parts))) . '</small>';
 
 	}
 
@@ -239,7 +286,9 @@ final readonly class LogBarRenderer {
 	 */
 	private function buildEventsHtml(array $data): string {
 
-		if (!count($data['events'])) {
+		$events = $this->nonQueryEvents($data['events']);
+
+		if (!count($events)) {
 			return '<div class="logbar-empty">No events recorded.</div>';
 		}
 
@@ -247,7 +296,7 @@ final readonly class LogBarRenderer {
 		$firstWarning = false;
 		$firstError = false;
 
-		foreach ($data['events'] as $entry) {
+		foreach ($events as $entry) {
 
 			$domId = '';
 
@@ -269,25 +318,14 @@ final readonly class LogBarRenderer {
 
 	/**
 	 * Build filter controls for the LogBar body.
-	 *
-	 * @param	string[]	$types	Observed event types.
 	 */
-	private function buildFiltersHtml(array $types): string {
-
-		sort($types);
+	private function buildFiltersHtml(): string {
 
 		$ret = '<div class="logbar-filters" aria-label="LogBar filters">';
 		$ret .= '<label class="logbar-search"><span>Search</span><input type="search" data-logbar-search placeholder="SQL, event, type"></label>';
-		$ret .= '<label><span>Type</span><select data-logbar-type-filter><option value="">All types</option>';
-
-		foreach ($types as $type) {
-			$ret .= '<option value="' . $this->escapeAttribute($type) . '">' . $this->escape($type) . '</option>';
-		}
-
-		$ret .= '</select></label>';
-		$ret .= '<label class="logbar-filter-toggle logbar-filter-query-events"><input type="checkbox" data-logbar-queries-only><span>Query events</span></label>';
 		$ret .= '<label class="logbar-filter-toggle"><input type="checkbox" data-logbar-warnings-only><span>Warnings/errors</span></label>';
 		$ret .= '<label class="logbar-filter-toggle"><input type="checkbox" data-logbar-duplicates-only><span>Duplicates</span></label>';
+
 		$ret .= '</div>';
 
 		return $ret;
@@ -332,9 +370,7 @@ final readonly class LogBarRenderer {
 		foreach ([
 			'duplicatesOnly' => 'data-logbar-finding-duplicates-only',
 			'openQuery' => 'data-logbar-finding-open-query',
-			'queriesOnly' => 'data-logbar-finding-queries-only',
 			'search' => 'data-logbar-finding-search',
-			'typeFilter' => 'data-logbar-finding-type',
 			'warningsOnly' => 'data-logbar-finding-warnings-only',
 		] as $key => $attribute) {
 			if (isset($finding[$key]) and '' !== (string)$finding[$key]) {
@@ -429,35 +465,29 @@ final readonly class LogBarRenderer {
 		$ret = '<div class="logbar-section-title">Queries</div>';
 		$ret .= $this->buildQueryIssuesHtml($data);
 		$ret .= '<div class="logbar-query-table">';
-		$ret .= '<div class="logbar-query-head"><span>Count</span><span>Total</span><span>Avg</span><span>Max</span><span>Rows</span><span>Op</span><span>Table</span><span>SQL</span></div>';
+		$ret .= '<div class="logbar-query-head"><span>Count</span><span>Total</span><span>Rows</span><span>Op</span><span>Table</span><span>SQL</span></div>';
 
 		foreach ($groups as $group) {
 			$isDuplicate = ((int)$group['count'] > 1);
 			$isOverDuplicateBudget = ((int)$group['count'] > (int)($data['duplicateQueryBudget'] ?? 1));
 			$isExpensive = ((float)$group['totalMs'] >= (int)$data['slowQueryMs'] or (float)$group['maxMs'] >= (int)$data['slowQueryMs']);
-			$ret .= '<details class="logbar-query-group' . ($isDuplicate ? ' logbar-query-duplicate' : '') . ($isOverDuplicateBudget ? ' logbar-query-duplicate-over-budget' : '') . ($isExpensive ? ' logbar-query-expensive' : '') . '" data-logbar-query-group="1" data-logbar-duplicate="' . ($isDuplicate ? '1' : '0') . '" data-logbar-text="' . $this->escapeAttribute($group['searchText']) . '">';
+			$isError = ('error' === (string)($group['status'] ?? 'ok'));
+			$ret .= '<details class="logbar-query-group' . ($isDuplicate ? ' logbar-query-duplicate' : '') . ($isOverDuplicateBudget ? ' logbar-query-duplicate-over-budget' : '') . ($isExpensive ? ' logbar-query-expensive' : '') . ($isError ? ' logbar-query-error' : '') . '" data-logbar-query-group="1" data-logbar-duplicate="' . ($isDuplicate ? '1' : '0') . '" data-logbar-status="' . $this->escapeAttribute((string)($group['status'] ?? 'ok')) . '" data-logbar-text="' . $this->escapeAttribute($group['searchText']) . '">';
 			$ret .= '<summary class="logbar-query-summary">';
 			$ret .= $this->buildQueryMetricHtml('Count', (string)$group['count']);
 			$ret .= $this->buildQueryMetricHtml('Total', $this->formatMilliseconds((float)$group['totalMs']));
-			$ret .= $this->buildQueryMetricHtml('Avg', $this->formatMilliseconds((float)$group['avgMs']));
-			$ret .= $this->buildQueryMetricHtml('Max', $this->formatMilliseconds((float)$group['maxMs']));
 			$ret .= $this->buildQueryMetricHtml('Rows', (string)$group['rows']);
 			$ret .= $this->buildQueryMetricHtml('Op', (string)$group['operation']);
 			$ret .= $this->buildQueryMetricHtml('Table', (string)$group['table']);
-			$ret .= '<span class="logbar-query-sql">' . $this->buildQueryBadgesHtml($group, $data) . '<code class="logbar-sql-preview">' . $this->escape((string)$group['sql']) . '</code></span>';
+			$ret .=
+				'<span class="logbar-query-sql">' .
+					$this->buildQueryBadgesHtml($group, $data) .
+					'<code class="logbar-sql-preview">' . $this->escape((string)$group['sql']) . '</code>' .
+					$this->buildQueryDetailToggleHtml($group, $isExpensive or $isOverDuplicateBudget) .
+				'</span>';
 			$ret .= '</summary>';
-			$ret .= '<div class="logbar-query-occurrences">';
-			$ret .= '<pre class="logbar-query-fullsql"><code>' . $this->escape((string)$group['sql']) . '</code></pre>';
-
-			foreach ($group['occurrences'] as $occurrence) {
-				$ret .= '<div data-logbar-row="1" data-logbar-type="query" data-logbar-text="' . $this->escapeAttribute($occurrence['searchText']) . '" class="logbar-query-occurrence logbar-type-query' . ((float)$occurrence['durationMs'] >= (int)$data['slowQueryMs'] ? ' logbar-slow' : '') . '">';
-				$ret .= '<span>' . $this->escape($this->formatMilliseconds((float)$occurrence['durationMs'])) . '</span>';
-				$ret .= '<span>' . $this->escape((string)$occurrence['rows']) . ' rows</span>';
-				$ret .= '<code>' . $this->escape((string)$occurrence['sql']) . '</code>';
-				$ret .= '</div>';
-			}
-
-			$ret .= '</div></details>';
+			$ret .= '<div class="logbar-query-occurrences" data-logbar-query-detail="1"></div>';
+			$ret .= '</details>';
 		}
 
 		$ret .= '</div>';
@@ -517,14 +547,14 @@ final readonly class LogBarRenderer {
 
 		foreach (array_slice($duplicateGroups, 0, 3) as $group) {
 			$issues[] = $this->queryIssue($group, 'Duplicate x' . (int)$group['count'], $this->queryLabel($group) . ' repeated ' . (int)$group['count'] . ' times', $this->formatMilliseconds((float)$group['totalMs']) . ' total, ' . $this->countLabel((int)$group['rows'], 'row') . '.', true);
-			$usedFingerprints[(string)$group['fingerprint']] = true;
+			$usedFingerprints[(string)$group['groupKey']] = true;
 		}
 
 		$slowest = $this->slowestQueryGroup($data['queryGroups']);
 
-		if ($slowest and (float)$slowest['maxMs'] >= (int)$data['slowQueryMs'] and !isset($usedFingerprints[(string)$slowest['fingerprint']])) {
+		if ($slowest and (float)$slowest['maxMs'] >= (int)$data['slowQueryMs'] and !isset($usedFingerprints[(string)$slowest['groupKey']])) {
 			$issues[] = $this->queryIssue($slowest, 'Slowest', $this->queryLabel($slowest), $this->formatMilliseconds((float)$slowest['maxMs']) . ' max, ' . $this->formatMilliseconds((float)$slowest['totalMs']) . ' total.');
-			$usedFingerprints[(string)$slowest['fingerprint']] = true;
+			$usedFingerprints[(string)$slowest['groupKey']] = true;
 		}
 
 		foreach ($data['queryGroups'] as $group) {
@@ -532,12 +562,12 @@ final readonly class LogBarRenderer {
 				break;
 			}
 
-			if ((float)$group['totalMs'] < (int)$data['slowQueryMs'] or isset($usedFingerprints[(string)$group['fingerprint']])) {
+			if ((float)$group['totalMs'] < (int)$data['slowQueryMs'] or isset($usedFingerprints[(string)$group['groupKey']])) {
 				continue;
 			}
 
 			$issues[] = $this->queryIssue($group, 'Heaviest', $this->queryLabel($group), $this->formatMilliseconds((float)$group['totalMs']) . ' total across ' . $this->countLabel((int)$group['count'], 'call') . '.');
-			$usedFingerprints[(string)$group['fingerprint']] = true;
+			$usedFingerprints[(string)$group['groupKey']] = true;
 		}
 
 		return $issues;
@@ -579,6 +609,10 @@ final readonly class LogBarRenderer {
 
 		$badges = [];
 
+		if ('error' === (string)($group['status'] ?? '')) {
+			$badges[] = ['error', 'Error'];
+		}
+
 		if ((int)$group['count'] > (int)($data['duplicateQueryBudget'] ?? 1)) {
 			$badges[] = ['duplicate', 'Duplicate x' . (int)$group['count']];
 		}
@@ -602,6 +636,69 @@ final readonly class LogBarRenderer {
 		$ret .= '</span>';
 
 		return $ret;
+
+	}
+
+	/**
+	 * Build the SQL detail toggle using the active UI framework button classes.
+	 *
+	 * @param	array<string, mixed>	$group		Aggregated query group.
+	 * @param	bool					$critical	True when the query row already has warning-level diagnostics.
+	 */
+	private function buildQueryDetailToggleHtml(array $group, bool $critical): string {
+
+		$variant = $this->queryDetailToggleVariant($group, $critical);
+		$classes = $this->queryDetailToggleClasses($variant);
+		$activeClass = UiTheme::isBulma() ? 'is-active' : 'active';
+
+		return
+			'<button type="button" class="' . $this->escapeAttribute($classes) . '"' .
+				' data-logbar-query-detail-toggle="1"' .
+				' data-logbar-query-detail-active-class="' . $this->escapeAttribute($activeClass) . '"' .
+				' aria-expanded="false" title="Show full query">...</button>';
+
+	}
+
+	/**
+	 * Return the visual variant for one query detail toggle.
+	 *
+	 * @param	array<string, mixed>	$group		Aggregated query group.
+	 * @param	bool					$critical	True when the query row already has warning-level diagnostics.
+	 */
+	private function queryDetailToggleVariant(array $group, bool $critical): string {
+
+		if ('error' === (string)($group['status'] ?? '')) {
+			return 'danger';
+		}
+
+		return $critical ? 'warning' : 'secondary';
+
+	}
+
+	/**
+	 * Return framework-owned button classes for the SQL detail toggle.
+	 */
+	private function queryDetailToggleClasses(string $variant): string {
+
+		if (UiTheme::isBootstrap()) {
+			return match ($variant) {
+				'danger' => 'btn btn-sm btn-danger',
+				'warning' => 'btn btn-sm btn-warning',
+				default => 'btn btn-sm btn-outline-secondary',
+			};
+		}
+
+		if (UiTheme::isBulma()) {
+			return match ($variant) {
+				'danger' => 'button is-small is-danger',
+				'warning' => 'button is-small is-warning',
+				default => 'button is-small is-light',
+			};
+		}
+
+		return 'logbar-query-detail-toggle' .
+			('warning' === $variant ? ' logbar-query-detail-toggle-warning' : '') .
+			('danger' === $variant ? ' logbar-query-detail-toggle-danger' : '');
 
 	}
 
@@ -680,10 +777,10 @@ final readonly class LogBarRenderer {
 	 *
 	 * @param	LogBarEntry[]	$events	Request events already collected by LogBar.
 	 */
-	private function hasRenderableEventRows(array $events, bool $showQueries): bool {
+	private function hasRenderableEventRows(array $events): bool {
 
 		foreach ($events as $entry) {
-			if ($showQueries or !$entry->isQuery()) {
+			if (!$entry->isQuery()) {
 				return true;
 			}
 		}
@@ -699,7 +796,9 @@ final readonly class LogBarRenderer {
 	 */
 	private function buildTimelineHtml(array $data): string {
 
-		if (!count($data['events'])) {
+		$events = $this->nonQueryEvents($data['events']);
+
+		if (!count($events)) {
 			return '<div class="logbar-empty">No events recorded.</div>';
 		}
 
@@ -707,19 +806,33 @@ final readonly class LogBarRenderer {
 		$ret = '<div class="logbar-section-title">Timeline</div>';
 		$ret .= '<div class="logbar-timeline">';
 
-		foreach ($data['events'] as $entry) {
+		foreach ($events as $entry) {
 			$left = min(100.0, max(0.0, ($entry->start / $totalSeconds) * 100));
 			$width = min(100.0 - $left, max(0.4, ($entry->duration / $totalSeconds) * 100));
-			$ret .= '<div class="logbar-timeline-row logbar-type-' . $this->escapeAttribute($entry->type) . ($this->inspector->isSlowEntry($entry) ? ' logbar-slow' : '') . '" data-logbar-row="1" data-logbar-type="' . $this->escapeAttribute($entry->type) . '" data-logbar-text="' . $this->escapeAttribute($entry->searchText()) . '">';
+			$ret .= '<div class="logbar-timeline-row logbar-type-' . $this->escapeAttribute($entry->type) . ($this->inspector->isSlowEntry($entry) ? ' logbar-slow' : '') . '" data-logbar-row="1" data-logbar-type="' . $this->escapeAttribute($entry->type) . '" data-logbar-duplicate="0" data-logbar-text="' . $this->escapeAttribute($entry->searchText()) . '">';
 			$ret .= '<div class="logbar-timeline-label"><strong>' . $this->escape($entry->type) . '</strong><span>' . $this->escape($this->formatChrono($entry->duration)) . '</span></div>';
 			$ret .= '<div class="logbar-timeline-track"><span style="left:' . $this->formatPercent($left) . '%;width:' . $this->formatPercent($width) . '%"></span></div>';
-			$ret .= '<div class="logbar-timeline-text">' . $this->escape($entry->description) . '</div>';
+			$ret .= '<div class="logbar-timeline-text"><span>' . $this->escape($entry->description) . '</span>' . $this->buildEventMetaHtml($entry) . '</div>';
 			$ret .= '</div>';
 		}
 
 		$ret .= '</div>';
 
 		return $ret;
+
+	}
+
+	/**
+	 * Return non-query events because SQL rows already have a dedicated aggregated pane.
+	 *
+	 * @param	LogBarEntry[]	$events	Request events already collected by LogBar.
+	 * @return	LogBarEntry[]
+	 */
+	private function nonQueryEvents(array $events): array {
+
+		return array_values(array_filter($events, function (LogBarEntry $entry): bool {
+			return !$entry->isQuery();
+		}));
 
 	}
 

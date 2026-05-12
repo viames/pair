@@ -49,6 +49,13 @@ class Session extends ActiveRecord {
 	private static ?string $currentSessionId = null;
 
 	/**
+	 * Session cleanup durations already executed during the current PHP request.
+	 *
+	 * @var	array<int, bool>
+	 */
+	private static array $cleanedSessionTimes = [];
+
+	/**
 	 * Name of related db table.
 	 */
 	const TABLE_NAME = 'sessions';
@@ -90,11 +97,16 @@ class Session extends ActiveRecord {
 	 */
 	public static function cleanOlderThan(int $sessionTime): void {
 
+		if (isset(self::$cleanedSessionTimes[$sessionTime])) {
+			return;
+		}
+
 		// converts to current time zone
 		$dateTime  = new \DateTime();
 		$startTime = $dateTime->format('Y-m-d H:i:s');
 
 		Database::run('DELETE FROM `sessions` WHERE `start_time` < DATE_SUB(?, INTERVAL '. (int)$sessionTime .' MINUTE)', [$startTime]);
+		self::$cleanedSessionTimes[$sessionTime] = true;
 
 	}
 
