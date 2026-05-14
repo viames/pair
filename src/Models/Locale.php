@@ -164,8 +164,8 @@ class Locale extends ActiveRecord {
 			self::$defaultLocaleLoaded = true;
 		}
 
-		// Return a clone so callers cannot mutate the shared request-local snapshot.
-		return self::$defaultLocale ? clone self::$defaultLocale : null;
+		// Return the cached object directly because ActiveRecord cloning resets primary keys.
+		return self::$defaultLocale;
 
 	}
 

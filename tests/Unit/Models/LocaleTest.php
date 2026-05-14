@@ -75,7 +75,7 @@ class LocaleTest extends TestCase {
 	}
 
 	/**
-	 * Verify the default locale lookup is cached for the current request and returned as a copy.
+	 * Verify the default locale lookup is cached for the current request without resetting its primary key.
 	 */
 	public function testDefaultLocaleIsCachedForCurrentRequest(): void {
 
@@ -87,13 +87,16 @@ class LocaleTest extends TestCase {
 
 		$first = Locale::getDefault();
 		$this->assertInstanceOf(Locale::class, $first);
+		$this->assertTrue($first->isLoaded());
+		$this->assertSame(51, $first->id);
 
 		Database::run('UPDATE locales SET app_default = 0 WHERE id = 51');
 
 		$second = Locale::getDefault();
 		$this->assertInstanceOf(Locale::class, $second);
-		$this->assertNotSame($first, $second);
-		$this->assertSame($first->id, $second->id);
+		$this->assertSame($first, $second);
+		$this->assertSame(51, $second->id);
+		$this->assertTrue($second->isLoaded());
 
 		$this->resetLocaleRuntimeCaches();
 		$this->assertNull(Locale::getDefault());
