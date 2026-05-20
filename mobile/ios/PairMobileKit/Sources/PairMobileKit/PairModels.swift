@@ -65,18 +65,18 @@ public struct PairAuthSession<User: Codable & Sendable>: Codable, Sendable {
 		from container: KeyedDecodingContainer<CodingKeys>,
 		forKey key: CodingKeys
 	) throws -> Date? {
-		if let seconds = try container.decodeIfPresent(Double.self, forKey: key) {
+		if let seconds = try? container.decodeIfPresent(Double.self, forKey: key) {
 			return seconds > 1_000_000_000
 				? Date(timeIntervalSince1970: seconds)
 				: Date(timeIntervalSinceReferenceDate: seconds)
 		}
 
-		if let string = try container.decodeIfPresent(String.self, forKey: key),
+		if let string = try? container.decodeIfPresent(String.self, forKey: key),
 		   let date = Self.decodeDateString(string) {
 			return date
 		}
 
-		return try container.decodeIfPresent(Date.self, forKey: key)
+		return try? container.decodeIfPresent(Date.self, forKey: key)
 	}
 
 	/// Reads duration values from numeric or string `expires_in` response fields.
@@ -84,11 +84,11 @@ public struct PairAuthSession<User: Codable & Sendable>: Codable, Sendable {
 		from container: KeyedDecodingContainer<CodingKeys>,
 		forKey key: CodingKeys
 	) throws -> TimeInterval? {
-		if let value = try container.decodeIfPresent(Double.self, forKey: key) {
+		if let value = try? container.decodeIfPresent(Double.self, forKey: key) {
 			return value
 		}
 
-		if let string = try container.decodeIfPresent(String.self, forKey: key) {
+		if let string = try? container.decodeIfPresent(String.self, forKey: key) {
 			return TimeInterval(string)
 		}
 
