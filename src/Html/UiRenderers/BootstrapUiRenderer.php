@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Pair\Html\UiRenderers;
 
 use Pair\Core\Router;
+use Pair\Html\FormControl;
 use Pair\Html\UiTheme;
 
 /**
@@ -18,6 +19,36 @@ class BootstrapUiRenderer extends NativeUiRenderer {
 	public function name(): string {
 
 		return UiTheme::BOOTSTRAP;
+
+	}
+
+	/**
+	 * Return Bootstrap classes automatically injected on standard form controls.
+	 *
+	 * @return	string[]	List of classes to append to the rendered control.
+	 */
+	public function controlClasses(FormControl $control): array {
+
+		if (
+			is_a($control, 'Pair\Html\FormControls\Address')
+			or is_a($control, 'Pair\Html\FormControls\Date')
+			or is_a($control, 'Pair\Html\FormControls\Datetime')
+			or is_a($control, 'Pair\Html\FormControls\Email')
+			or is_a($control, 'Pair\Html\FormControls\GoogleAddress')
+			or is_a($control, 'Pair\Html\FormControls\Month')
+			or is_a($control, 'Pair\Html\FormControls\Number')
+			or is_a($control, 'Pair\Html\FormControls\Password')
+			or is_a($control, 'Pair\Html\FormControls\Search')
+			or is_a($control, 'Pair\Html\FormControls\Tel')
+			or is_a($control, 'Pair\Html\FormControls\Text')
+			or is_a($control, 'Pair\Html\FormControls\Textarea')
+			or is_a($control, 'Pair\Html\FormControls\Time')
+			or is_a($control, 'Pair\Html\FormControls\Url')
+		) {
+			return ['form-control'];
+		}
+
+		return [];
 
 	}
 
