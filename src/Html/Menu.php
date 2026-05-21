@@ -418,9 +418,15 @@ class Menu {
 		}
 
 		$badge = $this->escapeText($item->badge);
-		$badgeType = $this->escapeAttribute($item->badgeType);
+		$badgeType = trim((string)$item->badgeType);
+		if ('' === $badgeType or 'default' === $badgeType) {
+			$badgeType = 'secondary';
+		}
 
-		return '<span aria-label="' . $badge . '" class="float-end badge badge-' . $badgeType . '">' . $badge . '</span>';
+		// Preserve the compact tone API while rendering Bootstrap 5 badge classes.
+		$badgeClass = str_starts_with($badgeType, 'text-bg-') ? $badgeType : 'text-bg-' . $badgeType;
+
+		return '<span aria-label="' . $badge . '" class="float-end badge ' . $this->escapeAttribute($badgeClass) . '">' . $badge . '</span>';
 
 	}
 
