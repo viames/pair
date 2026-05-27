@@ -67,7 +67,7 @@ class MenuTest extends TestCase {
 		$this->assertStringContainsString('target="_blank&quot; onclick=&quot;x"', $html);
 		$this->assertStringContainsString('fa-user&quot; onclick=&quot;x', $html);
 		$this->assertStringContainsString('Profile &lt;script&gt;', $html);
-		$this->assertStringContainsString('badge-danger&quot; onclick=&quot;x', $html);
+		$this->assertStringContainsString('text-bg-danger&quot; onclick=&quot;x', $html);
 		$this->assertStringContainsString('new &lt;b&gt;', $html);
 
 	}
@@ -95,8 +95,25 @@ class MenuTest extends TestCase {
 		$this->assertStringContainsString('target="_blank&quot; onclick=&quot;x"', $html);
 		$this->assertStringContainsString('fa-user&quot; onclick=&quot;x', $html);
 		$this->assertStringContainsString('Profile &lt;script&gt;', $html);
-		$this->assertStringContainsString('badge-danger&quot; onclick=&quot;x', $html);
+		$this->assertStringContainsString('text-bg-danger&quot; onclick=&quot;x', $html);
 		$this->assertStringContainsString('new &lt;b&gt;', $html);
+
+	}
+
+	/**
+	 * Verify menu badges render Bootstrap 5 badge tone classes.
+	 */
+	public function testMenuBadgeToneUsesBootstrapFiveClass(): void {
+
+		$menu = new Menu();
+		$menu->item('/status', 'Status', null, 'Open', 'default');
+		$menu->item('/health', 'Health', null, 'Ok', 'text-bg-success');
+
+		$html = $menu->render();
+
+		$this->assertStringContainsString('class="float-end badge text-bg-secondary"', $html);
+		$this->assertStringContainsString('class="float-end badge text-bg-success"', $html);
+		$this->assertStringNotContainsString('text-bg-text-bg-success', $html);
 
 	}
 

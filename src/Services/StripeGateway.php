@@ -23,6 +23,35 @@ use Stripe\Webhook as StripeWebhook;
 class StripeGateway {
 
 	/**
+	 * Stripe charge currencies where amount equals the major unit.
+	 */
+	private const ZERO_DECIMAL_CURRENCIES = [
+		'bif' => true,
+		'clp' => true,
+		'djf' => true,
+		'gnf' => true,
+		'jpy' => true,
+		'kmf' => true,
+		'krw' => true,
+		'mga' => true,
+		'pyg' => true,
+		'rwf' => true,
+		'vnd' => true,
+		'vuv' => true,
+		'xaf' => true,
+		'xof' => true,
+		'xpf' => true,
+	];
+
+	/**
+	 * Stripe charge currencies that reject fractional major-unit amounts.
+	 */
+	private const WHOLE_UNIT_TWO_DECIMAL_CURRENCIES = [
+		'isk' => true,
+		'ugx' => true,
+	];
+
+	/**
 	 * Stripe PHP client or test-compatible adapter.
 	 */
 	private object $client;
@@ -47,11 +76,17 @@ class StripeGateway {
 
 	/**
 	 * Capture a previously authorized Payment Intent.
+	 *
+	 * @param	array	$options	Optional keys: idempotency_key.
 	 */
-	public function capture(string $paymentIntentId): array {
+	public function capture(string $paymentIntentId, array $options = []): array {
 
 		try {
-			$pi = $this->client->paymentIntents->capture($paymentIntentId);
+			$pi = $this->client->paymentIntents->capture(
+				$paymentIntentId,
+				[],
+				$this->requestOptions($this->withDefaultIdempotencyKey($options, 'capture:' . $paymentIntentId))
+			);
 			return ['id' => $pi->id, 'status' => $pi->status];
 		} catch (\Throwable $e) {
 			throw new PairException('Stripe capture failed: ' . $e->getMessage(), ErrorCodes::STRIPE_ERROR, $e);
@@ -74,6 +109,17 @@ class StripeGateway {
 			throw new PairException('Missing STRIPE_SECRET_KEY in .env', ErrorCodes::MISSING_CONFIGURATION);
 		}
 
+		return new StripeClient($this->defaultClientConfig($secretKey));
+
+	}
+
+	/**
+	 * Build Stripe SDK configuration from Pair environment values.
+	 *
+	 * @return	array<string, mixed>
+	 */
+	private function defaultClientConfig(string $secretKey): array {
+
 		$config = [
 			'api_key' => $secretKey,
 		];
@@ -81,10 +127,10 @@ class StripeGateway {
 		$apiVersion = trim((string)Env::get('STRIPE_API_VERSION'));
 
 		if (strlen($apiVersion)) {
-			$config['api_version'] = $apiVersion;
+			$config['stripe_version'] = $apiVersion;
 		}
 
-		return new StripeClient($config);
+		return $config;
 
 	}
 
@@ -313,13 +359,28 @@ class StripeGateway {
 	 */
 	private function requestOptions(array $options, bool $generateIdempotencyKey = false): array {
 
-		$idempotencyKey = $options['idempotency_key'] ?? null;
+		$idempotencyKey = isset($options['idempotency_key']) ? (string)$options['idempotency_key'] : '';
 
-		if (!$idempotencyKey and $generateIdempotencyKey) {
+		if ('' === $idempotencyKey and $generateIdempotencyKey) {
 			$idempotencyKey = $this->newIdempotencyKey();
 		}
 
-		return $idempotencyKey ? ['idempotency_key' => $idempotencyKey] : [];
+		return '' !== $idempotencyKey ? ['idempotency_key' => $idempotencyKey] : [];
+
+	}
+
+	/**
+	 * Add a deterministic idempotency key when the caller did not provide one.
+	 *
+	 * @return	array<string, mixed>
+	 */
+	private function withDefaultIdempotencyKey(array $options, string $operationKey): array {
+
+		if (!isset($options['idempotency_key']) or '' === (string)$options['idempotency_key']) {
+			$options['idempotency_key'] = 'pair:stripe:' . $operationKey;
+		}
+
+		return $options;
 
 	}
 
@@ -352,8 +413,10 @@ class StripeGateway {
 
 	/**
 	 * Refund a payment (full or partial if $amountInMinorUnits is provided).
+	 *
+	 * @param	array	$options	Optional keys: idempotency_key.
 	 */
-	public function refund(string $paymentIntentId, ?int $amountInMinorUnits = null): array {
+	public function refund(string $paymentIntentId, ?int $amountInMinorUnits = null, array $options = []): array {
 
 		$params = [
 			'payment_intent' => $paymentIntentId,
@@ -361,7 +424,10 @@ class StripeGateway {
 		];
 
 		try {
-			$refund = $this->client->refunds->create($this->withoutNullValues($params));
+			$refund = $this->client->refunds->create(
+				$this->withoutNullValues($params),
+				$this->requestOptions($options, true)
+			);
 			return ['id' => $refund->id, 'status' => $refund->status];
 		} catch (\Throwable $e) {
 			throw new PairException('Stripe refund failed: ' . $e->getMessage(), ErrorCodes::STRIPE_ERROR, $e);
@@ -373,12 +439,13 @@ class StripeGateway {
 	 * Verify a Stripe webhook and run a type-specific handler when provided.
 	 *
 	 * @param	array<string, callable>	$handlers	Handlers keyed by Stripe event type or "*" fallback.
+	 * @param	callable|null	$duplicateGuard	Returns true when this event has already been processed.
 	 */
-	public function webhookResponse(string $payload, string $signature, array $handlers = []): JsonResponse {
+	public function webhookResponse(string $payload, string $signature, array $handlers = [], ?callable $duplicateGuard = null): JsonResponse {
 
 		$event = $this->constructWebhookEvent($payload, $signature);
 
-		return $this->webhookResponseFromEvent($event, $handlers);
+		return $this->webhookResponseFromEvent($event, $handlers, $duplicateGuard);
 
 	}
 
@@ -386,10 +453,21 @@ class StripeGateway {
 	 * Run a handler for an already verified Stripe event and return a standard acknowledgement.
 	 *
 	 * @param	array<string, callable>	$handlers	Handlers keyed by Stripe event type or "*" fallback.
+	 * @param	callable|null	$duplicateGuard	Returns true when this event has already been processed.
 	 */
-	public function webhookResponseFromEvent(object $event, array $handlers = []): JsonResponse {
+	public function webhookResponseFromEvent(object $event, array $handlers = [], ?callable $duplicateGuard = null): JsonResponse {
 
 		$type = isset($event->type) ? (string)$event->type : '';
+		$id = isset($event->id) ? (string)$event->id : '';
+
+		if ($id !== '' and $duplicateGuard and $duplicateGuard($id, $type, $event)) {
+			return new JsonResponse([
+				'received' => true,
+				'type' => $type,
+				'duplicate' => true,
+			]);
+		}
+
 		$handler = $handlers[$type] ?? $handlers['*'] ?? null;
 
 		if ($handler) {
@@ -412,9 +490,79 @@ class StripeGateway {
 	/**
 	 * Helper to convert major units (e.g. 12.34 EUR) to minor units (e.g. 1234 cents).
 	 */
-	public static function toMinorUnits(float $amount): int {
+	public static function toMinorUnits(int|float|string $amount, string $currency = 'eur'): int {
 
-		return (int) round($amount * 100);
+		$currency = strtolower(trim($currency));
+		$scale = isset(self::ZERO_DECIMAL_CURRENCIES[$currency]) ? 0 : 2;
+		$allowFractionalMajorUnits = (!isset(self::ZERO_DECIMAL_CURRENCIES[$currency]) and !isset(self::WHOLE_UNIT_TWO_DECIMAL_CURRENCIES[$currency]));
+
+		return self::decimalAmountToMinorUnits($amount, $scale, $allowFractionalMajorUnits);
+
+	}
+
+	/**
+	 * Convert a decimal major-unit amount to an integer without binary float arithmetic.
+	 */
+	private static function decimalAmountToMinorUnits(int|float|string $amount, int $scale, bool $allowFractionalMajorUnits = true): int {
+
+		$amount = self::normalizeDecimalAmount($amount);
+
+		if (!preg_match('/^(?<sign>-?)(?<whole>\d+)(?:\.(?<fraction>\d+))?$/', $amount, $matches)) {
+			throw new \InvalidArgumentException('Amount must be a decimal number.');
+		}
+
+		if (($matches['sign'] ?? '') === '-') {
+			throw new \InvalidArgumentException('Amount must not be negative.');
+		}
+
+		$whole = (int)$matches['whole'];
+		$fraction = $matches['fraction'] ?? '';
+		$factor = 10 ** $scale;
+
+		if (!$allowFractionalMajorUnits and preg_match('/[1-9]/', $fraction)) {
+			throw new \InvalidArgumentException('Currency does not support fractional charge amounts.');
+		}
+
+		// Keep one extra fractional digit so decimal rounding is deterministic.
+		$paddedFraction = str_pad($fraction, $scale + 1, '0');
+		$fractionUnits = $scale > 0 ? (int)substr($paddedFraction, 0, $scale) : 0;
+		$roundingDigit = (int)substr($paddedFraction, $scale, 1);
+
+		$minorUnits = ($whole * $factor) + $fractionUnits;
+
+		if ($roundingDigit >= 5) {
+			$minorUnits++;
+		}
+
+		return $minorUnits;
+
+	}
+
+	/**
+	 * Normalize accepted amount input into a plain decimal string.
+	 */
+	private static function normalizeDecimalAmount(int|float|string $amount): string {
+
+		if (is_int($amount)) {
+			return (string)$amount;
+		}
+
+		if (is_float($amount)) {
+
+			if (!is_finite($amount)) {
+				throw new \InvalidArgumentException('Amount must be finite.');
+			}
+
+			return rtrim(rtrim(sprintf('%.12F', $amount), '0'), '.');
+		}
+
+		$amount = trim($amount);
+
+		if ('' === $amount) {
+			throw new \InvalidArgumentException('Amount must not be empty.');
+		}
+
+		return $amount;
 
 	}
 

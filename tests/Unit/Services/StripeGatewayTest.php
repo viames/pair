@@ -132,6 +132,23 @@ class StripeGatewayTest extends TestCase {
 	}
 
 	/**
+	 * Verify the default Stripe client uses the SDK option name for pinned API versions.
+	 */
+	public function testDefaultClientConfigUsesStripeVersionOption(): void {
+
+		$_ENV['STRIPE_API_VERSION'] = '2026-04-22.dahlia';
+
+		$gateway = new StripeGateway(new FakeStripeClient());
+
+		$config = $this->invokeInaccessibleMethod($gateway, 'defaultClientConfig', ['sk_test_pair']);
+
+		$this->assertSame('sk_test_pair', $config['api_key']);
+		$this->assertSame('2026-04-22.dahlia', $config['stripe_version']);
+		$this->assertArrayNotHasKey('api_version', $config);
+
+	}
+
+	/**
 	 * Verify PaymentIntent creation normalizes currency, omits nulls, and sends idempotency.
 	 */
 	public function testCreatePaymentIntentShapesStripePayload(): void {
@@ -173,6 +190,67 @@ class StripeGatewayTest extends TestCase {
 	}
 
 	/**
+	 * Verify explicit idempotency keys are preserved even when PHP would treat them as falsey.
+	 */
+	public function testCreatePaymentIntentPreservesFalseyIdempotencyKey(): void {
+
+		$client = new FakeStripeClient();
+		$gateway = new StripeGateway($client);
+
+		$gateway->createPaymentIntent(1000, 'eur', ['idempotency_key' => '0']);
+
+		$this->assertSame(['idempotency_key' => '0'], $client->paymentIntents->lastOptions);
+
+	}
+
+	/**
+	 * Verify PaymentIntent capture uses a deterministic idempotency key by default.
+	 */
+	public function testCaptureUsesDeterministicIdempotencyKeyByDefault(): void {
+
+		$client = new FakeStripeClient();
+		$gateway = new StripeGateway($client);
+
+		$result = $gateway->capture('pi_capture_test');
+
+		$this->assertSame('pi_capture_test', $result['id']);
+		$this->assertSame('pi_capture_test', $client->paymentIntents->lastCaptureId);
+		$this->assertSame('pair:stripe:capture:pi_capture_test', $client->paymentIntents->lastCaptureOptions['idempotency_key']);
+
+	}
+
+	/**
+	 * Verify refunds pass amount and request idempotency to Stripe.
+	 */
+	public function testRefundUsesIdempotencyOptions(): void {
+
+		$client = new FakeStripeClient();
+		$gateway = new StripeGateway($client);
+
+		$refund = $gateway->refund('pi_refund_test', 500, ['idempotency_key' => 'refund-key']);
+
+		$this->assertSame('re_test_123', $refund['id']);
+		$this->assertSame('pi_refund_test', $client->refunds->lastParams['payment_intent']);
+		$this->assertSame(500, $client->refunds->lastParams['amount']);
+		$this->assertSame(['idempotency_key' => 'refund-key'], $client->refunds->lastOptions);
+
+	}
+
+	/**
+	 * Verify refunds generate a request idempotency key by default.
+	 */
+	public function testRefundGeneratesIdempotencyKeyByDefault(): void {
+
+		$client = new FakeStripeClient();
+		$gateway = new StripeGateway($client);
+
+		$gateway->refund('pi_refund_test', 500);
+
+		$this->assertMatchesRegularExpression('/^[a-f0-9]{32}$/', $client->refunds->lastOptions['idempotency_key']);
+
+	}
+
+	/**
 	 * Verify verified webhook events invoke matching handlers and return an acknowledgement.
 	 */
 	public function testWebhookResponseFromEventInvokesMatchingHandler(): void {
@@ -200,11 +278,65 @@ class StripeGatewayTest extends TestCase {
 	}
 
 	/**
+	 * Verify duplicate webhook events can be acknowledged without running the handler twice.
+	 */
+	public function testWebhookResponseFromEventSkipsDuplicateEvents(): void {
+
+		$client = new FakeStripeClient();
+		$gateway = new StripeGateway($client);
+		$handlerCalls = 0;
+
+		$response = $gateway->webhookResponseFromEvent(
+			(object)['id' => 'evt_duplicate', 'type' => 'checkout.session.completed'],
+			[
+				'checkout.session.completed' => function () use (&$handlerCalls): void {
+					$handlerCalls++;
+				},
+			],
+			function (string $eventId, string $type): bool {
+				return 'evt_duplicate' === $eventId and 'checkout.session.completed' === $type;
+			}
+		);
+
+		$this->assertSame(0, $handlerCalls);
+		$this->assertSame(
+			['received' => true, 'type' => 'checkout.session.completed', 'duplicate' => true],
+			$this->readJsonResponsePayload($response)
+		);
+
+	}
+
+	/**
 	 * Verify major-unit amounts can be converted to minor units for Stripe.
 	 */
 	public function testToMinorUnitsRoundsToCents(): void {
 
 		$this->assertSame(1235, StripeGateway::toMinorUnits(12.345));
+		$this->assertSame(1008, StripeGateway::toMinorUnits('10.075', 'eur'));
+		$this->assertSame(500, StripeGateway::toMinorUnits('500', 'jpy'));
+		$this->assertSame(500, StripeGateway::toMinorUnits('5', 'isk'));
+
+	}
+
+	/**
+	 * Verify special Stripe currencies reject unsupported fractional charges.
+	 */
+	public function testToMinorUnitsRejectsInvalidSpecialCurrencyFractions(): void {
+
+		$this->expectException(\InvalidArgumentException::class);
+
+		StripeGateway::toMinorUnits('5.001', 'isk');
+
+	}
+
+	/**
+	 * Verify zero-decimal currencies reject fractional major-unit amounts.
+	 */
+	public function testToMinorUnitsRejectsZeroDecimalFractions(): void {
+
+		$this->expectException(\InvalidArgumentException::class);
+
+		StripeGateway::toMinorUnits('500.4', 'jpy');
 
 	}
 
@@ -398,6 +530,25 @@ final class FakeStripePaymentIntentResource {
 	public array $lastOptions = [];
 
 	/**
+	 * Last captured PaymentIntent ID.
+	 */
+	public ?string $lastCaptureId = null;
+
+	/**
+	 * Last received capture payload.
+	 *
+	 * @var	array<string, mixed>
+	 */
+	public array $lastCaptureParams = [];
+
+	/**
+	 * Last received capture options.
+	 *
+	 * @var	array<string, mixed>
+	 */
+	public array $lastCaptureOptions = [];
+
+	/**
 	 * Capture the request and return a deterministic PaymentIntent object.
 	 */
 	public function create(array $params, array $options = []): object {
@@ -416,7 +567,11 @@ final class FakeStripePaymentIntentResource {
 	/**
 	 * Return a deterministic captured PaymentIntent object.
 	 */
-	public function capture(string $paymentIntentId): object {
+	public function capture(string $paymentIntentId, array $params = [], array $options = []): object {
+
+		$this->lastCaptureId = $paymentIntentId;
+		$this->lastCaptureParams = $params;
+		$this->lastCaptureOptions = $options;
 
 		return (object)[
 			'id' => $paymentIntentId,
@@ -440,11 +595,19 @@ final class FakeStripeRefundResource {
 	public array $lastParams = [];
 
 	/**
+	 * Last received request options.
+	 *
+	 * @var	array<string, mixed>
+	 */
+	public array $lastOptions = [];
+
+	/**
 	 * Capture the request and return a deterministic Refund object.
 	 */
-	public function create(array $params): object {
+	public function create(array $params, array $options = []): object {
 
 		$this->lastParams = $params;
+		$this->lastOptions = $options;
 
 		return (object)[
 			'id' => 're_test_123',
