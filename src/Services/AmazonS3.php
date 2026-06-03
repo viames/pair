@@ -340,7 +340,7 @@ class AmazonS3 {
 	}
 
 	/**
-	 * Uploads a local file to S3 (streaming) with optional automatic MIME.
+	 * Uploads a local file to S3 with optional automatic MIME.
 	 *
 	 * @param string	$filePath		Local file path.
 	 * @param string	$destination	Remote path in bucket.
@@ -354,11 +354,6 @@ class AmazonS3 {
 			throw new PairException('Local file not readable: ' . $filePath, ErrorCodes::AMAZON_S3_ERROR);
 		}
 
-		$stream = fopen($filePath, 'rb');
-		if (false === $stream) {
-			throw new PairException('Unable to open local file: ' . $filePath, ErrorCodes::AMAZON_S3_ERROR);
-		}
-
 		// try to detect MIME for proper Content-Type on S3
 		$mime = function_exists('mime_content_type') ? @mime_content_type($filePath) : null;
 		$options = [];
@@ -370,12 +365,11 @@ class AmazonS3 {
 			$this->client->putObject(array_merge([
 				'Bucket' => $this->bucket,
 				'Key' => $destination,
-				'Body' => $stream,
+				// Let the AWS SDK own the file handle lifecycle to avoid double-closing streams.
+				'SourceFile' => $filePath,
 			], $options));
 		} catch (\Throwable $e) {
 			throw new PairException('S3 put() failed: ' . $e->getMessage(), ErrorCodes::AMAZON_S3_ERROR, $e);
-		} finally {
-			@fclose($stream);
 		}
 
 	}
