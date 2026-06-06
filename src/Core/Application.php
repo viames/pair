@@ -1355,26 +1355,81 @@ class Application {
 
 			$this->sendApiError('AUTH_SESSION_EXPIRED', ApiResponse::localizedMessage('AUTH_SESSION_EXPIRED'), 401);
 
-		// redirects to login page
-		} else {
-
-			// avoid to return POST requests
-			if (isset($_SERVER['REQUEST_METHOD']) and 'POST' !== $_SERVER['REQUEST_METHOD']) {
-				$this->setPersistentState('lastRequestedUrl', $router->getUrl());
-			}
-
-			// check if the request is for user module/action
-			$userRequest = ('user' == $router->module and in_array($router->action, ['login','reset','confirm','passwordReset','sendResetEmail','newPassword','setNewPassword']));
-
-			// check if the request is for guest module/action
-			$guestRequest = (in_array($router->module, array_keys($this->guestModules)) and in_array($router->action, $this->guestModules[$router->module]));
-
-			// redirect to login page if action is not login or password reset or guest module
-			if (!$userRequest and !$guestRequest) {
-				$this->redirect('user/login');
-			}
-
 		}
+
+		// check if the request is for user module/action
+		$userRequest = ('user' == $router->module and in_array($router->action, ['login','reset','confirm','passwordReset','sendResetEmail','newPassword','setNewPassword']));
+
+		// check if the request is for guest module/action
+		$guestRequest = (in_array($router->module, array_keys($this->guestModules)) and in_array($router->action, $this->guestModules[$router->module]));
+
+		if (!$userRequest and !$guestRequest and $this->requestExpectsDataResponse()) {
+			$this->sendUnauthenticatedDataResponse();
+		}
+
+		// avoid to return POST requests
+		if (isset($_SERVER['REQUEST_METHOD']) and 'POST' !== $_SERVER['REQUEST_METHOD']) {
+			$this->setPersistentState('lastRequestedUrl', $router->getUrl());
+		}
+
+		// redirect to login page if action is not login or password reset or guest module
+		if (!$userRequest and !$guestRequest) {
+			$this->redirect('user/login');
+		}
+
+	}
+
+	/**
+	 * Returns the application login URL exposed to clients that must re-authenticate.
+	 */
+	private function loginUrl(): string {
+
+		return (defined('BASE_HREF') and BASE_HREF) ? BASE_HREF . 'login' : 'user/login';
+
+	}
+
+	/**
+	 * Detects browser data requests that cannot safely consume a login HTML redirect.
+	 */
+	private function requestExpectsDataResponse(): bool {
+
+		$requestedWith = strtolower(trim((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')));
+
+		if (in_array($requestedWith, ['xmlhttprequest', 'pairrouter'], true)) {
+			return true;
+		}
+
+		$acceptHeader = strtolower(trim((string)($_SERVER['HTTP_ACCEPT'] ?? '')));
+
+		if (str_contains($acceptHeader, 'application/json') or str_contains($acceptHeader, 'application/problem+json')) {
+			return true;
+		}
+
+		$contentType = strtolower(trim((string)($_SERVER['CONTENT_TYPE'] ?? '')));
+
+		if (str_contains($contentType, 'application/json')) {
+			return true;
+		}
+
+		$fetchDestination = strtolower(trim((string)($_SERVER['HTTP_SEC_FETCH_DEST'] ?? '')));
+		$fetchMode = strtolower(trim((string)($_SERVER['HTTP_SEC_FETCH_MODE'] ?? '')));
+
+		return 'empty' === $fetchDestination and 'navigate' !== $fetchMode;
+
+	}
+
+	/**
+	 * Sends the standard unauthenticated JSON payload for expired browser sessions.
+	 */
+	private function sendUnauthenticatedDataResponse(): void {
+
+		header('X-Pair-Auth-Expired: 1', true);
+		header('Cache-Control: no-store', true);
+
+		$this->sendApiError('AUTH_SESSION_EXPIRED', ApiResponse::localizedMessage('AUTH_SESSION_EXPIRED'), 401, [
+			'loginUrl' => $this->loginUrl(),
+			'redirectUrl' => $this->loginUrl()
+		]);
 
 	}
 
