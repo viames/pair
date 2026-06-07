@@ -156,8 +156,9 @@ class Logger implements LoggerInterface {
 			}
 		}
 
-		if (Env::get('TELEGRAM_BOT_TOKEN')) {
-			$this->telegramBotToken = Env::get('TELEGRAM_BOT_TOKEN');
+		$telegramBotToken = self::loggerTelegramBotToken();
+		if ($telegramBotToken) {
+			$this->telegramBotToken = $telegramBotToken;
 		}
 
 		if (Env::get('PAIR_LOGGER_TELEGRAM_CHAT_IDS')) {
@@ -342,6 +343,22 @@ class Logger implements LoggerInterface {
 		}
 
 		return false;
+
+	}
+
+	/**
+	 * Return the Telegram bot token configured for logger notifications.
+	 */
+	private static function loggerTelegramBotToken(): ?string {
+
+		$token = trim((string)Env::get('PAIR_LOGGER_TELEGRAM_BOT_TOKEN'));
+
+		// Keep TELEGRAM_BOT_TOKEN as a legacy fallback for existing Pair applications.
+		if ('' === $token) {
+			$token = trim((string)Env::get('TELEGRAM_BOT_TOKEN'));
+		}
+
+		return '' === $token ? null : $token;
 
 	}
 

@@ -12,7 +12,7 @@
 [![Tests](https://github.com/viames/pair/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/viames/pair/actions/workflows/ci.yml?query=branch%3Amain)
 [![Total Downloads](https://poser.pugx.org/viames/pair/downloads)](https://packagist.org/packages/viames/pair)
 [![Latest Stable Version](https://poser.pugx.org/viames/pair/v/stable)](https://packagist.org/packages/viames/pair)
-[![GitHub Release](https://img.shields.io/github/v/release/viames/pair)](https://github.com/viames/pair/releases)
+[![Latest Unstable Version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fviames%2Fpair%2Fmain%2Fcomposer.json&query=%24.extra.branch-alias.dev-main&label=latest%20unstable&color=orange)](https://github.com/viames/pair/tree/main)
 [![License](https://poser.pugx.org/viames/pair/license)](https://packagist.org/packages/viames/pair)
 [![PHP Version Require](https://poser.pugx.org/viames/pair/require/php)](https://packagist.org/packages/viames/pair)
 
