@@ -8,9 +8,11 @@ use Pair\Data\Payload;
 use Pair\Data\ReadModel;
 use Pair\Http\Input;
 use Pair\Http\JsonResponse;
+use Pair\Http\ResponseInterface;
 use Pair\Tests\Support\FakePageState;
 use Pair\Tests\Support\TestCase;
 use Pair\Web\Controller;
+use Pair\Web\FragmentResponse;
 use Pair\Web\PageResponse;
 
 /**
@@ -78,6 +80,102 @@ class ControllerTest extends TestCase {
 		$this->assertSame(__DIR__ . '/layouts/default.php', $this->readInaccessibleProperty($response, 'templateFile'));
 		$this->assertSame($state, $this->readInaccessibleProperty($response, 'state'));
 		$this->assertSame('Demo page', $this->readInaccessibleProperty($response, 'title'));
+
+	}
+
+	/**
+	 * Verify fragment() creates an explicit region response bound to a module layout.
+	 */
+	public function testFragmentHelperBuildsFragmentResponse(): void {
+
+		$controller = new TestWebController();
+		$state = new FakePageState('Fragment content');
+		$response = $controller->exposeFragment('default', $state, 'orders-list');
+
+		$this->assertInstanceOf(FragmentResponse::class, $response);
+		$this->assertSame(__DIR__ . '/layouts/default.php', $this->readInaccessibleProperty($response, 'templateFile'));
+		$this->assertSame($state, $this->readInaccessibleProperty($response, 'state'));
+		$this->assertSame('orders-list', $this->readInaccessibleProperty($response, 'region'));
+
+	}
+
+	/**
+	 * Verify fragment() rejects empty region names before emitting headers.
+	 */
+	public function testFragmentHelperRejectsEmptyRegion(): void {
+
+		$controller = new TestWebController();
+
+		$this->expectException(\InvalidArgumentException::class);
+		$this->expectExceptionMessage('Fragment region name must not be empty.');
+
+		$controller->exposeFragment('default', new FakePageState('Fragment content'), " \n ");
+
+	}
+
+	/**
+	 * Verify pageOrFragment() keeps full-page rendering unless a matching region is requested.
+	 */
+	public function testPageOrFragmentDefaultsToPageResponse(): void {
+
+		$controller = new TestWebController();
+		$state = new FakePageState('Full page');
+		$response = $controller->exposePageOrFragment('default', 'default', $state, 'orders-list', 'Orders');
+
+		$this->assertInstanceOf(PageResponse::class, $response);
+		$this->assertSame('Orders', $this->readInaccessibleProperty($response, 'title'));
+
+	}
+
+	/**
+	 * Verify pageOrFragment() returns a fragment only for an explicit matching region request.
+	 */
+	public function testPageOrFragmentReturnsRequestedRegion(): void {
+
+		$_SERVER['HTTP_X_PAIR_REGION'] = 'orders-list';
+
+		$controller = new TestWebController();
+		$state = new FakePageState('Fragment content');
+		$response = $controller->exposePageOrFragment('default', 'default', $state, 'orders-list', 'Orders');
+
+		$this->assertInstanceOf(FragmentResponse::class, $response);
+		$this->assertSame('orders-list', $this->readInaccessibleProperty($response, 'region'));
+
+	}
+
+	/**
+	 * Verify pageOrFragments() can route multiple region names to dedicated fragment layouts.
+	 */
+	public function testPageOrFragmentsReturnsMappedRequestedRegion(): void {
+
+		$_SERVER['HTTP_X_PAIR_REGION'] = 'orders-summary';
+
+		$controller = new TestWebController();
+		$state = new FakePageState('Fragment content');
+		$response = $controller->exposePageOrFragments('default', [
+			'orders-list' => 'default',
+			'orders-summary' => 'default',
+		], $state, 'Orders');
+
+		$this->assertInstanceOf(FragmentResponse::class, $response);
+		$this->assertSame('orders-summary', $this->readInaccessibleProperty($response, 'region'));
+
+	}
+
+	/**
+	 * Verify pageOrFragments() keeps full-page rendering when no mapped region matches.
+	 */
+	public function testPageOrFragmentsIgnoresUnknownRequestedRegion(): void {
+
+		$_SERVER['HTTP_X_PAIR_REGION'] = 'orders-unknown';
+
+		$controller = new TestWebController();
+		$state = new FakePageState('Full page');
+		$response = $controller->exposePageOrFragments('default', [
+			'orders-list' => 'default',
+		], $state, 'Orders');
+
+		$this->assertInstanceOf(PageResponse::class, $response);
 
 	}
 
@@ -153,6 +251,15 @@ final class TestWebController extends Controller {
 	}
 
 	/**
+	 * Expose the protected fragment() helper for unit tests.
+	 */
+	public function exposeFragment(string $layout, object $state, string $region, int $httpCode = 200): FragmentResponse {
+
+		return $this->fragment($layout, $state, $region, $httpCode);
+
+	}
+
+	/**
 	 * Expose the protected modulePath() helper for unit tests.
 	 */
 	public function exposeModulePath(?string $path = null): string {
@@ -167,6 +274,26 @@ final class TestWebController extends Controller {
 	public function exposePage(string $layout, object $state, ?string $title = null): PageResponse {
 
 		return $this->page($layout, $state, $title);
+
+	}
+
+	/**
+	 * Expose the protected pageOrFragment() helper for unit tests.
+	 */
+	public function exposePageOrFragment(string $pageLayout, string $fragmentLayout, object $state, string $region, ?string $title = null): ResponseInterface {
+
+		return $this->pageOrFragment($pageLayout, $fragmentLayout, $state, $region, $title);
+
+	}
+
+	/**
+	 * Expose the protected pageOrFragments() helper for unit tests.
+	 *
+	 * @param	array<string, string>	$fragmentLayouts	Fragment layouts indexed by region name.
+	 */
+	public function exposePageOrFragments(string $pageLayout, array $fragmentLayouts, object $state, ?string $title = null): ResponseInterface {
+
+		return $this->pageOrFragments($pageLayout, $fragmentLayouts, $state, $title);
 
 	}
 

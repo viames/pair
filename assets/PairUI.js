@@ -1669,6 +1669,11 @@
       if (params instanceof URLSearchParams) return params.toString();
 
       const search = new URLSearchParams();
+      if (typeof FormData !== "undefined" && params instanceof FormData) {
+        for (const [key, value] of params.entries()) appendKeyValue(search, key, value);
+        return search.toString();
+      }
+
       const entries = isPlainObject(params) ? Object.entries(params) : [];
       for (const [key, value] of entries) appendKeyValue(search, key, value);
       return search.toString();
@@ -1818,6 +1823,916 @@
         form: formElOrObj,
         ...opts,
       });
+    },
+  };
+
+  // ---------------------------------------------------------------------------
+  // Progressive regions, actions, and filters
+  // ---------------------------------------------------------------------------
+
+  const regionRefreshControllers = new Map();
+
+  /**
+   * Normalize a region name from a string or region element.
+   * @param {*} region
+   * @returns {string}
+   */
+  function normalizeRegionName(region) {
+    if (
+      typeof HTMLElement !== "undefined"
+      && region instanceof HTMLElement
+      && typeof region.getAttribute === "function"
+    ) {
+      return String(region.getAttribute("data-pair-region") || "").trim();
+    }
+
+    return String(region ?? "").trim();
+  }
+
+  /**
+   * Return all Pair region elements matching a region name.
+   * @param {string} name
+   * @param {*} root
+   * @returns {Array}
+   */
+  function findRegionElements(name, root = document) {
+    const regionName = normalizeRegionName(name);
+    if (!regionName) return [];
+
+    return PairUI.qsa("[data-pair-region]", root).filter((element) => (
+      normalizeRegionName(element) === regionName
+    ));
+  }
+
+  /**
+   * Return the first Pair region element matching a region name.
+   * @param {string} name
+   * @param {*} root
+   * @returns {?HTMLElement}
+   */
+  function findRegionElement(name, root = document) {
+    return findRegionElements(name, root)[0] || null;
+  }
+
+  /**
+   * Parse a space- or comma-separated token list.
+   * @param {*} value
+   * @returns {string[]}
+   */
+  function parseTokenList(value) {
+    return String(value ?? "")
+      .split(/[\s,]+/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  /**
+   * Return true when an error was caused by an aborted fetch.
+   * @param {*} error
+   * @returns {boolean}
+   */
+  function isAbortError(error) {
+    return !!error && (error.name === "AbortError" || error.code === 20);
+  }
+
+  /**
+   * Build the request headers used by progressive Pair UI calls.
+   * @param {string} regionName
+   * @param {*} headers
+   * @returns {Headers}
+   */
+  function buildProgressiveHeaders(regionName = "", headers = {}) {
+    const requestHeaders = new Headers(headers || {});
+
+    if (!requestHeaders.has("X-Pair-UI")) {
+      requestHeaders.set("X-Pair-UI", "1");
+    }
+
+    if (regionName && !requestHeaders.has("X-Pair-Region")) {
+      requestHeaders.set("X-Pair-Region", regionName);
+    }
+
+    return requestHeaders;
+  }
+
+  /**
+   * Return refresh regions declared by a Pair JSON payload.
+   * @param {*} payload
+   * @returns {string[]}
+   */
+  function getPayloadRefreshRegions(payload) {
+    if (!payload || typeof payload !== "object") {
+      return [];
+    }
+
+    const candidates = [
+      payload.refreshRegions,
+      payload.refresh,
+      payload.data && payload.data.refreshRegions,
+      payload.data && payload.data.refresh,
+      payload.meta && payload.meta.refreshRegions,
+      payload.meta && payload.meta.refresh,
+    ];
+
+    for (const candidate of candidates) {
+      if (Array.isArray(candidate)) {
+        const regions = candidate.map(normalizeRegionName).filter(Boolean);
+        if (regions.length) {
+          return regions;
+        }
+      }
+
+      if (typeof candidate === "string" && candidate.trim()) {
+        const regions = parseTokenList(candidate);
+        if (regions.length) {
+          return regions;
+        }
+      }
+    }
+
+    return [];
+  }
+
+  /**
+   * Return a refresh URL declared by a Pair JSON payload.
+   * @param {*} payload
+   * @returns {string}
+   */
+  function getPayloadRefreshUrl(payload) {
+    if (!payload || typeof payload !== "object") {
+      return "";
+    }
+
+    const candidates = [
+      payload.refreshUrl,
+      payload.data && payload.data.refreshUrl,
+      payload.data && payload.data.redirectUrl,
+      payload.meta && payload.meta.refreshUrl,
+      payload.meta && payload.meta.redirectUrl,
+    ];
+
+    for (const candidate of candidates) {
+      if (typeof candidate === "string" && candidate.trim()) {
+        return candidate.trim();
+      }
+    }
+
+    return "";
+  }
+
+  /**
+   * Resolve the URL used to refresh a region.
+   * @param {HTMLElement} region
+   * @param {*} options
+   * @returns {string}
+   */
+  function getRegionRefreshUrl(region, options = {}) {
+    return String(
+      options.url
+      || region.getAttribute("data-pair-source")
+      || global.location.href
+    );
+  }
+
+  /**
+   * Toggle the standard busy state for a Pair region.
+   * @param {HTMLElement} region
+   * @param {boolean} busy
+   * @param {*} options
+   * @returns {void}
+   */
+  function setRegionBusy(region, busy, options = {}) {
+    const className = String(
+      options.loadingClass
+      || region.getAttribute("data-pair-loading-class")
+      || "is-loading"
+    ).trim();
+
+    if (className) {
+      region.classList.toggle(className, !!busy);
+    }
+
+    if (busy) {
+      region.setAttribute("aria-busy", "true");
+    } else {
+      region.removeAttribute("aria-busy");
+    }
+  }
+
+  /**
+   * Escape a value used inside a quoted CSS attribute selector.
+   * @param {*} value
+   * @returns {string}
+   */
+  function escapeCssAttributeValue(value) {
+    return String(value ?? "")
+      .replace(/\\/g, "\\\\")
+      .replace(/"/g, '\\"')
+      .replace(/\r/g, "\\D ")
+      .replace(/\n/g, "\\A ");
+  }
+
+  /**
+   * Return a selector that can restore focus after a region replacement.
+   * @param {?Element} element
+   * @returns {?string}
+   */
+  function getFocusRestoreSelector(element) {
+    if (!element || typeof element.matches !== "function") {
+      return null;
+    }
+
+    if (element.id) {
+      return '[id="' + escapeCssAttributeValue(element.id) + '"]';
+    }
+
+    const name = element.getAttribute("name");
+    if (name) {
+      return '[name="' + escapeCssAttributeValue(name) + '"]';
+    }
+
+    return null;
+  }
+
+  /**
+   * Restore focus inside a refreshed region when the focused control still exists.
+   * @param {HTMLElement} region
+   * @param {?string} selector
+   * @returns {void}
+   */
+  function restoreRegionFocus(region, selector) {
+    if (!selector) return;
+
+    let target = null;
+    try {
+      target = PairUI.qs(selector, region);
+    } catch (error) {
+      return;
+    }
+
+    if (target && typeof target.focus === "function") {
+      target.focus({ preventScroll: true });
+    }
+  }
+
+  /**
+   * Extract a matching region from an HTML response.
+   * @param {string} html
+   * @param {string} regionName
+   * @returns {?HTMLElement}
+   */
+  function extractRegionFromHtml(html, regionName) {
+    const parsed = new DOMParser().parseFromString(String(html || ""), "text/html");
+
+    return findRegionElement(regionName, parsed);
+  }
+
+  /**
+   * Emit the standard event after a Pair region is replaced.
+   * @param {string} regionName
+   * @param {HTMLElement} region
+   * @param {HTMLElement} previousRegion
+   * @returns {void}
+   */
+  function emitRegionReplaced(regionName, region, previousRegion) {
+    PairUI.emit(document, "pair:region:replaced", {
+      previousRoot: previousRegion,
+      region: regionName,
+      root: region,
+    });
+  }
+
+  /**
+   * Emit a cancelable event before a Pair region refresh starts.
+   * @param {string} regionName
+   * @param {HTMLElement} region
+   * @param {string} url
+   * @returns {CustomEvent}
+   */
+  function emitRegionRefreshing(regionName, region, url) {
+    return PairUI.emit(region, "pair:region:refreshing", {
+      region: regionName,
+      root: region,
+      url,
+    }, {
+      cancelable: true,
+    });
+  }
+
+  /**
+   * Emit the standard event after a Pair region refresh fails.
+   * @param {string} regionName
+   * @param {HTMLElement} region
+   * @param {*} error
+   * @returns {void}
+   */
+  function emitRegionError(regionName, region, error) {
+    PairUI.emit(region, "pair:region:error", {
+      error,
+      region: regionName,
+      root: region,
+    });
+  }
+
+  /**
+   * Extract a human-readable message from a Pair JSON payload.
+   * @param {*} payload
+   * @returns {string}
+   */
+  function getPayloadMessage(payload) {
+    if (!payload || typeof payload !== "object") {
+      return "";
+    }
+
+    if (payload.meta && typeof payload.meta.message === "string") {
+      return payload.meta.message.trim();
+    }
+
+    if (typeof payload.message === "string") {
+      return payload.message.trim();
+    }
+
+    return "";
+  }
+
+  /**
+   * Show a Pair action success message when the payload carries one.
+   * @param {*} payload
+   * @param {*} source
+   * @param {*} options
+   * @returns {void}
+   */
+  function showActionSuccess(payload, source, options = {}) {
+    const message = getPayloadMessage(payload);
+    if (!message || options.toast === false || source.getAttribute("data-pair-toast") === "0") {
+      return;
+    }
+
+    PairUI.toast.success({
+      message,
+      title: source.getAttribute("data-pair-success-title") || "",
+    });
+  }
+
+  /**
+   * Show a Pair action error through SweetAlert2 or the configured toast driver.
+   * @param {*} error
+   * @param {*} source
+   * @param {*} options
+   * @returns {void}
+   */
+  function showActionError(error, source, options = {}) {
+    if (options.toast === false || source.getAttribute("data-pair-toast") === "0") {
+      return;
+    }
+
+    const title = error && error.payload && typeof error.payload.title === "string"
+      ? error.payload.title
+      : getClientMessage("ERROR", "Error");
+    const message = getErrorMessage(error);
+
+    if (global.Swal && typeof global.Swal.fire === "function" && options.modalErrors !== false) {
+      global.Swal.fire({
+        confirmButtonText: getClientMessage("OK", "OK"),
+        icon: "error",
+        text: message,
+        title,
+      });
+      return;
+    }
+
+    PairUI.toast.error({ message, title });
+  }
+
+  /**
+   * Return region names that should refresh after a progressive action.
+   * @param {*} source
+   * @param {*} options
+   * @returns {string[]}
+   */
+  function getRefreshRegions(source, options = {}) {
+    if (options.refresh === false) {
+      return [];
+    }
+
+    if (Array.isArray(options.refresh)) {
+      return options.refresh.map(normalizeRegionName).filter(Boolean);
+    }
+
+    const configured = options.refresh ?? source.getAttribute("data-pair-refresh") ?? "";
+
+    return parseTokenList(configured);
+  }
+
+  /**
+   * Refresh all regions declared by a progressive action.
+   * @param {*} source
+   * @param {*} options
+   * @returns {Promise<Array>}
+   */
+  async function refreshActionRegions(source, options = {}) {
+    if (options.refresh === false) {
+      return [];
+    }
+
+    const regions = Array.from(new Set([
+      ...getRefreshRegions(source, options),
+      ...getPayloadRefreshRegions(options.payload),
+    ]));
+    const url = options.refreshUrl
+      || getPayloadRefreshUrl(options.payload)
+      || source.getAttribute("data-pair-refresh-url")
+      || "";
+    const refreshed = [];
+
+    for (const region of regions) {
+      refreshed.push(await PairUI.region.refresh(region, {
+        ...(url ? { url } : {}),
+        headers: options.headers,
+      }));
+    }
+
+    return refreshed;
+  }
+
+  /**
+   * Build FormData for a submitted form, preserving the submitter when supported.
+   * @param {HTMLFormElement} form
+   * @param {?HTMLElement} submitter
+   * @returns {FormData}
+   */
+  function buildSubmitFormData(form, submitter = null) {
+    if (submitter) {
+      try {
+        return new FormData(form, submitter);
+      } catch (error) {
+        const data = new FormData(form);
+        const name = submitter.getAttribute("name");
+        if (name) {
+          data.append(name, submitter.getAttribute("value") || "");
+        }
+        return data;
+      }
+    }
+
+    return new FormData(form);
+  }
+
+  /**
+   * Resolve the effective action URL for a progressive form submit.
+   * @param {HTMLFormElement} form
+   * @param {?HTMLElement} submitter
+   * @returns {string}
+   */
+  function getSubmitAction(form, submitter = null) {
+    return String(
+      (submitter && submitter.getAttribute("formaction"))
+      || form.getAttribute("action")
+      || global.location.href
+    );
+  }
+
+  /**
+   * Resolve the effective HTTP method for a progressive form submit.
+   * @param {HTMLFormElement} form
+   * @param {?HTMLElement} submitter
+   * @returns {string}
+   */
+  function getSubmitMethod(form, submitter = null) {
+    return String(
+      (submitter && submitter.getAttribute("formmethod"))
+      || form.getAttribute("method")
+      || "GET"
+    ).trim().toUpperCase();
+  }
+
+  /**
+   * Normalize a form control value for persistent filter state.
+   * @param {HTMLElement} control
+   * @returns {string}
+   */
+  function getFilterControlValue(control) {
+    if ((control.type === "checkbox" || control.type === "radio") && !control.checked) {
+      return "";
+    }
+
+    if (control instanceof HTMLSelectElement && control.multiple) {
+      return Array.from(control.selectedOptions)
+        .map((option) => String(option.value || "").trim())
+        .filter(Boolean)
+        .join("|");
+    }
+
+    return String(control.value ?? "").trim();
+  }
+
+  /**
+   * Return values that represent an empty persistent filter.
+   * @param {HTMLElement} control
+   * @returns {string[]}
+   */
+  function getEmptyFilterValues(control) {
+    const raw = String(
+      control.getAttribute("data-pair-empty-value")
+      || control.getAttribute("data-filter-empty-value")
+      || ""
+    );
+    const values = [""];
+
+    for (const value of raw.split("|")) {
+      const normalized = value.trim();
+      if (normalized && !values.includes(normalized)) {
+        values.push(normalized);
+      }
+    }
+
+    return values;
+  }
+
+  /**
+   * Return the persistent state name for a Pair filter control.
+   * @param {HTMLElement} control
+   * @returns {string}
+   */
+  function getFilterStateName(control) {
+    return String(
+      control.getAttribute("data-pair-state-name")
+      || control.getAttribute("data-filter-name")
+      || control.getAttribute("name")
+      || ""
+    ).trim();
+  }
+
+  /**
+   * Cast a persistent filter value according to the declared data type.
+   * @param {string} value
+   * @param {HTMLElement} control
+   * @returns {*}
+   */
+  function castFilterValue(value, control) {
+    const valueType = String(
+      control.getAttribute("data-pair-value-type")
+      || control.getAttribute("data-filter-type")
+      || "string"
+    ).trim();
+
+    if (value === "") {
+      return null;
+    }
+
+    if (valueType === "int") {
+      const parsed = parseInt(value, 10);
+      return Number.isNaN(parsed) ? null : parsed;
+    }
+
+    return value;
+  }
+
+  /**
+   * Toggle active filter styling on a Pair filter control.
+   * @param {HTMLElement} control
+   * @param {boolean} active
+   * @returns {void}
+   */
+  function setFilterActive(control, active) {
+    control.classList.toggle("active-filter", !!active);
+
+    const select2Selection = control.nextElementSibling
+      ? control.nextElementSibling.querySelector(".select2-selection")
+      : null;
+
+    if (select2Selection) {
+      select2Selection.classList.toggle("active-filter", !!active);
+    }
+  }
+
+  /**
+   * Return true when a Pair filter should reload the current page as fallback.
+   * @param {HTMLElement} control
+   * @returns {boolean}
+   */
+  function shouldReloadFilter(control) {
+    const configured = String(
+      control.getAttribute("data-pair-filter-reload")
+      || control.getAttribute("data-filter-reload")
+      || ""
+    ).trim().toLowerCase();
+    if (configured) {
+      return !["0", "false", "off", "no"].includes(configured);
+    }
+
+    return !control.getAttribute("data-pair-refresh");
+  }
+
+  /**
+   * Resolve the fallback URL for a Pair filter control.
+   * @param {HTMLElement} control
+   * @returns {string}
+   */
+  function getFilterFallbackUrl(control) {
+    const form = control.closest("form");
+
+    return form ? (form.getAttribute("action") || global.location.pathname) : global.location.pathname;
+  }
+
+  /**
+   * Synchronize one Pair filter control with persistent state.
+   * @param {HTMLElement} control
+   * @returns {*}
+   */
+  function syncFilterControl(control) {
+    const stateName = getFilterStateName(control);
+    const rawValue = getFilterControlValue(control);
+    const emptyValues = getEmptyFilterValues(control);
+    const isEmpty = emptyValues.includes(rawValue);
+
+    setFilterActive(control, !isEmpty);
+
+    if (!stateName) {
+      return null;
+    }
+
+    if (isEmpty) {
+      PairUI.persist.unset(stateName);
+      return null;
+    }
+
+    const value = castFilterValue(rawValue, control);
+    if (value == null) {
+      PairUI.persist.unset(stateName);
+      return null;
+    }
+
+    PairUI.persist.set(stateName, value);
+    return value;
+  }
+
+  /**
+   * Refresh a Pair filter target region or fall back to a canonical page reload.
+   * @param {HTMLElement} control
+   * @returns {Promise<void>}
+   */
+  async function refreshFilterTarget(control) {
+    const regions = parseTokenList(control.getAttribute("data-pair-refresh") || "");
+
+    if (regions.length) {
+      try {
+        for (const region of regions) {
+          await PairUI.region.refresh(region);
+        }
+      } catch (error) {
+        if (!isAbortError(error)) {
+          global.location.assign(getFilterFallbackUrl(control));
+        }
+      }
+      return;
+    }
+
+    if (shouldReloadFilter(control)) {
+      global.location.assign(getFilterFallbackUrl(control));
+    }
+  }
+
+  /**
+   * Progressive region helpers for server-rendered Pair pages.
+   */
+  PairUI.region = {
+    /**
+     * Find the first region element matching the given region name.
+     * @param {string} name
+     * @param {*} root
+     * @returns {?HTMLElement}
+     */
+    find(name, root = document) {
+      return findRegionElement(name, root);
+    },
+
+    /**
+     * Find all region elements matching the given region name.
+     * @param {string} name
+     * @param {*} root
+     * @returns {Array}
+     */
+    findAll(name, root = document) {
+      return findRegionElements(name, root);
+    },
+
+    /**
+     * Refresh one server-rendered region from its source URL.
+     * @param {*} region
+     * @param {*} options
+     * @returns {Promise<HTMLElement>}
+     */
+    async refresh(region, options = {}) {
+      const regionName = normalizeRegionName(region);
+      const current = typeof HTMLElement !== "undefined" && region instanceof HTMLElement
+        ? region
+        : findRegionElement(regionName);
+
+      if (!regionName || !current) {
+        throw new Error("Pair region not found.");
+      }
+
+      const focusedSelector = current.contains(document.activeElement)
+        ? getFocusRestoreSelector(document.activeElement)
+        : null;
+      const refreshUrl = getRegionRefreshUrl(current, options);
+      const refreshEvent = emitRegionRefreshing(regionName, current, refreshUrl);
+
+      if (refreshEvent.defaultPrevented) {
+        return current;
+      }
+
+      const previousController = regionRefreshControllers.get(regionName);
+      if (previousController) {
+        previousController.abort();
+      }
+
+      const controller = new AbortController();
+      regionRefreshControllers.set(regionName, controller);
+
+      setRegionBusy(current, true, options);
+
+      try {
+        const html = await PairUI.http.get(refreshUrl, {
+          expect: "text",
+          headers: buildProgressiveHeaders(regionName, options.headers),
+          query: options.query,
+          signal: controller.signal,
+        });
+        const next = extractRegionFromHtml(html, regionName);
+
+        if (!next) {
+          throw new Error("Pair region response did not include the requested region.");
+        }
+
+        current.replaceWith(next);
+        restoreRegionFocus(next, focusedSelector);
+        emitRegionReplaced(regionName, next, current);
+
+        return next;
+      } catch (error) {
+        if (!isAbortError(error)) {
+          emitRegionError(regionName, current, error);
+        }
+
+        throw error;
+      } finally {
+        if (regionRefreshControllers.get(regionName) === controller) {
+          regionRefreshControllers.delete(regionName);
+        }
+
+        if (current.isConnected) {
+          setRegionBusy(current, false, options);
+        }
+      }
+    },
+  };
+
+  /**
+   * Progressive action helpers for forms and command links.
+   */
+  PairUI.actions = {
+    /**
+     * Bind opt-in progressive action listeners below a root element.
+     * @param {*} root
+     * @param {*} options
+     * @returns {Function}
+     */
+    bind(root = document, options = {}) {
+      const bindingRoot = typeof root === "string" ? PairUI.qs(root) : root;
+      if (!bindingRoot) return () => {};
+
+      const submitSelector = options.submitSelector || "form[data-pair-submit]";
+      const actionSelector = options.actionSelector || "[data-pair-action]";
+      const unbindSubmit = PairUI.delegate(bindingRoot, "submit", submitSelector, (event, form) => {
+        event.preventDefault();
+        this.submit(form, { ...options, submitter: event.submitter || null }).catch(() => {});
+      });
+      const unbindAction = PairUI.delegate(bindingRoot, "click", actionSelector, (event, element) => {
+        event.preventDefault();
+        this.run(element, options).catch(() => {});
+      });
+
+      return () => {
+        unbindSubmit();
+        unbindAction();
+      };
+    },
+
+    /**
+     * Run a progressive command link or button.
+     * @param {HTMLElement} element
+     * @param {*} options
+     * @returns {Promise<*>}
+     */
+    async run(element, options = {}) {
+      const url = String(element.getAttribute("href") || element.getAttribute("data-pair-action") || "");
+      const method = String(element.getAttribute("data-pair-method") || "POST").trim().toUpperCase();
+
+      if (!url) {
+        throw new Error("Pair action URL not configured.");
+      }
+
+      return PairUI.withLoading(element, async () => {
+        try {
+          const payload = await PairUI.http.request(url, {
+            expect: options.expect || "auto",
+            headers: buildProgressiveHeaders("", options.headers),
+            method,
+          });
+
+          showActionSuccess(payload, element, options);
+          await refreshActionRegions(element, { ...options, payload });
+
+          return payload;
+        } catch (error) {
+          showActionError(error, element, options);
+          throw error;
+        }
+      }, options.loading || {});
+    },
+
+    /**
+     * Submit a form progressively and refresh declared regions.
+     * @param {HTMLFormElement} form
+     * @param {*} options
+     * @returns {Promise<*>}
+     */
+    async submit(form, options = {}) {
+      const submitter = options.submitter || null;
+      const method = getSubmitMethod(form, submitter);
+      const action = getSubmitAction(form, submitter);
+      const data = buildSubmitFormData(form, submitter);
+      const requestOptions = {
+        expect: options.expect || "auto",
+        headers: buildProgressiveHeaders("", options.headers),
+        method,
+      };
+
+      if (method === "GET") {
+        requestOptions.query = data;
+      } else {
+        requestOptions.form = data;
+      }
+
+      return PairUI.withLoading(submitter || form, async () => {
+        try {
+          const payload = await PairUI.http.request(action, requestOptions);
+
+          showActionSuccess(payload, form, options);
+          await refreshActionRegions(form, { ...options, payload });
+
+          return payload;
+        } catch (error) {
+          showActionError(error, form, options);
+          throw error;
+        }
+      }, options.loading || {});
+    },
+  };
+
+  /**
+   * Progressive persistent-filter helpers for Pair listing regions.
+   */
+  PairUI.filters = {
+    /**
+     * Bind opt-in persistent filter listeners below a root element.
+     * @param {*} root
+     * @param {*} options
+     * @returns {Function}
+     */
+    bind(root = document, options = {}) {
+      const bindingRoot = typeof root === "string" ? PairUI.qs(root) : root;
+      if (!bindingRoot) return () => {};
+
+      const selector = options.selector || "[data-pair-filter]";
+      const unbind = PairUI.delegate(bindingRoot, "change", selector, (event, control) => {
+        Promise.resolve().then(async () => {
+          syncFilterControl(control);
+          await refreshFilterTarget(control);
+        }).catch((error) => {
+          if (!isAbortError(error)) {
+            global.location.assign(getFilterFallbackUrl(control));
+          }
+        });
+      });
+
+      PairUI.qsa(selector, bindingRoot).forEach((control) => {
+        const rawValue = getFilterControlValue(control);
+        setFilterActive(control, !getEmptyFilterValues(control).includes(rawValue));
+      });
+
+      return unbind;
+    },
+
+    /**
+     * Synchronize a filter control into Pair persistent state.
+     * @param {HTMLElement} control
+     * @returns {*}
+     */
+    sync(control) {
+      return syncFilterControl(control);
     },
   };
 

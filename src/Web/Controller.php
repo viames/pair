@@ -10,6 +10,7 @@ use Pair\Data\ReadModel;
 use Pair\Helpers\LogBar;
 use Pair\Http\Input;
 use Pair\Http\JsonResponse;
+use Pair\Http\ResponseInterface;
 
 /**
  * Explicit controller base for Pair v4 modules.
@@ -111,11 +112,78 @@ abstract class Controller {
 	}
 
 	/**
+	 * Build an explicit HTML fragment response for a progressive UI region.
+	 */
+	protected function fragment(string $layout, object $state, string $region, int $httpCode = 200): FragmentResponse {
+
+		$region = $this->normalizeRegionName($region);
+
+		if ('' === $region) {
+			throw new \InvalidArgumentException('Fragment region name must not be empty.');
+		}
+
+		return new FragmentResponse($this->layoutPath($layout), $state, $region, $httpCode);
+
+	}
+
+	/**
+	 * Build a page response, or the requested fragment when a region was explicitly requested.
+	 */
+	protected function pageOrFragment(string $pageLayout, string $fragmentLayout, object $state, string $region, ?string $title = null): ResponseInterface {
+
+		if ($this->wantsRegion($region)) {
+			return $this->fragment($fragmentLayout, $state, $region);
+		}
+
+		return $this->page($pageLayout, $state, $title);
+
+	}
+
+	/**
+	 * Build a page response, or one fragment from a region-to-layout map.
+	 *
+	 * @param	array<string, string>	$fragmentLayouts	Fragment layouts indexed by region name.
+	 */
+	protected function pageOrFragments(string $pageLayout, array $fragmentLayouts, object $state, ?string $title = null): ResponseInterface {
+
+		$requestedRegion = $this->requestedRegion();
+
+		if (!is_null($requestedRegion) and array_key_exists($requestedRegion, $fragmentLayouts)) {
+			return $this->fragment($fragmentLayouts[$requestedRegion], $state, $requestedRegion);
+		}
+
+		return $this->page($pageLayout, $state, $title);
+
+	}
+
+	/**
 	 * Build an explicit JSON response.
 	 */
 	protected function json(ReadModel|\stdClass|array|null $payload, int $httpCode = 200): JsonResponse {
 
 		return new JsonResponse($payload, $httpCode);
+
+	}
+
+	/**
+	 * Return the progressive UI region explicitly requested by the client.
+	 */
+	protected function requestedRegion(): ?string {
+
+		$region = $this->normalizeRegionName((string)$this->input()->header('X-Pair-Region', ''));
+
+		return '' === $region ? null : $region;
+
+	}
+
+	/**
+	 * Return true when the current request explicitly asks for the given UI region.
+	 */
+	protected function wantsRegion(string $region): bool {
+
+		$requestedRegion = $this->requestedRegion();
+
+		return !is_null($requestedRegion) and $requestedRegion === $this->normalizeRegionName($region);
 
 	}
 
@@ -205,6 +273,15 @@ abstract class Controller {
 	private function layoutPath(string $layout): string {
 
 		return $this->modulePath('layouts/' . $layout . '.php');
+
+	}
+
+	/**
+	 * Normalize a client-provided progressive UI region name.
+	 */
+	private function normalizeRegionName(string $region): string {
+
+		return str_replace(["\r", "\n"], '', trim($region));
 
 	}
 
