@@ -256,6 +256,18 @@ class Form {
 	}
 
 	/**
+	 * Adds a BIC/SWIFT text input with shared client-side and server-side validation.
+	 *
+	 * @param	string	Control name.
+	 * @param	array	List of attributes.
+	 */
+	public function bic(string $name, array $attributes = []): Text {
+
+		return $this->text($name, $attributes)->preset(FormValidationPreset::BIC);
+
+	}
+
+	/**
 	 * Creates an HTML input form control.
 	 *
 	 * @param	string	HTML name for this control.
@@ -535,6 +547,42 @@ class Form {
 	}
 
 	/**
+	 * Adds an E.164 phone input with shared client-side and server-side validation.
+	 *
+	 * @param	string	Control name.
+	 * @param	array	List of attributes.
+	 */
+	public function e164Phone(string $name, array $attributes = []): Tel {
+
+		return $this->tel($name, $attributes)->preset(FormValidationPreset::E164_PHONE);
+
+	}
+
+	/**
+	 * Adds an EAN-13 text input with shared client-side and server-side validation.
+	 *
+	 * @param	string	Control name.
+	 * @param	array	List of attributes.
+	 */
+	public function ean13(string $name, array $attributes = []): Text {
+
+		return $this->text($name, $attributes)->preset(FormValidationPreset::EAN13);
+
+	}
+
+	/**
+	 * Adds an email input with shared client-side and server-side validation.
+	 *
+	 * @param	string	Control name.
+	 * @param	array	List of attributes.
+	 */
+	public function emailAddress(string $name, array $attributes = []): Email {
+
+		return $this->email($name, $attributes)->preset(FormValidationPreset::EMAIL);
+
+	}
+
+	/**
 	 * Assigns array or object values to controls with matching names.
 	 * This must be used after all controls have been defined.
 	 *
@@ -576,6 +624,18 @@ class Form {
 		$control = new File($name, $attributes);
 		$this->add($control);
 		return $control;
+
+	}
+
+	/**
+	 * Adds an Italian fiscal-code text input with shared client-side and server-side validation.
+	 *
+	 * @param	string	Control name.
+	 * @param	array	List of attributes.
+	 */
+	public function italianFiscalCode(string $name, array $attributes = []): Text {
+
+		return $this->text($name, $attributes)->preset(FormValidationPreset::ITALIAN_FISCAL_CODE);
 
 	}
 
@@ -635,6 +695,66 @@ class Form {
 		$control = new Image($name, $attributes);
 		$this->add($control);
 		return $control;
+
+	}
+
+	/**
+	 * Adds a hexadecimal color text input with shared client-side and server-side validation.
+	 *
+	 * @param	string	Control name.
+	 * @param	array	List of attributes.
+	 */
+	public function hexColor(string $name, array $attributes = []): Text {
+
+		return $this->text($name, $attributes)->preset(FormValidationPreset::HEX_COLOR);
+
+	}
+
+	/**
+	 * Adds an IBAN text input with shared client-side and server-side validation.
+	 *
+	 * @param	string	Control name.
+	 * @param	array	List of attributes.
+	 */
+	public function iban(string $name, array $attributes = []): Text {
+
+		return $this->text($name, $attributes)->preset(FormValidationPreset::IBAN);
+
+	}
+
+	/**
+	 * Adds an IP address text input with shared client-side and server-side validation.
+	 *
+	 * @param	string	Control name.
+	 * @param	array	List of attributes.
+	 */
+	public function ipAddress(string $name, array $attributes = []): Text {
+
+		return $this->text($name, $attributes)->preset(FormValidationPreset::IP_ADDRESS);
+
+	}
+
+	/**
+	 * Adds an IPv4 address text input with shared client-side and server-side validation.
+	 *
+	 * @param	string	Control name.
+	 * @param	array	List of attributes.
+	 */
+	public function ipv4Address(string $name, array $attributes = []): Text {
+
+		return $this->text($name, $attributes)->preset(FormValidationPreset::IPV4_ADDRESS);
+
+	}
+
+	/**
+	 * Adds an IPv6 address text input with shared client-side and server-side validation.
+	 *
+	 * @param	string	Control name.
+	 * @param	array	List of attributes.
+	 */
+	public function ipv6Address(string $name, array $attributes = []): Text {
+
+		return $this->text($name, $attributes)->preset(FormValidationPreset::IPV6_ADDRESS);
 
 	}
 
@@ -729,6 +849,30 @@ class Form {
 		$control = new Password($name, $attributes);
 		$this->add($control);
 		return $control;
+
+	}
+
+	/**
+	 * Adds a MAC address text input with shared client-side and server-side validation.
+	 *
+	 * @param	string	Control name.
+	 * @param	array	List of attributes.
+	 */
+	public function macAddress(string $name, array $attributes = []): Text {
+
+		return $this->text($name, $attributes)->preset(FormValidationPreset::MAC_ADDRESS);
+
+	}
+
+	/**
+	 * Adds an Italian personal fiscal-code text input with shared client-side and server-side validation.
+	 *
+	 * @param	string	Control name.
+	 * @param	array	List of attributes.
+	 */
+	public function italianPersonalFiscalCode(string $name, array $attributes = []): Text {
+
+		return $this->text($name, $attributes)->preset(FormValidationPreset::ITALIAN_PERSONAL_FISCAL_CODE);
 
 	}
 
@@ -978,6 +1122,30 @@ class Form {
 	}
 
 	/**
+	 * Adds a slug text input with shared client-side and server-side validation.
+	 *
+	 * @param	string	Control name.
+	 * @param	array	List of attributes.
+	 */
+	public function slug(string $name, array $attributes = []): Text {
+
+		return $this->text($name, $attributes)->preset(FormValidationPreset::SLUG);
+
+	}
+
+	/**
+	 * Adds an Italian SdI recipient-code text input with shared client-side and server-side validation.
+	 *
+	 * @param	string	Control name.
+	 * @param	array	List of attributes.
+	 */
+	public function italianSdiRecipientCode(string $name, array $attributes = []): Text {
+
+		return $this->text($name, $attributes)->preset(FormValidationPreset::ITALIAN_SDI_RECIPIENT_CODE);
+
+	}
+
+	/**
 	 * Sets the form response target. Chainable method.
 	 *
 	 * @param	string	Target name.
@@ -1037,6 +1205,12 @@ class Form {
 
 	}
 
+	/**
+	 * Adds a Time input object to this Form object. Chainable method.
+	 *
+	 * @param	string	Control name.
+	 * @param	array	List of attributes.
+	 */
 	public function time(string $name, array $attributes = []): Time {
 
 		$control = new Time($name, $attributes);
@@ -1045,6 +1219,12 @@ class Form {
 
 	}
 
+	/**
+	 * Adds a Toggle input object to this Form object. Chainable method.
+	 *
+	 * @param	string	Control name.
+	 * @param	array	List of attributes.
+	 */
 	public function toggle(string $name, array $attributes = []): Toggle {
 
 		$control = new Toggle($name, $attributes);
@@ -1064,6 +1244,42 @@ class Form {
 		$control = new Url($name, $attributes);
 		$this->add($control);
 		return $control;
+
+	}
+
+	/**
+	 * Adds a UUID text input with shared client-side and server-side validation.
+	 *
+	 * @param	string	Control name.
+	 * @param	array	List of attributes.
+	 */
+	public function uuid(string $name, array $attributes = []): Text {
+
+		return $this->text($name, $attributes)->preset(FormValidationPreset::UUID);
+
+	}
+
+	/**
+	 * Adds an Italian VAT-number text input with shared client-side and server-side validation.
+	 *
+	 * @param	string	Control name.
+	 * @param	array	List of attributes.
+	 */
+	public function italianVatNumber(string $name, array $attributes = []): Text {
+
+		return $this->text($name, $attributes)->preset(FormValidationPreset::ITALIAN_VAT_NUMBER);
+
+	}
+
+	/**
+	 * Adds a URL input with shared client-side and server-side validation.
+	 *
+	 * @param	string	Control name.
+	 * @param	array	List of attributes.
+	 */
+	public function webUrl(string $name, array $attributes = []): Url {
+
+		return $this->url($name, $attributes)->preset(FormValidationPreset::URL);
 
 	}
 

@@ -218,6 +218,24 @@ Minimal frontend setup:
 <script src="/assets/PairPasskey.js" defer></script>
 ```
 
+### Form validation presets
+
+Pair can share common form validation rules between PHP and JavaScript through `FormValidationPreset`, `FormControl::preset()` and `PairValidation.js`.
+
+```html
+<script src="/assets/PairValidation.js" defer></script>
+```
+
+```php
+$form->emailAddress('email')->required();
+$form->iban('ibanCode');
+$form->webUrl('website');
+$form->italianFiscalCode('fiscalCode');
+$form->italianVatNumber('vatNumber');
+```
+
+Italy-specific presets use explicit Italian names or `it.*` preset identifiers, for example `italianFiscalCode()` and `it.vat_number`. International presets such as `iban`, `email`, `url`, `bic`, `e164_phone`, `uuid`, `ip_address`, `mac_address`, `hex_color`, `ean13` and `slug` remain territory-neutral.
+
 Important notes:
 
 - Keep progressive enhancement.

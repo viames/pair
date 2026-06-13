@@ -113,6 +113,16 @@ abstract class FormControl {
 	protected ?string $pattern = null;
 
 	/**
+	 * Optional shared validation preset name.
+	 */
+	protected ?string $validationPreset = null;
+
+	/**
+	 * Optional validation message exposed to client-side validation.
+	 */
+	protected ?string $validationMessage = null;
+
+	/**
 	 * The caption text for this control, used by some subclasses.
 	 */
 	protected ?string $caption = null;
@@ -471,6 +481,35 @@ abstract class FormControl {
 	}
 
 	/**
+	 * Applies a shared validation preset to this control.
+	 *
+	 * Presets add HTML constraints, client-side PairValidation metadata, and
+	 * server-side normalization plus validation during Form::isValid().
+	 */
+	public function preset(string $preset, ?string $message = null): static {
+
+		$this->validationPreset = FormValidationPreset::canonicalName($preset);
+		$definition = FormValidationPreset::definition($this->validationPreset);
+
+		if (!is_null($message)) {
+			$this->validationMessage = $message;
+		} else if (is_null($this->validationMessage)) {
+			$this->validationMessage = Translator::safeDo(
+				(string)$definition['messageKey'],
+				null,
+				(string)$definition['message']
+			);
+		}
+
+		$this->applyValidationPresetDefaults($definition);
+		$this->attributes['data-pair-validation-preset'] = $this->validationPreset;
+		$this->attributes['data-pair-validation-message'] = (string)$this->validationMessage;
+
+		return $this;
+
+	}
+
+	/**
 	 * Sets placeholder text. Chainable method.
 	 *
 	 * @param	string	Placeholder’s text.
@@ -620,7 +659,11 @@ abstract class FormControl {
 
 		$ret = '<input ' . $this->nameProperty();
 
-		$ret .= ' type="' . $type . '" value="'. htmlspecialchars((string)$this->value) .'"';
+		$value = !is_null($this->validationPreset)
+			? FormValidationPreset::normalize($this->validationPreset, $this->value)
+			: (string)$this->value;
+
+		$ret .= ' type="' . $type . '" value="'. htmlspecialchars($value) .'"';
 
 		// set minlength attribute
 		if ($this->minLength) {
@@ -672,8 +715,8 @@ abstract class FormControl {
 	}
 
 	/**
-	 * This is the FormControl’s default validation method. Validates this control against empty values,
-	 * minimum length, maximum length, and returns true if these checks pass.
+	 * This is the FormControl’s default validation method. It validates this control against empty
+	 * values, length constraints, and the optional validation preset.
 	 */
 	public function validate(): bool {
 
@@ -681,6 +724,11 @@ abstract class FormControl {
 		$valid	= true;
 		
 		$logger = Logger::getInstance();
+
+		if (!is_null($this->validationPreset)) {
+			$value = FormValidationPreset::normalize($this->validationPreset, $value);
+			$this->updateSubmittedValue($value);
+		}
 		
 		if ($this->required and ''==$value) {
 			$logger->notice('Control validation on field “' . $this->name . '” has failed (required)');
@@ -693,13 +741,30 @@ abstract class FormControl {
 			$valid = false;
 		}
 
-		// check validity of minlength attribute
+		// check validity of maxlength attribute
 		if ($this->maxLength and strlen($value) > $this->maxLength) {
 			$logger->notice('Control validation on field “' . $this->name . '” has failed (maxLength=' . $this->maxLength . ')');
 			$valid = false;
 		}
 
+		if (!is_null($this->validationPreset) and '' != $value and !FormValidationPreset::isValid($this->validationPreset, $value)) {
+			$logger->notice('Control validation on field “' . $this->name . '” has failed (preset=' . $this->validationPreset . ')');
+			$valid = false;
+		}
+
 		return $valid;
+
+	}
+
+	/**
+	 * Sets a custom validation message for the active preset. Chainable method.
+	 */
+	public function validationMessage(string $message): static {
+
+		$this->validationMessage = $message;
+		$this->attributes['data-pair-validation-message'] = $message;
+
+		return $this;
 
 	}
 
@@ -710,6 +775,86 @@ abstract class FormControl {
 
 		$this->value = (string)$value;
 		return $this;
+
+	}
+
+	/**
+	 * Applies non-destructive HTML defaults from the validation preset definition.
+	 *
+	 * @param	array<string, string|int>	Validation preset definition.
+	 */
+	private function applyValidationPresetDefaults(array $definition): void {
+
+		if (isset($definition['minLength']) and is_null($this->minLength)) {
+			$this->minLength = (int)$definition['minLength'];
+		}
+
+		if (isset($definition['maxLength']) and is_null($this->maxLength)) {
+			$this->maxLength = (int)$definition['maxLength'];
+		}
+
+		if (isset($definition['pattern']) and is_null($this->pattern) and $this->supportsPattern()) {
+			$this->pattern = (string)$definition['pattern'];
+		}
+
+		if (isset($definition['placeholder']) and is_null($this->placeholder) and $this->supportsPlaceholder()) {
+			$this->placeholder = (string)$definition['placeholder'];
+		}
+
+		if (isset($definition['inputmode']) and !array_key_exists('inputmode', $this->attributes)) {
+			$this->inputmode((string)$definition['inputmode']);
+		}
+
+		if (isset($definition['autocomplete']) and !array_key_exists('autocomplete', $this->attributes)) {
+			$this->attributes['autocomplete'] = (string)$definition['autocomplete'];
+		}
+
+	}
+
+	/**
+	 * Returns true when the concrete control supports an HTML pattern attribute.
+	 */
+	private function supportsPattern(): bool {
+
+		$thisClass = get_class($this);
+		$className = substr($thisClass, strrpos($thisClass, '\\') + 1);
+
+		return in_array($className, ['Text', 'Search', 'Tel', 'Email', 'Password', 'Url'], true);
+
+	}
+
+	/**
+	 * Returns true when the concrete control supports an HTML placeholder attribute.
+	 */
+	private function supportsPlaceholder(): bool {
+
+		$thisClass = get_class($this);
+		$className = substr($thisClass, strrpos($thisClass, '\\') + 1);
+
+		return !in_array($className, ['Checkbox', 'Radio', 'File', 'Color', 'Range', 'Hidden'], true);
+
+	}
+
+	/**
+	 * Writes the normalized preset value back into the submitted request arrays.
+	 */
+	private function updateSubmittedValue(string $value): void {
+
+		$name = $this->name;
+		if (substr($name, -2) == '[]') {
+			$name = substr($name, 0, -2);
+		}
+
+		$name = str_replace(' ', '_', $name);
+		$isPostRequest = isset($_SERVER['REQUEST_METHOD']) and 'POST' == $_SERVER['REQUEST_METHOD'];
+
+		if ($isPostRequest and array_key_exists($name, $_POST)) {
+			$_POST[$name] = $value;
+		}
+
+		if (array_key_exists($name, $_REQUEST)) {
+			$_REQUEST[$name] = $value;
+		}
 
 	}
 

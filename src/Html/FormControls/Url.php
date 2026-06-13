@@ -8,6 +8,9 @@ use Pair\Html\FormControl;
 
 class Url extends FormControl {
 
+	/**
+	 * Renders this control as a URL input.
+	 */
 	public function render(): string {
 
 		return parent::renderInput('url');
@@ -16,9 +19,13 @@ class Url extends FormControl {
 
 	/**
 	 * Validates this control against empty values, minimum length, maximum length,
-	 * and returns true if is all set checks pass.
+	 * and the URL format when no validation preset is configured.
 	 */
 	public function validate(): bool {
+
+		if (!is_null($this->validationPreset)) {
+			return parent::validate();
+		}
 
 		$value	= Post::get($this->name);
 
