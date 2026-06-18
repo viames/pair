@@ -15,7 +15,7 @@
   "use strict";
 
   const PairUI = {};
-  PairUI.version = "0.4.1";
+  PairUI.version = "0.4.2";
 
   // expose under both window.PairUI and window.Pair.UI
   global.Pair = global.Pair || {};
@@ -1825,6 +1825,488 @@
       });
     },
   };
+
+  // ---------------------------------------------------------------------------
+  // Form helpers
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Normalize options for automatic form saving.
+   * @param {*} options
+   * @returns {object}
+   */
+  function normalizeAutosaveOptions(options) {
+    return {
+      url: null,
+      urlAttribute: "data-pair-autosave-url",
+      statusSelector: "[data-pair-autosave-status]",
+      exitSelector: "[data-pair-autosave-exit]",
+      controlSelector: "input, select, textarea",
+      errorContainerSelector: ".form-group, .mb-3, .field, .col, .col-12",
+      errorRole: "pair-autosave-error",
+      dirtyDataKey: "pairAutosaveDirty",
+      boundDataKey: "pairAutosaveBound",
+      invalidDataAttribute: "data-pair-autosave-invalid",
+      csrfSelector: "input[name=\"csrf_token\"]",
+      debounceMs: 350,
+      retryDelayMs: 600,
+      retryAttempts: 2,
+      savingMessage: "Saving...",
+      successMessage: "Saved automatically.",
+      defaultErrorMessage: "The value was not saved after two attempts.",
+      technicalErrorMessage: "Technical error while saving automatically.",
+      select2Events: false,
+      beforeSave: null,
+      ...options,
+    };
+  }
+
+  /**
+   * Normalize an autosave root into a form element.
+   * @param {*} root
+   * @returns {HTMLFormElement}
+   */
+  function normalizeAutosaveRoot(root) {
+    const form = typeof root === "string" ? PairUI.qs(root) : root;
+    if (!(form instanceof HTMLFormElement)) {
+      throw new Error("PairUI.form.autosave() requires an HTMLFormElement.");
+    }
+
+    return form;
+  }
+
+  /**
+   * Extract a Pair data payload from a standard JSON response.
+   * @param {*} response
+   * @returns {object}
+   */
+  function getAutosaveResponseData(response) {
+    if (response && typeof response === "object" && response.data && typeof response.data === "object") {
+      return response.data;
+    }
+
+    return response && typeof response === "object" ? response : {};
+  }
+
+  /**
+   * Wait for the given number of milliseconds.
+   * @param {number} milliseconds
+   * @returns {Promise<void>}
+   */
+  function waitForAutosaveRetry(milliseconds) {
+    return new Promise((resolve) => {
+      global.setTimeout(resolve, milliseconds);
+    });
+  }
+
+  /**
+   * Controller that manages automatic saving for one form.
+   */
+  class PairAutosaveFormController {
+    /**
+     * Create an automatic saving controller for a form.
+     * @param {HTMLFormElement} root
+     * @param {*} options
+     */
+    constructor(root, options = {}) {
+      this.root = normalizeAutosaveRoot(root);
+      this.options = normalizeAutosaveOptions(options);
+      this.timer = 0;
+      this.running = false;
+      this.pending = false;
+      this.bound = false;
+      this.lastControl = null;
+      this.handlePageHide = () => this.sendOnUnload();
+    }
+
+    /**
+     * Attach autosave behavior to form controls and exit links.
+     * @returns {PairAutosaveFormController}
+     */
+    bind() {
+      PairUI.qsa(this.options.controlSelector, this.root).forEach((control) => this.bindControl(control));
+
+      if (this.bound) {
+        return this;
+      }
+
+      const exitLink = PairUI.qs(this.options.exitSelector, this.root);
+      if (exitLink) {
+        exitLink.addEventListener("click", async (event) => {
+          event.preventDefault();
+          const saved = await this.waitForIdle();
+          if (saved) {
+            global.location.href = exitLink.href;
+          }
+        });
+      }
+
+      global.addEventListener("pagehide", this.handlePageHide);
+      this.bound = true;
+
+      return this;
+    }
+
+    /**
+     * Attach autosave behavior to a single control.
+     * @param {HTMLElement} control
+     * @returns {PairAutosaveFormController}
+     */
+    bindControl(control) {
+      if (
+        !control
+        || control.disabled
+        || control.type === "hidden"
+        || control.dataset[this.options.boundDataKey] === "1"
+      ) {
+        return this;
+      }
+
+      control.dataset[this.options.boundDataKey] = "1";
+      control.addEventListener("input", () => this.markDirty(control));
+      control.addEventListener("focusout", () => this.schedule(control));
+      control.addEventListener("change", () => this.schedule(control, true));
+
+      // Select2 is optional and only used when the caller explicitly opts in.
+      if (
+        this.options.select2Events
+        && global.jQuery
+        && global.jQuery.fn
+        && typeof global.jQuery.fn.select2 === "function"
+        && control.tagName === "SELECT"
+      ) {
+        global.jQuery(control).on("change.pairAutosave select2:select.pairAutosave select2:clear.pairAutosave", () => this.schedule(control, true));
+      }
+
+      return this;
+    }
+
+    /**
+     * Remove currently displayed autosave validation errors.
+     * @returns {PairAutosaveFormController}
+     */
+    clearErrors() {
+      PairUI.qsa("[data-role=\"" + this.options.errorRole + "\"]", this.root).forEach((error) => error.remove());
+      PairUI.qsa("[" + this.options.invalidDataAttribute + "=\"1\"]", this.root).forEach((control) => {
+        control.removeAttribute(this.options.invalidDataAttribute);
+        control.classList.remove("is-invalid");
+      });
+
+      return this;
+    }
+
+    /**
+     * Return the container where a contextual autosave error should be rendered.
+     * @param {HTMLElement|null} control
+     * @returns {HTMLElement|null}
+     */
+    errorContainer(control) {
+      if (!control) {
+        return null;
+      }
+
+      return control.closest(this.options.errorContainerSelector) || control.parentElement;
+    }
+
+    /**
+     * Return the user-facing message for an autosave error.
+     * @param {*} error
+     * @returns {string}
+     */
+    errorMessage(error) {
+      if (typeof this.options.errorMessage === "function") {
+        const message = this.options.errorMessage(error, this);
+        if (typeof message === "string" && message.trim()) {
+          return message.trim();
+        }
+      }
+
+      if (error && typeof error === "object" && error.payload && typeof error.payload === "object") {
+        if (typeof error.payload.csrfToken === "string") {
+          this.updateCsrfToken(error.payload.csrfToken);
+        }
+
+        if (typeof error.payload.detail === "string" && error.payload.detail.trim()) {
+          return error.payload.detail.trim();
+        }
+
+        if (typeof error.payload.title === "string" && error.payload.title.trim()) {
+          return error.payload.title.trim();
+        }
+      }
+
+      if (error && typeof error === "object" && Number(error.status) >= 500) {
+        return this.options.technicalErrorMessage;
+      }
+
+      return this.options.defaultErrorMessage;
+    }
+
+    /**
+     * Flush the pending autosave immediately.
+     * @returns {Promise<boolean>}
+     */
+    async flush() {
+      global.clearTimeout(this.timer);
+      this.timer = 0;
+
+      if (!this.isDirty()) {
+        return true;
+      }
+
+      if (this.running) {
+        this.pending = true;
+        return false;
+      }
+
+      this.running = true;
+      this.pending = false;
+      this.setStatus(this.options.savingMessage);
+      PairUI.emit(this.root, "pair:autosave:saving", { controller: this });
+
+      try {
+        if (typeof this.options.beforeSave === "function") {
+          this.options.beforeSave(this.root, this);
+        }
+
+        const response = await this.postWithRetry();
+        const data = getAutosaveResponseData(response);
+        if (typeof data.csrfToken === "string") {
+          this.updateCsrfToken(data.csrfToken);
+        }
+
+        this.setDirty(false);
+        this.clearErrors();
+        this.setStatus(typeof this.options.successMessage === "function"
+          ? this.options.successMessage(data, response, this)
+          : this.options.successMessage);
+        PairUI.emit(this.root, "pair:autosave:saved", { controller: this, data, response });
+
+        return true;
+      } catch (error) {
+        this.setDirty(true);
+        this.showError(this.lastControl, this.errorMessage(error));
+        PairUI.emit(this.root, "pair:autosave:error", { controller: this, error });
+
+        return false;
+      } finally {
+        this.running = false;
+        if (this.pending) {
+          this.pending = false;
+          void this.flush();
+        }
+      }
+    }
+
+    /**
+     * Return the configured autosave endpoint URL.
+     * @returns {string}
+     */
+    getUrl() {
+      if (typeof this.options.url === "string" && this.options.url.trim()) {
+        return this.options.url.trim();
+      }
+
+      return String(this.root.getAttribute(this.options.urlAttribute) || "").trim();
+    }
+
+    /**
+     * Return true when the form has unsaved changes.
+     * @returns {boolean}
+     */
+    isDirty() {
+      return this.root.dataset[this.options.dirtyDataKey] === "1";
+    }
+
+    /**
+     * Mark the form as dirty and remember the control that caused the change.
+     * @param {HTMLElement|null} control
+     * @returns {PairAutosaveFormController}
+     */
+    markDirty(control = null) {
+      this.lastControl = control || this.lastControl;
+      this.setDirty(true);
+
+      return this;
+    }
+
+    /**
+     * Submit the form with automatic retry.
+     * @returns {Promise<object>}
+     */
+    async postWithRetry() {
+      const actionUrl = this.getUrl();
+      if (actionUrl === "" || !PairUI.http || typeof PairUI.http.postForm !== "function") {
+        throw new Error("Automatic saving is not available.");
+      }
+
+      let lastError = null;
+      const attempts = Math.max(1, Number.parseInt(this.options.retryAttempts, 10) || 1);
+      for (let attempt = 0; attempt < attempts; attempt += 1) {
+        try {
+          return await PairUI.http.postForm(actionUrl, new FormData(this.root), { expect: "json" });
+        } catch (error) {
+          lastError = error;
+          if (error && typeof error === "object" && error.payload && typeof error.payload.csrfToken === "string") {
+            this.updateCsrfToken(error.payload.csrfToken);
+          }
+
+          if (attempt < attempts - 1) {
+            await waitForAutosaveRetry(this.options.retryDelayMs);
+          }
+        }
+      }
+
+      throw lastError || new Error("Automatic saving failed.");
+    }
+
+    /**
+     * Schedule an autosave after a control changed.
+     * @param {HTMLElement|null} control
+     * @param {boolean} immediate
+     * @returns {PairAutosaveFormController}
+     */
+    schedule(control = null, immediate = false) {
+      if (this.getUrl() === "") {
+        return this;
+      }
+
+      this.markDirty(control);
+      global.clearTimeout(this.timer);
+      this.timer = global.setTimeout(() => {
+        void this.flush();
+      }, immediate ? 0 : this.options.debounceMs);
+
+      return this;
+    }
+
+    /**
+     * Send a best-effort autosave while the page is unloading.
+     * @returns {void}
+     */
+    sendOnUnload() {
+      const actionUrl = this.getUrl();
+      if (actionUrl === "" || !this.isDirty()) {
+        return;
+      }
+
+      if (typeof this.options.beforeSave === "function") {
+        try {
+          this.options.beforeSave(this.root, this);
+        } catch (error) {
+          // Unload-time validation cannot reliably show interactive feedback.
+        }
+      }
+
+      const formData = new FormData(this.root);
+      if (
+        global.navigator
+        && typeof global.navigator.sendBeacon === "function"
+        && global.navigator.sendBeacon(actionUrl, formData)
+      ) {
+        return;
+      }
+
+      void global.fetch(actionUrl, {
+        method: "POST",
+        body: formData,
+        credentials: "same-origin",
+        keepalive: true,
+        headers: {
+          "X-Requested-With": "XMLHttpRequest"
+        }
+      });
+    }
+
+    /**
+     * Set the dirty state of the form.
+     * @param {boolean} dirty
+     * @returns {PairAutosaveFormController}
+     */
+    setDirty(dirty) {
+      this.root.dataset[this.options.dirtyDataKey] = dirty ? "1" : "0";
+
+      return this;
+    }
+
+    /**
+     * Update the status element when one is available.
+     * @param {string} message
+     * @param {boolean} isError
+     * @returns {PairAutosaveFormController}
+     */
+    setStatus(message, isError = false) {
+      const status = PairUI.qs(this.options.statusSelector, this.root);
+      if (!status) {
+        return this;
+      }
+
+      status.textContent = message;
+      status.classList.toggle("text-danger", isError);
+      status.classList.toggle("text-body-secondary", !isError);
+
+      return this;
+    }
+
+    /**
+     * Show an autosave error near the most relevant control.
+     * @param {HTMLElement|null} control
+     * @param {string} message
+     * @returns {PairAutosaveFormController}
+     */
+    showError(control, message) {
+      this.clearErrors();
+      this.setStatus(message, true);
+
+      const container = this.errorContainer(control);
+      if (!container) {
+        return this;
+      }
+
+      if (control && typeof control.classList !== "undefined") {
+        control.classList.add("is-invalid");
+        control.setAttribute(this.options.invalidDataAttribute, "1");
+      }
+
+      const error = document.createElement("div");
+      error.className = "invalid-feedback d-block";
+      error.setAttribute("data-role", this.options.errorRole);
+      error.textContent = message;
+      container.appendChild(error);
+
+      return this;
+    }
+
+    /**
+     * Update the form CSRF token after an AJAX response.
+     * @param {string} csrfToken
+     * @returns {PairAutosaveFormController}
+     */
+    updateCsrfToken(csrfToken) {
+      const tokenInput = PairUI.qs(this.options.csrfSelector, this.root);
+      if (tokenInput && String(csrfToken || "").trim() !== "") {
+        tokenInput.value = csrfToken;
+      }
+
+      return this;
+    }
+
+    /**
+     * Wait until a running save completes, then flush pending changes.
+     * @returns {Promise<boolean>}
+     */
+    async waitForIdle() {
+      while (this.running) {
+        await waitForAutosaveRetry(100);
+      }
+
+      return this.flush();
+    }
+  }
+
+  PairUI.form = PairUI.form || {};
+  PairUI.form.AutosaveController = PairAutosaveFormController;
+  PairUI.form.autosave = (root, options = {}) => new PairAutosaveFormController(root, options);
 
   // ---------------------------------------------------------------------------
   // Progressive regions, actions, and filters

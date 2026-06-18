@@ -57,6 +57,24 @@ class PairUiProgressiveAssetTest extends TestCase {
 	}
 
 	/**
+	 * Verify form autosave is available as an explicit PairUI helper.
+	 */
+	public function testFormAutosaveIsAvailable(): void {
+
+		$source = $this->pairUiSource();
+
+		$this->assertStringContainsString('PairUI.form = PairUI.form || {};', $source);
+		$this->assertStringContainsString('PairUI.form.autosave =', $source);
+		$this->assertStringContainsString('data-pair-autosave-url', $source);
+		$this->assertStringContainsString('pair:autosave:saving', $source);
+		$this->assertStringContainsString('pair:autosave:saved', $source);
+		$this->assertStringContainsString('pair:autosave:error', $source);
+		$this->assertStringContainsString('sendBeacon', $source);
+		$this->assertStringContainsString('csrfToken', $source);
+
+	}
+
+	/**
 	 * Return the PairUI client source code.
 	 */
 	private function pairUiSource(): string {
