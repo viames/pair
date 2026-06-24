@@ -56,8 +56,12 @@ class CriticalException extends PairException {
 			return;
 		}
 
-		// clear any previous output
-		ob_clean();
+		$outputBufferStatus = ob_get_status();
+
+		// clear the active output buffer only when the handler allows cleaning
+		if ($outputBufferStatus and (($outputBufferStatus['flags'] ?? 0) & PHP_OUTPUT_HANDLER_CLEANABLE)) {
+			ob_clean();
+		}
 
 		$styleFile = self::getFallbackStyleFile();
 		TemplateRenderer::parse($styleFile);

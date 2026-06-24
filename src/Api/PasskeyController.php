@@ -272,11 +272,16 @@ abstract class PasskeyController extends CrudController {
 		}
 
 		$destinationUrl = null;
-		$page = trim((string)$this->getPersistentState('lastRequestedUrl'));
+		$rawPage = trim((string)$this->getPersistentState('lastRequestedUrl'));
+		$page = Application::sanitizeInternalRedirectUrl($rawPage);
 
-		if ('' !== $page) {
-			$destinationUrl = $page;
+		if ('' !== $rawPage) {
+			// discard tampered external redirect cookies before returning a JSON navigation target.
 			$this->unsetPersistentState('lastRequestedUrl');
+		}
+
+		if (!is_null($page)) {
+			$destinationUrl = $page;
 		}
 
 		if (!$destinationUrl) {

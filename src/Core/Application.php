@@ -226,6 +226,7 @@ class Application {
 		Env::load();
 
 		$this->defineConstants();
+		self::sendSecurityHeaders();
 
 		if (!Env::fileExists()) {
 			CriticalException::terminate('Configuration file not found, check .env file', ErrorCodes::LOADING_ENV_FILE);
@@ -583,6 +584,68 @@ class Application {
 			'secure' => static::isSecureRequest(),
 			'httponly' => true
 		];
+
+	}
+
+	/**
+	 * Return security headers that are safe for legacy Pair applications.
+	 *
+	 * The policy intentionally avoids script-src because existing applications can still
+	 * rely on inline scripts and legacy third-party assets.
+	 *
+	 * @return array<string,string>
+	 */
+	private static function securityHeaders(): array {
+
+		return [
+			'X-Content-Type-Options' => 'nosniff',
+			'X-Frame-Options' => 'SAMEORIGIN',
+			'Referrer-Policy' => 'strict-origin-when-cross-origin',
+			'Content-Security-Policy' => "frame-ancestors 'self'; base-uri 'self'; object-src 'none'",
+			'Permissions-Policy' => 'geolocation=(), camera=()',
+		];
+
+	}
+
+	/**
+	 * Send baseline browser hardening headers before application output starts.
+	 */
+	private static function sendSecurityHeaders(): void {
+
+		if (static::isCli() or headers_sent()) {
+			return;
+		}
+
+		foreach (self::securityHeaders() as $name => $value) {
+			header($name . ': ' . $value, true);
+		}
+
+	}
+
+	/**
+	 * Return a safe same-origin redirect URL or null when the value is external.
+	 */
+	public static function sanitizeInternalRedirectUrl(?string $url): ?string {
+
+		$url = trim((string)$url);
+
+		if ('' === $url) {
+			return null;
+		}
+
+		if (preg_match('/[\x00-\x1F\x7F]/', $url)) {
+			return null;
+		}
+
+		if (str_contains($url, '\\') or str_starts_with($url, '//')) {
+			return null;
+		}
+
+		if (preg_match('/^[A-Za-z][A-Za-z0-9+.-]*:/', $url)) {
+			return null;
+		}
+
+		return $url;
 
 	}
 
