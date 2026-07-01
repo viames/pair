@@ -201,6 +201,11 @@ final readonly class Input {
 			return $default;
 		}
 
+		// Composite values cannot be represented as a scalar input string without ambiguity.
+		if (!is_scalar($value) and !$value instanceof \Stringable) {
+			return $default;
+		}
+
 		return (string)$value;
 
 	}
@@ -213,6 +218,11 @@ final readonly class Input {
 		$value = $this->value($key);
 
 		if (is_null($value) or $value === '') {
+			return $default;
+		}
+
+		// Composite values cannot be represented as a scalar input integer without ambiguity.
+		if (!is_scalar($value)) {
 			return $default;
 		}
 
@@ -233,6 +243,11 @@ final readonly class Input {
 
 		if (is_bool($value)) {
 			return $value;
+		}
+
+		// Composite values cannot be represented as a scalar input boolean without ambiguity.
+		if (!is_scalar($value) and !$value instanceof \Stringable) {
+			return $default;
 		}
 
 		$normalized = strtolower(trim((string)$value));

@@ -34,6 +34,32 @@ class InputTest extends TestCase {
 	}
 
 	/**
+	 * Verify scalar input accessors fall back instead of casting composite values.
+	 */
+	public function testScalarAccessorsFallBackForCompositeValues(): void {
+
+		$input = new Input(
+			'GET',
+			[
+				'status' => ['published'],
+				'payload' => new \stdClass(),
+				'title' => new StringableInputLabel('Published'),
+				'page' => ['2'],
+				'featured' => ['true'],
+				'enabled' => new \stdClass(),
+			]
+		);
+
+		$this->assertSame('fallback', $input->string('status', 'fallback'));
+		$this->assertSame('fallback', $input->string('payload', 'fallback'));
+		$this->assertSame('Published', $input->string('title', 'fallback'));
+		$this->assertSame(9, $input->int('page', 9));
+		$this->assertFalse($input->bool('featured', false));
+		$this->assertTrue($input->bool('enabled', true));
+
+	}
+
+	/**
 	 * Verify fromGlobals parses JSON bodies only when the request advertises JSON input.
 	 */
 	public function testFromGlobalsParsesJsonBody(): void {
@@ -93,6 +119,29 @@ class InputTest extends TestCase {
 
 		$this->assertSame([], $invalidJsonInput->body());
 		$this->assertSame([], $invalidJsonInput->all());
+
+	}
+
+}
+
+/**
+ * Test stringable object support in the Input string accessor.
+ */
+final class StringableInputLabel {
+
+	/**
+	 * Store the label returned by __toString().
+	 */
+	public function __construct(private readonly string $label) {
+
+	}
+
+	/**
+	 * Return the test label as a string.
+	 */
+	public function __toString(): string {
+
+		return $this->label;
 
 	}
 
