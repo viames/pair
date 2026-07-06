@@ -306,7 +306,6 @@ class OpenAIClient {
 		$encodedPayload = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
 		if (false === $encodedPayload) {
-			curl_close($curl);
 			throw new PairException('Unable to encode OpenAI request payload.', ErrorCodes::OPENAI_ERROR);
 		}
 
@@ -326,11 +325,8 @@ class OpenAIClient {
 
 		if (false === $responseBody) {
 			$error = curl_error($curl);
-			curl_close($curl);
 			throw new PairException('OpenAI request failed: ' . $error, ErrorCodes::OPENAI_ERROR);
 		}
-
-		curl_close($curl);
 
 		return $this->decodeJsonResponse($statusCode, $responseBody);
 
