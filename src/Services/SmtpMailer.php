@@ -16,6 +16,11 @@ use PHPMailer\PHPMailer\PHPMailer;
 class SmtpMailer extends Mailer {
 
 	/**
+	 * Signals that the framework invokes beforeTransportSend at the delivery boundary.
+	 */
+	public const TRANSPORT_START_HOOK = true;
+
+	/**
 	 * The SMTP authentication flag.
 	 */
 	protected bool $smtpAuth = true;
@@ -80,6 +85,24 @@ class SmtpMailer extends Mailer {
 	}
 
 	/**
+	 * Run immediately before PHPMailer starts the transport operation.
+	 *
+	 * Subclasses may override this lifecycle hook to observe the delivery boundary.
+	 */
+	protected function beforeTransportSend(): void {}
+
+	/**
+	 * Create the PHPMailer instance used for a delivery attempt.
+	 *
+	 * Subclasses may override this factory to provide a specialized transport client.
+	 */
+	protected function createPhpMailer(): PHPMailer {
+
+		return new PHPMailer();
+
+	}
+
+	/**
 	 * Configure a PhpMailer object preconfigured with charset, auth type, etc.
 	 * If the Development option is active, the recipient becomes the list of super users in
 	 * the options.
@@ -98,7 +121,7 @@ class SmtpMailer extends Mailer {
 		// throw an exception if the required configuration is not set
 		$this->checkConfig();
 
-		$phpMailer = new PHPMailer();
+		$phpMailer = $this->createPhpMailer();
 		
 		// smtp settings
 		$phpMailer->isSMTP();
@@ -136,10 +159,22 @@ class SmtpMailer extends Mailer {
 			$phpMailer->addAttachment($att->filePath, $att->name);
 		}
 
-		// send the email
+		// prepare the full message before crossing the transport boundary.
 		try {
-			$phpMailer->send();
-		} catch (\Exception $e) {
+			if (!$phpMailer->preSend()) {
+				$message = trim($phpMailer->ErrorInfo) ?: 'Unable to prepare the e-mail message';
+				throw new \RuntimeException($message);
+			}
+
+			// postSend is the first PHPMailer call that can hand the message to SMTP.
+			$this->beforeTransportSend();
+			if (!$phpMailer->postSend()) {
+				$message = trim($phpMailer->ErrorInfo) ?: 'Unable to send the e-mail message';
+				throw new \RuntimeException($message);
+			}
+		} catch (PairException $e) {
+			throw $e;
+		} catch (\Throwable $e) {
 			throw new PairException($e->getMessage(), ErrorCodes::EMAIL_SEND_ERROR, $e);
 		}
 
