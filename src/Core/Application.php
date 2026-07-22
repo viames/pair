@@ -1648,8 +1648,13 @@ class Application {
 
 		$router = Router::getInstance();
 
-		if ($this->currentUser instanceof User and !$router->module) {
-			$landing = $this->currentUser->landing();
+		// Anonymous users are represented by an unloaded model and must never trigger ACL-backed landing queries.
+		if (!$this->currentUser instanceof User or !$this->currentUser->isLoaded() or $router->module) {
+			return;
+		}
+
+		$landing = $this->currentUser->landing();
+		if ($landing instanceof \stdClass) {
 			$router->module = $landing->module;
 			$router->action = $landing->action;
 		}

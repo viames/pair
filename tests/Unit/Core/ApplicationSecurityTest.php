@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Pair\Tests\Unit\Core;
 
 use Pair\Core\Application;
+use Pair\Core\Router;
+use Pair\Models\User;
 use Pair\Tests\Support\TestCase;
 
 /**
@@ -43,6 +45,46 @@ class ApplicationSecurityTest extends TestCase {
 		$this->assertNull(Application::sanitizeInternalRedirectUrl("dashboard/default\nLocation: https://evil.example"));
 		$this->assertNull(Application::sanitizeInternalRedirectUrl('admin\\evil'));
 		$this->assertNull(Application::sanitizeInternalRedirectUrl(''));
+
+	}
+
+	/**
+	 * Verify anonymous requests never resolve an ACL-backed user landing route.
+	 */
+	public function testAnonymousUserDoesNotResolveLandingPage(): void {
+
+		if (!defined('URL_PATH')) {
+			define('URL_PATH', null);
+		}
+		$_SERVER['REQUEST_METHOD'] = 'GET';
+		$_SERVER['REQUEST_URI'] = '/';
+		$app = (new \ReflectionClass(Application::class))->newInstanceWithoutConstructor();
+		$user = new class extends User {
+
+			/** Whether the landing lookup was requested. */
+			public bool $landingRequested = false;
+
+			/** Record an unexpected landing lookup without touching the database. */
+			public function landing(): ?\stdClass {
+
+				$this->landingRequested = true;
+
+				return (object)['module' => 'dashboard', 'action' => 'default'];
+
+			}
+
+		};
+		$currentUser = new \ReflectionProperty(Application::class, 'currentUser');
+		$currentUser->setValue($app, $user);
+		$router = Router::getInstance();
+		$router->module = null;
+		$router->action = null;
+
+		$method = new \ReflectionMethod(Application::class, 'initializeLandingPage');
+		$method->invoke($app);
+
+		$this->assertFalse($user->landingRequested);
+		$this->assertNull($router->module);
 
 	}
 

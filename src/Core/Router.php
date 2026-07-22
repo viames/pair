@@ -527,6 +527,8 @@ class Router {
 
 		// Multiple prefixes are accepted for legacy URLs such as /raw/ajax/module/action.
 		while (true) {
+			// Removing a prefix can expose repeated leading separators that still need normalization.
+			$this->normalizePathSeparators();
 
 			if ($this->consumeRouteModePrefix('raw')) {
 				continue;
@@ -680,6 +682,9 @@ class Router {
 			// parse, add and remove from URL any CGI param after question mark
 			$this->parseCgiParameters();
 
+			// Empty route segments must not turn malformed public paths into an empty module.
+			$this->normalizePathSeparators();
+
 			// parse and remove legacy route mode prefixes before matching routes
 			$this->parseRouteModePrefixes();
 
@@ -720,6 +725,21 @@ class Router {
 			throw $e;
 
 		}
+
+	}
+
+	/**
+	 * Normalize unsafe separator runs while preserving the legacy empty-action separator.
+	 */
+	private function normalizePathSeparators(): void {
+
+		if (!$this->url) {
+			return;
+		}
+
+		// Keep one internal empty segment because legacy default-action URLs use /module//param.
+		$this->url = preg_replace('#^/{2,}#', '/', $this->url) ?? $this->url;
+		$this->url = preg_replace('#/{3,}#', '/', $this->url) ?? $this->url;
 
 	}
 

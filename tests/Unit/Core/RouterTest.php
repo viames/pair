@@ -74,7 +74,7 @@ PHP);
 		$result = $this->runRouterSnippet(<<<'PHP'
 $router = \Pair\Core\Router::getInstance();
 $property = new \ReflectionProperty($router, 'url');
-$property->setValue($router, '/raw/ajax/report/download/noLog');
+$property->setValue($router, '/raw//ajax///report/download/noLog');
 $router->parseRoutes();
 
 print json_encode([
@@ -95,6 +95,66 @@ PHP);
 			'ajax' => true,
 			'sendLog' => false,
 			'url' => 'report/download',
+		], $this->decodeJson($result['stdout']));
+
+	}
+
+	/**
+	 * Verify repeated path separators cannot produce an empty module while query values remain unchanged.
+	 */
+	public function testRepeatedPathSeparatorsAreNormalizedBeforeRouteParsing(): void {
+
+		$result = $this->runRouterSnippet(<<<'PHP'
+$router = \Pair\Core\Router::getInstance();
+$property = new \ReflectionProperty($router, 'url');
+$property->setValue($router, '//catalog///list?return=https%3A%2F%2Fexample.test%2Fcallback');
+$router->parseRoutes();
+
+print json_encode([
+	'module' => $router->module,
+	'action' => $router->action,
+	'return' => $router->getParam('return'),
+]);
+PHP);
+
+		$this->assertSame(0, $result['exitCode'], $result['stderr']);
+		$this->assertSame([
+			'module' => 'catalog',
+			'action' => 'list',
+			'return' => 'https://example.test/callback',
+		], $this->decodeJson($result['stdout']));
+
+	}
+
+	/**
+	 * Verify the legacy empty action separator remains available for ordering and pagination modifiers.
+	 */
+	public function testDefaultActionModifiersPreserveEmptyActionSeparator(): void {
+
+		$result = $this->runRouterSnippet(<<<'PHP'
+$router = \Pair\Core\Router::getInstance();
+$property = new \ReflectionProperty($router, 'url');
+$property->setValue($router, '/invoices//legacy-value/order-5/page-3');
+$router->parseRoutes();
+
+print json_encode([
+	'module' => $router->module,
+	'action' => $router->action,
+	'firstParam' => $router->getParam(0),
+	'order' => $router->order,
+	'page' => $router->page,
+	'url' => $router->getUrl(),
+]);
+PHP);
+
+		$this->assertSame(0, $result['exitCode'], $result['stderr']);
+		$this->assertSame([
+			'module' => 'invoices',
+			'action' => '',
+			'firstParam' => 'legacy-value',
+			'order' => 5,
+			'page' => 3,
+			'url' => 'invoices//legacy-value/order-5/page-3',
 		], $this->decodeJson($result['stdout']));
 
 	}
