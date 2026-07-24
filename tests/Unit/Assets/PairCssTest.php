@@ -29,6 +29,23 @@ class PairCssTest extends TestCase {
 	}
 
 	/**
+	 * Verify form validation feedback supports widgets and user contrast preferences.
+	 */
+	public function testPairValidationHasAccessibleThemeHooks(): void {
+
+		$source = $this->pairCssSource();
+
+		$this->assertStringContainsString('[data-pair-validate] {', $source);
+		$this->assertStringContainsString('.pair-validation-error {', $source);
+		$this->assertStringContainsString('.pair-validation-summary {', $source);
+		$this->assertStringContainsString('.select2-container .select2-selection.pair-validation-invalid', $source);
+		$this->assertStringContainsString('@media (prefers-contrast: more)', $source);
+		$this->assertStringContainsString('@media (prefers-reduced-motion: reduce)', $source);
+		$this->assertStringContainsString('@media (forced-colors: active)', $source);
+
+	}
+
+	/**
 	 * Verify query diagnostics have dedicated styling hooks.
 	 */
 	public function testLogBarQueryDiagnosticsHaveStylingHooks(): void {

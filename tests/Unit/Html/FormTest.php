@@ -128,6 +128,36 @@ class FormTest extends TestCase {
 	}
 
 	/**
+	 * Verify enhanced client validation remains opt-in and keeps native fallback markup.
+	 */
+	public function testClientValidationRendersProgressiveHooksAndMessages(): void {
+
+		$form = (new Form())->clientValidation();
+		$form->text('displayName')
+			->required()
+			->requiredMessage('Enter "display name" <now>.')
+			->validationMessage('Use at least three characters.', 'minLength');
+
+		$formHtml = $form->open();
+		$controlHtml = $form->control('displayName')->render();
+
+		$this->assertStringContainsString('data-pair-validate', $formHtml);
+		$this->assertStringNotContainsString('novalidate', $formHtml);
+		$this->assertStringContainsString(
+			'data-pair-validation-message-required="Enter &quot;display name&quot; &lt;now&gt;."',
+			$controlHtml
+		);
+		$this->assertStringContainsString(
+			'data-pair-validation-message-min-length="Use at least three characters."',
+			$controlHtml
+		);
+
+		$form->clientValidation(false);
+		$this->assertStringNotContainsString('data-pair-validate', $form->open());
+
+	}
+
+	/**
 	 * Verify label descriptions render a native tooltip marker when no UI framework is selected.
 	 */
 	public function testNativeThemeRendersNativeLabelHelpTooltip(): void {

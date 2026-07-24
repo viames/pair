@@ -194,6 +194,1201 @@
 			validator: isValidUuid
 		}
 	};
+	const FORM_SELECTOR = 'form[data-pair-validate]';
+	const FORM_FIELD_SELECTOR = [
+		'input:not([type="button"]):not([type="hidden"]):not([type="reset"]):not([type="submit"])',
+		'select',
+		'textarea'
+	].join(',');
+	const FORM_STATES = new WeakMap();
+	const FORM_ADAPTERS = [];
+	const VALIDITY_RULES = [
+		['customError', 'custom'],
+		['valueMissing', 'required'],
+		['typeMismatch', 'type'],
+		['patternMismatch', 'pattern'],
+		['tooShort', 'minLength'],
+		['tooLong', 'maxLength'],
+		['rangeUnderflow', 'min'],
+		['rangeOverflow', 'max'],
+		['stepMismatch', 'step'],
+		['badInput', 'badInput']
+	];
+	const FORM_MESSAGES = {
+		en: {
+			badInput: 'Enter a valid value for “{label}”.',
+			custom: 'Correct “{label}”.',
+			email: 'Enter a valid email address.',
+			max: 'Enter a value no greater than {max} for “{label}”.',
+			maxLength: 'Use no more than {maxLength} characters for “{label}”.',
+			min: 'Enter a value of at least {min} for “{label}”.',
+			minLength: 'Use at least {minLength} characters for “{label}”.',
+			pattern: 'Use the required format for “{label}”.',
+			required: 'Complete “{label}”.',
+			step: 'Enter an allowed value for “{label}”.',
+			summaryMany: 'Correct {count} fields',
+			summaryOne: 'Correct the indicated field',
+			type: 'Enter a valid value for “{label}”.',
+			url: 'Enter a complete and valid URL.'
+		},
+		it: {
+			badInput: 'Inserisci un valore valido per “{label}”.',
+			custom: 'Correggi “{label}”.',
+			email: 'Inserisci un indirizzo e-mail valido.',
+			max: 'Inserisci per “{label}” un valore non superiore a {max}.',
+			maxLength: 'Usa al massimo {maxLength} caratteri per “{label}”.',
+			min: 'Inserisci per “{label}” un valore almeno pari a {min}.',
+			minLength: 'Usa almeno {minLength} caratteri per “{label}”.',
+			pattern: 'Usa il formato richiesto per “{label}”.',
+			required: 'Completa “{label}”.',
+			step: 'Inserisci un valore consentito per “{label}”.',
+			summaryMany: 'Correggi {count} campi',
+			summaryOne: 'Correggi il campo indicato',
+			type: 'Inserisci un valore valido per “{label}”.',
+			url: 'Inserisci un URL completo e valido.'
+		}
+	};
+	let formFieldSequence = 0;
+	let formValidationOptions = {
+		focusTarget: 'first-invalid',
+		locale: null,
+		messages: {},
+		summary: false
+	};
+
+	/**
+	 * Binds accessible constraint validation to an opt-in form.
+	 * @param {HTMLFormElement|null} form Form to bind.
+	 * @returns {void}
+	 */
+	function bindForm(form) {
+		if (!form || FORM_STATES.has(form)) {
+			return;
+		}
+
+		const state = {
+			previousNoValidate: form.noValidate,
+			onChange: (event) => handleFieldChange(form, event),
+			onFocusOut: (event) => handleFieldFocusOut(form, event),
+			onInput: (event) => handleFieldInput(form, event),
+			onInvalid: (event) => event.preventDefault(),
+			onReset: () => window.setTimeout(() => resetForm(form), 0),
+			onSubmit: (event) => handleFormSubmit(form, event),
+			widgetObserver: null
+		};
+
+		FORM_STATES.set(form, state);
+		form.dataset.pairValidationReady = '1';
+
+		// Native validation remains the fallback until this point.
+		form.noValidate = true;
+		form.addEventListener('change', state.onChange);
+		form.addEventListener('focusout', state.onFocusOut);
+		form.addEventListener('input', state.onInput);
+		form.addEventListener('invalid', state.onInvalid, true);
+		form.addEventListener('reset', state.onReset);
+		form.addEventListener('submit', state.onSubmit, true);
+		state.widgetObserver = observeCustomWidgets(form);
+
+		formFields(form).forEach((field) => ensureFieldId(field));
+	}
+
+	/**
+	 * Clears the visible and programmatic error owned by Pair for one field.
+	 * @param {HTMLElement|null} field Field to clear.
+	 * @returns {void}
+	 */
+	function clearField(field) {
+		field = validationFieldFor(field);
+
+		if (!isFormField(field)) {
+			return;
+		}
+
+		const validityFields = validityFieldsFor(field);
+		const ui = fieldUi(field);
+		const errorId = errorIdFor(field);
+		const error = document.getElementById(errorId);
+		const wasInvalid = validityFields.some((candidate) => {
+			return candidate.dataset.pairValidationInvalid === '1';
+		});
+
+		validityFields.forEach((candidate) => {
+			if (candidate.dataset.pairValidationExternalError === '1') {
+				candidate.setCustomValidity('');
+				delete candidate.dataset.pairValidationExternalError;
+			}
+
+			candidate.classList.remove('is-invalid');
+			candidate.removeAttribute('aria-invalid');
+			removeAttributeToken(candidate, 'aria-describedby', errorId);
+			delete candidate.dataset.pairValidationInvalid;
+		});
+
+		syncPresetValidity(field, false);
+		ui.visual.classList.remove('is-invalid', 'pair-validation-invalid');
+
+		if (ui.focus !== field) {
+			ui.focus.removeAttribute('aria-invalid');
+			removeAttributeToken(ui.focus, 'aria-describedby', errorId);
+		}
+
+		if (error) {
+			error.remove();
+		}
+
+		if (wasInvalid) {
+			field.dispatchEvent(new CustomEvent('pair:validation:field-valid', {
+				bubbles: true,
+				detail: {field: field}
+			}));
+		}
+	}
+
+	/**
+	 * Updates global defaults used by opt-in Pair validation forms.
+	 * @param {Object} options Validation options.
+	 * @returns {Object} Current options.
+	 */
+	function configure(options = {}) {
+		const messages = options.messages && 'object' === typeof options.messages
+			? {...formValidationOptions.messages, ...options.messages}
+			: formValidationOptions.messages;
+
+		formValidationOptions = {
+			...formValidationOptions,
+			...options,
+			messages: messages
+		};
+
+		return {...formValidationOptions, messages: {...formValidationOptions.messages}};
+	}
+
+	/**
+	 * Destroys Pair validation for one form and restores its native validation state.
+	 * @param {HTMLFormElement|null} form Form to destroy.
+	 * @returns {void}
+	 */
+	function destroyForm(form) {
+		const state = form ? FORM_STATES.get(form) : null;
+
+		if (!form || !state) {
+			return;
+		}
+
+		form.removeEventListener('change', state.onChange);
+		form.removeEventListener('focusout', state.onFocusOut);
+		form.removeEventListener('input', state.onInput);
+		form.removeEventListener('invalid', state.onInvalid, true);
+		form.removeEventListener('reset', state.onReset);
+		form.removeEventListener('submit', state.onSubmit, true);
+
+		if (state.widgetObserver) {
+			state.widgetObserver.disconnect();
+		}
+
+		formFields(form).forEach((field) => {
+			clearField(field);
+			delete field.dataset.pairValidationTouched;
+		});
+		clearSummary(form);
+		removeLiveRegion(form);
+		form.noValidate = state.previousNoValidate;
+		delete form.dataset.pairValidationReady;
+		delete form.dataset.pairValidationSubmitted;
+		FORM_STATES.delete(form);
+	}
+
+	/**
+	 * Resolves the current visual, insertion, and focus targets for a field.
+	 * @param {HTMLElement} field Native form field.
+	 * @returns {{anchor: HTMLElement, focus: HTMLElement, visual: HTMLElement}} UI targets.
+	 */
+	function fieldUi(field) {
+		for (const entry of FORM_ADAPTERS) {
+			if (entry.adapter.matches(field)) {
+				const resolved = entry.adapter.resolve(field);
+
+				if (resolved && resolved.anchor && resolved.focus && resolved.visual) {
+					return resolved;
+				}
+			}
+		}
+
+		const explicitAnchor = field.closest('[data-pair-validation-anchor]');
+		const inputGroup = field.closest('.input-group');
+		const checkGroup = field.closest('[data-pair-validation-group], .form-check, .form-switch');
+
+		return {
+			anchor: explicitAnchor || inputGroup || checkGroup || field,
+			focus: field,
+			visual: field
+		};
+	}
+
+	/**
+	 * Returns all enabled, visible constraint fields owned by a form.
+	 * @param {HTMLFormElement} form Form to inspect.
+	 * @returns {HTMLElement[]} Form fields.
+	 */
+	function formFields(form) {
+		const fields = Array.from(form.elements || []);
+		const uniqueGroups = new Set();
+
+		return fields.filter((field) => {
+			if (!isFormField(field) || field.disabled || field.dataset.pairValidationIgnore === 'true') {
+				return false;
+			}
+
+			if ('radio' !== field.type) {
+				return true;
+			}
+
+			const groupKey = field.name || ensureFieldId(field);
+			if (uniqueGroups.has(groupKey)) {
+				return false;
+			}
+
+			uniqueGroups.add(groupKey);
+			return true;
+		});
+	}
+
+	/**
+	 * Handles a change event after a field was visited or a submit was attempted.
+	 * @param {HTMLFormElement} form Owning form.
+	 * @param {Event} event Change event.
+	 * @returns {void}
+	 */
+	function handleFieldChange(form, event) {
+		const field = validationFieldFor(event.target);
+
+		if (!isFormField(field)) {
+			return;
+		}
+
+		field.dataset.pairValidationTouched = '1';
+		clearExternalError(field);
+		validateField(field, {show: true});
+		refreshSummaryAfterFieldChange(form);
+	}
+
+	/**
+	 * Handles focus leaving a field without validating untouched controls.
+	 * @param {HTMLFormElement} form Owning form.
+	 * @param {FocusEvent} event Focus event.
+	 * @returns {void}
+	 */
+	function handleFieldFocusOut(form, event) {
+		const field = validationFieldFor(event.target);
+
+		if (!isFormField(field)) {
+			return;
+		}
+
+		const wasInvalid = field.dataset.pairValidationInvalid === '1';
+		field.dataset.pairValidationTouched = '1';
+		const valid = validateField(field, {show: true});
+
+		if (!valid && !wasInvalid) {
+			announceFieldError(form, field);
+		}
+
+		refreshSummaryAfterFieldChange(form);
+	}
+
+	/**
+	 * Revalidates typing only after the field already has visible validation state.
+	 * @param {HTMLFormElement} form Owning form.
+	 * @param {InputEvent} event Input event.
+	 * @returns {void}
+	 */
+	function handleFieldInput(form, event) {
+		const field = validationFieldFor(event.target);
+
+		if (!isFormField(field)) {
+			return;
+		}
+
+		clearExternalError(field);
+
+		if (
+			field.dataset.pairValidationInvalid === '1'
+			|| field.dataset.pairValidationTouched === '1'
+			|| form.dataset.pairValidationSubmitted === '1'
+		) {
+			validateField(field, {show: true});
+			refreshSummaryAfterFieldChange(form);
+		}
+	}
+
+	/**
+	 * Resolves one stable representative for controls that share radio validity.
+	 * @param {EventTarget|null} field Candidate field.
+	 * @returns {HTMLElement|null} Field used for validation rendering.
+	 */
+	function validationFieldFor(field) {
+		const fields = validityFieldsFor(field);
+
+		return fields[0] || field;
+	}
+
+	/**
+	 * Returns all native controls that share one validity and error message.
+	 * @param {EventTarget|null} field Candidate field.
+	 * @returns {HTMLElement[]} Related form controls.
+	 */
+	function validityFieldsFor(field) {
+		if (!isFormField(field)) {
+			return [];
+		}
+
+		if ('radio' !== field.type || !field.form || !field.name) {
+			return [field];
+		}
+
+		const namedGroup = field.form.elements.namedItem(field.name);
+		const candidates = namedGroup && typeof namedGroup.length === 'number'
+			? Array.from(namedGroup)
+			: [namedGroup];
+
+		return candidates.filter((candidate) => {
+			return isFormField(candidate)
+				&& 'radio' === candidate.type
+				&& candidate.form === field.form;
+		});
+	}
+
+	/**
+	 * Prevents invalid submissions while respecting formnovalidate submitters.
+	 * @param {HTMLFormElement} form Owning form.
+	 * @param {SubmitEvent} event Submit event.
+	 * @returns {void}
+	 */
+	function handleFormSubmit(form, event) {
+		if (event.submitter && event.submitter.formNoValidate) {
+			return;
+		}
+
+		if (validateForm(form, {focus: true})) {
+			return;
+		}
+
+		event.preventDefault();
+		event.stopImmediatePropagation();
+	}
+
+	/**
+	 * Returns true when a node can participate in HTML constraint validation.
+	 * @param {EventTarget|null} field Candidate field.
+	 * @returns {boolean} True for supported controls.
+	 */
+	function isFormField(field) {
+		return field instanceof HTMLElement
+			&& typeof field.matches === 'function'
+			&& field.matches(FORM_FIELD_SELECTOR)
+			&& typeof field.setCustomValidity === 'function';
+	}
+
+	/**
+	 * Observes value presentation changes from widgets that emit library-only events.
+	 * @param {HTMLFormElement} form Form containing custom widgets.
+	 * @returns {MutationObserver|null} Active observer when supported.
+	 */
+	function observeCustomWidgets(form) {
+		if (typeof MutationObserver !== 'function') {
+			return null;
+		}
+
+		const observer = new MutationObserver((mutations) => {
+			const changedFields = new Set();
+
+			mutations.forEach((mutation) => {
+				const field = customWidgetFieldForMutation(form, mutation.target);
+
+				if (field) {
+					changedFields.add(field);
+				}
+			});
+
+			let refreshed = false;
+			changedFields.forEach((field) => {
+				clearExternalError(field);
+
+				if (
+					field.dataset.pairValidationInvalid === '1'
+					|| field.dataset.pairValidationTouched === '1'
+					|| form.dataset.pairValidationSubmitted === '1'
+				) {
+					validateField(field, {show: true});
+					refreshed = true;
+				}
+			});
+
+			if (refreshed) {
+				refreshSummaryAfterFieldChange(form);
+			}
+		});
+
+		observer.observe(form, {
+			characterData: true,
+			childList: true,
+			subtree: true
+		});
+
+		return observer;
+	}
+
+	/**
+	 * Maps a Select2 or NiceSelect2 mutation back to its native form field.
+	 * @param {HTMLFormElement} form Owning form.
+	 * @param {Node} target Mutation target.
+	 * @returns {HTMLElement|null} Native field or null.
+	 */
+	function customWidgetFieldForMutation(form, target) {
+		const element = target instanceof Element ? target : target.parentElement;
+		const widget = element ? element.closest('.select2-container, .nice-select') : null;
+		const field = widget ? widget.previousElementSibling : null;
+
+		if (!widget || !form.contains(widget) || !isFormField(field) || field.form !== form) {
+			return null;
+		}
+
+		return validationFieldFor(field);
+	}
+
+	/**
+	 * Registers or replaces a visual adapter for a custom form widget.
+	 * @param {string} name Adapter name.
+	 * @param {{matches: Function, resolve: Function}} adapter Adapter implementation.
+	 * @returns {void}
+	 */
+	function registerAdapter(name, adapter) {
+		if (!name || !adapter || typeof adapter.matches !== 'function' || typeof adapter.resolve !== 'function') {
+			throw new TypeError('A Pair validation adapter requires a name, matches(), and resolve().');
+		}
+
+		const existingIndex = FORM_ADAPTERS.findIndex((entry) => entry.name === name);
+		if (existingIndex >= 0) {
+			FORM_ADAPTERS.splice(existingIndex, 1);
+		}
+
+		FORM_ADAPTERS.unshift({name: name, adapter: adapter});
+	}
+
+	/**
+	 * Removes all Pair validation state after a native form reset.
+	 * @param {HTMLFormElement|null} form Form to reset.
+	 * @returns {void}
+	 */
+	function resetForm(form) {
+		if (!form) {
+			return;
+		}
+
+		formFields(form).forEach((field) => {
+			clearField(field);
+			delete field.dataset.pairValidationTouched;
+		});
+		clearSummary(form);
+		delete form.dataset.pairValidationSubmitted;
+	}
+
+	/**
+	 * Applies an external or server-side error through the same accessible UI.
+	 * @param {HTMLElement|null} field Field to mark.
+	 * @param {string} message Human-readable correction.
+	 * @returns {void}
+	 */
+	function setFieldError(field, message) {
+		field = validationFieldFor(field);
+
+		if (!isFormField(field)) {
+			return;
+		}
+
+		field.setCustomValidity(String(message || ''));
+		field.dataset.pairValidationExternalError = '1';
+		renderFieldError(field, String(message || field.validationMessage));
+	}
+
+	/**
+	 * Applies field errors returned by the server.
+	 * @param {HTMLFormElement|null} form Owning form.
+	 * @param {Object<string, string|string[]>} errors Errors keyed by field name.
+	 * @param {Object} options Focus options.
+	 * @returns {boolean} False when at least one error was applied.
+	 */
+	function setServerErrors(form, errors, options = {}) {
+		if (!form || !errors || 'object' !== typeof errors) {
+			return true;
+		}
+
+		bindForm(form);
+		const invalidFields = [];
+
+		Object.entries(errors).forEach(([name, value]) => {
+			const field = namedField(form, name);
+			const message = Array.isArray(value) ? value.filter(Boolean).join(' ') : String(value || '');
+
+			if (field && message) {
+				setFieldError(field, message);
+				invalidFields.push(field);
+			}
+		});
+
+		if (!invalidFields.length) {
+			return true;
+		}
+
+		form.dataset.pairValidationSubmitted = '1';
+		updateSummary(form, invalidFields);
+		announceErrors(form, invalidFields.length);
+
+		if (options.focus !== false) {
+			focusValidationTarget(form, invalidFields[0]);
+		}
+
+		form.dispatchEvent(new CustomEvent('pair:validation:form-invalid', {
+			bubbles: true,
+			detail: {fields: invalidFields, source: 'server'}
+		}));
+
+		return false;
+	}
+
+	/**
+	 * Validates and renders one field using HTML ValidityState.
+	 * @param {HTMLElement|null} field Field to validate.
+	 * @param {Object} options Rendering options.
+	 * @returns {boolean} True when valid.
+	 */
+	function validateField(field, options = {}) {
+		field = validationFieldFor(field);
+
+		if (!isFormField(field) || field.disabled || field.dataset.pairValidationIgnore === 'true') {
+			return true;
+		}
+
+		if (field.dataset.pairValidationPreset) {
+			syncPresetValidity(field, false);
+		}
+
+		if (field.validity.valid) {
+			if (options.show !== false) {
+				clearField(field);
+			}
+			return true;
+		}
+
+		if (options.show !== false) {
+			renderFieldError(field, validationMessageFor(field));
+		}
+
+		return false;
+	}
+
+	/**
+	 * Validates every constraint field and optionally focuses the recovery target.
+	 * @param {HTMLFormElement|null} form Form to validate.
+	 * @param {Object} options Validation options.
+	 * @returns {boolean} True when valid.
+	 */
+	function validateForm(form, options = {}) {
+		if (!form) {
+			return true;
+		}
+
+		bindForm(form);
+		form.dataset.pairValidationSubmitted = '1';
+		const invalidFields = formFields(form).filter((field) => !validateField(field, {show: true}));
+
+		updateSummary(form, invalidFields);
+
+		if (!invalidFields.length) {
+			announceErrors(form, 0);
+			form.dispatchEvent(new CustomEvent('pair:validation:form-valid', {
+				bubbles: true,
+				detail: {fields: []}
+			}));
+			return true;
+		}
+
+		announceErrors(form, invalidFields.length);
+
+		if (options.focus !== false) {
+			focusValidationTarget(form, invalidFields[0]);
+		}
+
+		form.dispatchEvent(new CustomEvent('pair:validation:form-invalid', {
+			bubbles: true,
+			detail: {fields: invalidFields, source: 'client'}
+		}));
+
+		return false;
+	}
+
+	/**
+	 * Resolves an error message from field overrides, ValidityState, and locale defaults.
+	 * @param {HTMLElement} field Invalid field.
+	 * @returns {string} Error message.
+	 */
+	function validationMessageFor(field) {
+		const rule = validityRule(field);
+		const context = validationMessageContext(field);
+		const specificMessage = field.dataset['pairValidationMessage' + upperFirst(rule)];
+
+		if (specificMessage) {
+			return interpolateMessage(specificMessage, context);
+		}
+
+		if ('custom' === rule && field.dataset.pairValidationMessage) {
+			return interpolateMessage(field.dataset.pairValidationMessage, context);
+		}
+
+		const form = field.form;
+		const formMessage = form ? form.dataset['pairValidationMessage' + upperFirst(rule)] : '';
+		if (formMessage) {
+			return interpolateMessage(formMessage, context);
+		}
+
+		const typeRule = 'type' === rule && ['email', 'url'].includes(String(field.type || '').toLowerCase())
+			? String(field.type).toLowerCase()
+			: rule;
+		const configuredMessage = formValidationOptions.messages[typeRule];
+		if (configuredMessage) {
+			return interpolateMessage(resolveMessageValue(configuredMessage, context), context);
+		}
+
+		const localeMessages = FORM_MESSAGES[validationLocale(form)] || FORM_MESSAGES.en;
+		const fallback = localeMessages[typeRule] || localeMessages[rule];
+
+		if (fallback) {
+			return interpolateMessage(fallback, context);
+		}
+
+		return field.validationMessage || localeMessages.custom.replace('{label}', context.label);
+	}
+
+	/**
+	 * Adds built-in adapters without requiring their JavaScript libraries.
+	 * @returns {void}
+	 */
+	function registerDefaultAdapters() {
+		registerAdapter('nice-select2', {
+			matches: (field) => field.matches('select') && Boolean(
+				field.nextElementSibling && field.nextElementSibling.matches('.nice-select')
+			),
+			resolve: (field) => {
+				const widget = field.nextElementSibling;
+
+				return {anchor: widget, focus: widget, visual: widget};
+			}
+		});
+		registerAdapter('select2', {
+			matches: (field) => field.matches('select') && Boolean(
+				field.nextElementSibling && field.nextElementSibling.matches('.select2-container')
+			),
+			resolve: (field) => {
+				const container = field.nextElementSibling;
+				const selection = container.querySelector('.select2-selection') || container;
+				const focus = container.querySelector('[role="combobox"]') || selection;
+
+				return {anchor: container, focus: focus, visual: selection};
+			}
+		});
+	}
+
+	/**
+	 * Adds one token to a space-separated ARIA relationship.
+	 * @param {HTMLElement} element Element to update.
+	 * @param {string} attribute Attribute name.
+	 * @param {string} token ID token.
+	 * @returns {void}
+	 */
+	function addAttributeToken(element, attribute, token) {
+		const tokens = new Set(String(element.getAttribute(attribute) || '').split(/\s+/).filter(Boolean));
+		tokens.add(token);
+		element.setAttribute(attribute, Array.from(tokens).join(' '));
+	}
+
+	/**
+	 * Announces an aggregate validation result without repeating every inline error.
+	 * @param {HTMLFormElement} form Validated form.
+	 * @param {number} count Invalid field count.
+	 * @returns {void}
+	 */
+	function announceErrors(form, count) {
+		const region = liveRegion(form);
+
+		if (count < 1) {
+			region.textContent = '';
+			return;
+		}
+
+		region.textContent = summaryMessage(form, count);
+	}
+
+	/**
+	 * Announces one newly discovered field error after focus leaves the control.
+	 * @param {HTMLFormElement} form Owning form.
+	 * @param {HTMLElement} field Invalid field.
+	 * @returns {void}
+	 */
+	function announceFieldError(form, field) {
+		const region = liveRegion(form);
+		const message = fieldLabel(field) + ': ' + validationMessageFor(field);
+		const wasSubmitted = form.dataset.pairValidationSubmitted === '1';
+
+		region.textContent = '';
+		window.setTimeout(() => {
+			if (
+				form.contains(region)
+				&& (wasSubmitted || form.dataset.pairValidationSubmitted !== '1')
+			) {
+				region.textContent = message;
+			}
+		}, 0);
+	}
+
+	/**
+	 * Resolves the configured singular or plural summary message.
+	 * @param {HTMLFormElement} form Owning form.
+	 * @param {number} count Invalid field count.
+	 * @returns {string} Localized summary message.
+	 */
+	function summaryMessage(form, count) {
+		const rule = 1 === count ? 'summaryOne' : 'summaryMany';
+		const context = {count: count};
+		const formMessage = form.dataset['pairValidationMessage' + upperFirst(rule)];
+		const configuredMessage = formValidationOptions.messages[rule];
+		const messages = FORM_MESSAGES[validationLocale(form)] || FORM_MESSAGES.en;
+		const template = formMessage
+			|| (configuredMessage ? resolveMessageValue(configuredMessage, context) : messages[rule]);
+
+		return interpolateMessage(template, context);
+	}
+
+	/**
+	 * Clears an external custom error before running normal field validation again.
+	 * @param {HTMLElement} field Field to update.
+	 * @returns {void}
+	 */
+	function clearExternalError(field) {
+		if (field.dataset.pairValidationExternalError !== '1') {
+			return;
+		}
+
+		field.setCustomValidity('');
+		delete field.dataset.pairValidationExternalError;
+
+		if (field.dataset.pairValidationPreset) {
+			syncPresetValidity(field, false);
+		}
+	}
+
+	/**
+	 * Clears an optional validation summary.
+	 * @param {HTMLFormElement} form Form containing the summary.
+	 * @returns {void}
+	 */
+	function clearSummary(form) {
+		const summary = form.querySelector('[data-pair-validation-summary-region]');
+
+		if (!summary) {
+			return;
+		}
+
+		if (summary.dataset.pairValidationGenerated === '1') {
+			summary.remove();
+			return;
+		}
+
+		summary.replaceChildren();
+		summary.hidden = true;
+	}
+
+	/**
+	 * Ensures a field has a stable DOM ID for labels, errors, and summary links.
+	 * @param {HTMLElement} field Field to identify.
+	 * @returns {string} Field ID.
+	 */
+	function ensureFieldId(field) {
+		if (field.id) {
+			return field.id;
+		}
+
+		const base = String(field.name || 'field')
+			.replace(/\[\]$/, '')
+			.replace(/[^a-zA-Z0-9_-]+/g, '-')
+			.replace(/^-+|-+$/g, '') || 'field';
+		let candidate = base;
+
+		while (document.getElementById(candidate) && document.getElementById(candidate) !== field) {
+			formFieldSequence += 1;
+			candidate = base + '-' + formFieldSequence;
+		}
+
+		field.id = candidate;
+
+		const formOwnsBaseId = field.form && Array.from(field.form.querySelectorAll('[id]')).some((element) => {
+			return element.id === base && element !== field;
+		});
+
+		if (candidate !== base && field.form && !formOwnsBaseId) {
+			Array.from(field.form.querySelectorAll('label[for]')).forEach((label) => {
+				if (label.htmlFor === base) {
+					label.htmlFor = candidate;
+				}
+			});
+		}
+
+		return candidate;
+	}
+
+	/**
+	 * Returns the stable inline error ID for a field.
+	 * @param {HTMLElement} field Field to identify.
+	 * @returns {string} Error element ID.
+	 */
+	function errorIdFor(field) {
+		return ensureFieldId(field) + '-pair-error';
+	}
+
+	/**
+	 * Moves focus to the configured recovery target and keeps it unobscured.
+	 * @param {HTMLFormElement} form Invalid form.
+	 * @param {HTMLElement} firstInvalid First invalid field.
+	 * @returns {void}
+	 */
+	function focusValidationTarget(form, firstInvalid) {
+		const requestedTarget = form.dataset.pairValidationFocus || formValidationOptions.focusTarget;
+		const summary = form.querySelector('[data-pair-validation-summary-region]:not([hidden])');
+
+		if ('none' === requestedTarget) {
+			return;
+		}
+
+		if ('summary' === requestedTarget && summary) {
+			summary.focus({preventScroll: true});
+			scrollIntoViewIfNeeded(summary);
+			return;
+		}
+
+		const ui = fieldUi(firstInvalid);
+		ui.focus.focus({preventScroll: true});
+		scrollIntoViewIfNeeded(ui.anchor);
+	}
+
+	/**
+	 * Replaces message placeholders with escaped text values.
+	 * @param {string} message Message template.
+	 * @param {Object} context Placeholder values.
+	 * @returns {string} Resolved message.
+	 */
+	function interpolateMessage(message, context) {
+		return String(message || '').replace(/\{([a-zA-Z0-9]+)\}/g, (match, key) => {
+			return Object.prototype.hasOwnProperty.call(context, key) ? String(context[key]) : match;
+		});
+	}
+
+	/**
+	 * Returns or creates the form-level polite live region.
+	 * @param {HTMLFormElement} form Owning form.
+	 * @returns {HTMLElement} Live region.
+	 */
+	function liveRegion(form) {
+		let region = form.querySelector('[data-pair-validation-live]');
+
+		if (region) {
+			return region;
+		}
+
+		region = document.createElement('div');
+		region.className = 'pair-visually-hidden';
+		region.dataset.pairValidationLive = '1';
+		region.setAttribute('aria-atomic', 'true');
+		region.setAttribute('aria-live', 'polite');
+		form.prepend(region);
+
+		return region;
+	}
+
+	/**
+	 * Finds one concrete form field by submitted name.
+	 * @param {HTMLFormElement} form Owning form.
+	 * @param {string} name Submitted field name.
+	 * @returns {HTMLElement|null} Matching field.
+	 */
+	function namedField(form, name) {
+		const entry = form.elements.namedItem(name);
+
+		if (isFormField(entry)) {
+			return entry;
+		}
+
+		if (entry && typeof entry.length === 'number') {
+			return Array.from(entry).find((field) => isFormField(field)) || null;
+		}
+
+		return null;
+	}
+
+	/**
+	 * Rebuilds a visible summary while the user corrects a submitted form.
+	 * @param {HTMLFormElement} form Owning form.
+	 * @returns {void}
+	 */
+	function refreshSummaryAfterFieldChange(form) {
+		if (form.dataset.pairValidationSubmitted !== '1') {
+			return;
+		}
+
+		const invalidFields = formFields(form).filter((field) => !field.validity.valid);
+		updateSummary(form, invalidFields);
+	}
+
+	/**
+	 * Removes one token from a space-separated ARIA relationship.
+	 * @param {HTMLElement} element Element to update.
+	 * @param {string} attribute Attribute name.
+	 * @param {string} token ID token.
+	 * @returns {void}
+	 */
+	function removeAttributeToken(element, attribute, token) {
+		const tokens = String(element.getAttribute(attribute) || '').split(/\s+/).filter((value) => {
+			return value && value !== token;
+		});
+
+		if (tokens.length) {
+			element.setAttribute(attribute, tokens.join(' '));
+		} else {
+			element.removeAttribute(attribute);
+		}
+	}
+
+	/**
+	 * Removes the generated live region from a form.
+	 * @param {HTMLFormElement} form Owning form.
+	 * @returns {void}
+	 */
+	function removeLiveRegion(form) {
+		const region = form.querySelector('[data-pair-validation-live]');
+
+		if (region) {
+			region.remove();
+		}
+	}
+
+	/**
+	 * Renders one inline error after the visible control or widget.
+	 * @param {HTMLElement} field Invalid native field.
+	 * @param {string} message Recovery message.
+	 * @returns {void}
+	 */
+	function renderFieldError(field, message) {
+		field = validationFieldFor(field);
+
+		if (!isFormField(field)) {
+			return;
+		}
+
+		const validityFields = validityFieldsFor(field);
+		const ui = fieldUi(field);
+		const errorId = errorIdFor(field);
+		let error = document.getElementById(errorId);
+		const wasInvalid = validityFields.some((candidate) => {
+			return candidate.dataset.pairValidationInvalid === '1';
+		});
+
+		if (!error) {
+			error = document.createElement('div');
+			error.id = errorId;
+			error.className = 'pair-validation-error';
+			error.dataset.pairValidationErrorFor = ensureFieldId(field);
+			ui.anchor.insertAdjacentElement('afterend', error);
+		}
+
+		error.textContent = message;
+		ui.visual.classList.add('is-invalid', 'pair-validation-invalid');
+		validityFields.forEach((candidate) => {
+			candidate.classList.add('is-invalid');
+			candidate.setAttribute('aria-invalid', 'true');
+			addAttributeToken(candidate, 'aria-describedby', errorId);
+			candidate.dataset.pairValidationInvalid = '1';
+		});
+
+		if (ui.focus !== field) {
+			ui.focus.setAttribute('aria-invalid', 'true');
+			addAttributeToken(ui.focus, 'aria-describedby', errorId);
+		}
+
+		if (!wasInvalid) {
+			field.dispatchEvent(new CustomEvent('pair:validation:field-invalid', {
+				bubbles: true,
+				detail: {field: field, message: message}
+			}));
+		}
+	}
+
+	/**
+	 * Resolves string or callback message configuration.
+	 * @param {string|Function} message Configured message.
+	 * @param {Object} context Field context.
+	 * @returns {string} Resolved value.
+	 */
+	function resolveMessageValue(message, context) {
+		return typeof message === 'function' ? String(message(context)) : String(message);
+	}
+
+	/**
+	 * Scrolls only when the target is outside the current viewport.
+	 * @param {HTMLElement} target Element to reveal.
+	 * @returns {void}
+	 */
+	function scrollIntoViewIfNeeded(target) {
+		const rect = target.getBoundingClientRect();
+
+		if (rect.top < 0 || rect.bottom > window.innerHeight) {
+			target.scrollIntoView({behavior: 'auto', block: 'center'});
+		}
+	}
+
+	/**
+	 * Returns whether a visible error summary is enabled for a form.
+	 * @param {HTMLFormElement} form Form to inspect.
+	 * @returns {boolean} True when enabled.
+	 */
+	function summaryEnabled(form) {
+		if (form.hasAttribute('data-pair-validation-summary')) {
+			return !['0', 'false', 'off'].includes(
+				String(form.getAttribute('data-pair-validation-summary') || '').toLowerCase()
+			);
+		}
+
+		return Boolean(formValidationOptions.summary);
+	}
+
+	/**
+	 * Returns a string with its first character uppercased.
+	 * @param {string} value Input value.
+	 * @returns {string} Capitalized value.
+	 */
+	function upperFirst(value) {
+		const stringValue = String(value || '');
+
+		return stringValue.charAt(0).toUpperCase() + stringValue.slice(1);
+	}
+
+	/**
+	 * Builds or clears an optional linked error summary.
+	 * @param {HTMLFormElement} form Owning form.
+	 * @param {HTMLElement[]} invalidFields Invalid fields.
+	 * @returns {void}
+	 */
+	function updateSummary(form, invalidFields) {
+		if (!summaryEnabled(form) || !invalidFields.length) {
+			clearSummary(form);
+			return;
+		}
+
+		let summary = form.querySelector('[data-pair-validation-summary-region]');
+		if (!summary) {
+			summary = document.createElement('section');
+			summary.className = 'pair-validation-summary';
+			summary.dataset.pairValidationGenerated = '1';
+			summary.dataset.pairValidationSummaryRegion = '1';
+			form.prepend(summary);
+		}
+
+		const heading = document.createElement('h2');
+		const list = document.createElement('ul');
+
+		heading.className = 'pair-validation-summary__title';
+		heading.textContent = summaryMessage(form, invalidFields.length);
+		invalidFields.forEach((field) => {
+			const item = document.createElement('li');
+			const link = document.createElement('a');
+			const message = validationMessageFor(field);
+
+			link.href = '#' + ensureFieldId(field);
+			link.textContent = fieldLabel(field) + ': ' + message;
+			link.addEventListener('click', (event) => {
+				event.preventDefault();
+				focusValidationTarget(form, field);
+			});
+			item.append(link);
+			list.append(item);
+		});
+
+		summary.replaceChildren(heading, list);
+		summary.hidden = false;
+		summary.tabIndex = -1;
+	}
+
+	/**
+	 * Returns a concise human label for error copy and summaries.
+	 * @param {HTMLElement} field Field to describe.
+	 * @returns {string} Field label.
+	 */
+	function fieldLabel(field) {
+		const fieldId = ensureFieldId(field);
+		const form = field.form;
+		const label = form
+			? Array.from(form.querySelectorAll('label[for]')).find((candidate) => candidate.htmlFor === fieldId)
+			: null;
+
+		return String(
+			(label && label.textContent)
+			|| field.getAttribute('aria-label')
+			|| field.name
+			|| fieldId
+		).trim();
+	}
+
+	/**
+	 * Returns the locale used by one form.
+	 * @param {HTMLFormElement|null} form Form to inspect.
+	 * @returns {string} Supported locale key.
+	 */
+	function validationLocale(form) {
+		const requested = String(
+			(form && form.dataset.pairValidationLocale)
+			|| formValidationOptions.locale
+			|| document.documentElement.lang
+			|| 'en'
+		).toLowerCase().split('-')[0];
+
+		return Object.prototype.hasOwnProperty.call(FORM_MESSAGES, requested) ? requested : 'en';
+	}
+
+	/**
+	 * Returns interpolation values for a field error.
+	 * @param {HTMLElement} field Field to inspect.
+	 * @returns {Object} Message context.
+	 */
+	function validationMessageContext(field) {
+		return {
+			label: fieldLabel(field),
+			max: field.getAttribute('max') || '',
+			maxLength: field.getAttribute('maxlength') || '',
+			min: field.getAttribute('min') || '',
+			minLength: field.getAttribute('minlength') || '',
+			name: field.name || '',
+			type: field.type || ''
+		};
+	}
+
+	/**
+	 * Maps the first failing ValidityState property to a public message rule.
+	 * @param {HTMLElement} field Invalid field.
+	 * @returns {string} Message rule.
+	 */
+	function validityRule(field) {
+		const match = VALIDITY_RULES.find(([property]) => Boolean(field.validity[property]));
+
+		return match ? match[1] : 'custom';
+	}
 
 	/**
 	 * Binds validation presets inside a root node.
@@ -202,6 +1397,21 @@
 	 */
 	function bindDocument(root = document) {
 		matchingFields(root, '[data-pair-validation-preset]').forEach((field) => bindPresetField(field));
+		matchingFields(root, FORM_SELECTOR).forEach((form) => bindForm(form));
+	}
+
+	/**
+	 * Binds validation inside a progressively replaced application region.
+	 * @param {CustomEvent} event Region replacement event.
+	 * @returns {void}
+	 */
+	function bindReplacementRegion(event) {
+		const detailRoot = event.detail && event.detail.root;
+		const root = detailRoot && typeof detailRoot.querySelectorAll === 'function'
+			? detailRoot
+			: event.target;
+
+		bindDocument(root);
 	}
 
 	/**
@@ -209,7 +1419,9 @@
 	 * @returns {void}
 	 */
 	function bootPairValidation() {
+		registerDefaultAdapters();
 		bindDocument(document);
+		document.addEventListener('pair:region:replaced', bindReplacementRegion);
 	}
 
 	/**
@@ -1250,6 +2462,7 @@
 		bindE164PhoneField,
 		bindEan13Field,
 		bindEmailAddressField,
+		bindForm,
 		bindHexColorField,
 		bindIbanField,
 		bindIpAddressField,
@@ -1265,8 +2478,11 @@
 		bindUrlField,
 		bindUuidField,
 		canonicalPreset,
+		clearField,
 		completeEan13,
+		configure,
 		decodeItalianFiscalCodeOmocodia,
+		destroyForm,
 		ean13ControlDigit,
 		italianFiscalCodeControlCharacter,
 		italianPersonalFiscalCodeBirthData,
@@ -1304,6 +2520,12 @@
 		normalizeSlug,
 		normalizeUrl,
 		normalizeUuid,
+		registerAdapter,
+		resetForm,
+		setFieldError,
+		setServerErrors,
+		validateField,
+		validateForm,
 		validatePresetFields
 	});
 

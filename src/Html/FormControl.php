@@ -628,7 +628,7 @@ abstract class FormControl {
 			$ret .= ' ' . $attr;
 
 			if (!is_null($val)) {
-				$ret .= '="' . str_replace('"','\"',$val) . '"';
+				$ret .= '="' . htmlspecialchars((string)$val, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '"';
 			}
 
 		}
@@ -696,6 +696,18 @@ abstract class FormControl {
 	}
 
 	/**
+	 * Sets the client-side message used when a required value is missing.
+	 *
+	 * @param string $message Validation message.
+	 * @return static
+	 */
+	public function requiredMessage(string $message): static {
+
+		return $this->validationMessage($message, 'required');
+
+	}
+
+	/**
 	 * Sets this field as disabled. Chainable method.
 	 * 
 	 * @param string $title The title attribute for this control.
@@ -757,12 +769,27 @@ abstract class FormControl {
 	}
 
 	/**
-	 * Sets a custom validation message for the active preset. Chainable method.
+	 * Sets a client-side validation message. Without a rule it remains the
+	 * message for the active preset; a rule creates a constraint-specific override.
+	 *
+	 * @param	string		Validation message.
+	 * @param	string|null	Optional rule such as required, type, pattern, minLength, or maxLength.
 	 */
-	public function validationMessage(string $message): static {
+	public function validationMessage(string $message, ?string $rule = null): static {
 
-		$this->validationMessage = $message;
-		$this->attributes['data-pair-validation-message'] = $message;
+		if (is_null($rule)) {
+			$this->validationMessage = $message;
+			$this->attributes['data-pair-validation-message'] = $message;
+		} else {
+			$normalizedRule = preg_replace('/([a-z0-9])([A-Z])/', '$1-$2', trim($rule));
+			$normalizedRule = strtolower(trim((string)preg_replace('/[^a-zA-Z0-9]+/', '-', (string)$normalizedRule), '-'));
+
+			if ('' === $normalizedRule) {
+				throw new \InvalidArgumentException('Validation message rule cannot be empty.');
+			}
+
+			$this->attributes['data-pair-validation-message-' . $normalizedRule] = $message;
+		}
 
 		return $this;
 

@@ -384,6 +384,27 @@ class Form {
 	}
 
 	/**
+	 * Enables progressive client-side validation through PairValidation.js.
+	 *
+	 * The novalidate property is intentionally applied by JavaScript only after
+	 * the validator initializes, preserving native validation as a fallback.
+	 *
+	 * @param bool $enabled True to enable the client validator.
+	 * @return Form
+	 */
+	public function clientValidation(bool $enabled = true): Form {
+
+		if ($enabled) {
+			$this->attributes['data-pair-validate'] = null;
+		} else {
+			unset($this->attributes['data-pair-validate']);
+		}
+
+		return $this;
+
+	}
+
+	/**
 	 * Returns the closing form tag.
 	 */
 	public function close(): string {

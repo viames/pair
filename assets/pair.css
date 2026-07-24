@@ -1213,6 +1213,141 @@ body[data-bs-theme="dark"] #logbar {
     margin-right: .5em;
 }
 
+/* Pair form validation */
+
+[data-pair-validate] {
+    --pair-validation-border: var(--bs-form-invalid-border-color, var(--bs-danger, #b42318));
+    --pair-validation-color: var(--bs-form-invalid-color, var(--bs-danger-text-emphasis, #b42318));
+    --pair-validation-focus: var(--bs-focus-ring-color, Highlight);
+    --pair-validation-summary-bg: var(--bs-tertiary-bg, #f8f9fa);
+    --pair-validation-summary-border: var(--pair-validation-border);
+}
+
+[data-pair-validate] .pair-validation-invalid,
+[data-pair-validate] .is-invalid {
+    border-color: var(--pair-validation-border);
+}
+
+[data-pair-validate] .pair-validation-invalid:focus,
+[data-pair-validate] .pair-validation-invalid:focus-visible,
+[data-pair-validate] .is-invalid:focus,
+[data-pair-validate] .is-invalid:focus-visible {
+    border-color: var(--pair-validation-border);
+    outline: 2px solid var(--pair-validation-focus);
+    outline-offset: 2px;
+}
+
+[data-pair-validate] .select2-container .select2-selection.pair-validation-invalid,
+[data-pair-validate] .nice-select.pair-validation-invalid {
+    border-color: var(--pair-validation-border);
+}
+
+.pair-validation-error {
+    color: var(--pair-validation-color);
+    display: block;
+    font-size: .875em;
+    line-height: 1.4;
+    margin-top: .375rem;
+}
+
+.pair-validation-summary {
+    background: var(--pair-validation-summary-bg);
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    border-inline-start: .25rem solid var(--pair-validation-summary-border);
+    border-radius: var(--bs-border-radius, .375rem);
+    color: var(--bs-body-color, inherit);
+    margin-bottom: 1rem;
+    padding: 1rem;
+    scroll-margin-top: 5rem;
+}
+
+.pair-validation-summary:focus-visible {
+    outline: 2px solid var(--pair-validation-focus);
+    outline-offset: 2px;
+}
+
+.pair-validation-summary__title {
+    color: inherit;
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 0 0 .5rem;
+}
+
+.pair-validation-summary ul {
+    margin: 0;
+    padding-inline-start: 1.25rem;
+}
+
+.pair-validation-summary a {
+    color: var(--bs-link-color, LinkText);
+}
+
+[data-pair-validate] input,
+[data-pair-validate] select,
+[data-pair-validate] textarea,
+[data-pair-validate] .select2-container,
+[data-pair-validate] .nice-select {
+    scroll-margin-top: 5rem;
+}
+
+.pair-visually-hidden {
+    border: 0 !important;
+    clip: rect(0, 0, 0, 0) !important;
+    clip-path: inset(50%) !important;
+    height: 1px !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+    position: absolute !important;
+    white-space: nowrap !important;
+    width: 1px !important;
+}
+
+@media (prefers-contrast: more) {
+
+    [data-pair-validate] .pair-validation-invalid,
+    [data-pair-validate] .is-invalid {
+        border-width: 2px;
+    }
+
+    .pair-validation-error {
+        font-weight: 600;
+    }
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    [data-pair-validate] *,
+    .pair-validation-summary {
+        scroll-behavior: auto !important;
+        transition-duration: .01ms !important;
+    }
+
+}
+
+@media (forced-colors: active) {
+
+    [data-pair-validate] .pair-validation-invalid,
+    [data-pair-validate] .is-invalid {
+        border: 2px solid CanvasText;
+    }
+
+    [data-pair-validate] .pair-validation-invalid:focus,
+    [data-pair-validate] .pair-validation-invalid:focus-visible,
+    [data-pair-validate] .is-invalid:focus,
+    [data-pair-validate] .is-invalid:focus-visible,
+    .pair-validation-summary:focus-visible {
+        outline: 2px solid Highlight;
+    }
+
+    .pair-validation-error,
+    .pair-validation-summary {
+        color: CanvasText;
+    }
+
+}
+
 /* Toggle Switch */
 
 .toggle {
