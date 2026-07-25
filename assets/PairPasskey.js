@@ -157,14 +157,27 @@
 		/**
 		 * Get assertion by using navigator.credentials.get.
 		 * @param {Object} publicKeyOptions
+		 * @param {{mediation?: string|null, signal?: AbortSignal|null}} options
 		 * @returns {Promise<Object>} Serialized credential
 		 */
-		static async getAssertion(publicKeyOptions) {
+		static async getAssertion(publicKeyOptions, options = {}) {
 
 			this.ensureSupported();
 
 			const prepared = this.prepareRequestOptions(publicKeyOptions);
-			const credential = await navigator.credentials.get({ publicKey: prepared });
+			const credentialOptions = { publicKey: prepared };
+			const mediation = typeof options.mediation === "string" ? options.mediation.trim() : "";
+
+			// Forward only Credential Management mediation values supported by browsers.
+			if (["silent", "optional", "required", "conditional"].includes(mediation)) {
+				credentialOptions.mediation = mediation;
+			}
+
+			if (options.signal) {
+				credentialOptions.signal = options.signal;
+			}
+
+			const credential = await navigator.credentials.get(credentialOptions);
 
 			return this.serializeCredential(credential);
 
@@ -204,6 +217,28 @@
 		}
 
 		/**
+		 * Check whether the browser can surface discoverable credentials through conditional UI.
+		 * @returns {Promise<boolean>}
+		 */
+		static async isConditionalMediationAvailable() {
+
+			if (
+				!this.isSupported()
+				|| typeof global.PublicKeyCredential.isConditionalMediationAvailable !== "function"
+			) {
+				return false;
+			}
+
+			try {
+				return !!(await global.PublicKeyCredential.isConditionalMediationAvailable());
+			} catch (_error) {
+				// Capability checks must not prevent password or explicit passkey fallbacks.
+				return false;
+			}
+
+		}
+
+		/**
 		 * Return a translated client message from server-injected PairMessages.
 		 * @param {string} key
 		 * @param {string} fallback
@@ -220,25 +255,37 @@
 
 		/**
 		 * High-level login helper.
-		 * @param {{optionsUrl?: string, verifyUrl?: string, username?: string|null, timezone?: string|null, requestOptions?: RequestInit}} options
+		 * @param {{optionsUrl?: string, verifyUrl?: string, username?: string|null, timezone?: string|null, mediation?: string|null, signal?: AbortSignal|null, requestOptions?: RequestInit}} options
 		 * @returns {Promise<Object>}
 		 */
 		static async login(options = {}) {
 
+			const requestOptions = {
+				...(options.requestOptions || {})
+			};
+
+			// A top-level signal aborts the complete ceremony, including its network requests.
+			if (options.signal) {
+				requestOptions.signal = options.signal;
+			}
+
 			const publicKey = await this.beginLogin({
 				url: options.optionsUrl || "/api/passkey/login/options",
 				username: options.username ?? null,
-				requestOptions: options.requestOptions || {}
+				requestOptions
 			});
 
-			const credential = await this.getAssertion(publicKey);
+			const credential = await this.getAssertion(publicKey, {
+				mediation: options.mediation ?? null,
+				signal: options.signal ?? null
+			});
 
 			return this.finishLogin({
 				url: options.verifyUrl || "/api/passkey/login/verify",
 				credential,
 				username: options.username ?? null,
 				timezone: options.timezone || this.getDefaultTimeZone(),
-				requestOptions: options.requestOptions || {}
+				requestOptions
 			});
 
 		}

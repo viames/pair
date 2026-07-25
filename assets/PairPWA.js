@@ -139,6 +139,9 @@
       };
     }
 
+    /**
+     * Queue a same-origin mutation only when it contains no sensitive material.
+     */
     static async queueRequest({
       url,
       method = "POST",
@@ -149,6 +152,20 @@
       if (!url) return false;
 
       const normalizedHeaders = this._serializeHeaders(headers);
+      let normalizedUrl;
+
+      try {
+        normalizedUrl = new URL(String(url), global.location.origin);
+      } catch (_error) {
+        return false;
+      }
+
+      if (
+        normalizedUrl.origin !== global.location.origin ||
+        this._isSensitiveQueueRequest(normalizedUrl, normalizedHeaders)
+      ) {
+        return false;
+      }
 
       const payload = {
         url: String(url),
@@ -168,6 +185,39 @@
       }
 
       return queued;
+    }
+
+    /**
+     * Return true when an offline queue request contains authentication or session material.
+     */
+    static _isSensitiveQueueRequest(url, headers = {}) {
+      const authorizationKey = Object.keys(headers).find(
+        (key) => String(key).toLowerCase() === "authorization"
+      );
+
+      if (authorizationKey && String(headers[authorizationKey] || "").trim()) {
+        return true;
+      }
+
+      const sensitiveParams = [
+        "access_token",
+        "auth",
+        "code",
+        "csrf",
+        "csrf_token",
+        "id_token",
+        "refresh_token",
+        "session",
+        "session_id",
+        "sid",
+        "token",
+      ];
+
+      for (const param of sensitiveParams) {
+        if (url.searchParams.has(param)) return true;
+      }
+
+      return /\/(auth|login|logout|oauth|passkey|session)(\/|$)/i.test(url.pathname);
     }
 
     /**

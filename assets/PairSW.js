@@ -465,6 +465,11 @@ async function findQueuedRequestByFingerprint(fingerprint, tag) {
   });
 }
 
+/**
+ * Flush queued mutations while discarding entries that are no longer safe to replay.
+ * @param {string} tag
+ * @returns {Promise<number>}
+ */
 async function flushQueuedRequests(tag = DEFAULT_SYNC_TAG) {
   let queue = [];
 
@@ -485,6 +490,12 @@ async function flushQueuedRequests(tag = DEFAULT_SYNC_TAG) {
 
   for (const item of queue) {
     if (item.expiresAt && item.expiresAt < now) {
+      await deleteQueuedRequest(item.id).catch(() => false);
+      continue;
+    }
+
+    // Sensitive entries created by older workers must never be replayed.
+    if (isSensitiveRequestData(item.url, item.headers)) {
       await deleteQueuedRequest(item.id).catch(() => false);
       continue;
     }
@@ -627,15 +638,33 @@ function isApiRequestWithoutExplicitCachePolicy(request, cacheControl) {
  * @returns {boolean}
  */
 function isSensitiveCacheRequest(request) {
-  const authorization = request.headers && typeof request.headers.get === "function"
-    ? request.headers.get("Authorization")
-    : null;
 
-  if (authorization) {
+  if (!request || !request.url) {
     return true;
   }
 
-  const url = new URL(request.url);
+  return isSensitiveRequestData(request.url, request.headers);
+}
+
+/**
+ * Return true when URL or headers contain authentication or session material.
+ * @param {string|URL} rawUrl
+ * @param {Headers|Object|null} headers
+ * @returns {boolean}
+ */
+function isSensitiveRequestData(rawUrl, headers) {
+  if (readHeaderValue(headers, "Authorization")) {
+    return true;
+  }
+
+  let url;
+
+  try {
+    url = new URL(String(rawUrl || ""), self.location.origin);
+  } catch (_error) {
+    return true;
+  }
+
   const sensitiveParams = [
     "access_token",
     "auth",
@@ -655,6 +684,30 @@ function isSensitiveCacheRequest(request) {
   }
 
   return /\/(auth|login|logout|oauth|passkey|session)(\/|$)/i.test(url.pathname);
+}
+
+/**
+ * Read a header from Headers or a serialized plain object.
+ * @param {Headers|Object|null} headers
+ * @param {string} name
+ * @returns {string}
+ */
+function readHeaderValue(headers, name) {
+  if (!headers) return "";
+
+  if (typeof headers.get === "function") {
+    return String(headers.get(name) || "").trim();
+  }
+
+  const normalizedName = String(name || "").toLowerCase();
+
+  for (const key of Object.keys(headers)) {
+    if (String(key).toLowerCase() === normalizedName) {
+      return String(headers[key] || "").trim();
+    }
+  }
+
+  return "";
 }
 
 function isSyncTag(tag) {
@@ -1022,6 +1075,11 @@ async function putQueuedRequest(item) {
   });
 }
 
+/**
+ * Queue an explicit message payload only when it is safe to persist and replay.
+ * @param {Object} payload
+ * @returns {Promise<boolean>}
+ */
 async function queueRequestFromPayload(payload) {
   if (!payload || !payload.url) return false;
 
@@ -1030,6 +1088,9 @@ async function queueRequestFromPayload(payload) {
 
   const method = String(payload.method || "POST").toUpperCase();
   const headers = typeof payload.headers === "object" && payload.headers ? payload.headers : {};
+
+  if (isSensitiveRequestData(url.href, headers)) return false;
+
   const body = normalizePayloadBody(payload, headers);
 
   if (bodyByteLength(body) > SYNC_CONFIG.maxBodyBytes) {
@@ -1074,7 +1135,15 @@ async function queueRequestFromPayload(payload) {
   }
 }
 
+/**
+ * Queue a failed Fetch request only when it contains no sensitive material.
+ * @param {Request} request
+ * @param {string} tag
+ * @returns {Promise<boolean>}
+ */
 async function queueRequestFromRequest(request, tag = DEFAULT_SYNC_TAG) {
+  if (isSensitiveCacheRequest(request)) return false;
+
   const method = String(request.method || "POST").toUpperCase();
   const headers = headersToObject(request.headers);
 
@@ -1217,6 +1286,11 @@ function resolveCacheStrategy(request, url) {
   return CACHE_CONFIG.assetStrategy;
 }
 
+/**
+ * Return true when a mutation may safely use automatic background sync.
+ * @param {Request} request
+ * @returns {boolean}
+ */
 function shouldQueueMutation(request) {
   if (!SYNC_CONFIG.enabled) {
     return false;
@@ -1224,6 +1298,7 @@ function shouldQueueMutation(request) {
 
   const method = String(request.method || "GET").toUpperCase();
   if (method === "GET" || method === "HEAD") return false;
+  if (isSensitiveCacheRequest(request)) return false;
 
   const headerValue = request.headers.get("X-Pair-Background-Sync");
   if (headerValue === "1" || headerValue === "true") {
