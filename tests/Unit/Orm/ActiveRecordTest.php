@@ -50,6 +50,41 @@ class ActiveRecordTest extends TestCase {
 	}
 
 	/**
+	 * Verify reload resets volatile state without unsetting typed internal properties.
+	 */
+	public function testReloadKeepsInternalTrackersInitialized(): void {
+
+		$database = $this->setDatabaseInstance();
+		$database->useSqliteMemoryTable([
+			[
+				'id' => 10,
+				'name' => 'Reloaded',
+				'email' => 'reloaded@example.test',
+			],
+		]);
+
+		$record = new ActiveRecordHydrationRecord((object)[
+			'id' => '10',
+			'name' => 'Original',
+			'email' => 'original@example.test',
+		]);
+		$record->name = 'Pending';
+		$record->temporaryLabel = 'Before reload';
+
+		$record->reload();
+
+		$this->assertSame('Reloaded', $record->name);
+		$this->assertSame([], $this->updatedProperties($record));
+
+		$record->name = 'Changed after reload';
+		$record->temporaryLabel = 'After reload';
+
+		$this->assertSame(['name'], $this->updatedProperties($record));
+		$this->assertSame('After reload', $record->temporaryLabel);
+
+	}
+
+	/**
 	 * Verify repeated nullability checks reuse metadata already loaded for the model column.
 	 */
 	public function testColumnNullabilityMetadataIsCached(): void {

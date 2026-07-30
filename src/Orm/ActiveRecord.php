@@ -2713,7 +2713,17 @@ abstract class ActiveRecord implements \JsonSerializable {
 		$class = get_called_class();
 
 		// properties to not reset
-		$propertiesToSave = ['keyProperties', 'db', 'loadedFromDb', 'typeList', 'cache', 'errors', 'isPopulating'];
+		$propertiesToSave = [
+			'keyProperties',
+			'db',
+			'loadedFromDb',
+			'typeList',
+			'cache',
+			'errors',
+			'updatedProperties',
+			'isPopulating',
+			'dynamicProperties',
+		];
 
 		// save key from being unset
 		$propertiesToSave = array_merge($propertiesToSave, (array)$this->keyProperties);
@@ -2725,8 +2735,11 @@ abstract class ActiveRecord implements \JsonSerializable {
 			}
 		}
 
-		$this->cache  = [];
+		// reset volatile internal state before hydration so typed properties remain initialized.
+		$this->cache = [];
 		$this->errors = [];
+		$this->updatedProperties = [];
+		$this->dynamicProperties = [];
 
 		$this->loadFromDb($this->getSqlKeyValues());
 
