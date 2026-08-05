@@ -186,6 +186,34 @@ final class PairMobileKitTests: XCTestCase {
 		XCTAssertEqual(recorder.count, 1)
 	}
 
+	func testAPIClientDecodesEstablishedFlatPairErrorPayload() async throws {
+		let transport = MockTransport()
+		transport.enqueue(
+			statusCode: 401,
+			body: #"{"code":"AUTH_INVALID_CREDENTIALS","error":"Credenziali non valide"}"#
+		)
+		let client = PairAPIClient(
+			apiBaseURL: URL(string: "https://example.test/api/v1")!,
+			transport: transport
+		)
+
+		do {
+			let _: PairDataEnvelope<TestUser> = try await client.send(path: "auth/login")
+			XCTFail("The request should fail with 401.")
+		} catch let error as PairAPIError {
+			XCTAssertEqual(
+				error,
+				.server(
+					statusCode: 401,
+					payload: PairAPIErrorPayload(
+						code: "AUTH_INVALID_CREDENTIALS",
+						message: "Credenziali non valide"
+					)
+				)
+			)
+		}
+	}
+
 	func testKeychainStoreSavesLoadsMigratesAndClearsSnapshot() async throws {
 		let service = "test.pair.mobile.\(UUID().uuidString)"
 		let store = PairKeychainStore<PairStoredAuthSession<TestUser, TestContext>>(service: service)

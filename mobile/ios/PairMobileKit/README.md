@@ -5,6 +5,7 @@ Reusable Swift Package for iOS and macOS apps that talk to Pair APIs.
 It includes:
 
 - JSON API client with Bearer auth;
+- decoding for both nested mobile errors and Pair's established flat `code` / `error` payload;
 - cookie-free `URLSession` transport;
 - login and registration with `remember_me=true`;
 - Keychain persistence that can migrate during supported device transfers;

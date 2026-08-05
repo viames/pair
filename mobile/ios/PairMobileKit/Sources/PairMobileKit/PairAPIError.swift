@@ -36,4 +36,30 @@ public extension PairAPIError {
 
 struct PairAPIErrorEnvelope: Decodable {
 	let error: PairAPIErrorPayload?
+
+	private enum CodingKeys: String, CodingKey {
+		case error
+		case code
+		case message
+		case details
+	}
+
+	/// Decodes both the nested mobile envelope and Pair's established flat API error payload.
+	init(from decoder: Decoder) throws {
+		let container = try decoder.container(keyedBy: CodingKeys.self)
+
+		if let nested = try? container.decode(PairAPIErrorPayload.self, forKey: .error) {
+			error = nested
+			return
+		}
+
+		let code = try container.decodeIfPresent(String.self, forKey: .code)
+		let message = try container.decodeIfPresent(String.self, forKey: .message)
+			?? container.decodeIfPresent(String.self, forKey: .error)
+		let details = try container.decodeIfPresent([String: [String]].self, forKey: .details)
+
+		error = nil == code && nil == message && nil == details
+			? nil
+			: PairAPIErrorPayload(code: code, message: message, details: details)
+	}
 }
