@@ -1370,13 +1370,51 @@
 	function validationMessageContext(field) {
 		return {
 			label: fieldLabel(field),
-			max: field.getAttribute('max') || '',
+			max: validationConstraintValue(field, 'max'),
 			maxLength: field.getAttribute('maxlength') || '',
-			min: field.getAttribute('min') || '',
+			min: validationConstraintValue(field, 'min'),
 			minLength: field.getAttribute('minlength') || '',
 			name: field.name || '',
 			type: field.type || ''
 		};
+	}
+
+	/**
+	 * Formats date constraints for user-facing validation messages while preserving raw values for other controls.
+	 * @param {HTMLElement} field Field whose constraint is being rendered.
+	 * @param {'min'|'max'} attribute Constraint attribute name.
+	 * @returns {string} Localized constraint value.
+	 */
+	function validationConstraintValue(field, attribute) {
+		const value = field.getAttribute(attribute) || '';
+
+		if ('date' !== String(field.type || '').toLowerCase()) {
+			return value;
+		}
+
+		const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+
+		if (!match) {
+			return value;
+		}
+
+		const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+
+		// Do not silently normalize invalid constraints, such as February 31.
+		if (
+			date.getUTCFullYear() !== Number(match[1])
+			|| date.getUTCMonth() !== Number(match[2]) - 1
+			|| date.getUTCDate() !== Number(match[3])
+		) {
+			return value;
+		}
+
+		return new Intl.DateTimeFormat(validationLocale(field.form), {
+			day: '2-digit',
+			month: '2-digit',
+			timeZone: 'UTC',
+			year: 'numeric'
+		}).format(date);
 	}
 
 	/**

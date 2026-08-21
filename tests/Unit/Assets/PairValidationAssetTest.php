@@ -86,6 +86,22 @@ class PairValidationAssetTest extends TestCase {
 	}
 
 	/**
+	 * Verify date constraints are localized before interpolation into range messages.
+	 */
+	public function testDateConstraintMessagesUseLocalizedValues(): void {
+
+		$source = $this->pairValidationSource();
+
+		$this->assertStringContainsString("max: validationConstraintValue(field, 'max')", $source);
+		$this->assertStringContainsString("min: validationConstraintValue(field, 'min')", $source);
+		$this->assertStringContainsString('function validationConstraintValue(field, attribute)', $source);
+		$this->assertStringContainsString('new Intl.DateTimeFormat(validationLocale(field.form)', $source);
+		$this->assertStringContainsString("timeZone: 'UTC'", $source);
+		$this->assertStringContainsString('Do not silently normalize invalid constraints', $source);
+
+	}
+
+	/**
 	 * Return the PairValidation client source code.
 	 */
 	private function pairValidationSource(): string {
