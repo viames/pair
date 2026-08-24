@@ -23,7 +23,7 @@ After this file:
 
 > Version scope
 >
-> The default branch of this repository documents and implements Pair v4 in alpha state. Use the `v3` branch for the stable Pair v3 line. Guidance in this branch targets Pair v4 and may not apply, or may apply only partially, to products based on earlier major versions.
+> The default branch of this repository documents and implements Pair v4, the current stable line used by the maintainer's applications. Use the `v3` branch only for the previous maintenance line. Guidance in this branch targets Pair v4 and may not apply, or may apply only partially, to products based on earlier major versions.
 
 ---
 

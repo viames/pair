@@ -9,12 +9,12 @@
 [Releases](https://github.com/viames/pair/releases) ·
 [Security](SECURITY.md)
 
-[![Tests](https://github.com/viames/pair/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/viames/pair/actions/workflows/ci.yml?query=branch%3Amain)
+[![CI](https://github.com/viames/pair/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/viames/pair/actions/workflows/ci.yml?query=branch%3Amain)
 [![Total Downloads](https://poser.pugx.org/viames/pair/downloads)](https://packagist.org/packages/viames/pair)
-[![Latest Stable Version](https://poser.pugx.org/viames/pair/v/stable)](https://packagist.org/packages/viames/pair)
-[![Latest Unstable Version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fviames%2Fpair%2Fmain%2Fcomposer.json&query=%24.extra.branch-alias.dev-main&label=latest%20unstable&color=orange)](https://github.com/viames/pair/tree/main)
+[![Latest Tagged Release](https://img.shields.io/packagist/v/viames/pair?label=latest%20tagged)](https://packagist.org/packages/viames/pair)
+[![Development Branch](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fviames%2Fpair%2Fmain%2Fcomposer.json&query=%24.extra.branch-alias.dev-main&label=development%20branch&color=orange)](https://github.com/viames/pair/tree/main)
 [![License](https://poser.pugx.org/viames/pair/license)](https://packagist.org/packages/viames/pair)
-[![PHP Version Require](https://poser.pugx.org/viames/pair/require/php)](https://packagist.org/packages/viames/pair)
+[![Pair v4 PHP Requirement](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fviames%2Fpair%2Fmain%2Fcomposer.json&query=%24.require.php&label=Pair%20v4%20PHP&color=777BB4)](composer.json)
 
 Pair is a lightweight PHP framework for server-rendered web applications. It focuses on fast setup, clear MVC routing, practical ActiveRecord-style ORM features, API tooling, progressive enhancement and optional integrations without heavy tooling.
 
@@ -24,23 +24,17 @@ Pair is designed for small and medium web applications where you want a clear PH
 
 | Line | Status | Recommended use |
 | --- | --- | --- |
-| Pair v3 | Stable | Production applications |
-| Pair v4 | Alpha / development | New architecture testing, migration work and early adopters |
+| Pair v4 | Stable / production | Current applications and new development |
+| Pair v3 | Maintenance | Existing applications pinned to v3 releases |
 
-Pair v3 is the current stable release line. Pair v4 is under active development on `main` and may include breaking changes while the next major version is being finalized.
+Pair v4 is the current stable line and is used in production across the maintainer's applications. Pair v3 remains available as a maintenance line for existing applications that have not yet migrated.
 
 ## Quick start
 
-### 1. Install Pair stable
+### 1. Install Pair v4
 
 ```sh
-composer require viames/pair:^3.0
-```
-
-Or simply:
-
-```sh
-composer require viames/pair
+composer require viames/pair:^4.0
 ```
 
 ### 2. Bootstrap the application
@@ -77,6 +71,18 @@ https://github.com/viames/pair_boilerplate
 - Installable package architecture for modules, templates, providers and custom package records.
 - Useful defaults for timezone, logging, debugging and framework utilities.
 - Small enough to understand, extend and maintain.
+
+### Well suited to AI-assisted development
+
+Pair grew out of practical web application development and has a public repository history dating back to 2017. It was not designed around generated code; its advantage for AI-assisted development comes from the same qualities that help human maintainers understand it: a compact codebase, predictable component boundaries, limited hidden behavior and conventions that favor small, reviewable changes.
+
+- A consistent component layout reduces the context needed to locate related code and nearby examples.
+- Limited runtime dependencies and a server-rendered-first approach make application behavior easier to trace end to end.
+- Pair v4 uses explicit input, response, page-state and API read-model contracts to reduce hidden assumptions.
+- Focused automated tests and CI provide fast feedback across the supported PHP versions and native mobile helpers.
+- Repository-level agent instructions document the architecture, coding conventions and patterns that should not be imported from heavier frameworks.
+
+These properties do not make AI-generated changes automatically correct. They make proposed changes easier to constrain, inspect, test and review.
 
 ## Core features
 
@@ -165,8 +171,8 @@ Useful docs:
 - [ApiExposable](https://github.com/viames/pair/wiki/ApiExposable)
 - [CrudController](https://github.com/viames/pair/wiki/CrudController)
 - [Generator](https://github.com/viames/pair/wiki/Generator)
-- [Mobile iOS stack](docs/MOBILE_IOS_STACK.md)
-- [Mobile Android stack](docs/MOBILE_ANDROID_STACK.md)
+- [Mobile iOS stack](https://github.com/viames/pair/blob/main/docs/MOBILE_IOS_STACK.md)
+- [Mobile Android stack](https://github.com/viames/pair/blob/main/docs/MOBILE_ANDROID_STACK.md)
 
 ### Log bar and debugging
 
@@ -277,13 +283,7 @@ In Pair v4 these integrations should be exposed through Runtime Extensions and m
 
 Configuration reference: [Configuration (.env)](https://github.com/viames/pair/wiki/Configuration-file)
 
-## Pair v4 development line
-
-To test unreleased Pair v4 development code from `main`:
-
-```sh
-composer require viames/pair:4.x-dev@dev
-```
+## Pair v4 tools
 
 Generate Pair v4 skeletons:
 
@@ -297,9 +297,9 @@ The generator writes explicit Pair v4 files and avoids overwriting user-edited f
 
 Additional migration and design docs:
 
-- [PAIR_V4_DESIGN.md](PAIR_V4_DESIGN.md)
+- [PAIR_V4_DESIGN.md](https://github.com/viames/pair/blob/main/PAIR_V4_DESIGN.md)
 - [UPGRADE_V4.md](UPGRADE_V4.md)
-- [RELEASING.md](RELEASING.md)
+- [RELEASING.md](https://github.com/viames/pair/blob/main/RELEASING.md)
 
 ## Upgrading
 

@@ -2,12 +2,12 @@
 
 ## Supported Versions
 
-Pair v3 is the current stable release line. Pair v4 is in alpha on `main` and receives security fixes while the next major release is under development.
+Pair v4 is the current stable line and is used in production by the maintainer. Pair v3 remains supported as a maintenance line for existing applications.
 
 | Version | Supported |
 | --- | --- |
-| `main` / `4.x-dev` | Development security fixes only |
-| `3.x` | Yes |
+| `4.x` / `main` | Yes |
+| `3.x` | Maintenance fixes only |
 | `< 3.0` | No |
 
 ## Reporting a Vulnerability

@@ -1,24 +1,26 @@
 # Releasing Pair
 
-This document defines the Git workflow for maintaining Pair 3 while Pair 4 is developed on `main`.
+This document defines the Git workflow for releasing Pair 4 from `main` and maintaining the previous Pair 3 line on `v3`.
 
 ## Branch strategy
 
-- `v3`: current stable maintenance branch.
-- `main`: Pair v4 alpha development branch.
+- `main`: current stable Pair v4 branch.
+- `v3`: Pair v3 maintenance branch.
 - Short-lived work branches should start from the target maintenance branch or from `main`.
 
 ## Stable and Development Lines
 
-- Keep Pair v3-compatible fixes on `v3`.
-- Keep Pair v4 breaking or experimental work on `main`.
+- Keep Pair v4 fixes and compatible features on `main`.
+- Keep Pair v3-compatible maintenance fixes on `v3`.
 - Backport fixes from `main` to `v3` only when they are compatible with Pair v3.
 - Keep docs, upgrade notes, and Composer metadata aligned with the branch being released.
+- Reserve backward-incompatible public API changes for the next major version.
 
 ## Tagging rules
 
 - Stable Pair 3 releases use normal semver tags: `3.0.0`, `3.0.1`, `3.1.0`.
-- Pair 4 pre-releases use semver pre-release tags: `4.0.0-alpha.1`, `4.0.0-beta.1`, `4.0.0-rc.1`.
+- Stable Pair 4 releases use normal semver tags: `4.0.0`, `4.0.1`, `4.1.0`.
+- Pair 4 pre-releases, when needed, use semver suffixes such as `4.1.0-beta.1` or `5.0.0-rc.1`.
 - Tags must be created from a clean commit on the intended branch.
 - Never move an existing published tag.
 
@@ -33,21 +35,21 @@ git push origin 3.0.1
 
 Create the GitHub Release from the pushed tag and include user-facing upgrade or rollback notes.
 
-## Pair 4 Pre-Release Sequence
+## Stable Pair 4 Release Sequence
 
 ```sh
 git checkout main
 vendor/bin/phpunit -c phpunit.xml.dist
-git tag 4.0.0-alpha.1
-git push origin 4.0.0-alpha.1
+git tag 4.0.0
+git push origin 4.0.0
 ```
 
-Use beta and release-candidate tags only after the public API and migration path are ready for that stability level.
+Create the GitHub Release from the pushed tag and include user-facing upgrade, compatibility and rollback notes.
 
 ## Composer and Packagist notes
 
-- Stable Pair 3 consumers should install `^3.0`.
-- Users testing the next major should install `dev-main`.
+- Pair 3 consumers should install `^3.0`.
+- Pair 4 consumers should install `^4.0`.
 - `main` carries `extra.branch-alias.dev-main = 4.x-dev`.
 - If you want a tracked development line for Pair 3, add `extra.branch-alias.dev-v3 = 3.x-dev` on `v3`.
 
