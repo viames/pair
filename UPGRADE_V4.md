@@ -12,6 +12,25 @@ The API documentation path follows the same rule: CRUD OpenAPI response schemas 
 
 ### Upgrade Tool
 
+Pair v4 includes three composable tools. Choose the sequence from the application's current major version:
+
+| Starting version | Required sequence |
+| --- | --- |
+| Pair v1 | `upgrade-to-v2`, `upgrade-to-v3`, `upgrade-to-v4` |
+| Pair v2 | `upgrade-to-v3`, `upgrade-to-v4` |
+| Pair v3 | `upgrade-to-v4` |
+
+Run each command from a clean working tree or a verified backup. Always inspect `--dry-run` output before using `--write`:
+
+```sh
+php vendor/viames/pair/scripts/upgrade-to-v2.php --dry-run
+php vendor/viames/pair/scripts/upgrade-to-v2.php --write
+php vendor/viames/pair/scripts/upgrade-to-v3.php --dry-run
+php vendor/viames/pair/scripts/upgrade-to-v3.php --write
+```
+
+The legacy tools preserve their historical write-mode default when no mode is passed, but explicit mode flags are recommended. Both accept `--path=/absolute/app/path`. The v1 tool keeps `config.php` after successful conversion and refuses to generate a partial `.env` when it encounters PHP expressions or other unsupported statements.
+
 Run the upgrader from the application root:
 
 ```sh
@@ -26,7 +45,9 @@ composer run upgrade-to-v4 -- --dry-run
 composer run upgrade-to-v4 -- --write
 ```
 
-The upgrader skips `.git`, `node_modules`, `vendor`, and `tests` folders so it updates application runtime code and package metadata without rewriting external code or test assertions.
+All three upgraders skip `.git`, `node_modules`, `vendor`, and `tests` folders so they update application runtime code and package metadata without rewriting external code or test assertions.
+
+Write failures are collected in the final report and produce a non-zero process exit code. This makes the tools safe to use in scripted validation without mistaking a partial write for a successful upgrade.
 
 ### What the Upgrader Rewrites Automatically
 

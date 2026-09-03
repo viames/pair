@@ -1,19 +1,31 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * This script updates all the files in the application directory and its subdirectories
  * replacing the necessary code to make the application compatible with Pair v3.
  */
 
+$options = parseArguments($argv);
+
+if ($options['help']) {
+	printUsage();
+	exit(0);
+}
+
+define('APP_ROOT', resolveTargetPath($options['path']));
+$writeMode = $options['write'];
+$writeErrors = [];
+
 print "Pair v2 to v3 migration script\n";
 print "===============================\n";
-
-// set the root directory of the Pair project
-define('APP_ROOT', dirname(dirname(dirname(dirname(__DIR__)))));
+print 'Mode: ' . ($writeMode ? 'write' : 'dry-run') . "\n";
 
 // check if the script is running from the Pair root directory
 if (!file_exists(APP_ROOT . '/vendor/autoload.php')) {
-	die("Please run this script from the Pair root directory.\n");
+	fwrite(STDERR, "Please run this script from the Pair application root directory.\n");
+	exit(1);
 }
 
 // print the absolute path of the Pair root directory
@@ -24,16 +36,24 @@ $envPath = APP_ROOT . '/.env';
 // update .env keys if present
 if (file_exists($envPath)) {
 	$envContent = file_get_contents($envPath);
-	$originalEnvContent = $envContent;
 
-	$envContent = preg_replace('/^PRODUCT_NAME=/m', 'APP_NAME=', $envContent);
-	$envContent = preg_replace('/^PRODUCT_VERSION=/m', 'APP_VERSION=', $envContent);
-	$envContent = preg_replace('/^PAIR_ENVIRONMENT=/m', 'APP_ENV=', $envContent);
-	$envContent = preg_replace('/^PAIR_DEBUG=/m', 'APP_DEBUG=', $envContent);
+	if (!is_string($envContent)) {
+		$writeErrors[] = '.env: unable to read file';
+	} else {
+		$originalEnvContent = $envContent;
 
-	if ($envContent !== $originalEnvContent) {
-		file_put_contents($envPath, $envContent);
-		print ".env file updated.\n";
+		$envContent = preg_replace('/^\s*PRODUCT_NAME\s*=\s*/m', 'APP_NAME=', $envContent);
+		$envContent = preg_replace('/^\s*PRODUCT_VERSION\s*=\s*/m', 'APP_VERSION=', $envContent);
+		$envContent = preg_replace('/^\s*PAIR_ENVIRONMENT\s*=\s*/m', 'APP_ENV=', $envContent);
+		$envContent = preg_replace('/^\s*PAIR_DEBUG\s*=\s*/m', 'APP_DEBUG=', $envContent);
+
+		if ($envContent !== $originalEnvContent) {
+			if ($writeMode and !writeUpgradeFile($envPath, $envContent)) {
+				$writeErrors[] = '.env: unable to write file';
+			} else {
+				print $writeMode ? ".env file updated.\n" : ".env file would be updated.\n";
+			}
+		}
 	}
 } else {
 	print ".env file not found.\n";
@@ -46,9 +66,11 @@ $iterator = new RecursiveIteratorIterator($directory);
 $files = new RegexIterator($iterator, '/\.php$/');
 
 // exclude the files and folders that should not be modified
-$escludeList = [
-	'vendor/',
-	'.git/'
+$excludeList = [
+	DIRECTORY_SEPARATOR . '.git' . DIRECTORY_SEPARATOR,
+	DIRECTORY_SEPARATOR . 'node_modules' . DIRECTORY_SEPARATOR,
+	DIRECTORY_SEPARATOR . 'tests' . DIRECTORY_SEPARATOR,
+	DIRECTORY_SEPARATOR . 'vendor' . DIRECTORY_SEPARATOR,
 ];
 
 $updatedFiles = 0;
@@ -69,19 +91,37 @@ $filesWithPrintScripts = [];
 // loop through all the files
 foreach ($files as $file) {
 
-	foreach ($escludeList as $esclude) {
-		if (FALSE !== strpos($file->getPathname(), $esclude)) {
+	foreach ($excludeList as $exclude) {
+		if (false !== strpos($file->getPathname(), $exclude)) {
 			continue 2;
 		}
 	}
 
 	// get the content of the file
-	$content = file_get_contents($file);
+	$content = file_get_contents($file->getPathname());
 
-	// replace the old functions with the new ones
-	$content = preg_replace('/\b(protected|public|private)\s+function\s+init\s*\(/', '$1 function _init(', $content);
-	$content = preg_replace('/\b(parent|self|static)\s*::\s*init\s*\(/', '$1::_init(', $content);
-	$content = preg_replace('/\$this\s*->\s*init\s*\(/', '$this->_init(', $content);
+	if (!is_string($content)) {
+		$writeErrors[] = relativePath(APP_ROOT, $file->getPathname()) . ': unable to read file';
+		continue;
+	}
+
+	$originalContent = $content;
+	$isPairLifecycleClass = usesPairLifecycleClass($content);
+
+	// Rename only Pair lifecycle hooks, leaving unrelated application services untouched.
+	if ($isPairLifecycleClass) {
+		$content = preg_replace('/\b(protected|public|private)\s+function\s+init\s*\(/', '$1 function _init(', $content);
+		$content = preg_replace('/\b(parent|self|static)\s*::\s*init\s*\(/', '$1::_init(', $content);
+		$content = preg_replace('/\$this\s*->\s*init\s*\(/', '$this->_init(', $content);
+	}
+
+	// Pair v2 installable records used PluginInterface; Pair v3 introduced PluginBase.
+	$content = str_replace('use Pair\\Helpers\\PluginInterface;', 'use Pair\\Helpers\\PluginBase;', $content);
+	$content = preg_replace(
+		'/\bclass\s+([A-Za-z_][A-Za-z0-9_]*)\s+extends\s+(?:\\\\?Pair\\\\Orm\\\\)?ActiveRecord\s+implements\s+(?:\\\\?Pair\\\\Helpers\\\\)?PluginInterface\b/',
+		'class $1 extends PluginBase',
+		$content
+	);
 
 	// Env
 	$content = str_replace('Pair\Core\Config', 'Pair\Core\Env', $content);
@@ -171,9 +211,12 @@ foreach ($files as $file) {
 	}
 
 	// update the file only if the content has changed
-	if ($content !== file_get_contents($file)) {
-		file_put_contents($file->getPathname(), $content);
+	if ($content !== $originalContent) {
 		$updatedFiles++;
+
+		if ($writeMode and !writeUpgradeFile($file->getPathname(), $content)) {
+			$writeErrors[] = relativePath(APP_ROOT, $file->getPathname()) . ': unable to write file';
+		}
 	}
 
 	// collect warnings for manual review
@@ -295,5 +338,116 @@ if (count($filesWithTemplatePhp)) {
 		print "- $path\n";
 	}
 }
+if (count($writeErrors)) {
+	print "Write errors: " . count($writeErrors) . "\n";
+	foreach ($writeErrors as $error) {
+		print "- $error\n";
+	}
+}
 print "===============================\n";
-print "Upgrade completed.\n";
+print count($writeErrors) ? "Upgrade failed.\n" : "Upgrade completed.\n";
+
+exit(count($writeErrors) ? 1 : 0);
+
+/**
+ * Parse command-line options while preserving write mode as the legacy default.
+ *
+ * @param string[] $argv Raw command-line arguments.
+ * @return array{help: bool, path: string, write: bool}
+ */
+function parseArguments(array $argv): array {
+
+	$options = [
+		'help' => false,
+		'path' => defaultTargetPath(),
+		'write' => true,
+	];
+
+	foreach (array_slice($argv, 1) as $argument) {
+		if ('--help' === $argument or '-h' === $argument) {
+			$options['help'] = true;
+		} else if ('--dry-run' === $argument) {
+			$options['write'] = false;
+		} else if ('--write' === $argument) {
+			$options['write'] = true;
+		} else if (str_starts_with($argument, '--path=')) {
+			$options['path'] = substr($argument, 7);
+		}
+	}
+
+	return $options;
+
+}
+
+/**
+ * Resolve the historical Composer application root when available.
+ */
+function defaultTargetPath(): string {
+
+	$legacyApplicationRoot = dirname(__DIR__, 4);
+
+	if (file_exists($legacyApplicationRoot . '/vendor/autoload.php')) {
+		return $legacyApplicationRoot;
+	}
+
+	return getcwd() ?: '.';
+
+}
+
+/**
+ * Print usage details for the Pair v2 upgrader.
+ */
+function printUsage(): void {
+
+	print "Usage: php scripts/upgrade-to-v3.php [--dry-run] [--write] [--path=/absolute/app/path]\n";
+	print "Defaults to write mode for backward compatibility.\n";
+
+}
+
+/**
+ * Resolve the requested application root.
+ */
+function resolveTargetPath(string $path): string {
+
+	return realpath($path) ?: $path;
+
+}
+
+/**
+ * Return whether the file contains a Pair lifecycle subclass.
+ */
+function usesPairLifecycleClass(string $content): bool {
+
+	$baseNames = ['ActiveRecord', 'Controller', 'Model', 'View'];
+
+	foreach ($baseNames as $baseName) {
+		if (preg_match('/\bextends\s+(?:\\\\?Pair\\\\(?:Core\\\\|Orm\\\\)?' . $baseName . '|' . $baseName . ')\b/', $content) === 1) {
+			return true;
+		}
+	}
+
+	return false;
+
+}
+
+/**
+ * Return a report-friendly relative path.
+ */
+function relativePath(string $rootPath, string $filePath): string {
+
+	$prefix = rtrim($rootPath, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+
+	return str_starts_with($filePath, $prefix) ? substr($filePath, strlen($prefix)) : $filePath;
+
+}
+
+/**
+ * Write one upgrade result and verify that the complete content was persisted.
+ */
+function writeUpgradeFile(string $filePath, string $content): bool {
+
+	$bytes = @file_put_contents($filePath, $content);
+
+	return is_int($bytes) and $bytes === strlen($content);
+
+}

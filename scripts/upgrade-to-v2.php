@@ -1,19 +1,33 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * This script updates all the files in the current directory and its subdirectories
  * replacing the old Pair classes with the new ones.
  */
 
+// Parse options before resolving the application root.
+$options = parseArguments($argv);
+
+if ($options['help']) {
+	printUsage();
+	exit(0);
+}
+
+define('APP_ROOT', resolveTargetPath($options['path']));
+$writeMode = $options['write'];
+$warnings = [];
+$writeErrors = [];
+
 print "Pair v1 to v2 migration script\n";
 print "===============================\n";
-
-// set the root directory of the Pair project
-define('APP_ROOT', dirname(dirname(dirname(dirname(__DIR__)))));
+print 'Mode: ' . ($writeMode ? 'write' : 'dry-run') . "\n";
 
 // check if the script is running from the Pair root directory
 if (!file_exists(APP_ROOT . '/vendor/autoload.php')) {
-	die("Please run this script from the Pair root directory.\n");
+	fwrite(STDERR, "Please run this script from the Pair application root directory.\n");
+	exit(1);
 }
 
 // print the absolute path of the Pair root directory
@@ -33,16 +47,29 @@ if (file_exists($envPath)) {
 	// get the content of the config.php file
 	$configContent = file_get_contents($configPath);
 
-	// parse the config.php content and convert it to .env format
-	$envContent = convertConfigToEnv($configContent);
+	if (!is_string($configContent)) {
+		$configResult = ['content' => '', 'warnings' => []];
+		$writeErrors[] = 'config.php: unable to read legacy configuration';
+	} else {
+		// Parse the config.php content and convert scalar definitions to .env format.
+		$configResult = convertConfigToEnv($configContent);
+	}
 
-	// write the .env content to the .env file
-	file_put_contents($envPath, $envContent);
-
-	// remove the config.php file
-	unlink($configPath);
-
-	print "The config.php file has been converted to .env format.\n";
+	if (count($configResult['warnings'])) {
+		foreach ($configResult['warnings'] as $warning) {
+			$warnings[] = 'config.php: ' . $warning;
+		}
+		$warnings[] = 'config.php was retained and .env was not generated; convert the reported values manually';
+		$writeErrors[] = 'config.php: automatic conversion is incomplete';
+	} else if ($writeMode) {
+		if (!writeUpgradeFile($envPath, $configResult['content'])) {
+			$writeErrors[] = '.env: unable to write converted configuration';
+		} else {
+			print "The config.php file has been converted to .env format; config.php was retained as a safety copy.\n";
+		}
+	} else {
+		print "The config.php file can be converted to .env format; config.php will be retained as a safety copy.\n";
+	}
 
 } else {
 
@@ -57,39 +84,49 @@ $iterator = new RecursiveIteratorIterator($directory);
 $files = new RegexIterator($iterator, '/\.php$/');
 
 // exclude the files and folders that should not be modified
-$escludeList = [
-	'vendor/',
-	'.git/'
+$excludeList = [
+	DIRECTORY_SEPARATOR . '.git' . DIRECTORY_SEPARATOR,
+	DIRECTORY_SEPARATOR . 'node_modules' . DIRECTORY_SEPARATOR,
+	DIRECTORY_SEPARATOR . 'tests' . DIRECTORY_SEPARATOR,
+	DIRECTORY_SEPARATOR . 'vendor' . DIRECTORY_SEPARATOR,
 ];
 
 $updatedFiles = 0;
+$changedFiles = [];
 
 // loop through all the files
 foreach ($files as $file) {
 
-	foreach ($escludeList as $esclude) {
-		if (FALSE !== strpos($file->getPathname(), $esclude)) {
+	foreach ($excludeList as $exclude) {
+		if (false !== strpos($file->getPathname(), $exclude)) {
 			continue 2;
 		}
 	}
 
 	// get the content of the file
-	$content = file_get_contents($file);
+	$content = file_get_contents($file->getPathname());
+
+	if (!is_string($content)) {
+		$writeErrors[] = relativePath(APP_ROOT, $file->getPathname()) . ': unable to read file';
+		continue;
+	}
+
+	$originalContent = $content;
 
 	// replace the old classes with the new ones
 	$content = str_replace('Pair\Application', 'Pair\Core\Application', $content);
 	$content = str_replace('Pair\Controller', 'Pair\Core\Controller', $content);
 	$content = str_replace('Pair\Logger', 'Pair\Core\Logger', $content);
-	$content = str_replace('Pair\Model;', 'Pair\Core\Model;', $content);
+	$content = preg_replace('/\bPair\\\\Model\b/', 'Pair\\\\Core\\\\Model', $content);
 	$content = str_replace('Pair\Router', 'Pair\Core\Router', $content);
 	$content = str_replace('Pair\View', 'Pair\Core\View', $content);
-	$content = str_replace('Pair\Plugin', 'Pair\Packages\InstallablePackage', $content);
-	$content = str_replace('Pair\PluginInterface', 'Pair\Core\RuntimeExtensionInterface', $content);
+	$content = str_replace('Pair\PluginInterface', 'Pair\Helpers\PluginInterface', $content);
+	$content = preg_replace('/\bPair\\\\Plugin\b/', 'Pair\\\\Helpers\\\\Plugin', $content);
 	$content = str_replace('Pair\Input', 'Pair\Helpers\Post', $content);
 	$content = str_replace('Pair\Options', 'Pair\Helpers\Options', $content);
 	$content = str_replace('Pair\Schedule', 'Pair\Helpers\Schedule', $content);
 	$content = str_replace('Pair\Translator', 'Pair\Helpers\Translator', $content);
-	$content = str_replace('Pair\Upload', 'Pair\Http\UploadedFile', $content);
+	$content = str_replace('Pair\Upload', 'Pair\Helpers\Upload', $content);
 	$content = str_replace('Pair\Utilities', 'Pair\Helpers\Utilities', $content);
 	$content = str_replace('Pair\BootstrapMenu', 'Pair\Html\BootstrapMenu', $content);
 	$content = str_replace('Pair\Breadcrumb', 'Pair\Html\Breadcrumb', $content);
@@ -142,6 +179,20 @@ foreach ($files as $file) {
 	$content = str_replace('Input::formPostSubmitted(', 'Post::submitted(', $content);
 	$content = str_replace('Input::get(', 'Post::get(', $content);
 
+	// Convert typed legacy inputs before the generic addInput() rewrite.
+	$content = preg_replace_callback(
+		'/->addInput\(\s*([\'\"])([^\'\"]+)\1\s*\)\s*->setType\(\s*([\'\"])([a-z]+)\3\s*\)/i',
+		static function(array $matches): string {
+
+			$type = strtolower($matches[4]);
+			$method = 'bool' === $type ? 'checkbox' : $type;
+
+			return '->' . $method . '(' . $matches[1] . $matches[2] . $matches[1] . ')';
+
+		},
+		$content
+	);
+
 	// Form methods
 	$content = str_replace('->addSelect(', '->select(', $content);
 	$content = str_replace('->setListByObjectArray(', '->options(', $content);
@@ -165,6 +216,10 @@ foreach ($files as $file) {
 	$content = str_replace('->setGroupedList(', '->grouped(', $content);
 	$content = str_replace('->addTextarea(', '->textarea(', $content);
 	$content = str_replace('->setValuesByObject(', '->values(', $content);
+	$content = str_replace('->setAllReadonly(', '->allReadonly(', $content);
+
+	// User
+	$content = str_replace('User::getCurrent(', 'User::current(', $content);
 
 	// Application
 	$content = str_replace('Application::isDevelopmentHost()', '\'development\' == $app->getEnvironment()', $content);
@@ -212,10 +267,6 @@ foreach ($files as $file) {
 	$content = str_replace('Logger::event(', 'Logger::notice(', $content);
 	$content = str_replace('ErrorLog::keepSnapshot(', 'Logger::error(', $content);
 
-	// Form controls
-	$content = preg_replace('/->addInput\([\'"]([^\'"]+)[\'"]\)->setType\([\'"]bool[\'"]\)/', '->checkbox(\'$1\')', $content);
-	$content = preg_replace('/->addInput\([\'"]([^\'"]+)[\'"]\)->setType\([\'"]([^\'"]+)[\'"]\)/', '->$2(\'$1\')', $content);
-
 	// Form labels
 	$search  = '^([\t]*)<label class="(col-[a-z\-0-9]+) control-label">(<\?php \$this->form->printLabel\(\'[a-z0-9_]+\'\) \?>)</label>';
 	$replace = '$1<div class="$2">$3</div>';
@@ -256,26 +307,48 @@ foreach ($files as $file) {
 	}
 
 	// update the file only if the content has changed
-	if ($content !== file_get_contents($file)) {
-		file_put_contents($file->getPathname(), $content);
+	if ($content !== $originalContent) {
 		$updatedFiles++;
+		$changedFiles[] = relativePath(APP_ROOT, $file->getPathname());
+
+		if ($writeMode and !writeUpgradeFile($file->getPathname(), $content)) {
+			$writeErrors[] = relativePath(APP_ROOT, $file->getPathname()) . ': unable to write file';
+		}
+	}
+
+	if (preg_match('/->(?:addMulti|getItemObject)\s*\(/', $content) === 1) {
+		$warnings[] = relativePath(APP_ROOT, $file->getPathname()) . ': removed Menu API detected; migrate addMulti() or getItemObject() manually';
+	}
+
+	if (preg_match('/::(?:getJsMessage|printJsMessage)\s*\(/', $content) === 1) {
+		$warnings[] = relativePath(APP_ROOT, $file->getPathname()) . ': removed JavaScript message helper detected; migrate it manually';
 	}
 
 }
 
 print "Updated files: $updatedFiles\n";
+foreach ($changedFiles as $changedFile) {
+	print '- ' . $changedFile . "\n";
+}
+printWarnings($warnings);
+printWriteErrors($writeErrors);
 print "===============================\n";
-print "Upgrade completed.\n";
+print count($writeErrors) ? "Upgrade failed.\n" : "Upgrade completed.\n";
+
+if (count($writeErrors)) {
+	exit(1);
+}
 
 /**
  * Converts the content of a config.php file to .env format.
  *
  * @param string $configContent The content of the config.php file.
- * @return string The content in .env format.
+ * @return array{content: string, warnings: string[]} Converted content and unsupported statements.
  */
-function convertConfigToEnv(string $configContent): string {
+function convertConfigToEnv(string $configContent): array {
 
 	$envContent = '';
+	$warnings = [];
 
 	// split the content by lines
 	$lines = explode("\n", $configContent);
@@ -287,12 +360,12 @@ function convertConfigToEnv(string $configContent): string {
 			continue;
 		}
 
-		// match define statements with single or double quotes, or without quotes
-		if (preg_match('/define\s*\(\s*[\'"]([^\'"]+)[\'"]\s*,\s*(\'[^\']*\'|"[^"]*"|[^\s)]+)\s*\)\s*;/', $line, $matches)) {
+		// Convert scalar define() declarations and preserve quotes for string values.
+		if (preg_match('/^\s*define\s*\(\s*[\'"]([^\'"]+)[\'"]\s*,\s*(\'(?:\\\\.|[^\'])*\'|"(?:\\\\.|[^"])*"|true|false|null|-?\d+(?:\.\d+)?)\s*\)\s*;\s*(?:\/\/.*)?$/i', $line, $matches)) {
 
 			$key = $matches[1];
-			$value = trim($matches[2], '\'"');
-			$envContent .= "$key = $value\n";
+			$value = $matches[2];
+			$envContent .= "$key=$value\n";
 
 		// match PHP comments and convert them to .env comments
 		} else if (preg_match('/^\s*\/\/\s*(.*)$/', $line, $matches)) {
@@ -305,10 +378,144 @@ function convertConfigToEnv(string $configContent): string {
 
 			$envContent .= "\n";
 
+		} else if ('?>' === trim($line)) {
+
+			continue;
+
+		} else {
+
+			$warnings[] = 'unsupported configuration statement: ' . trim($line);
+
 		}
 
 	}
 
-	return $envContent;
+	return [
+		'content' => $envContent,
+		'warnings' => $warnings,
+	];
+
+}
+
+/**
+ * Parse command-line options while preserving write mode as the legacy default.
+ *
+ * @param string[] $argv Raw command-line arguments.
+ * @return array{help: bool, path: string, write: bool}
+ */
+function parseArguments(array $argv): array {
+
+	$options = [
+		'help' => false,
+		'path' => defaultTargetPath(),
+		'write' => true,
+	];
+
+	foreach (array_slice($argv, 1) as $argument) {
+		if ('--help' === $argument or '-h' === $argument) {
+			$options['help'] = true;
+		} else if ('--dry-run' === $argument) {
+			$options['write'] = false;
+		} else if ('--write' === $argument) {
+			$options['write'] = true;
+		} else if (str_starts_with($argument, '--path=')) {
+			$options['path'] = substr($argument, 7);
+		}
+	}
+
+	return $options;
+
+}
+
+/**
+ * Resolve the historical Composer application root when available.
+ */
+function defaultTargetPath(): string {
+
+	$legacyApplicationRoot = dirname(__DIR__, 4);
+
+	if (file_exists($legacyApplicationRoot . '/vendor/autoload.php')) {
+		return $legacyApplicationRoot;
+	}
+
+	return getcwd() ?: '.';
+
+}
+
+/**
+ * Print usage details for the Pair v1 upgrader.
+ */
+function printUsage(): void {
+
+	print "Usage: php scripts/upgrade-to-v2.php [--dry-run] [--write] [--path=/absolute/app/path]\n";
+	print "Defaults to write mode for backward compatibility.\n";
+
+}
+
+/**
+ * Resolve the requested application root.
+ */
+function resolveTargetPath(string $path): string {
+
+	return realpath($path) ?: $path;
+
+}
+
+/**
+ * Return a report-friendly relative path.
+ */
+function relativePath(string $rootPath, string $filePath): string {
+
+	$prefix = rtrim($rootPath, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+
+	return str_starts_with($filePath, $prefix) ? substr($filePath, strlen($prefix)) : $filePath;
+
+}
+
+/**
+ * Write one upgrade result and verify that the complete content was persisted.
+ */
+function writeUpgradeFile(string $filePath, string $content): bool {
+
+	$bytes = @file_put_contents($filePath, $content);
+
+	return is_int($bytes) and $bytes === strlen($content);
+
+}
+
+/**
+ * Print warnings that require manual migration work.
+ *
+ * @param string[] $warnings Collected warnings.
+ */
+function printWarnings(array $warnings): void {
+
+	if (!count($warnings)) {
+		print "Warnings: none\n";
+		return;
+	}
+
+	print 'Warnings: ' . count($warnings) . "\n";
+	foreach (array_unique($warnings) as $warning) {
+		print '- ' . $warning . "\n";
+	}
+
+}
+
+/**
+ * Print write failures separately from migration warnings.
+ *
+ * @param string[] $writeErrors Collected write failures.
+ */
+function printWriteErrors(array $writeErrors): void {
+
+	if (!count($writeErrors)) {
+		return;
+	}
+
+	print 'Write errors: ' . count($writeErrors) . "\n";
+	foreach ($writeErrors as $error) {
+		print '- ' . $error . "\n";
+	}
 
 }

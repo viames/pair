@@ -30,6 +30,7 @@ function main(array $argv): int {
 
 	$changedFiles = [];
 	$warnings = [];
+	$writeErrors = [];
 
 	foreach (collectPhpFiles($targetPath) as $filePath) {
 
@@ -46,7 +47,9 @@ function main(array $argv): int {
 			$changedFiles[relativePath($targetPath, $filePath)] = $result['changes'];
 
 			if ($options['write']) {
-				file_put_contents($filePath, $result['content']);
+				if (!writeUpgradeFile($filePath, $result['content'])) {
+					$writeErrors[] = relativePath($targetPath, $filePath) . ': unable to write file';
+				}
 			}
 		}
 
@@ -57,11 +60,14 @@ function main(array $argv): int {
 			if ($options['write']) {
 				$generatedDirectory = dirname($generatedFilePath);
 
-				if (!is_dir($generatedDirectory)) {
-					mkdir($generatedDirectory, 0777, true);
+				if (!is_dir($generatedDirectory) and !@mkdir($generatedDirectory, 0777, true) and !is_dir($generatedDirectory)) {
+					$writeErrors[] = relativePath($targetPath, $generatedFilePath) . ': unable to create parent directory';
+					continue;
 				}
 
-				file_put_contents($generatedFilePath, $generatedFile['content']);
+				if (!writeUpgradeFile($generatedFilePath, $generatedFile['content'])) {
+					$writeErrors[] = relativePath($targetPath, $generatedFilePath) . ': unable to write generated file';
+				}
 			}
 
 		}
@@ -87,7 +93,9 @@ function main(array $argv): int {
 			$changedFiles[relativePath($targetPath, $filePath)] = $result['changes'];
 
 			if ($options['write']) {
-				file_put_contents($filePath, $result['content']);
+				if (!writeUpgradeFile($filePath, $result['content'])) {
+					$writeErrors[] = relativePath($targetPath, $filePath) . ': unable to write package manifest';
+				}
 			}
 		}
 
@@ -108,15 +116,17 @@ function main(array $argv): int {
 			$changedFiles[relativePath($targetPath, $filePath)] = $result['changes'];
 
 			if ($options['write']) {
-				file_put_contents($filePath, $result['content']);
+				if (!writeUpgradeFile($filePath, $result['content'])) {
+					$writeErrors[] = relativePath($targetPath, $filePath) . ': unable to write metadata file';
+				}
 			}
 		}
 
 	}
 
-	printReport($targetPath, $options['write'], $changedFiles, $warnings);
+	printReport($targetPath, $options['write'], $changedFiles, $warnings, $writeErrors);
 
-	return 0;
+	return count($writeErrors) ? 1 : 0;
 
 }
 
@@ -798,10 +808,8 @@ function transformControllerFile(string $content): array {
 	$changes = [];
 	$warnings = [];
 	$updated = $content;
-	$usesLegacyController = str_contains($content, 'use Pair\Core\Controller;')
-		or str_contains($content, 'extends \Pair\Core\Controller');
-	$usesWebController = str_contains($content, 'use Pair\Web\Controller;')
-		or str_contains($content, 'extends \Pair\Web\Controller');
+	$usesLegacyController = usesControllerBase($content, 'Pair\Core\Controller');
+	$usesWebController = usesControllerBase($content, 'Pair\Web\Controller');
 	$legacyMarkers = detectLegacyControllerMarkers($content);
 	$usesExplicitResponse = controllerUsesExplicitResponseContracts($content);
 
@@ -812,10 +820,21 @@ function transformControllerFile(string $content): array {
 	}
 
 	if ($usesLegacyController) {
-		$updated = replaceLiteral($updated, 'use Pair\Core\Controller;', 'use Pair\Web\Controller;', $changes, 'switched controller base import to Pair\\Web\\Controller');
+		$updated = preg_replace_callback(
+			'/^use\s+Pair\\\\Core\\\\Controller(?P<alias>\s+as\s+[A-Za-z_][A-Za-z0-9_]*)?\s*;/m',
+			static fn(array $matches): string => 'use Pair\\Web\\Controller' . ($matches['alias'] ?? '') . ';',
+			$updated,
+			-1,
+			$replacedImports
+		);
+
+		if (!is_string($updated)) {
+			$updated = $content;
+		} else if ($replacedImports > 0) {
+			$changes[] = 'switched controller base import to Pair\\Web\\Controller';
+		}
 		$updated = replaceLiteral($updated, 'extends \Pair\Core\Controller', 'extends \Pair\Web\Controller', $changes, 'switched controller inheritance to Pair\\Web\\Controller');
-		$usesWebController = str_contains($updated, 'use Pair\Web\Controller;')
-			or str_contains($updated, 'extends \Pair\Web\Controller');
+		$usesWebController = usesControllerBase($updated, 'Pair\Web\Controller');
 	}
 
 	if ($usesWebController) {
@@ -918,11 +937,11 @@ function upgradeLegacyControllerTranslations(string $content): array {
 
 	$changes = [];
 
-	if (preg_match('/->lang\s*\(/', $content) !== 1) {
+	if (preg_match('/\$this\s*->\s*lang\s*\(/', $content) !== 1) {
 		return [$content, $changes];
 	}
 
-	$updated = preg_replace('/->lang\s*\(/', '->translate(', $content, -1, $replacedCalls);
+	$updated = preg_replace('/\$this\s*->\s*lang\s*\(/', '$this->translate(', $content, -1, $replacedCalls);
 
 	if (!is_string($updated) or $replacedCalls === 0) {
 		return [$content, $changes];
@@ -1217,12 +1236,45 @@ function relativePath(string $rootPath, string $filePath): string {
 }
 
 /**
+ * Return whether a class extends the requested controller, including aliased imports.
+ */
+function usesControllerBase(string $content, string $controllerClass): bool {
+
+	if (preg_match('/\bextends\s+\\\\?' . preg_quote($controllerClass, '/') . '\b/', $content) === 1) {
+		return true;
+	}
+
+	$pattern = '/^use\s+' . preg_quote($controllerClass, '/') . '(?:\s+as\s+(?P<alias>[A-Za-z_][A-Za-z0-9_]*))?\s*;/m';
+
+	if (preg_match($pattern, $content, $matches) !== 1) {
+		return false;
+	}
+
+	$alias = $matches['alias'] ?? basename(str_replace('\\', '/', $controllerClass));
+
+	return preg_match('/\bextends\s+' . preg_quote($alias, '/') . '\b/', $content) === 1;
+
+}
+
+/**
+ * Write one transformed file and return whether the full content was persisted.
+ */
+function writeUpgradeFile(string $filePath, string $content): bool {
+
+	$bytes = @file_put_contents($filePath, $content);
+
+	return is_int($bytes) and $bytes === strlen($content);
+
+}
+
+/**
  * Print the final report for the current upgrader execution.
  *
  * @param	array<string, string[]>	$changedFiles	List of changed files and applied edits.
  * @param	string[]				$warnings		Collected warnings.
+ * @param	string[]				$writeErrors	Collected write errors.
  */
-function printReport(string $targetPath, bool $writeMode, array $changedFiles, array $warnings): void {
+function printReport(string $targetPath, bool $writeMode, array $changedFiles, array $warnings, array $writeErrors = []): void {
 
 	print "Pair v3 to v4 upgrader\n";
 	print "======================\n";
@@ -1247,13 +1299,20 @@ function printReport(string $targetPath, bool $writeMode, array $changedFiles, a
 
 	if (!count($warnings)) {
 		print "Warnings: none\n";
-		return;
+	} else {
+		print 'Warnings: ' . count($warnings) . PHP_EOL;
+
+		foreach ($warnings as $warning) {
+			print '- ' . $warning . PHP_EOL;
+		}
 	}
 
-	print 'Warnings: ' . count($warnings) . PHP_EOL;
+	if (count($writeErrors)) {
+		print PHP_EOL . 'Write errors: ' . count($writeErrors) . PHP_EOL;
 
-	foreach ($warnings as $warning) {
-		print '- ' . $warning . PHP_EOL;
+		foreach ($writeErrors as $error) {
+			print '- ' . $error . PHP_EOL;
+		}
 	}
 
 }

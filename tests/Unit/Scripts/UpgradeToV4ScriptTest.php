@@ -167,6 +167,80 @@ class UpgradeToV4ScriptTest extends TestCase {
 	}
 
 	/**
+	 * Verify aliased legacy controller imports are migrated without rewriting other lang() methods.
+	 */
+	public function testAliasedControllerImportIsMigratedSafely(): void {
+
+		$this->copyFixtureTree(
+			dirname(__DIR__, 2) . '/Fixtures/upgrade-to-v4/legacy-app',
+			$this->fixtureTargetPath()
+		);
+
+		$controllerPath = $this->fixtureTargetPath() . '/modules/aliased/controller.php';
+		mkdir(dirname($controllerPath), 0777, true);
+		file_put_contents($controllerPath, <<<'PHP'
+<?php
+
+use Pair\Core\Controller as BaseController;
+use Pair\Web\PageResponse;
+
+class AliasedController extends BaseController {
+
+	protected function _init(): void {
+
+		$this->lang('READY');
+		$this->translator->lang('UNCHANGED');
+
+	}
+
+	public function defaultAction(): PageResponse {
+
+		return new PageResponse(__DIR__ . '/layouts/default.php', new \stdClass());
+
+	}
+
+}
+PHP);
+
+		$result = $this->runUpgradeScript(['--write', '--path=' . $this->fixtureTargetPath()]);
+
+		$this->assertSame(0, $result['exitCode'], $result['stderr'] . $result['stdout']);
+		$content = (string)file_get_contents($controllerPath);
+		$this->assertStringContainsString('use Pair\\Web\\Controller as BaseController;', $content);
+		$this->assertStringContainsString('extends BaseController', $content);
+		$this->assertStringContainsString('protected function boot(): void', $content);
+		$this->assertStringContainsString("\$this->translate('READY')", $content);
+		$this->assertStringContainsString("\$this->translator->lang('UNCHANGED')", $content);
+
+	}
+
+	/**
+	 * Verify write failures produce a non-zero exit code and an explicit report entry.
+	 */
+	public function testWriteFailureReturnsNonZeroExitCode(): void {
+
+		$this->copyFixtureTree(
+			dirname(__DIR__, 2) . '/Fixtures/upgrade-to-v4/legacy-app',
+			$this->fixtureTargetPath()
+		);
+
+		$modelPath = $this->fixtureTargetPath() . '/models/Faq.php';
+		chmod($modelPath, 0444);
+
+		try {
+			$result = $this->runUpgradeScript(['--write', '--path=' . $this->fixtureTargetPath()]);
+		} finally {
+			chmod($modelPath, 0644);
+		}
+
+		$this->assertSame(1, $result['exitCode']);
+		$this->assertStringContainsString('Write errors: 1', $result['stdout']);
+		$this->assertStringContainsString('models/Faq.php: unable to write file', $result['stdout']);
+		$this->assertStringNotContainsString('file_put_contents', $result['stderr']);
+
+	}
+
+	/**
 	 * Copy a fixture tree to an isolated writable target.
 	 */
 	private function copyFixtureTree(string $sourcePath, string $targetPath): void {

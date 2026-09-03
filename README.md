@@ -303,11 +303,23 @@ Additional migration and design docs:
 
 ## Upgrading
 
-If you are upgrading a Pair v3 application to Pair v4, run the upgrader in dry-run mode first.
+Pair v4 ships a composable upgrader for each supported major-version boundary. Start from a clean working tree or a verified backup, run every required step in dry-run mode, review the warnings, and then repeat it in write mode.
+
+Use this sequence for the version currently installed by the application:
+
+- Pair v3: run `upgrade-to-v4`.
+- Pair v2: run `upgrade-to-v3`, then `upgrade-to-v4`.
+- Pair v1: run `upgrade-to-v2`, `upgrade-to-v3`, then `upgrade-to-v4`.
 
 From a Pair application that has Pair installed as a dependency:
 
 ```sh
+php vendor/viames/pair/scripts/upgrade-to-v2.php --dry-run
+php vendor/viames/pair/scripts/upgrade-to-v2.php --write
+
+php vendor/viames/pair/scripts/upgrade-to-v3.php --dry-run
+php vendor/viames/pair/scripts/upgrade-to-v3.php --write
+
 php vendor/viames/pair/scripts/upgrade-to-v4.php --dry-run
 php vendor/viames/pair/scripts/upgrade-to-v4.php --write
 ```
@@ -315,11 +327,17 @@ php vendor/viames/pair/scripts/upgrade-to-v4.php --write
 From inside the Pair repository itself:
 
 ```sh
+composer run upgrade-to-v2 -- --dry-run --path=/absolute/app/path
+composer run upgrade-to-v2 -- --write --path=/absolute/app/path
+composer run upgrade-to-v3 -- --dry-run --path=/absolute/app/path
+composer run upgrade-to-v3 -- --write --path=/absolute/app/path
 composer run upgrade-to-v4 -- --dry-run
 composer run upgrade-to-v4 -- --write
 ```
 
-The upgrader is conservative by design. It rewrites low-risk patterns automatically and reports legacy controller/view flows that still require manual migration.
+The v1 upgrader retains `config.php` as a safety copy after generating `.env`. If the configuration contains PHP expressions that cannot be represented safely as scalar environment values, it leaves both files untouched and reports a blocking error.
+
+The upgrade tools are conservative by design. They rewrite low-risk patterns automatically, return a non-zero exit code when a requested write fails, and report application-specific code that still requires manual migration. See [UPGRADE_V4.md](UPGRADE_V4.md) for the detailed sequence and validation checklist.
 
 ## Requirements
 
