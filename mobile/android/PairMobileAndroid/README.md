@@ -5,6 +5,8 @@ Reusable Android library for apps that talk to Pair APIs.
 It includes:
 
 - JSON API client with Bearer auth;
+- protected application headers for idempotent mutations;
+- multipart request bodies and binary responses;
 - OkHttp transport with cookies disabled and HTTP cache enabled;
 - login, registration, refresh, and logout with `remember_me=true`;
 - short-lived access-token sessions with optional persistent refresh tokens;
@@ -72,6 +74,42 @@ when (val result = pair.bootstrapWithCurrentUser()) {
 `PairAuthSession` expects mobile auth responses with `access_token`, optional `refresh_token`, and either `expires_at` or `expires_in`. `PairStoredAuthSession` stores the same token metadata with the user snapshot and optional application context.
 
 Use `PairAuthSessionManager.validAccessToken(refresh:)` before authenticated API calls. If the access token is expired or near expiration, concurrent callers wait for the same refresh operation instead of rotating the refresh token multiple times.
+
+## Application Headers and Binary Transfers
+
+`send()` and `sendData()` accept application headers such as `Idempotency-Key`. The client keeps `Accept`, `Authorization`, `Content-Type`, and `Cookie` under its own control, so custom values cannot replace the Bearer token, re-enable cookie auth, or disguise the request representation.
+
+```kotlin
+val saved = pair.client.sendData(
+    path = "orders",
+    method = "POST",
+    body = orderPayload,
+    deserializer = Order.serializer(),
+    additionalHeaders = mapOf("Idempotency-Key" to operationId)
+)
+```
+
+Use `sendRawData()` for a byte body such as multipart form data whose successful response is a standard Pair `data` envelope:
+
+```kotlin
+val uploaded = pair.client.sendRawData(
+    path = "documents",
+    method = "POST",
+    body = multipartBytes,
+    contentType = "multipart/form-data; boundary=$boundary",
+    deserializer = Document.serializer(),
+    additionalHeaders = mapOf("Idempotency-Key" to operationId)
+)
+```
+
+Use `sendRawResponse()` when a successful response is binary. HTTP errors still use the normal Pair error handling and invalidate an expired Bearer session when appropriate.
+
+```kotlin
+val pdf = pair.client.sendRawResponse(
+    path = "invoices/$invoiceId/document",
+    accept = "application/pdf"
+)
+```
 
 ## Storage Strategy
 

@@ -14,6 +14,13 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Protocol
+import okhttp3.Response
+import okhttp3.ResponseBody.Companion.toResponseBody
+import okio.Buffer
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -150,6 +157,156 @@ class PairMobileAndroidTest {
         assertEquals("Bearer existing-token", request.headers["Authorization"])
         assertFalse(request.headers.keys.any { it.equals("Cookie", ignoreCase = true) })
         assertEquals("https://example.test/api/v1/items/search?q=city+hall&page=2", request.url)
+    }
+
+    @Test
+    fun apiClientAddsIdempotencyHeaderWithoutAllowingAuthOverride() = runBlocking {
+        val transport = RecordingTransport()
+        val client = PairApiClient(
+            apiBaseUrl = "https://example.test/api/v1",
+            transport = transport,
+            bearerToken = "trusted-token"
+        )
+        transport.enqueue(statusCode = 200, body = """{"data":{"id":42}}""")
+
+        client.sendData(
+            path = "items",
+            method = "POST",
+            deserializer = TestIdentifier.serializer(),
+            additionalHeaders = mapOf(
+                "Idempotency-Key" to "operation-123",
+                "Accept" to "text/html",
+                "Authorization" to "Bearer injected-token",
+                "Cookie" to "session=unsafe"
+            )
+        )
+
+        val headers = transport.requests.single().headers
+        assertEquals("operation-123", headers["Idempotency-Key"])
+        assertEquals("application/json", headers["Accept"])
+        assertEquals("Bearer trusted-token", headers["Authorization"])
+        assertFalse(headers.keys.any { it.equals("Cookie", ignoreCase = true) })
+    }
+
+    @Test
+    fun apiClientSendsMultipartBytesWithProtectedContentTypeAndBearer() = runBlocking {
+        val transport = RecordingTransport()
+        val client = PairApiClient(
+            apiBaseUrl = "https://example.test/api/v1",
+            transport = transport,
+            bearerToken = "trusted-token"
+        )
+        transport.enqueue(statusCode = 200, body = """{"data":{"id":42}}""")
+        val body = "--boundary\r\ncontent\r\n--boundary--\r\n".toByteArray()
+
+        client.sendRawData(
+            path = "documents",
+            method = "POST",
+            body = body,
+            contentType = "multipart/form-data; boundary=boundary",
+            deserializer = TestIdentifier.serializer(),
+            additionalHeaders = mapOf(
+                "Idempotency-Key" to "upload-123",
+                "Content-Type" to "text/plain",
+                "Cookie" to "unsafe=1"
+            )
+        )
+
+        val request = transport.requests.single()
+        assertEquals("Bearer trusted-token", request.headers["Authorization"])
+        assertEquals("multipart/form-data; boundary=boundary", request.headers["Content-Type"])
+        assertEquals("upload-123", request.headers["Idempotency-Key"])
+        assertFalse(request.headers.keys.any { it.equals("Cookie", ignoreCase = true) })
+        assertArrayEquals(body, request.body)
+    }
+
+    @Test
+    fun okHttpTransportPreservesDeclaredBodyMediaTypeAndBytes() = runBlocking {
+        val body = "--boundary\r\ncontent\r\n--boundary--\r\n".toByteArray()
+        var capturedHeaderContentType: String? = null
+        var capturedBodyContentType: String? = null
+        var capturedBody = ByteArray(0)
+        var capturedCookie: String? = null
+        val okHttpClient = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val request = chain.request()
+                val buffer = Buffer()
+                request.body?.writeTo(buffer)
+                capturedHeaderContentType = request.header("Content-Type")
+                capturedBodyContentType = request.body?.contentType()?.toString()
+                capturedBody = buffer.readByteArray()
+                capturedCookie = request.header("Cookie")
+
+                Response.Builder()
+                    .request(request)
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(200)
+                    .message("OK")
+                    .body("{}".toResponseBody("application/json".toMediaType()))
+                    .build()
+            }
+            .build()
+        val transport = PairOkHttpTransport(okHttpClient)
+
+        val response = transport.perform(
+            PairHttpRequest(
+                url = "https://example.test/api/v1/documents",
+                method = "POST",
+                headers = mapOf(
+                    "Content-Type" to "multipart/form-data; boundary=boundary",
+                    "Cookie" to "unsafe=1"
+                ),
+                body = body
+            )
+        )
+
+        assertEquals(200, response.statusCode)
+        assertEquals("multipart/form-data; boundary=boundary", capturedHeaderContentType)
+        assertEquals("multipart/form-data; boundary=boundary", capturedBodyContentType)
+        assertArrayEquals(body, capturedBody)
+        assertNull(capturedCookie)
+    }
+
+    @Test
+    fun apiClientReturnsAuthorizedBinaryResponseWithoutJsonDecoding() = runBlocking {
+        val transport = RecordingTransport()
+        val client = PairApiClient(
+            apiBaseUrl = "https://example.test/api/v1",
+            transport = transport,
+            bearerToken = "trusted-token"
+        )
+        val pdf = "%PDF-1.7\nfixture".toByteArray()
+        transport.enqueue(statusCode = 200, body = pdf, headers = mapOf("Content-Type" to "application/pdf"))
+
+        val response = client.sendRawResponse(path = "transfers/8/document", accept = "application/pdf")
+
+        assertArrayEquals(pdf, response.body)
+        assertEquals("application/pdf", transport.requests.single().headers["Accept"])
+        assertEquals("Bearer trusted-token", transport.requests.single().headers["Authorization"])
+    }
+
+    @Test
+    fun apiClientInvalidatesBearerTokenOnBinaryUnauthorizedResponse() = runBlocking {
+        val transport = RecordingTransport()
+        val recorder = InvalidationRecorder()
+        val client = PairApiClient(
+            apiBaseUrl = "https://example.test/api/v1",
+            transport = transport,
+            bearerToken = "expired-token",
+            authenticationInvalidationHandler = recorder::record
+        )
+        transport.enqueue(
+            statusCode = 401,
+            body = """{"error":{"code":"unauthorized","message":"Token expired"}}"""
+        )
+
+        val result = runCatching {
+            client.sendRawResponse(path = "invoices/8/document", accept = "application/pdf")
+        }
+
+        assertTrue(result.exceptionOrNull() is PairApiException.Server)
+        assertNull(client.currentBearerToken())
+        assertEquals(1, recorder.count)
     }
 
     @Test
@@ -406,8 +563,12 @@ private class RecordingTransport : PairHttpTransport {
     private val responses = ArrayDeque<PairHttpResponse>()
 
     /** Queues a fake HTTP response for the next request. */
-    fun enqueue(statusCode: Int, body: String) {
-        responses.addLast(PairHttpResponse(statusCode = statusCode, body = body.toByteArray(StandardCharsets.UTF_8)))
+    fun enqueue(statusCode: Int, body: String) =
+        enqueue(statusCode = statusCode, body = body.toByteArray(StandardCharsets.UTF_8))
+
+    /** Queues a fake binary HTTP response for the next request. */
+    fun enqueue(statusCode: Int, body: ByteArray, headers: Map<String, String> = emptyMap()) {
+        responses.addLast(PairHttpResponse(statusCode = statusCode, body = body, headers = headers))
     }
 
     /** Records the request and returns the queued response. */

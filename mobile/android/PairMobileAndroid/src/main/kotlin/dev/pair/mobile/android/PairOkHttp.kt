@@ -57,7 +57,7 @@ class PairOkHttpTransport(
     private val client: OkHttpClient
 ) : PairHttpTransport {
 
-    /** Performs a Pair transport request with JSON defaults and without cookies. */
+    /** Performs a Pair transport request with the declared media type and without cookies. */
     override suspend fun perform(request: PairHttpRequest): PairHttpResponse {
         val requestBuilder = Request.Builder().url(request.url)
 
@@ -67,7 +67,10 @@ class PairOkHttpTransport(
             }
         }
 
-        val requestBody = request.body?.toRequestBody("application/json".toMediaType())
+        val requestBody = request.body?.toRequestBody(
+            (request.headers.entries.firstOrNull { it.key.equals("Content-Type", ignoreCase = true) }?.value
+                ?: "application/octet-stream").toMediaType()
+        )
         val okHttpRequest = requestBuilder
             .removeHeader("Cookie")
             .method(request.method, requestBody)
@@ -129,4 +132,3 @@ private suspend fun Call.await(): Response = suspendCancellableCoroutine { conti
         cancel()
     }
 }
-

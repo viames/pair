@@ -35,7 +35,7 @@ Main components:
 
 - `PairOkHttpClientFactory`: OkHttp client with cookies disabled, HTTP cache, conservative timeouts, and shared cache locations.
 - `PairOkHttpTransport`: transport adapter used by the Pair API client.
-- `PairApiClient`: JSON client with Bearer auth, `data` envelopes, and 401 invalidation.
+- `PairApiClient`: JSON and binary client with Bearer auth, protected application headers, `data` envelopes, and 401 invalidation.
 - `PairAuthService`: login, registration, refresh, and logout with `remember_me=true` forced and not exposed to users.
 - `PairAuthSession` and `PairStoredAuthSession`: token metadata, user snapshot, expiration, and optional app context.
 - `PairSharedPreferencesSessionStore`: migratable session store using private app preferences.
@@ -198,6 +198,14 @@ val session = pair.auth.login(
 
 pair.sessionManager.save(pair.storedSession(session = session, context = "crotone"))
 ```
+
+## Application Headers and Binary Transfers
+
+`PairApiClient.send()` and `sendData()` accept application-owned headers such as `Idempotency-Key`. The client reserves `Accept`, `Authorization`, `Content-Type`, and `Cookie`: callers cannot replace the Bearer token, re-enable cookie auth, or disguise the request representation through `additionalHeaders`.
+
+Use `sendRawData()` for a byte body such as multipart form data when the successful response remains a standard Pair `data` envelope. Use `sendRawResponse()` for binary success responses such as PDFs. Both paths preserve Pair error decoding and definitive authentication invalidation.
+
+The host app remains responsible for building multipart bodies, validating selected files, checking response media types and signatures, and decoding domain-specific models.
 
 ## Adoption Rules
 
