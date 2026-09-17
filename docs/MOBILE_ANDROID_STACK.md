@@ -43,6 +43,12 @@ Main components:
 - `PairRemoteImageClient`: remote image bytes and bitmap loading through the shared HTTP cache.
 - `PairMobileStack`: convenience facade that wires the default components for common apps.
 
+## Build Compatibility
+
+`PairMobileAndroid` currently uses Gradle 8.14.5, Android Gradle Plugin 8.13.2, Kotlin 2.2.20, JDK 17, `compileSdk 35`, and `minSdk 23`. AGP 8.13 supports API levels through 36.1 and requires Gradle 8.13 or newer.
+
+Applications that include this checkout as a Gradle subproject should align their Gradle, AGP, Kotlin, and JDK versions with the library. A host may use a newer `compileSdk`, but it must not use one lower than the library value. Toolchain changes must pass both the standalone library checks and the consuming application's build.
+
 ## Minimum API Contract
 
 Pair v4 ships a default mobile auth action in `Pair\Api\ApiController`. Applications that expose the standard API module can use:
@@ -225,8 +231,10 @@ Every Android stack change must pass:
 
 ```sh
 ./gradlew testDebugUnitTest
+./gradlew lintDebug
+./gradlew assembleRelease
 ```
 
-Pair CI runs this command on Ubuntu, separately from the PHP matrix and the iOS mobile job.
+Pair CI runs these commands on Ubuntu, separately from the PHP matrix and the iOS mobile job.
 
 See also: `docs/MOBILE_AUTH_APP_SETUP.md`, `docs/MOBILE_IOS_STACK.md`, `Pair\Api\ApiController`, and `Pair\Models\ApiToken`.

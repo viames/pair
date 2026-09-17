@@ -79,4 +79,4 @@ jobs:
 
       - name: Run PairMobileAndroid tests
         working-directory: mobile/android/PairMobileAndroid
-        run: ./gradlew testDebugUnitTest
+        run: ./gradlew testDebugUnitTest lintDebug assembleRelease

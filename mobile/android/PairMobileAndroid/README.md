@@ -117,8 +117,16 @@ The default store uses app-private `SharedPreferences`, not Android Keystore enc
 
 Projects that prefer a device-only token can provide their own `PairSessionStore` implementation.
 
+## Build Compatibility
+
+The source module currently uses Gradle 8.14.5, Android Gradle Plugin 8.13.2, Kotlin 2.2.20, JDK 17, `compileSdk 35`, and `minSdk 23`. AGP 8.13 supports API levels through 36.1 and requires Gradle 8.13 or newer, so the checked-in wrapper is within the supported range.
+
+When a host application includes this checkout as a Gradle subproject, keep its Gradle, AGP, Kotlin, and JDK toolchain aligned with the library. The host `compileSdk` must not be lower than the library value, and `minSdk 23` remains the minimum supported Android version. Verify toolchain changes both in this standalone module and in every source-including host application.
+
 ## Local Verification
 
 ```sh
 ./gradlew testDebugUnitTest
+./gradlew lintDebug
+./gradlew assembleRelease
 ```
