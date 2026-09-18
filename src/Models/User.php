@@ -742,6 +742,58 @@ class User extends ActiveRecord {
 	}
 
 	/**
+	 * Complete token login for a user already verified by an external factor.
+	 *
+	 * This runs the normal login lifecycle and audit without creating a PHP web session.
+	 *
+	 * @param	int	$userId	Verified user ID.
+	 * @return	\stdClass	Object with error, message and userId properties.
+	 */
+	public static function doTokenLoginById(int $userId): \stdClass {
+
+		$ret = new \stdClass();
+		$ret->error = false;
+		$ret->message = null;
+		$ret->userId = null;
+
+		$genericMessage = Translator::safeDo('AUTHENTICATION_FAILED');
+		$user = new static($userId);
+		$ipAddress = $_SERVER['REMOTE_ADDR'] ?? null;
+		$userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
+
+		if (!$user->isLoaded() or $user->faults > 9 or '0' == $user->enabled) {
+			$ret->error = true;
+			$ret->message = $genericMessage;
+
+			if ($user->isLoaded()) {
+				$user->addFault();
+				Audit::loginFailed($user->username, $ipAddress, $userAgent);
+				$user->afterLoginFailed();
+			} else {
+				Audit::loginFailed('uid:' . $userId, $ipAddress, $userAgent);
+			}
+
+			return $ret;
+		}
+
+		$user->beforeLogin();
+		$ret->userId = $user->id;
+		$user->resetFaults();
+
+		if (!is_null($user->pwReset)) {
+			$user->pwReset = null;
+		}
+
+		$user->lastLogin = new \DateTime();
+		$user->update(['lastLogin', 'pwReset']);
+		$user->afterLogin();
+		Audit::loginSuccessful($user, $ipAddress, $userAgent);
+
+		return $ret;
+
+	}
+
+	/**
 	 * Logs in a user already validated by an external authentication factor
 	 * (for example Passkey/WebAuthn) and returns an object with error, message,
 	 * userId and sessionId properties.

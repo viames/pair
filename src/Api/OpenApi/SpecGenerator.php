@@ -282,6 +282,81 @@ class SpecGenerator {
 			],
 		]);
 
+		$this->addPath($basePath . '/auth/passkey/options', 'post', [
+			'tags'        => [$tag],
+			'summary'     => 'Start a discoverable native passkey login',
+			'operationId' => 'mobilePasskeyLoginOptions',
+			'requestBody' => $this->jsonRequestBody('PairEmptyObject'),
+			'responses'   => [
+				'200' => $this->jsonResponse('PairPasskeyOptionsEnvelope', 'Native passkey assertion options'),
+				'400' => ['description' => 'Invalid request'],
+			],
+		]);
+
+		$this->addPath($basePath . '/auth/passkey/verify', 'post', [
+			'tags'        => [$tag],
+			'summary'     => 'Verify a native passkey and issue a mobile bearer session',
+			'operationId' => 'mobilePasskeyLoginVerify',
+			'requestBody' => $this->jsonRequestBody('PairPasskeyVerificationRequest'),
+			'responses'   => [
+				'200' => $this->jsonResponse('PairAuthSessionEnvelope', 'Authenticated mobile session'),
+				'401' => ['description' => 'Invalid passkey credential'],
+			],
+		]);
+
+		$this->addPath($basePath . '/auth/passkeys', 'get', [
+			'tags'        => [$tag],
+			'summary'     => 'List the current user passkeys',
+			'operationId' => 'mobilePasskeyList',
+			'security'    => [['bearerAuth' => []]],
+			'responses'   => [
+				'200' => $this->jsonResponse('PairPasskeyListEnvelope', 'Active passkeys'),
+				'401' => ['description' => 'Invalid or missing bearer token'],
+			],
+		]);
+
+		$this->addPath($basePath . '/auth/passkeys/options', 'post', [
+			'tags'        => [$tag],
+			'summary'     => 'Start passkey registration for the current user',
+			'operationId' => 'mobilePasskeyRegisterOptions',
+			'security'    => [['bearerAuth' => []]],
+			'requestBody' => $this->jsonRequestBody('PairPasskeyRegistrationOptionsRequest'),
+			'responses'   => [
+				'200' => $this->jsonResponse('PairPasskeyOptionsEnvelope', 'Native passkey creation options'),
+				'401' => ['description' => 'Invalid or missing bearer token'],
+			],
+		]);
+
+		$this->addPath($basePath . '/auth/passkeys/verify', 'post', [
+			'tags'        => [$tag],
+			'summary'     => 'Verify and store a passkey for the current user',
+			'operationId' => 'mobilePasskeyRegisterVerify',
+			'security'    => [['bearerAuth' => []]],
+			'requestBody' => $this->jsonRequestBody('PairPasskeyRegistrationVerificationRequest'),
+			'responses'   => [
+				'201' => $this->jsonResponse('PairPasskeyEnvelope', 'Registered passkey'),
+				'401' => ['description' => 'Invalid or missing bearer token'],
+			],
+		]);
+
+		$this->addPath($basePath . '/auth/passkeys/{id}', 'delete', [
+			'tags'        => [$tag],
+			'summary'     => 'Revoke one passkey owned by the current user',
+			'operationId' => 'mobilePasskeyRevoke',
+			'security'    => [['bearerAuth' => []]],
+			'parameters'  => [[
+				'name' => 'id',
+				'in' => 'path',
+				'required' => true,
+				'schema' => ['type' => 'integer', 'minimum' => 1],
+			]],
+			'responses'   => [
+				'200' => $this->jsonResponse('PairEmptyDataEnvelope', 'Passkey revoked'),
+				'401' => ['description' => 'Invalid or missing bearer token'],
+				'404' => ['description' => 'Passkey not found'],
+			],
+		]);
+
 	}
 
 	/**
@@ -398,6 +473,105 @@ class SpecGenerator {
 	 * Register the reusable schemas used by the standard mobile auth endpoints.
 	 */
 	private function addMobileAuthSchemas(): void {
+
+		$this->addSchema('PairEmptyObject', [
+			'type' => 'object',
+			'additionalProperties' => false,
+		]);
+
+		$this->addSchema('PairPasskeyCredential', [
+			'type' => 'object',
+			'properties' => [
+				'id' => ['type' => 'string'],
+				'type' => ['type' => 'string', 'const' => 'public-key'],
+				'response' => ['type' => 'object', 'additionalProperties' => true],
+			],
+			'required' => ['id', 'response'],
+			'additionalProperties' => true,
+		]);
+
+		$this->addSchema('PairPasskeyOptionsEnvelope', [
+			'type' => 'object',
+			'properties' => [
+				'data' => [
+					'type' => 'object',
+					'properties' => [
+						'flow_id' => ['type' => 'string'],
+						'publicKey' => ['type' => 'object', 'additionalProperties' => true],
+					],
+					'required' => ['flow_id', 'publicKey'],
+				],
+			],
+			'required' => ['data'],
+		]);
+
+		$this->addSchema('PairPasskeyVerificationRequest', [
+			'type' => 'object',
+			'properties' => [
+				'flow_id' => ['type' => 'string'],
+				'credential' => ['$ref' => '#/components/schemas/PairPasskeyCredential'],
+				'device_name' => ['type' => ['string', 'null'], 'maxLength' => 120],
+			],
+			'required' => ['flow_id', 'credential'],
+			'additionalProperties' => true,
+		]);
+
+		$this->addSchema('PairPasskeyRegistrationOptionsRequest', [
+			'type' => 'object',
+			'properties' => [
+				'display_name' => ['type' => 'string', 'maxLength' => 120],
+			],
+			'additionalProperties' => false,
+		]);
+
+		$this->addSchema('PairPasskeyRegistrationVerificationRequest', [
+			'type' => 'object',
+			'properties' => [
+				'flow_id' => ['type' => 'string'],
+				'credential' => ['$ref' => '#/components/schemas/PairPasskeyCredential'],
+				'label' => ['type' => ['string', 'null'], 'maxLength' => 120],
+			],
+			'required' => ['flow_id', 'credential'],
+			'additionalProperties' => false,
+		]);
+
+		$this->addSchema('PairPasskey', [
+			'type' => 'object',
+			'properties' => [
+				'id' => ['type' => 'integer'],
+				'label' => ['type' => ['string', 'null']],
+				'created_at' => ['type' => ['string', 'null'], 'format' => 'date-time'],
+				'last_used_at' => ['type' => ['string', 'null'], 'format' => 'date-time'],
+				'transports' => ['type' => 'array', 'items' => ['type' => 'string']],
+			],
+			'required' => ['id', 'transports'],
+		]);
+
+		$this->addSchema('PairPasskeyEnvelope', [
+			'type' => 'object',
+			'properties' => [
+				'data' => [
+					'type' => 'object',
+					'properties' => ['passkey' => ['$ref' => '#/components/schemas/PairPasskey']],
+					'required' => ['passkey'],
+				],
+			],
+			'required' => ['data'],
+		]);
+
+		$this->addSchema('PairPasskeyListEnvelope', [
+			'type' => 'object',
+			'properties' => [
+				'data' => [
+					'type' => 'object',
+					'properties' => [
+						'items' => ['type' => 'array', 'items' => ['$ref' => '#/components/schemas/PairPasskey']],
+					],
+					'required' => ['items'],
+				],
+			],
+			'required' => ['data'],
+		]);
 
 		$this->addSchema('PairAuthUser', [
 			'type' => 'object',

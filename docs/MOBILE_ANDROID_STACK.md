@@ -40,6 +40,8 @@ Main components:
 - `PairAuthSession` and `PairStoredAuthSession`: token metadata, user snapshot, expiration, and optional app context.
 - `PairSharedPreferencesSessionStore`: migratable session store using private app preferences.
 - `PairAuthSessionManager`: startup bootstrap, token refresh, and single-flight refresh coalescing.
+- `PairPasskeyClient`: Credential Manager assertion and registration using standard WebAuthn JSON.
+- `PairPasskeyService`: standard native passkey login, list, registration, and revocation endpoints.
 - `PairRemoteImageClient`: remote image bytes and bitmap loading through the shared HTTP cache.
 - `PairMobileStack`: convenience facade that wires the default components for common apps.
 
@@ -58,6 +60,12 @@ Pair v4 ships a default mobile auth action in `Pair\Api\ApiController`. Applicat
 - `POST /api/v1/auth/refresh`
 - `GET /api/v1/auth/me`
 - `POST /api/v1/auth/logout`
+- `POST /api/v1/auth/passkey/options`
+- `POST /api/v1/auth/passkey/verify`
+- `GET /api/v1/auth/passkeys`
+- `POST /api/v1/auth/passkeys/options`
+- `POST /api/v1/auth/passkeys/verify`
+- `DELETE /api/v1/auth/passkeys/{id}`
 
 Auth endpoints use JSON and respond with a `data` envelope.
 
@@ -169,6 +177,7 @@ Startup must run through `PairAuthSessionManager.bootstrap(validate:refresh:)` b
 - if validation succeeds, the result is `Valid`;
 - if validation or refresh fails because the network is unavailable, the result is `Offline` and the saved snapshot is preserved;
 - if validation or refresh fails with a definitive auth error, the result is `Invalidated` and local storage is cleared.
+- if validation, refresh, or the OkHttp request is cancelled, `CancellationException` is propagated unchanged; cancellation is never reported as `Offline`, `Invalidated`, or a transport failure.
 
 Before authenticated API calls, use `validAccessToken(refresh:)`. Concurrent callers share one refresh operation, so rotated refresh tokens do not race each other.
 
@@ -177,6 +186,31 @@ Before authenticated API calls, use `validAccessToken(refresh:)`. Concurrent cal
 Native apps must not use Pair cookies, `sid`, `PHPSESSID`, or `user_remembers` records. Mobile uses only Bearer tokens in `api_tokens`.
 
 App login must not close or renew web login. Web login must not revoke mobile tokens except for account deactivation or explicit revocation.
+
+## Native Passkeys
+
+`PairMobileAndroid` uses the stable AndroidX Credentials 1.6.0 artifacts. Create `PairPasskeyClient` with an Activity context so Credential Manager can present its UI, then pass it to `PairPasskeyService`. Login produces the same `PairAuthSession` as password login.
+
+```kotlin
+val passkeys = PairPasskeyService(
+    client = pair.client,
+    userSerializer = AppUser.serializer(),
+    passkeyClient = PairPasskeyClient(activity)
+)
+
+val session = passkeys.login(deviceName = "Android")
+val registered = passkeys.register(displayName = session.user.name, label = "Android")
+val activePasskeys = passkeys.passkeys()
+passkeys.revoke(registered.id)
+```
+
+Credential Manager cancellation and provider exceptions remain distinct from API, connectivity, and authentication failures.
+
+### Android origin and Digital Asset Links
+
+`Pair\Services\PasskeyAuth` accepts the Credential Manager client-data origin `android:apk-key-hash:<SHA-256 base64url without padding>` in addition to normalized HTTP(S) origins. Applications must explicitly list every trusted origin in `PASSKEY_ALLOWED_ORIGINS`; accepting the syntax does not trust an Android certificate automatically.
+
+Production must use the fingerprint of the certificate that actually signs the installed app. For Google Play App Signing this is the Play signing certificate, not the upload or debug certificate. The relying-party domain must publish a matching `/.well-known/assetlinks.json`, and application deployment must keep Pair, backend configuration, Digital Asset Links and the installed package/fingerprint aligned. Local unit tests or a debug build do not prove that signed chain.
 
 ## Example
 

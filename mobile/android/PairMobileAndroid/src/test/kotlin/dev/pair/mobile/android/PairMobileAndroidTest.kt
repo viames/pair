@@ -1,10 +1,12 @@
 package dev.pair.mobile.android
 
 import java.nio.charset.StandardCharsets
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -268,6 +270,32 @@ class PairMobileAndroidTest {
     }
 
     @Test
+    fun okHttpTransportPropagatesCancellationInsteadOfWrappingItAsNetworkFailure() = runBlocking {
+        val okHttpClient = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                while (!chain.call().isCanceled()) {
+                    Thread.sleep(1)
+                }
+                throw java.io.IOException("request cancelled")
+            }
+            .build()
+        val transport = PairOkHttpTransport(okHttpClient)
+
+        val failure = runCatching {
+            withTimeout(100) {
+                transport.perform(
+                    PairHttpRequest(
+                        url = "https://example.test/api/v1/bootstrap",
+                        method = "GET"
+                    )
+                )
+            }
+        }.exceptionOrNull()
+
+        assertTrue(failure is CancellationException)
+    }
+
+    @Test
     fun apiClientReturnsAuthorizedBinaryResponseWithoutJsonDecoding() = runBlocking {
         val transport = RecordingTransport()
         val client = PairApiClient(
@@ -393,6 +421,23 @@ class PairMobileAndroidTest {
     }
 
     @Test
+    fun authSessionManagerBootstrapPropagatesCancellationAndKeepsSnapshot() = runBlocking {
+        val snapshot = managedSnapshot(accessToken = "valid-token", expiresAtEpochSeconds = managedNow + 600)
+        val store = PairInMemorySessionStore(snapshot)
+        val manager = PairAuthSessionManager(store = store, nowEpochSeconds = { managedNow })
+
+        val failure = runCatching {
+            manager.bootstrap(
+                validate = { throw CancellationException("validation cancelled") },
+                refresh = { it }
+            )
+        }.exceptionOrNull()
+
+        assertTrue(failure is CancellationException)
+        assertEquals("valid-token", store.load()?.accessToken)
+    }
+
+    @Test
     fun authSessionManagerValidTokenDoesNotCallRefresh() = runBlocking {
         val snapshot = managedSnapshot(accessToken = "still-valid", expiresAtEpochSeconds = managedNow + 600)
         val store = PairInMemorySessionStore(snapshot)
@@ -466,6 +511,20 @@ class PairMobileAndroidTest {
 
         assertTrue(result is PairAccessTokenResult.Offline)
         assertEquals("expired-token", (result as PairAccessTokenResult.Offline).session.accessToken)
+        assertEquals("expired-token", store.load()?.accessToken)
+    }
+
+    @Test
+    fun authSessionManagerRefreshPropagatesCancellationAndKeepsSnapshot() = runBlocking {
+        val snapshot = managedSnapshot(accessToken = "expired-token", expiresAtEpochSeconds = managedNow - 1)
+        val store = PairInMemorySessionStore(snapshot)
+        val manager = PairAuthSessionManager(store = store, nowEpochSeconds = { managedNow })
+
+        val failure = runCatching {
+            manager.validAccessToken { throw CancellationException("refresh cancelled") }
+        }.exceptionOrNull()
+
+        assertTrue(failure is CancellationException)
         assertEquals("expired-token", store.load()?.accessToken)
     }
 

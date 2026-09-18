@@ -40,6 +40,12 @@ POST /api/auth/register
 POST /api/auth/refresh
 GET  /api/auth/me
 POST /api/auth/logout
+POST /api/auth/passkey/options
+POST /api/auth/passkey/verify
+GET /api/auth/passkeys
+POST /api/auth/passkeys/options
+POST /api/auth/passkeys/verify
+DELETE /api/auth/passkeys/{id}
 ```
 
 The same contract works under versioned API prefixes such as `/api/v1` when the application router maps the API module there.
@@ -160,3 +166,20 @@ Implementation rules:
 * write an audit record when support or admin users revoke another user's tokens
 
 This keeps the generic token model reusable while leaving sensitive authorization policy in the application.
+
+## 8. Enable Native Passkeys
+
+Apply `migrations/20260918_user_passkeys.sql`, then configure the relying party and every trusted web or signed Android origin:
+
+```ini
+PASSKEY_RP_ID=example.test
+PASSKEY_RP_NAME="Example App"
+PASSKEY_ALLOWED_ORIGINS="https://example.test,android:apk-key-hash:BASE64URL_SHA256_CERTIFICATE"
+PASSKEY_REQUIRE_USER_VERIFICATION=true
+```
+
+The mobile endpoints always request and enforce user verification, use discoverable credentials for username-free login, keep challenges in short-lived cookie-free flow sessions, and issue the same `api_tokens` Bearer session used by password login. Registration accepts browser-extracted public keys as well as native iOS and Android CBOR attestation objects.
+
+Only `POST /auth/passkey/options` and `POST /auth/passkey/verify` are public. Listing, registration, and revocation under `/auth/passkeys*` require a valid Bearer token and return `401` when it is missing. Revocation is owner-scoped, exposes a foreign identifier as not found, and remains idempotent when the owned credential is already revoked.
+
+For iOS, add `webcredentials:example.test` to Associated Domains and publish an AASA file containing the app identifier. For Android, publish `/.well-known/assetlinks.json` with the production package and signing-certificate fingerprint. A simulator, debug signature, or local unit test does not prove either signed association chain.

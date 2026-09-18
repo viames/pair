@@ -4,6 +4,27 @@ import XCTest
 
 final class PairMobileKitTests: XCTestCase {
 
+	func testPasskeyOptionsDecodeStandardPairContract() throws {
+		let data = Data(#"{"flow_id":"pair-passkey-abc","publicKey":{"challenge":"AQID","rpId":"example.test","userVerification":"required","allowCredentials":[]}}"#.utf8)
+		let options = try JSONDecoder().decode(PairPasskeyAuthenticationOptions.self, from: data)
+
+		XCTAssertEqual(options.flowID, "pair-passkey-abc")
+		XCTAssertEqual(options.publicKey.rpId, "example.test")
+		XCTAssertEqual(options.publicKey.userVerification, "required")
+	}
+
+	@MainActor
+	func testPasskeyRelyingPartyMustOwnAPIHost() throws {
+		let apiURL = try XCTUnwrap(URL(string: "https://api.example.test/v1"))
+
+		XCTAssertTrue(PairPasskeyAuthorizationCoordinator.isTrustedRelyingParty("example.test", apiBaseURL: apiURL))
+		XCTAssertTrue(PairPasskeyAuthorizationCoordinator.isTrustedRelyingParty("api.example.test", apiBaseURL: apiURL))
+		XCTAssertFalse(PairPasskeyAuthorizationCoordinator.isTrustedRelyingParty("attacker.test", apiBaseURL: apiURL))
+		XCTAssertFalse(PairPasskeyAuthorizationCoordinator.isTrustedRelyingParty(".example.test", apiBaseURL: apiURL))
+		XCTAssertFalse(PairPasskeyAuthorizationCoordinator.isTrustedRelyingParty("example..test", apiBaseURL: apiURL))
+		XCTAssertFalse(PairPasskeyAuthorizationCoordinator.isTrustedRelyingParty("-example.test", apiBaseURL: apiURL))
+	}
+
 	func testLoginForcesRememberMeAndStoresBearerToken() async throws {
 		let transport = MockTransport()
 		transport.enqueue(

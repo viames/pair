@@ -35,6 +35,8 @@ Main components:
 - `PairAuthService`: login and registration with `remember_me=true` forced and not exposed to users.
 - `PairAuthSession` and `PairStoredAuthSession`: token metadata, user snapshot, expiration, and optional app context.
 - `PairAuthSessionManager`: Keychain-backed bootstrap, token refresh, and single-flight refresh coalescing.
+- `PairPasskeyAuthorizationCoordinator`: AuthenticationServices assertion and registration with relying-party validation and cancellation propagation.
+- `PairPasskeyService`: standard native passkey login, list, registration, and revocation endpoints.
 - `PairJSONValue`: nested JSON extra payloads without custom request types for small project fields.
 - `PairKeychainStore`: Codable Keychain store using an attribute that can migrate to a new phone.
 - `PairRemoteImageCache` and `PairCachedRemoteImage`: cookie-free memory and disk image cache.
@@ -48,6 +50,12 @@ Pair v4 ships a default mobile auth action in `Pair\Api\ApiController`. Applicat
 - `POST /api/v1/auth/refresh`
 - `GET /api/v1/auth/me`
 - `POST /api/v1/auth/logout`
+- `POST /api/v1/auth/passkey/options`
+- `POST /api/v1/auth/passkey/verify`
+- `GET /api/v1/auth/passkeys`
+- `POST /api/v1/auth/passkeys/options`
+- `POST /api/v1/auth/passkeys/verify`
+- `DELETE /api/v1/auth/passkeys/{id}`
 
 Auth endpoints use JSON and respond with a `data` envelope.
 
@@ -170,6 +178,24 @@ Native apps must not use Pair cookies, `sid`, `PHPSESSID`, or `user_remembers` r
 
 App login must not close or renew web login. Web login must not revoke mobile tokens except for account deactivation or explicit revocation.
 
+## Native Passkeys
+
+Create `PairPasskeyAuthorizationCoordinator` with the same API base URL used by `PairAPIClient`, then pass it to `PairPasskeyService`. Login produces the normal `PairAuthSession`; account management uses the Bearer token already held by the API client.
+
+```swift
+let coordinator = PairPasskeyAuthorizationCoordinator(
+	apiBaseURL: URL(string: "https://example.test/api/v1")!
+)
+let passkeys = PairPasskeyService<AppUser>(client: client, coordinator: coordinator)
+
+let session = try await passkeys.login(deviceName: "iPhone")
+let registered = try await passkeys.register(displayName: session.user.name, label: "iPhone")
+let activePasskeys = try await passkeys.passkeys()
+try await passkeys.revoke(id: registered.id)
+```
+
+The app target must declare `webcredentials:example.test` in Associated Domains. The relying-party domain must serve an `apple-app-site-association` file that authorizes the app identifier. Pair validates that the server-provided RP ID owns the configured API host before showing the system sheet.
+
 ## iOS Example
 
 ```swift
@@ -232,6 +258,7 @@ let bootstrap = await manager.bootstrap { saved in
 6. Clear Keychain on logout, account deactivation, or definitive auth failure.
 7. Preserve Keychain snapshots for network and offline errors.
 8. Keep application models out of `PairMobileKit`.
+9. Configure the `webcredentials` associated domain and verify AASA through Apple's CDN before treating a signed build as ready.
 
 ## Required Checks
 

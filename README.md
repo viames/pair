@@ -267,6 +267,20 @@ GET    /api/passkey/list
 DELETE /api/passkey/revoke/{id}
 ```
 
+Native iOS and Android apps use the cookie-free mobile contract exposed by `Pair\Api\ApiController`:
+
+```txt
+POST   /api/auth/passkey/options
+POST   /api/auth/passkey/verify
+GET    /api/auth/passkeys
+POST   /api/auth/passkeys/options
+POST   /api/auth/passkeys/verify
+DELETE /api/auth/passkeys/{id}
+```
+
+`PairMobileKit` uses AuthenticationServices and `PairMobileAndroid` uses Android Credential Manager. Both issue the same Pair Bearer session as password login and keep passkey creation, listing, and revocation under the authenticated account.
+Only the singular `/auth/passkey/options` and `/auth/passkey/verify` login routes are public. Every plural `/auth/passkeys*` management route requires a Bearer token and returns `401` when it is missing; revocation is owner-scoped, hides foreign IDs as not found, and is idempotent for an already revoked owned credential.
+
 ## Optional integrations
 
 Pair includes optional support for services and runtime integrations such as:

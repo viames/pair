@@ -14,6 +14,7 @@ use Pair\Models\ApiToken;
 use Pair\Models\User;
 use Pair\Orm\ActiveRecord;
 use Pair\Orm\Database;
+use Pair\Services\PasskeyFlow;
 use Pair\Tests\Support\TestCase;
 
 /**
@@ -190,6 +191,225 @@ class MobileAuthControllerTest extends TestCase {
 		$this->assertNotSame($issued['accessToken'], $payload['data']['access_token']);
 		$this->assertNotSame($issued['refreshToken'], $payload['data']['refresh_token']);
 		$this->assertSame('Bearer', $payload['data']['token_type']);
+
+	}
+
+	/**
+	 * Verify native passkey login options use a cookie-free opaque flow.
+	 */
+	public function testAuthActionPasskeyLoginOptionsReturnsOpaqueFlow(): void {
+
+		$keys = ['PASSKEY_RP_ID', 'PASSKEY_RP_NAME', 'PASSKEY_ALLOWED_ORIGINS'];
+		$previous = [];
+		$flowId = null;
+
+		foreach ($keys as $key) {
+			if (array_key_exists($key, $_ENV)) {
+				$previous[$key] = $_ENV[$key];
+			}
+		}
+
+		try {
+			$_ENV['PASSKEY_RP_ID'] = 'example.test';
+			$_ENV['PASSKEY_RP_NAME'] = 'Pair Test';
+			$_ENV['PASSKEY_ALLOWED_ORIGINS'] = 'android:apk-key-hash:QcwVyHrkFHu0-nTkES0z-fmeVDOmb3rKXhp8x5BdD-E';
+			$_SERVER['REQUEST_METHOD'] = 'POST';
+			$_SERVER['CONTENT_TYPE'] = 'application/json';
+
+			$controller = $this->newController();
+			$request = $this->requestWithJsonBody([]);
+
+			$this->primeController($controller, $request, [0 => 'passkey', 1 => 'options']);
+
+			$response = $controller->authAction();
+			$payload = $this->readJsonResponseProperty($response, 'payload');
+			$flowId = $payload['data']['flow_id'] ?? null;
+
+			$this->assertInstanceOf(JsonResponse::class, $response);
+			$this->assertIsString($flowId);
+			$this->assertMatchesRegularExpression('/^pair-passkey-[a-f0-9]{64}$/', $flowId);
+			$this->assertSame('example.test', $payload['data']['publicKey']['rpId']);
+			$this->assertSame('required', $payload['data']['publicKey']['userVerification']);
+			$this->assertSame([], $payload['data']['publicKey']['allowCredentials']);
+		} finally {
+			try {
+				if (is_string($flowId)) {
+					(new PasskeyFlow($flowId))->destroy();
+				}
+			} finally {
+				foreach ($keys as $key) {
+					unset($_ENV[$key]);
+					if (array_key_exists($key, $previous)) {
+						$_ENV[$key] = $previous[$key];
+					}
+				}
+			}
+		}
+
+	}
+
+	/**
+	 * Verify malformed opaque flow identifiers are rejected before credential verification.
+	 */
+	public function testAuthActionPasskeyLoginVerifyRejectsMalformedFlow(): void {
+
+		$_SERVER['REQUEST_METHOD'] = 'POST';
+		$_SERVER['CONTENT_TYPE'] = 'application/json';
+
+		$controller = $this->newController();
+		$request = $this->requestWithJsonBody([
+			'flow_id' => 'attacker-controlled-session',
+			'credential' => ['id' => 'credential-1'],
+		]);
+
+		$this->primeController($controller, $request, [0 => 'passkey', 1 => 'verify']);
+
+		$response = $controller->authAction();
+
+		$this->assertInstanceOf(ApiErrorResponse::class, $response);
+		$this->assertSame('BAD_REQUEST', $this->readApiErrorResponseProperty($response, 'errorCode'));
+
+	}
+
+	/**
+	 * Verify native passkey option metadata follows the published OpenAPI limit.
+	 */
+	public function testAuthActionPasskeyRegisterOptionsRejectsLongDisplayName(): void {
+
+		$_SERVER['REQUEST_METHOD'] = 'POST';
+		$_SERVER['CONTENT_TYPE'] = 'application/json';
+
+		$this->setApplicationState($this->newLoadedUser(21));
+		$controller = $this->newController();
+		$request = $this->requestWithJsonBody(['display_name' => str_repeat('x', 121)]);
+
+		$this->primeController($controller, $request, [0 => 'passkeys', 1 => 'options']);
+
+		$response = $controller->authAction();
+
+		$this->assertInstanceOf(ApiErrorResponse::class, $response);
+		$this->assertSame('BAD_REQUEST', $this->readApiErrorResponseProperty($response, 'errorCode'));
+
+	}
+
+	/**
+	 * Verify registration metadata rejects non-string labels before opening a challenge flow.
+	 */
+	public function testAuthActionPasskeyRegisterVerifyRejectsInvalidLabelType(): void {
+
+		$_SERVER['REQUEST_METHOD'] = 'POST';
+		$_SERVER['CONTENT_TYPE'] = 'application/json';
+
+		$this->setApplicationState($this->newLoadedUser(21));
+		$controller = $this->newController();
+		$request = $this->requestWithJsonBody([
+			'flow_id' => 'pair-passkey-' . str_repeat('a', 64),
+			'credential' => ['id' => 'credential-1'],
+			'label' => ['invalid'],
+		]);
+
+		$this->primeController($controller, $request, [0 => 'passkeys', 1 => 'verify']);
+
+		$response = $controller->authAction();
+
+		$this->assertInstanceOf(ApiErrorResponse::class, $response);
+		$this->assertSame('BAD_REQUEST', $this->readApiErrorResponseProperty($response, 'errorCode'));
+
+	}
+
+	/**
+	 * Verify passkey management exposes only active credentials owned by the current user.
+	 */
+	public function testAuthActionPasskeyListReturnsOwnedPrivacyMinimalMetadata(): void {
+
+		$_SERVER['REQUEST_METHOD'] = 'GET';
+		$this->setSqliteDatabase([$this->userPasskeysSchema()]);
+		Database::run(
+			"INSERT INTO user_passkeys
+				(id, user_id, credential_id, public_key, sign_count, label, transports, last_used_at, revoked_at, created_at, updated_at)
+			 VALUES
+				(7, 21, 'secret-active', 'secret-public-key', 4, 'Pixel', '[\"internal\",\"hybrid\"]', '2026-09-17 10:00:00', NULL, '2026-09-16 09:00:00', '2026-09-17 10:00:00'),
+				(8, 21, 'secret-revoked', 'secret-public-key', 0, 'Old key', NULL, NULL, '2026-09-17 11:00:00', '2026-09-15 09:00:00', '2026-09-17 11:00:00'),
+				(9, 22, 'secret-foreign', 'secret-public-key', 0, 'Foreign key', NULL, NULL, NULL, '2026-09-14 09:00:00', '2026-09-14 09:00:00')"
+		);
+
+		$this->setApplicationState($this->newLoadedUser(21));
+		$controller = $this->newController();
+		$this->primeController($controller, new Request(), [0 => 'passkeys']);
+
+		$response = $controller->authAction();
+		$payload = $this->readJsonResponseProperty($response, 'payload');
+
+		$this->assertInstanceOf(JsonResponse::class, $response);
+		$this->assertCount(1, $payload['data']['items']);
+		$this->assertSame([
+			'id' => 7,
+			'label' => 'Pixel',
+			'created_at' => '2026-09-16T09:00:00+00:00',
+			'last_used_at' => '2026-09-17T10:00:00+00:00',
+			'transports' => ['internal', 'hybrid'],
+		], $payload['data']['items'][0]);
+		$this->assertArrayNotHasKey('credential_id', $payload['data']['items'][0]);
+		$this->assertArrayNotHasKey('public_key', $payload['data']['items'][0]);
+
+	}
+
+	/**
+	 * Verify revocation hides foreign credentials with the same not-found response.
+	 */
+	public function testAuthActionPasskeyRevokeRejectsForeignCredential(): void {
+
+		$_SERVER['REQUEST_METHOD'] = 'DELETE';
+		$this->setSqliteDatabase([
+			$this->userPasskeysSchema(),
+			"INSERT INTO user_passkeys
+				(id, user_id, credential_id, public_key, sign_count, label, transports, last_used_at, revoked_at, created_at, updated_at)
+			 VALUES
+				(9, 22, 'secret-foreign', 'secret-public-key', 0, 'Foreign key', NULL, NULL, NULL, '2026-09-14 09:00:00', '2026-09-14 09:00:00')",
+		]);
+
+		$this->setApplicationState($this->newLoadedUser(21));
+		$controller = $this->newController();
+		$this->primeController($controller, new Request(), [0 => 'passkeys', 1 => '9']);
+
+		$response = $controller->authAction();
+		$row = Database::load('SELECT revoked_at FROM user_passkeys WHERE id = 9', [], Database::OBJECT);
+
+		$this->assertInstanceOf(ApiErrorResponse::class, $response);
+		$this->assertSame('NOT_FOUND', $this->readApiErrorResponseProperty($response, 'errorCode'));
+		$this->assertNull($row->revoked_at);
+
+	}
+
+	/**
+	 * Verify an owned credential can be revoked repeatedly without a second state transition.
+	 */
+	public function testAuthActionPasskeyRevokeIsOwnerScopedAndIdempotent(): void {
+
+		$_SERVER['REQUEST_METHOD'] = 'DELETE';
+		$this->setSqliteDatabase([
+			$this->userPasskeysSchema(),
+			"INSERT INTO user_passkeys
+				(id, user_id, credential_id, public_key, sign_count, label, transports, last_used_at, revoked_at, created_at, updated_at)
+			 VALUES
+				(7, 21, 'owned-credential', 'secret-public-key', 0, 'Pixel', NULL, NULL, NULL, '2026-09-14 09:00:00', '2026-09-14 09:00:00')",
+		]);
+
+		$this->setApplicationState($this->newLoadedUser(21));
+		$controller = $this->newController();
+		$this->primeController($controller, new Request(), [0 => 'passkeys', 1 => '7']);
+
+		$firstResponse = $controller->authAction();
+		$firstRow = Database::load('SELECT revoked_at, updated_at FROM user_passkeys WHERE id = 7', [], Database::OBJECT);
+		$secondResponse = $controller->authAction();
+		$secondRow = Database::load('SELECT revoked_at, updated_at FROM user_passkeys WHERE id = 7', [], Database::OBJECT);
+
+		$this->assertInstanceOf(JsonResponse::class, $firstResponse);
+		$this->assertInstanceOf(JsonResponse::class, $secondResponse);
+		$this->assertNotNull($firstRow->revoked_at);
+		$this->assertSame($firstRow->revoked_at, $secondRow->revoked_at);
+		$this->assertSame($firstRow->updated_at, $secondRow->updated_at);
+		$this->assertEquals(new \stdClass(), $this->readJsonResponseProperty($secondResponse, 'payload')['data']);
 
 	}
 
@@ -416,6 +636,27 @@ class MobileAuthControllerTest extends TestCase {
 			device_name TEXT NULL,
 			ip_address TEXT NULL,
 			user_agent TEXT NULL,
+			last_used_at TEXT NULL,
+			revoked_at TEXT NULL,
+			created_at TEXT NOT NULL,
+			updated_at TEXT NOT NULL
+		)';
+
+	}
+
+	/**
+	 * Return the SQLite passkey schema needed by management endpoint tests.
+	 */
+	private function userPasskeysSchema(): string {
+
+		return 'CREATE TABLE user_passkeys (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL,
+			credential_id TEXT NOT NULL UNIQUE,
+			public_key TEXT NOT NULL,
+			sign_count INTEGER NOT NULL DEFAULT 0,
+			label TEXT NULL,
+			transports TEXT NULL,
 			last_used_at TEXT NULL,
 			revoked_at TEXT NULL,
 			created_at TEXT NOT NULL,

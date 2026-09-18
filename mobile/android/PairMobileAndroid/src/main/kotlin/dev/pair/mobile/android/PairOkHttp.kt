@@ -5,6 +5,7 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.Cache
 import okhttp3.Call
@@ -85,6 +86,8 @@ class PairOkHttpTransport(
                 )
             }
         } catch (error: PairApiException) {
+            throw error
+        } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
             throw PairApiException.Transport(error)

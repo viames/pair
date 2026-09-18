@@ -12,6 +12,7 @@ It includes:
 - raw Keychain storage for apps with synchronous session services;
 - verified startup auth bootstrap;
 - refresh-aware session management with single-flight token refresh;
+- native passkey login and account management through AuthenticationServices;
 - cookie-free memory and disk image caching.
 
 The package does not include domain models. Each app defines its own `User`, tenant, and application context types.
@@ -42,6 +43,24 @@ await store.save(PairStoredAuthSession(session: session, context: "crotone"))
 Pass custom `JSONEncoder` and `JSONDecoder` instances when a project needs a specific Keychain date encoding format.
 
 Apps that already own a synchronous session service can use `PairKeychainDataStore` directly and keep their existing account names and payload formats.
+
+## Passkeys
+
+Pair's standard native passkey routes are wrapped by `PairPasskeyService`. The coordinator validates the relying party against the API host, serializes platform credentials for Pair, propagates cancellation, and never stores challenges or signatures.
+
+```swift
+let coordinator = PairPasskeyAuthorizationCoordinator(
+    apiBaseURL: URL(string: "https://example.test/api/v1")!
+)
+let passkeys = PairPasskeyService<AppUser>(client: client, coordinator: coordinator)
+
+let session = try await passkeys.login(deviceName: "iPhone")
+let credential = try await passkeys.register(displayName: session.user.name, label: "iPhone")
+let active = try await passkeys.passkeys()
+try await passkeys.revoke(id: credential.id)
+```
+
+The app target must include `webcredentials:example.test` in Associated Domains, and the relying-party domain must publish an AASA file authorizing the app identifier.
 
 ## Managed Auth Sessions
 

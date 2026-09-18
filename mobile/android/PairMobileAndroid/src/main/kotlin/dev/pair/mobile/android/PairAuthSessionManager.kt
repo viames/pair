@@ -1,5 +1,6 @@
 package dev.pair.mobile.android
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -68,6 +69,8 @@ class PairAuthSessionManager<User>(
             val validatedSession = validate(tokenSession)
             store.save(validatedSession)
             PairAuthSessionManagerResult.Valid(validatedSession)
+        } catch (error: CancellationException) {
+            throw error
         } catch (error: Throwable) {
             if (isDefinitiveAuthenticationFailure(error)) {
                 store.clear()
@@ -87,6 +90,8 @@ class PairAuthSessionManager<User>(
         return try {
             val tokenSession = sessionWithValidAccessToken(session, refresh)
             PairAccessTokenResult.Valid(tokenSession.accessToken, tokenSession)
+        } catch (error: CancellationException) {
+            throw error
         } catch (error: Throwable) {
             if (isDefinitiveAuthenticationFailure(error)) {
                 store.clear()

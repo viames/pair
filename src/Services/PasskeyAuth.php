@@ -57,15 +57,24 @@ class PasskeyAuth {
 	 * @param	string|null	$rpName			WebAuthn RP name.
 	 * @param	string[]|null	$allowedOrigins	Explicit allowed origins list.
 	 * @param	int			$challengeTtl	Challenge TTL in seconds.
+	 * @param	bool|null	$requireUserVerification	Override the environment user-verification policy.
 	 */
-	public function __construct(?string $rpId = null, ?string $rpName = null, ?array $allowedOrigins = null, int $challengeTtl = 300) {
+	public function __construct(
+		?string $rpId = null,
+		?string $rpName = null,
+		?array $allowedOrigins = null,
+		int $challengeTtl = 300,
+		?bool $requireUserVerification = null
+	) {
 
 		$this->rpId = $this->resolveRpId($rpId);
 		$this->rpName = trim((string)($rpName ?? Env::get('PASSKEY_RP_NAME') ?? Env::get('APP_NAME')));
 		$this->allowedOrigins = $this->resolveAllowedOrigins($allowedOrigins);
 
 		$this->challengeTtl = max(60, (int)$challengeTtl);
-		$this->requireUserVerification = $this->toBool(Env::get('PASSKEY_REQUIRE_USER_VERIFICATION'));
+		$this->requireUserVerification = is_null($requireUserVerification)
+			? $this->toBool(Env::get('PASSKEY_REQUIRE_USER_VERIFICATION'))
+			: $requireUserVerification;
 
 		if ('' === $this->rpName) {
 			$this->rpName = 'Pair App';
@@ -177,7 +186,31 @@ class PasskeyAuth {
 	 */
 	public function completeAuthentication(array $credential, string $timezone, ?User $user = null): \stdClass {
 
-		$ret = $this->failedLoginResponse();
+		$userId = $this->verifyAuthentication($credential, $user);
+
+		if (!$userId) {
+			return $this->failedLoginResponse();
+		}
+
+		try {
+			return User::doLoginById($userId, $timezone);
+		} catch (\Throwable) {
+			Audit::loginFailed('passkey', $_SERVER['REMOTE_ADDR'] ?? null, $_SERVER['HTTP_USER_AGENT'] ?? null);
+			return $this->failedLoginResponse();
+		}
+
+	}
+
+	/**
+	 * Verify an assertion and return its user ID without creating a web session.
+	 *
+	 * Native applications can use this method before issuing their own Bearer session.
+	 *
+	 * @param	array		$credential	Assertion payload from a WebAuthn client.
+	 * @param	User|null	$user		Optional expected user.
+	 */
+	public function verifyAuthentication(array $credential, ?User $user = null): ?int {
+
 		$credentialId = null;
 		$state = null;
 		$ipAddress = $_SERVER['REMOTE_ADDR'] ?? null;
@@ -192,12 +225,12 @@ class PasskeyAuth {
 
 			if (!$passkey) {
 				Audit::loginFailed('passkey:' . substr($credentialId, 0, 12), $ipAddress, $userAgent);
-				return $ret;
+				return null;
 			}
 
 			if ($user and $passkey->userId !== $user->id) {
 				Audit::loginFailed('passkey:' . substr($credentialId, 0, 12), $ipAddress, $userAgent);
-				return $ret;
+				return null;
 			}
 
 			$clientDataJsonB64 = $this->responseField($credential, 'clientDataJSON');
@@ -210,22 +243,22 @@ class PasskeyAuth {
 			$expectedRpIdHash = hash('sha256', $this->rpId, true);
 			if (!hash_equals($expectedRpIdHash, $authenticatorData->rpIdHash)) {
 				Audit::loginFailed('passkey:' . substr($credentialId, 0, 12), $ipAddress, $userAgent);
-				return $ret;
+				return null;
 			}
 
 			if (!$authenticatorData->userPresent) {
 				Audit::loginFailed('passkey:' . substr($credentialId, 0, 12), $ipAddress, $userAgent);
-				return $ret;
+				return null;
 			}
 
 			if ($this->requireUserVerification and !$authenticatorData->userVerified) {
 				Audit::loginFailed('passkey:' . substr($credentialId, 0, 12), $ipAddress, $userAgent);
-				return $ret;
+				return null;
 			}
 
 			if ($passkey->signCount > 0 and $authenticatorData->signCount > 0 and $authenticatorData->signCount <= $passkey->signCount) {
 				Audit::loginFailed('passkey:' . substr($credentialId, 0, 12), $ipAddress, $userAgent);
-				return $ret;
+				return null;
 			}
 
 			$clientDataHash = hash('sha256', $clientDataJson, true);
@@ -233,18 +266,18 @@ class PasskeyAuth {
 
 			if (!$this->verifySignature($signedData, $signatureB64, $passkey->publicKey)) {
 				Audit::loginFailed('passkey:' . substr($credentialId, 0, 12), $ipAddress, $userAgent);
-				return $ret;
+				return null;
 			}
 
 			$passkey->markUsed($authenticatorData->signCount);
 
-			return User::doLoginById($passkey->userId, $timezone);
+			return $passkey->userId;
 
 		} catch (\Throwable $e) {
 
 			$identifier = $credentialId ? 'passkey:' . substr($credentialId, 0, 12) : 'passkey';
 			Audit::loginFailed($identifier, $ipAddress, $userAgent);
-			return $ret;
+			return null;
 
 		}
 
@@ -368,6 +401,11 @@ class PasskeyAuth {
 			return null;
 		}
 
+		// Credential Manager identifies a signed Android app with a base64url SHA-256 certificate hash.
+		if (preg_match('/^android:apk-key-hash:[A-Za-z0-9_-]{43}$/', $origin)) {
+			return $origin;
+		}
+
 		$parts = parse_url($origin);
 
 		if (!is_array($parts) or !isset($parts['scheme']) or !isset($parts['host'])) {
@@ -467,6 +505,7 @@ class PasskeyAuth {
 	 */
 	public function registerCredential(User $user, array $credential, ?string $label = null): UserPasskey {
 
+		$credential = PasskeyCredential::normalizeRegistration($credential);
 		$state = $this->consumeChallenge('registration', $user->id);
 		$credentialId = $this->resolveCredentialId($credential);
 
@@ -492,6 +531,10 @@ class PasskeyAuth {
 
 			if (!$authenticatorData->userPresent) {
 				throw new PairException('Passkey user presence not verified', ErrorCodes::VALIDATION_FAILED);
+			}
+
+			if ($this->requireUserVerification and !$authenticatorData->userVerified) {
+				throw new PairException('Passkey user verification not verified', ErrorCodes::VALIDATION_FAILED);
 			}
 
 			$signCount = $authenticatorData->signCount;

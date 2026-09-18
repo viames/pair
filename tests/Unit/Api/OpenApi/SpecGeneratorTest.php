@@ -120,7 +120,14 @@ class SpecGeneratorTest extends TestCase {
 		$this->assertArrayHasKey('/api/v1/auth/refresh', $spec['paths']);
 		$this->assertArrayHasKey('/api/v1/auth/me', $spec['paths']);
 		$this->assertArrayHasKey('/api/v1/auth/logout', $spec['paths']);
+		$this->assertArrayHasKey('/api/v1/auth/passkey/options', $spec['paths']);
+		$this->assertArrayHasKey('/api/v1/auth/passkey/verify', $spec['paths']);
+		$this->assertArrayHasKey('/api/v1/auth/passkeys', $spec['paths']);
+		$this->assertArrayHasKey('/api/v1/auth/passkeys/options', $spec['paths']);
+		$this->assertArrayHasKey('/api/v1/auth/passkeys/verify', $spec['paths']);
+		$this->assertArrayHasKey('/api/v1/auth/passkeys/{id}', $spec['paths']);
 		$this->assertSame('mobileAuthRefresh', $spec['paths']['/api/v1/auth/refresh']['post']['operationId']);
+		$this->assertSame('mobilePasskeyLoginVerify', $spec['paths']['/api/v1/auth/passkey/verify']['post']['operationId']);
 		$this->assertSame(
 			'#/components/schemas/PairAuthSessionEnvelope',
 			$spec['paths']['/api/v1/auth/login']['post']['responses']['200']['content']['application/json']['schema']['$ref']
@@ -133,8 +140,19 @@ class SpecGeneratorTest extends TestCase {
 			[['bearerAuth' => []]],
 			$spec['paths']['/api/v1/auth/me']['get']['security']
 		);
+		$this->assertSame(
+			[['bearerAuth' => []]],
+			$spec['paths']['/api/v1/auth/passkeys']['get']['security']
+		);
+		$this->assertSame(
+			'#/components/schemas/PairPasskeyRegistrationVerificationRequest',
+			$spec['paths']['/api/v1/auth/passkeys/verify']['post']['requestBody']['content']['application/json']['schema']['$ref']
+		);
+		$this->assertArrayHasKey('401', $spec['paths']['/api/v1/auth/passkeys/{id}']['delete']['responses']);
 		$this->assertArrayHasKey('PairAuthSession', $spec['components']['schemas']);
 		$this->assertArrayHasKey('PairAuthRefreshRequest', $spec['components']['schemas']);
+		$this->assertArrayHasKey('PairPasskeyCredential', $spec['components']['schemas']);
+		$this->assertArrayHasKey('PairPasskeyListEnvelope', $spec['components']['schemas']);
 		$this->assertSame('http', $spec['components']['securitySchemes']['bearerAuth']['type']);
 		$this->assertSame('bearer', $spec['components']['securitySchemes']['bearerAuth']['scheme']);
 		$this->assertSame('JWT', $spec['components']['securitySchemes']['bearerAuth']['bearerFormat']);

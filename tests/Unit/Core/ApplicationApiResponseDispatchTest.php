@@ -227,6 +227,79 @@ PHP);
 	}
 
 	/**
+	 * Verify native passkey login reaches the API controller without a Bearer token.
+	 */
+	public function testApiAuthPasskeyLoginPathIsPublic(): void {
+
+		$applicationPath = $this->createFixtureApplication(<<<'PHP'
+<?php
+
+use Pair\Http\JsonResponse;
+
+/**
+ * Fixture API controller used to prove native passkey login dispatch.
+ */
+final class apiController extends \Pair\Api\ApiController {
+
+	/**
+	 * Return a deterministic response after the application guest-path guard.
+	 */
+	public function authAction(): JsonResponse {
+
+		return new JsonResponse([
+			'status' => 'ok',
+			'channel' => 'native-passkey-login',
+		], 202);
+
+	}
+
+}
+PHP);
+
+		try {
+			$result = $this->runFixtureApplication($applicationPath, action: 'auth', vars: [0 => 'passkey', 1 => 'options']);
+		} finally {
+			$this->removeDirectory($applicationPath);
+		}
+
+		$this->assertSame(0, $result['exitCode']);
+		$this->assertSame(202, $this->extractReportedStatusCode($result['stderr']));
+		$this->assertJsonStringEqualsJsonString(
+			json_encode([
+				'status' => 'ok',
+				'channel' => 'native-passkey-login',
+			], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+			$result['stdout']
+		);
+
+	}
+
+	/**
+	 * Verify account passkey management fails with 401 when the Bearer token is missing.
+	 */
+	public function testApiAuthPasskeysPathRequiresBearerToken(): void {
+
+		$applicationPath = $this->createFixtureApplication();
+
+		try {
+			$result = $this->runFixtureApplication($applicationPath, action: 'auth', vars: [0 => 'passkeys']);
+		} finally {
+			$this->removeDirectory($applicationPath);
+		}
+
+		$this->assertSame(0, $result['exitCode']);
+		$this->assertSame(401, $this->extractReportedStatusCode($result['stderr']));
+		$this->assertJsonStringEqualsJsonString(
+			json_encode([
+				'code' => 'AUTH_TOKEN_MISSING',
+				'error' => 'Missing authentication token or session ID',
+			], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+			$result['stdout']
+		);
+
+	}
+
+	/**
 	 * Create a minimal application tree for the API runtime fixture.
 	 *
 	 * @param	string|null	$controllerSource	Optional custom API controller source for one focused runtime scenario.

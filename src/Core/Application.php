@@ -1185,6 +1185,10 @@ class Application {
 
 				// Mobile auth is bearer-based and must not create PHP session cookies.
 
+			} else if ('passkey' == $param and in_array((string)$router->getParam(1), ['options', 'verify'], true)) {
+
+				// Native passkey login uses an opaque cookie-free challenge flow.
+
 			} else if ('logout' == $param) {
 
 				// destroy the current session
@@ -1193,6 +1197,14 @@ class Application {
 			} else if ('refresh' == $param) {
 
 				// Mobile refresh uses refresh tokens and must not create PHP session cookies.
+
+			} else if (in_array((string)$param, ['me', 'passkeys'], true)) {
+
+				$this->sendApiError(
+					'AUTH_TOKEN_MISSING',
+					ApiResponse::localizedMessage('AUTH_TOKEN_MISSING'),
+					401
+				);
 
 			} else {
 

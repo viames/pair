@@ -12,6 +12,7 @@ It includes:
 - short-lived access-token sessions with optional persistent refresh tokens;
 - migratable session storage based on private `SharedPreferences`;
 - verified startup session bootstrap with single-flight refresh;
+- native passkey login and account management through Android Credential Manager;
 - remote image bytes and bitmap loading through the shared HTTP cache.
 
 The library does not include domain models or UI. Android apps should keep their own Compose, XML, navigation, and feature models.
@@ -74,6 +75,27 @@ when (val result = pair.bootstrapWithCurrentUser()) {
 `PairAuthSession` expects mobile auth responses with `access_token`, optional `refresh_token`, and either `expires_at` or `expires_in`. `PairStoredAuthSession` stores the same token metadata with the user snapshot and optional application context.
 
 Use `PairAuthSessionManager.validAccessToken(refresh:)` before authenticated API calls. If the access token is expired or near expiration, concurrent callers wait for the same refresh operation instead of rotating the refresh token multiple times.
+
+Coroutine cancellation remains distinct from connectivity and authentication failures. `PairOkHttpTransport`, `bootstrap(validate:refresh:)`, and `validAccessToken(refresh:)` propagate `CancellationException`; they never translate it to `Transport`, `Offline`, or `Invalidated`, and an existing stored snapshot is left available for the next task.
+
+## Passkeys
+
+The library includes AndroidX Credentials 1.6.0 and exposes the standard Pair passkey endpoints through `PairPasskeyService`. Supply an Activity context to `PairPasskeyClient` so Credential Manager can present its system UI.
+
+```kotlin
+val passkeys = PairPasskeyService(
+    client = pair.client,
+    userSerializer = AppUser.serializer(),
+    passkeyClient = PairPasskeyClient(activity)
+)
+
+val session = passkeys.login(deviceName = "Android")
+val registered = passkeys.register(displayName = session.user.name, label = "Android")
+val active = passkeys.passkeys()
+passkeys.revoke(registered.id)
+```
+
+The relying-party domain must publish `/.well-known/assetlinks.json` with the installed package name and the SHA-256 fingerprint of its production signing certificate. Add the matching `android:apk-key-hash:` value to `PASSKEY_ALLOWED_ORIGINS` on the Pair backend.
 
 ## Application Headers and Binary Transfers
 

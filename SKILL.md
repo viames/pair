@@ -1,7 +1,7 @@
 ---
 name: "Pair Framework"
 slug: "pair"
-version: "4.0.0"
+version: "4.1.0"
 description: "Entry skill for assistants working on the Pair v4 framework repository."
 tags:
   - php

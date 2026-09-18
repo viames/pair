@@ -11,6 +11,9 @@ use Pair\Http\TextResponse;
 use Pair\Models\ApiToken;
 use Pair\Models\Session;
 use Pair\Models\User;
+use Pair\Models\UserPasskey;
+use Pair\Services\PasskeyAuth;
+use Pair\Services\PasskeyFlow;
 use Pair\Services\WhatsAppCloudClient;
 use Pair\Web\Controller;
 
@@ -272,10 +275,14 @@ abstract class ApiController extends Controller {
 	 * - POST /api/auth/refresh
 	 * - GET  /api/auth/me
 	 * - POST /api/auth/logout
+	 * - POST /api/auth/passkey/options
+	 * - POST /api/auth/passkey/verify
+	 * - GET|POST|DELETE /api/auth/passkeys[/options|/verify|/{id}]
 	 */
 	public function authAction(): ResponseInterface {
 
 		$operation = strtolower((string)($this->router->getParam('operation') ?: $this->router->getParam(0)));
+		$subOperation = strtolower((string)$this->router->getParam(1));
 		$method = strtoupper($this->request->method());
 
 		if ('login' == $operation and 'POST' == $method) {
@@ -296,6 +303,30 @@ abstract class ApiController extends Controller {
 
 		if ('logout' == $operation and in_array($method, ['POST', 'DELETE'])) {
 			return $this->mobileAuthLogout();
+		}
+
+		if ('passkey' == $operation and 'options' == $subOperation and 'POST' == $method) {
+			return $this->mobilePasskeyLoginOptions();
+		}
+
+		if ('passkey' == $operation and 'verify' == $subOperation and 'POST' == $method) {
+			return $this->mobilePasskeyLoginVerify();
+		}
+
+		if ('passkeys' == $operation and '' === $subOperation and 'GET' == $method) {
+			return $this->mobilePasskeyList();
+		}
+
+		if ('passkeys' == $operation and 'options' == $subOperation and 'POST' == $method) {
+			return $this->mobilePasskeyRegisterOptions();
+		}
+
+		if ('passkeys' == $operation and 'verify' == $subOperation and 'POST' == $method) {
+			return $this->mobilePasskeyRegisterVerify();
+		}
+
+		if ('passkeys' == $operation and ctype_digit($subOperation) and 'DELETE' == $method) {
+			return $this->mobilePasskeyRevoke((int)$subOperation);
 		}
 
 		return $this->errorResponse('NOT_FOUND', [
@@ -559,6 +590,256 @@ abstract class ApiController extends Controller {
 
 		if ('' !== $refreshToken) {
 			ApiToken::revokeByRefreshToken($refreshToken);
+		}
+
+		return $this->dataResponse(new \stdClass());
+
+	}
+
+	/**
+	 * Return the safe metadata exposed by mobile passkey management endpoints.
+	 *
+	 * @return	array<string, mixed>
+	 */
+	private function mobilePasskeyData(UserPasskey $passkey): array {
+
+		return [
+			'id' => (int)$passkey->id,
+			'label' => $passkey->label,
+			'created_at' => $passkey->createdAt?->format(\DateTimeInterface::ATOM),
+			'last_used_at' => $passkey->lastUsedAt?->format(\DateTimeInterface::ATOM),
+			'transports' => $passkey->getTransports(),
+		];
+
+	}
+
+	/**
+	 * Handle POST /api/auth/passkey/options for discoverable native login.
+	 */
+	private function mobilePasskeyLoginOptions(): ResponseInterface {
+
+		$body = $this->requireJsonPostOrResponse();
+
+		if ($body instanceof ApiErrorResponse) {
+			return $body;
+		}
+
+		$flow = new PasskeyFlow();
+
+		try {
+			$options = (new PasskeyAuth(requireUserVerification: true))->beginAuthentication(null, [], [
+				'userVerification' => 'required',
+			]);
+			$flow->close();
+		} catch (\Throwable $throwable) {
+			$flow->destroy();
+			throw $throwable;
+		}
+
+		return $this->dataResponse([
+			'flow_id' => $flow->id(),
+			'publicKey' => $options,
+		]);
+
+	}
+
+	/**
+	 * Handle POST /api/auth/passkey/verify and issue the standard mobile Bearer session.
+	 */
+	private function mobilePasskeyLoginVerify(): ResponseInterface {
+
+		$body = $this->requireJsonPostOrResponse();
+
+		if ($body instanceof ApiErrorResponse) {
+			return $body;
+		}
+
+		if (!is_string($body['flow_id'] ?? null)) {
+			return $this->errorResponse('BAD_REQUEST');
+		}
+
+		$flowId = trim($body['flow_id']);
+		$credential = (isset($body['credential']) and is_array($body['credential'])) ? $body['credential'] : null;
+
+		if ('' === $flowId or !$credential) {
+			return $this->errorResponse('BAD_REQUEST');
+		}
+
+		try {
+			$flow = new PasskeyFlow($flowId);
+		} catch (PairException) {
+			return $this->errorResponse('BAD_REQUEST');
+		}
+
+		try {
+			$userId = (new PasskeyAuth(requireUserVerification: true))->verifyAuthentication($credential);
+		} finally {
+			$flow->destroy();
+		}
+
+		if (!$userId) {
+			return $this->errorResponse('AUTH_INVALID_CREDENTIALS');
+		}
+
+		$userClass = Application::getInstance()->userClass;
+		$result = $userClass::doTokenLoginById($userId);
+
+		if ($result->error or !$result->userId) {
+			return $this->errorResponse('AUTH_INVALID_CREDENTIALS');
+		}
+
+		$user = new $userClass((int)$result->userId);
+
+		if (!$user instanceof User or !$this->mobileAuthUserCanUseTokens($user)) {
+			return $this->errorResponse('AUTH_INVALID_CREDENTIALS');
+		}
+
+		return $this->issueMobileAuthResponse($user, $body);
+
+	}
+
+	/**
+	 * Handle GET /api/auth/passkeys for the current Bearer-authenticated user.
+	 */
+	private function mobilePasskeyList(): ResponseInterface {
+
+		$user = $this->requireAuthOrResponse();
+
+		if ($user instanceof ApiErrorResponse) {
+			return $user;
+		}
+
+		$items = [];
+
+		foreach (UserPasskey::getActiveByUserId((int)$user->id) as $passkey) {
+			$items[] = $this->mobilePasskeyData($passkey);
+		}
+
+		return $this->dataResponse(['items' => $items]);
+
+	}
+
+	/**
+	 * Handle POST /api/auth/passkeys/options for the current Bearer-authenticated user.
+	 */
+	private function mobilePasskeyRegisterOptions(): ResponseInterface {
+
+		$user = $this->requireAuthOrResponse();
+
+		if ($user instanceof ApiErrorResponse) {
+			return $user;
+		}
+
+		$body = $this->requireJsonPostOrResponse();
+
+		if ($body instanceof ApiErrorResponse) {
+			return $body;
+		}
+
+		if (isset($body['display_name']) and !is_string($body['display_name'])) {
+			return $this->errorResponse('BAD_REQUEST');
+		}
+
+		$displayName = trim((string)($body['display_name'] ?? ''));
+
+		if (mb_strlen($displayName) > 120) {
+			return $this->errorResponse('BAD_REQUEST');
+		}
+		$flow = new PasskeyFlow();
+
+		try {
+			$options = (new PasskeyAuth(requireUserVerification: true))->beginRegistration(
+				$user,
+				'' === $displayName ? null : $displayName,
+				[],
+				[
+					'attestation' => 'none',
+					'residentKey' => 'required',
+					'userVerification' => 'required',
+				]
+			);
+			$flow->close();
+		} catch (\Throwable $throwable) {
+			$flow->destroy();
+			throw $throwable;
+		}
+
+		return $this->dataResponse([
+			'flow_id' => $flow->id(),
+			'publicKey' => $options,
+		]);
+
+	}
+
+	/**
+	 * Handle POST /api/auth/passkeys/verify for the current Bearer-authenticated user.
+	 */
+	private function mobilePasskeyRegisterVerify(): ResponseInterface {
+
+		$user = $this->requireAuthOrResponse();
+
+		if ($user instanceof ApiErrorResponse) {
+			return $user;
+		}
+
+		$body = $this->requireJsonPostOrResponse();
+
+		if ($body instanceof ApiErrorResponse) {
+			return $body;
+		}
+
+		if (!is_string($body['flow_id'] ?? null)
+			or (isset($body['label']) and !is_string($body['label']))) {
+			return $this->errorResponse('BAD_REQUEST');
+		}
+
+		$flowId = trim($body['flow_id']);
+		$credential = (isset($body['credential']) and is_array($body['credential'])) ? $body['credential'] : null;
+		$label = trim((string)($body['label'] ?? ''));
+
+		if ('' === $flowId or !$credential or mb_strlen($label) > 120) {
+			return $this->errorResponse('BAD_REQUEST');
+		}
+
+		try {
+			$flow = new PasskeyFlow($flowId);
+		} catch (PairException) {
+			return $this->errorResponse('BAD_REQUEST');
+		}
+
+		try {
+			$passkey = (new PasskeyAuth(requireUserVerification: true))->registerCredential(
+				$user,
+				$credential,
+				'' === $label ? null : $label
+			);
+		} finally {
+			$flow->destroy();
+		}
+
+		return $this->dataResponse(['passkey' => $this->mobilePasskeyData($passkey)], httpCode: 201);
+
+	}
+
+	/**
+	 * Handle DELETE /api/auth/passkeys/{id} with an ownership check.
+	 */
+	private function mobilePasskeyRevoke(int $passkeyId): ResponseInterface {
+
+		$user = $this->requireAuthOrResponse();
+
+		if ($user instanceof ApiErrorResponse) {
+			return $user;
+		}
+
+		$passkey = new UserPasskey($passkeyId);
+
+		if (!$passkey->isLoaded() or $passkey->userId !== $user->id) {
+			return $this->errorResponse('NOT_FOUND');
+		}
+
+		if (!$passkey->isRevoked() and !$passkey->revoke()) {
+			return $this->errorResponse('INTERNAL_SERVER_ERROR');
 		}
 
 		return $this->dataResponse(new \stdClass());
