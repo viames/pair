@@ -1,43 +1,48 @@
 # Pair
 
-**Lightweight PHP framework for fast server-rendered web applications.**
+**A lightweight PHP framework for maintainable, server-rendered applications.**
 
 [Website](https://viames.github.io/pair/) ·
-[Wiki](https://github.com/viames/pair/wiki) ·
-[Boilerplate](https://github.com/viames/pair_boilerplate) ·
-[Issues](https://github.com/viames/pair/issues) ·
+[Documentation](https://github.com/viames/pair/wiki) ·
+[Starter project](https://github.com/viames/pair_boilerplate) ·
 [Releases](https://github.com/viames/pair/releases) ·
 [Security](SECURITY.md)
 
 [![CI](https://github.com/viames/pair/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/viames/pair/actions/workflows/ci.yml?query=branch%3Amain)
-[![Total Downloads](https://poser.pugx.org/viames/pair/downloads)](https://packagist.org/packages/viames/pair)
-[![Latest Tagged Release](https://img.shields.io/packagist/v/viames/pair?label=latest%20tagged)](https://packagist.org/packages/viames/pair)
-[![Development Branch](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fviames%2Fpair%2Fmain%2Fcomposer.json&query=%24.extra.branch-alias.dev-main&label=development%20branch&color=orange)](https://github.com/viames/pair/tree/main)
+[![Total downloads](https://poser.pugx.org/viames/pair/downloads)](https://packagist.org/packages/viames/pair)
+[![Latest release](https://img.shields.io/packagist/v/viames/pair)](https://packagist.org/packages/viames/pair)
 [![License](https://poser.pugx.org/viames/pair/license)](https://packagist.org/packages/viames/pair)
-[![Pair v4 PHP Requirement](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fviames%2Fpair%2Fmain%2Fcomposer.json&query=%24.require.php&label=Pair%20v4%20PHP&color=777BB4)](composer.json)
+[![PHP requirement](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fviames%2Fpair%2Fmain%2Fcomposer.json&query=%24.require.php&label=PHP&color=777BB4)](composer.json)
 
-Pair is a lightweight PHP framework for server-rendered web applications. It focuses on fast setup, clear MVC routing, practical ActiveRecord-style ORM features, API tooling, progressive enhancement and optional integrations without heavy tooling.
+Pair is designed for small and medium PHP/MySQL applications where clear
+architecture, low operational overhead and long-term maintainability matter
+more than a heavy frontend toolchain.
 
-Pair is designed for small and medium web applications where you want a clear PHP/MySQL stack, server-rendered pages, useful defaults, low operational overhead and a framework that remains easy to inspect, extend and maintain.
+It combines explicit MVC responses, an ActiveRecord-style ORM, CRUD and OpenAPI
+tooling, progressive enhancement, authentication helpers and conservative
+upgrade tooling in a codebase intended to remain inspectable by both people and
+AI-assisted workflows.
 
-## Version status
+## Status
 
-| Line | Status | Recommended use |
+| Line | Status | Use |
 | --- | --- | --- |
-| Pair v4 | Stable / production | Current applications and new development |
-| Pair v3 | Maintenance | Existing applications pinned to v3 releases |
+| Pair 4 | Stable | New and current applications |
+| Pair 3 | Maintenance | Existing applications awaiting migration |
 
-Pair v4 is the current stable line and is used in production across the maintainer's applications. Pair v3 remains available as a maintenance line for existing applications that have not yet migrated.
+Pair 4 is used in production across the maintainer's applications. See
+[Releases](https://github.com/viames/pair/releases) for version history and
+[UPGRADE_V4.md](UPGRADE_V4.md) for migration guidance.
 
 ## Quick start
 
-### 1. Install Pair v4
+Install the stable release:
 
 ```sh
 composer require viames/pair:^4.0
 ```
 
-### 2. Bootstrap the application
+Bootstrap an application:
 
 ```php
 <?php
@@ -50,84 +55,28 @@ $app = Application::getInstance();
 $app->run();
 ```
 
-### 3. Start from the boilerplate
+For authentication, ACL, migrations, localization and a ready-to-run
+application structure, start with the boilerplate:
 
-For a ready-to-use application structure, start from:
-
-```txt
-https://github.com/viames/pair_boilerplate
+```sh
+composer create-project viames/pair_boilerplate my-project
 ```
 
 ## Why Pair
 
-- Server-rendered web applications without a heavy frontend build chain.
-- MVC routing with clear module/action conventions.
-- ActiveRecord-style ORM with practical type casting and relation helpers.
-- API tooling for CRUD resources and OpenAPI-oriented contracts.
-- Native mobile helpers through `mobile/ios/PairMobileKit` and `mobile/android/PairMobileAndroid`.
-- PairUI helpers for progressive enhancement.
-- PWA, push and passkey helpers without forcing a SPA architecture.
-- Runtime extensions for optional integrations.
-- Installable package architecture for modules, templates, providers and custom package records.
-- Useful defaults for timezone, logging, debugging and framework utilities.
-- Small enough to understand, extend and maintain.
+- Server-rendered applications without a mandatory frontend build chain
+- Explicit controllers, responses and typed page-state objects in Pair 4
+- ActiveRecord-style ORM with casting, relations and query helpers
+- CRUD generators and OpenAPI-oriented API contracts
+- PairUI progressive enhancement with no runtime dependency
+- PWA, push, passkey and native mobile helpers
+- Conservative, dry-run-first migration tools
+- Focused tests and CI across supported PHP versions
+- Optional integrations without forcing them into the core runtime
 
-### Well suited to AI-assisted development
+## A Pair 4 page
 
-Pair grew out of practical web application development and has a public repository history dating back to 2017. It was not designed around generated code; its advantage for AI-assisted development comes from the same qualities that help human maintainers understand it: a compact codebase, predictable component boundaries, limited hidden behavior and conventions that favor small, reviewable changes.
-
-- A consistent component layout reduces the context needed to locate related code and nearby examples.
-- Limited runtime dependencies and a server-rendered-first approach make application behavior easier to trace end to end.
-- Pair v4 uses explicit input, response, page-state and API read-model contracts to reduce hidden assumptions.
-- Focused automated tests and CI provide fast feedback across the supported PHP versions and native mobile helpers.
-- Repository-level agent instructions document the architecture, coding conventions and patterns that should not be imported from heavier frameworks.
-
-These properties do not make AI-generated changes automatically correct. They make proposed changes easier to constrain, inspect, test and review.
-
-## Core features
-
-### Routing and MVC
-
-Default route format after the base path:
-
-```txt
-/<module>/<action>/<params...>
-```
-
-Example:
-
-```txt
-example.com/user/login
-```
-
-Typical legacy MVC module structure:
-
-```txt
-/modules/user/controller.php
-/modules/user/model.php
-/modules/user/viewLogin.php
-/modules/user/layouts/login.php
-```
-
-In Pair v4, legacy `Pair\Core\Controller` and `Pair\Core\View` remain available as migration bridges, but new modules should prefer explicit controllers and responses.
-
-Docs: [Router](https://github.com/viames/pair/wiki/Router)
-
-### ActiveRecord ORM
-
-Pair maps PHP classes to database tables and supports practical ORM features such as:
-
-- automatic casts for `int`, `bool`, `DateTime`, `float` and `csv`
-- relation helpers
-- query helpers
-- cache-oriented access patterns
-- database-backed CRUD resources
-
-Docs: [ActiveRecord](https://github.com/viames/pair/wiki/ActiveRecord)
-
-### Pair v4 explicit controller path
-
-Pair v4 prefers explicit responses over hidden controller/view bootstrapping.
+Pair 4 favors explicit responses over hidden view bootstrapping:
 
 ```php
 <?php
@@ -139,7 +88,7 @@ final class UserController extends Controller {
 
 	public function defaultAction(): PageResponse {
 
-		$state = new class ('Hello Pair v4') {
+		$state = new class ('Hello Pair') {
 
 			public function __construct(public string $message) {}
 
@@ -152,7 +101,7 @@ final class UserController extends Controller {
 }
 ```
 
-Minimal layout example:
+The corresponding layout stays presentation-focused:
 
 ```php
 <main class="user-page">
@@ -160,146 +109,57 @@ Minimal layout example:
 </main>
 ```
 
-For reusable output contracts, Pair v4 prefers `ReadModel` objects built explicitly from persistence records.
+Default routes use the form `/<module>/<action>/<params...>`. Legacy Pair
+controllers and views remain available as migration bridges, while new Pair 4
+modules should use explicit response contracts.
 
-### API and OpenAPI tooling
+## Main capabilities
 
-Pair includes API helpers for CRUD-oriented resources and explicit response contracts. In Pair v4, OpenAPI generation for CRUD resources can use `readModel` contracts, so generated response schemas describe the public output model instead of leaking persistence classes.
+### Web and data
 
-Useful docs:
+- MVC routing and explicit page, JSON, redirect, file and stream responses
+- ActiveRecord-style persistence, collections, relations and type casting
+- Form controls, validation presets and CSRF protection
+- Authentication, ACL and session helpers
+- Logging, SQL traces and development diagnostics
 
-- [ApiExposable](https://github.com/viames/pair/wiki/ApiExposable)
-- [CrudController](https://github.com/viames/pair/wiki/CrudController)
-- [Generator](https://github.com/viames/pair/wiki/Generator)
-- [Mobile iOS stack](https://github.com/viames/pair/blob/main/docs/MOBILE_IOS_STACK.md)
-- [Mobile Android stack](https://github.com/viames/pair/blob/main/docs/MOBILE_ANDROID_STACK.md)
+### APIs and clients
 
-### Log bar and debugging
+- CRUD-oriented API controllers and explicit read models
+- OpenAPI-oriented response contracts
+- OAuth2 and bearer-session building blocks
+- iOS and Android helpers for Pair-backed applications
 
-Pair includes a built-in log bar for development and diagnostics:
+### Progressive enhancement
 
-- loaded objects
-- memory usage
-- timings
-- application environment
-- current Bootstrap/Bulma breakpoint when a matching UI framework is selected
-- SQL traces
-- backtraces
-- custom debug messages
+PairUI adds lightweight `data-*` directives for text, visibility, attributes,
+events, models and repeated content. Additional helpers cover PWA installation,
+service workers, routing, skeleton states, validation, passkeys and push
+notifications while preserving server-rendered behavior.
 
-## Frontend helpers
+See [PairUI.js](https://github.com/viames/pair/wiki/PairUI.js) and the
+[documentation index](https://github.com/viames/pair/wiki) for examples.
 
-### PairUI
+## Requirements
 
-PairUI is a dependency-free helper for progressive enhancement in server-rendered applications.
+- PHP 8.4.1 or later
+- MySQL 8.0 or later for the default database driver
+- Composer 2
+- Apache 2.4 with `mod_rewrite` for the standard web setup
+- PHP extensions: `curl`, `intl`, `json`, `mbstring`, `pdo`, `pdo_mysql`
 
-Main directives:
+Feature-specific extensions such as `fileinfo`, `openssl`, `redis` and `xdebug`
+remain optional.
 
-- `data-text`, `data-html`, `data-show`, `data-if`
-- `data-class`, `data-attr`, `data-prop`, `data-style`
-- `data-model`, `data-on`, `data-each`
+## Development
 
-Docs: [PairUI.js](https://github.com/viames/pair/wiki/PairUI.js)
-
-### PWA helpers
-
-Available assets:
-
-- `PairUI.js`
-- `PairPWA.js`
-- `PairSW.js`
-- `PairRouter.js`
-- `PairSkeleton.js`
-- `PairDevice.js`
-- `PairPasskey.js`
-
-Minimal frontend setup:
-
-```html
-<script src="/assets/PairUI.js" defer></script>
-<script src="/assets/PairPWA.js" defer></script>
-<script src="/assets/PairRouter.js" defer></script>
-<script src="/assets/PairSkeleton.js" defer></script>
-<script src="/assets/PairDevice.js" defer></script>
-<script src="/assets/PairPasskey.js" defer></script>
+```sh
+composer install
+composer test
+composer run benchmark-v4
 ```
 
-### Form validation presets
-
-Pair can share common form validation rules between PHP and JavaScript through `FormValidationPreset`, `FormControl::preset()` and `PairValidation.js`.
-
-```html
-<script src="/assets/PairValidation.js" defer></script>
-```
-
-```php
-$form->emailAddress('email')->required();
-$form->iban('ibanCode');
-$form->webUrl('website');
-$form->italianFiscalCode('fiscalCode');
-$form->italianVatNumber('vatNumber');
-```
-
-Italy-specific presets use explicit Italian names or `it.*` preset identifiers, for example `italianFiscalCode()` and `it.vat_number`. International presets such as `iban`, `email`, `url`, `bic`, `e164_phone`, `uuid`, `ip_address`, `mac_address`, `hex_color`, `ean13` and `slug` remain territory-neutral.
-
-Important notes:
-
-- Keep progressive enhancement.
-- Service workers require HTTPS, except on localhost.
-- Use a single service worker URL if you also enable push notifications.
-
-## Passkey quick start
-
-Backend:
-
-```php
-class ApiController extends \Pair\Api\PasskeyController {}
-```
-
-This enables:
-
-```txt
-POST   /api/passkey/login/options
-POST   /api/passkey/login/verify
-POST   /api/passkey/register/options
-POST   /api/passkey/register/verify
-GET    /api/passkey/list
-DELETE /api/passkey/revoke/{id}
-```
-
-Native iOS and Android apps use the cookie-free mobile contract exposed by `Pair\Api\ApiController`:
-
-```txt
-POST   /api/auth/passkey/options
-POST   /api/auth/passkey/verify
-GET    /api/auth/passkeys
-POST   /api/auth/passkeys/options
-POST   /api/auth/passkeys/verify
-DELETE /api/auth/passkeys/{id}
-```
-
-`PairMobileKit` uses AuthenticationServices and `PairMobileAndroid` uses Android Credential Manager. Both issue the same Pair Bearer session as password login and keep passkey creation, listing, and revocation under the authenticated account.
-Only the singular `/auth/passkey/options` and `/auth/passkey/verify` login routes are public. Every plural `/auth/passkeys*` management route requires a Bearer token and returns `401` when it is missing; revocation is owner-scoped, hides foreign IDs as not found, and is idempotent for an already revoked owned credential.
-
-## Optional integrations
-
-Pair includes optional support for services and runtime integrations such as:
-
-- Amazon S3
-- Amazon SES
-- Telegram Bot API
-- OneSignal
-- Stripe
-- Passkey/WebAuthn helpers
-- Web push helpers
-
-In Pair v4 these integrations should be exposed through Runtime Extensions and manually registered adapters. This is separate from Installable Packages, the ZIP/manifest mechanism used for modules, templates, providers and custom package records.
-
-Configuration reference: [Configuration (.env)](https://github.com/viames/pair/wiki/Configuration-file)
-
-## Pair v4 tools
-
-Generate Pair v4 skeletons:
+Generate Pair 4 code from an application that has Pair installed:
 
 ```sh
 vendor/bin/pair make:module orders
@@ -307,162 +167,34 @@ vendor/bin/pair make:api api
 vendor/bin/pair make:crud order --table=orders --fields=id,customer_id,total_amount
 ```
 
-The generator writes explicit Pair v4 files and avoids overwriting user-edited files unless `--force` is provided.
-
-Additional migration and design docs:
-
-- [PAIR_V4_DESIGN.md](https://github.com/viames/pair/blob/main/PAIR_V4_DESIGN.md)
-- [UPGRADE_V4.md](UPGRADE_V4.md)
-- [RELEASING.md](https://github.com/viames/pair/blob/main/RELEASING.md)
-
-## Upgrading
-
-Pair v4 ships a composable upgrader for each supported major-version boundary. Start from a clean working tree or a verified backup, run every required step in dry-run mode, review the warnings, and then repeat it in write mode.
-
-Use this sequence for the version currently installed by the application:
-
-- Pair v3: run `upgrade-to-v4`.
-- Pair v2: run `upgrade-to-v3`, then `upgrade-to-v4`.
-- Pair v1: run `upgrade-to-v2`, `upgrade-to-v3`, then `upgrade-to-v4`.
-
-From a Pair application that has Pair installed as a dependency:
-
-```sh
-php vendor/viames/pair/scripts/upgrade-to-v2.php --dry-run
-php vendor/viames/pair/scripts/upgrade-to-v2.php --write
-
-php vendor/viames/pair/scripts/upgrade-to-v3.php --dry-run
-php vendor/viames/pair/scripts/upgrade-to-v3.php --write
-
-php vendor/viames/pair/scripts/upgrade-to-v4.php --dry-run
-php vendor/viames/pair/scripts/upgrade-to-v4.php --write
-```
-
-From inside the Pair repository itself:
-
-```sh
-composer run upgrade-to-v2 -- --dry-run --path=/absolute/app/path
-composer run upgrade-to-v2 -- --write --path=/absolute/app/path
-composer run upgrade-to-v3 -- --dry-run --path=/absolute/app/path
-composer run upgrade-to-v3 -- --write --path=/absolute/app/path
-composer run upgrade-to-v4 -- --dry-run
-composer run upgrade-to-v4 -- --write
-```
-
-The v1 upgrader retains `config.php` as a safety copy after generating `.env`. If the configuration contains PHP expressions that cannot be represented safely as scalar environment values, it leaves both files untouched and reports a blocking error.
-
-The upgrade tools are conservative by design. They rewrite low-risk patterns automatically, return a non-zero exit code when a requested write fails, and report application-specific code that still requires manual migration. See [UPGRADE_V4.md](UPGRADE_V4.md) for the detailed sequence and validation checklist.
-
-## Requirements
-
-| Software | Minimum | Recommended | Notes |
-| --- | :---: | :---: | --- |
-| PHP | 8.4.1 | 8.5 | Required by Composer |
-| Apache | 2.4 | 2.4+ | `mod_rewrite` recommended |
-| MySQL | 8.0 | 8.0+ | `utf8mb4`, `utf8mb4_unicode_ci`, InnoDB |
-| Composer | 2.x | Latest stable | Required for package installation |
-
-Required PHP extensions:
-
-- `curl`
-- `intl`
-- `json`
-- `mbstring`
-- `pdo`
-- `pdo_mysql`
-
-Recommended or optional extensions:
-
-- `fileinfo` for reliable MIME detection in uploads
-- `openssl` for Passkey/WebAuthn features
-- `redis` for Redis-backed integrations
-- `xdebug` for development and debugging
-
-## Example project
-
-Start from the boilerplate project to bootstrap a new application quickly:
-
-```txt
-https://github.com/viames/pair_boilerplate
-```
+Upgrade tools operate in dry-run mode first and report application-specific
+code that still requires manual migration. Follow [UPGRADE_V4.md](UPGRADE_V4.md)
+and begin from a clean working tree or verified backup.
 
 ## Documentation
-
-Main documentation lives in the Wiki:
-
-```txt
-https://github.com/viames/pair/wiki
-```
-
-Useful pages:
 
 - [Application](https://github.com/viames/pair/wiki/Application)
 - [Router](https://github.com/viames/pair/wiki/Router)
 - [Controller](https://github.com/viames/pair/wiki/Controller)
-- [View](https://github.com/viames/pair/wiki/View)
 - [ActiveRecord](https://github.com/viames/pair/wiki/ActiveRecord)
-- [ApiExposable](https://github.com/viames/pair/wiki/ApiExposable)
-- [CrudController](https://github.com/viames/pair/wiki/CrudController)
-- [Form](https://github.com/viames/pair/wiki/Form)
-- [Collection](https://github.com/viames/pair/wiki/Collection)
-- [Push notifications](https://github.com/viames/pair/wiki/Push-notifications)
-- [PairUI.js](https://github.com/viames/pair/wiki/PairUI.js)
-- [Configuration (.env)](https://github.com/viames/pair/wiki/Configuration-file)
-- [index.php](https://github.com/viames/pair/wiki/index)
-- [.htaccess](https://github.com/viames/pair/wiki/htaccess)
-- [Classes folder](https://github.com/viames/pair/wiki/Classes-folder)
-
-## Development
-
-Install dependencies:
-
-```sh
-composer install
-```
-
-Run tests:
-
-```sh
-composer test
-```
-
-Run the v4 benchmark harness:
-
-```sh
-composer run benchmark-v4
-```
-
-The benchmark harness measures:
-
-- minimal request bootstrap primitives
-- simple server-rendered page rendering
-- simple JSON endpoint payload preparation
-- record-to-read-model mapping cost
-- response serialization cost
-
-## Support
-
-- Issues: [github.com/viames/pair/issues](https://github.com/viames/pair/issues)
-- Wiki: [github.com/viames/pair/wiki](https://github.com/viames/pair/wiki)
-- Source: [github.com/viames/pair/tree/main/src](https://github.com/viames/pair/tree/main/src)
-- Homepage: [viames.github.io/pair](https://viames.github.io/pair/)
-- Packagist: [packagist.org/packages/viames/pair](https://packagist.org/packages/viames/pair)
-
-## Changelog
-
-Version history is available in GitHub Releases:
-
-```txt
-https://github.com/viames/pair/releases
-```
+- [Forms](https://github.com/viames/pair/wiki/Form)
+- [API exposure](https://github.com/viames/pair/wiki/ApiExposable)
+- [CRUD controllers](https://github.com/viames/pair/wiki/CrudController)
+- [PairUI](https://github.com/viames/pair/wiki/PairUI.js)
+- [Configuration](https://github.com/viames/pair/wiki/Configuration-file)
+- [Pair 4 design](PAIR_V4_DESIGN.md)
+- [Pair 4 upgrade guide](UPGRADE_V4.md)
 
 ## Security
 
-If you discover a security issue, follow the private reporting guidance in [SECURITY.md](SECURITY.md).
+Report vulnerabilities privately by following [SECURITY.md](SECURITY.md). Do
+not open a public issue for an unassessed security report.
 
 ## Contributing
 
-Feedback, code contributions and documentation improvements are welcome via pull request.
+Focused pull requests are welcome. Include tests when behavior changes and
+update the owning documentation when commands, requirements or public contracts
+change.
 
 ## License
 
