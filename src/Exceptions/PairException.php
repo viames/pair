@@ -49,8 +49,8 @@ class PairException extends \Exception {
 		$trackedMessage = ($previous and $previous->getMessage()) ? $previous->getMessage() : $message;
 		$logger = Logger::getInstance();
 
-		// Expired or regenerated sessions can legitimately miss the CSRF token, so avoid escalating them as errors.
-		if (ErrorCodes::CSRF_TOKEN_NOT_FOUND === $code) {
+		// Expired or regenerated sessions can legitimately make CSRF tokens missing or stale.
+		if (in_array($code, [ErrorCodes::CSRF_TOKEN_NOT_FOUND, ErrorCodes::CSRF_TOKEN_INVALID], true)) {
 			$logger->notice($trackedMessage, ['errorCode' => $code]);
 		} else {
 			$logger->error($trackedMessage, ['errorCode' => $code]);
