@@ -6,13 +6,13 @@
 [Documentation](https://github.com/viames/pair/wiki) ·
 [Starter project](https://github.com/viames/pair_boilerplate) ·
 [Releases](https://github.com/viames/pair/releases) ·
-[Security](SECURITY.md)
+[Security](https://github.com/viames/pair/blob/main/SECURITY.md)
 
 [![CI](https://github.com/viames/pair/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/viames/pair/actions/workflows/ci.yml?query=branch%3Amain)
 [![Total downloads](https://poser.pugx.org/viames/pair/downloads)](https://packagist.org/packages/viames/pair)
 [![Latest release](https://img.shields.io/packagist/v/viames/pair)](https://packagist.org/packages/viames/pair)
 [![License](https://poser.pugx.org/viames/pair/license)](https://packagist.org/packages/viames/pair)
-[![PHP requirement](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fviames%2Fpair%2Fmain%2Fcomposer.json&query=%24.require.php&label=PHP&color=777BB4)](composer.json)
+[![PHP requirement](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fviames%2Fpair%2Fmain%2Fcomposer.json&query=%24.require.php&label=PHP&color=777BB4)](https://github.com/viames/pair/blob/main/composer.json)
 
 Pair is designed for small and medium PHP/MySQL applications where clear
 architecture, low operational overhead and long-term maintainability matter
@@ -30,26 +30,28 @@ AI-assisted workflows.
 | Pair 4 | Stable | New and current applications |
 | Pair 3 | Maintenance | Existing applications awaiting migration |
 
-Pair 4 is used in production across the maintainer's applications. See
+Pair 4.1.1 is the current stable release. Pair 4 is used in production across
+the maintainer's applications. See
 [Releases](https://github.com/viames/pair/releases) for version history and
-[UPGRADE_V4.md](UPGRADE_V4.md) for migration guidance.
+[UPGRADE_V4.md](https://github.com/viames/pair/blob/main/UPGRADE_V4.md) for migration guidance.
 
 ## Quick start
 
-Install the stable release:
+Install Pair 4.1.1 or a later compatible Pair 4 release:
 
 ```sh
-composer require viames/pair:^4.0
+composer require "viames/pair:^4.1.1"
 ```
 
-Bootstrap an application:
+Bootstrap the application in `public/index.php` after configuring its `.env`
+and database (see the [setup guide](https://github.com/viames/pair/wiki/index)):
 
 ```php
 <?php
 
 use Pair\Core\Application;
 
-require __DIR__ . '/vendor/autoload.php';
+require dirname(__DIR__) . '/vendor/autoload.php';
 
 $app = Application::getInstance();
 $app->run();
@@ -142,14 +144,16 @@ See [PairUI.js](https://github.com/viames/pair/wiki/PairUI.js) and the
 
 ## Requirements
 
-- PHP 8.4.1 or later
+- PHP 8.4.1 or later within PHP 8.x; PHP 8.5 recommended
 - MySQL 8.0 or later for the default database driver
 - Composer 2
 - Apache 2.4 with `mod_rewrite` for the standard web setup
 - PHP extensions: `curl`, `intl`, `json`, `mbstring`, `pdo`, `pdo_mysql`
 
-Feature-specific extensions such as `fileinfo`, `openssl`, `redis` and `xdebug`
-remain optional.
+Feature-specific extensions are optional for the core runtime: `fileinfo` for
+MIME detection, `openssl` for passkeys, `redis` for Redis integrations and
+`xdebug` for debugging. AWS S3 and Stripe integrations also require their
+respective SDKs; see [Integrations](https://github.com/viames/pair/wiki/Integrations).
 
 ## Development
 
@@ -168,7 +172,7 @@ vendor/bin/pair make:crud order --table=orders --fields=id,customer_id,total_amo
 ```
 
 Upgrade tools operate in dry-run mode first and report application-specific
-code that still requires manual migration. Follow [UPGRADE_V4.md](UPGRADE_V4.md)
+code that still requires manual migration. Follow [UPGRADE_V4.md](https://github.com/viames/pair/blob/main/UPGRADE_V4.md)
 and begin from a clean working tree or verified backup.
 
 ## Documentation
@@ -182,12 +186,12 @@ and begin from a clean working tree or verified backup.
 - [CRUD controllers](https://github.com/viames/pair/wiki/CrudController)
 - [PairUI](https://github.com/viames/pair/wiki/PairUI.js)
 - [Configuration](https://github.com/viames/pair/wiki/Configuration-file)
-- [Pair 4 design](PAIR_V4_DESIGN.md)
-- [Pair 4 upgrade guide](UPGRADE_V4.md)
+- [Pair 4 design](https://github.com/viames/pair/blob/main/PAIR_V4_DESIGN.md)
+- [Pair 4 upgrade guide](https://github.com/viames/pair/blob/main/UPGRADE_V4.md)
 
 ## Security
 
-Report vulnerabilities privately by following [SECURITY.md](SECURITY.md). Do
+Report vulnerabilities privately by following [SECURITY.md](https://github.com/viames/pair/blob/main/SECURITY.md). Do
 not open a public issue for an unassessed security report.
 
 ## Contributing

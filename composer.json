@@ -103,6 +103,7 @@
 			"/.vscode",
 			"/.windsurfrules",
 			"/_config.yml",
+			"/index.md",
 			"/vendor",
 			"/AGENTS.md",
 			"/CLAUDE.md",

@@ -49,13 +49,16 @@ Create the GitHub Release from the pushed tag and include user-facing upgrade, c
 ## Composer and Packagist notes
 
 - Pair 3 consumers should install `^3.0`.
-- Pair 4 consumers should install `^4.0`.
+- Pair 4 consumers should use the recommended constraint documented in `README.md`.
 - `main` carries `extra.branch-alias.dev-main = 4.x-dev`.
 - If you want a tracked development line for Pair 3, add `extra.branch-alias.dev-v3 = 3.x-dev` on `v3`.
 
 ## Release checklist
 
 - Run the full test suite before tagging.
-- Verify `README.md`, `composer.json`, and wiki links point to the correct branch.
+- Update the stable version and Composer constraint in `README.md` and the wiki `Home` page.
+- Verify `composer.json` requirements and documentation links match the release.
+- GitHub Pages renders `index.md`, which includes `README.md`; keep presentation content in the README instead of maintaining a second copy.
+- After publishing, verify the Pages quick start and wiki home display the new version.
 - Confirm upgrade scripts and migration notes still match the published major version.
 - Write GitHub Release notes with breaking changes, upgrade steps, and manual rollback instructions.

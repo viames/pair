@@ -22,6 +22,7 @@ Composer dist archives must include the files that a Pair web application can us
 Repository-only material should stay in Git but not be copied into `vendor/viames/pair`:
 
 - `.github/` and CI configuration.
+- `index.md` and `_config.yml`: GitHub Pages entry point and presentation configuration.
 - `tests/`, `phpunit.xml.dist`, and PHPUnit cache files.
 - `docs/`, including mobile stack and packaging notes.
 - `mobile/`, including `PairMobileKit` and `PairMobileAndroid`.

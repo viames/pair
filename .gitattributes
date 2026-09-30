@@ -30,6 +30,7 @@
 /RELEASING.md export-ignore
 /SKILL.md export-ignore
 /_config.yml export-ignore
+/index.md export-ignore
 /composer.lock export-ignore
 /docs export-ignore
 /docs/** export-ignore
