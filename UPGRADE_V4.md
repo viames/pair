@@ -10,6 +10,26 @@ Pair v4 moves application code away from implicit `ActiveRecord` payloads and hi
 
 The API documentation path follows the same rule: CRUD OpenAPI response schemas now derive from `readModel` when configured.
 
+### Shared password hashes with Pair 1
+
+Pair 4.1.2 adds two optional `.env` settings. When omitted, the previous behavior is unchanged:
+
+| Setting | Default | Behavior |
+| --- | --- | --- |
+| `PAIR_PASSWORD_HASH_ALGORITHM` | `auto` | Argon2id when supported by PHP, otherwise bcrypt. `bcrypt` forces bcrypt at cost 12; `argon2id` requires runtime support. Invalid values raise an exception. |
+| `PAIR_PASSWORD_REHASH_ON_LOGIN` | `true` | Successful web and token logins upgrade verified hashes to the selected policy when needed. `false` preserves the stored hash without writing it. |
+
+Before allowing Pair 4 to authenticate against a users table still shared with Pair 1, configure both:
+
+```dotenv
+PAIR_PASSWORD_HASH_ALGORITHM=bcrypt
+PAIR_PASSWORD_REHASH_ON_LOGIN=false
+```
+
+These settings preserve existing hashes at login and produce bcrypt hashes for new users and password changes/resets through `User::getHashedPasswordWithSalt()`. Password verification remains unchanged. Applications generating hashes independently must follow the same compatible policy.
+
+Disabling rehash alone does not make newly generated Argon2id hashes compatible with Pair 1. Existing Argon2id hashes cannot be converted directly: the original password or a password reset is required. No schema migration or bulk password rewrite is needed. Before deployment, verify that a test account can log in to both applications and that Pair 4 login leaves its stored hash identical.
+
 ### Upgrade Tool
 
 Pair v4 includes three composable tools. Choose the sequence from the application's current major version:

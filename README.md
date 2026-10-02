@@ -30,17 +30,17 @@ AI-assisted workflows.
 | Pair 4 | Stable | New and current applications |
 | Pair 3 | Maintenance | Existing applications awaiting migration |
 
-Pair 4.1.1 is the current stable release. Pair 4 is used in production across
+Pair 4.1.2 is the current stable release. Pair 4 is used in production across
 the maintainer's applications. See
 [Releases](https://github.com/viames/pair/releases) for version history and
 [UPGRADE_V4.md](https://github.com/viames/pair/blob/main/UPGRADE_V4.md) for migration guidance.
 
 ## Quick start
 
-Install Pair 4.1.1 or a later compatible Pair 4 release:
+Install Pair 4.1.2 or a later compatible Pair 4 release:
 
 ```sh
-composer require "viames/pair:^4.1.1"
+composer require "viames/pair:^4.1.2"
 ```
 
 Bootstrap the application in `public/index.php` after configuring its `.env`

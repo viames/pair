@@ -1072,14 +1072,14 @@ class User extends ActiveRecord {
 	}
 
 	/**
-	 * Creates and returns a password hash using the strongest available local algorithm.
+	 * Creates and returns a password hash using the configured algorithm policy.
 	 *
 	 * @param	string	The user password.
 	 * @return	string	Hashed password.
 	 */
 	public static function getHashedPasswordWithSalt(string $password): string {
 
-		if (defined('PASSWORD_ARGON2ID')) {
+		if (PASSWORD_BCRYPT !== self::passwordHashAlgorithm()) {
 			$hash = password_hash($password, PASSWORD_ARGON2ID, self::passwordHashOptions(PASSWORD_ARGON2ID));
 
 			if (is_string($hash) and '' !== $hash) {
@@ -1104,11 +1104,34 @@ class User extends ActiveRecord {
 	}
 
 	/**
+	 * Resolves the configured algorithm while preserving the default strongest-local policy.
+	 */
+	private static function passwordHashAlgorithm(): string|int {
+
+		$algorithm = strtolower(trim((string)Env::get('PAIR_PASSWORD_HASH_ALGORITHM')));
+
+		if ('bcrypt' === $algorithm) {
+			return PASSWORD_BCRYPT;
+		}
+
+		if (!in_array($algorithm, ['auto', 'argon2id'], true)) {
+			throw new \InvalidArgumentException('Invalid PAIR_PASSWORD_HASH_ALGORITHM.');
+		}
+
+		if ('argon2id' === $algorithm and !defined('PASSWORD_ARGON2ID')) {
+			throw new \RuntimeException('Argon2id is unavailable in this PHP runtime.');
+		}
+
+		return defined('PASSWORD_ARGON2ID') ? PASSWORD_ARGON2ID : PASSWORD_BCRYPT;
+
+	}
+
+	/**
 	 * Returns the options used by the current preferred password hash algorithm.
 	 */
 	private static function passwordHashOptions(string|int|null $algorithm = null): array {
 
-		$algorithm = $algorithm ?? (defined('PASSWORD_ARGON2ID') ? PASSWORD_ARGON2ID : PASSWORD_BCRYPT);
+		$algorithm = $algorithm ?? self::passwordHashAlgorithm();
 
 		if (defined('PASSWORD_ARGON2ID') and PASSWORD_ARGON2ID === $algorithm) {
 			return [
@@ -1127,11 +1150,9 @@ class User extends ActiveRecord {
 	 */
 	private static function passwordNeedsRehash(string $hash): bool {
 
-		if (defined('PASSWORD_ARGON2ID')) {
-			return password_needs_rehash($hash, PASSWORD_ARGON2ID, self::passwordHashOptions(PASSWORD_ARGON2ID));
-		}
+		$algorithm = self::passwordHashAlgorithm();
 
-		return password_needs_rehash($hash, PASSWORD_BCRYPT, self::passwordHashOptions(PASSWORD_BCRYPT));
+		return password_needs_rehash($hash, $algorithm, self::passwordHashOptions($algorithm));
 
 	}
 
@@ -1139,6 +1160,11 @@ class User extends ActiveRecord {
 	 * Upgrades a verified password hash in place when the stored algorithm is outdated.
 	 */
 	private function rehashPasswordIfNeeded(string $password): void {
+
+		// Shared legacy databases can opt out of all password writes during login.
+		if (!Env::get('PAIR_PASSWORD_REHASH_ON_LOGIN')) {
+			return;
+		}
 
 		if (!isset($this->hash) or !self::passwordNeedsRehash((string)$this->hash)) {
 			return;
