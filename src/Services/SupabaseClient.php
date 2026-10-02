@@ -389,6 +389,7 @@ class SupabaseClient {
 
 	/**
 	 * Return the public key used for anon, authenticated-user, and Realtime flows.
+	 * Never substitute server-only credentials when the public key is missing.
 	 */
 	private function publicKey(): string {
 
@@ -396,11 +397,7 @@ class SupabaseClient {
 			return $this->anonKey;
 		}
 
-		if ('' !== $this->serviceRoleKey) {
-			return $this->serviceRoleKey;
-		}
-
-		throw new PairException('Missing Supabase API key. Set SUPABASE_ANON_KEY or SUPABASE_SERVICE_ROLE_KEY.', ErrorCodes::MISSING_CONFIGURATION);
+		throw new PairException('Missing Supabase anonymous key. Set SUPABASE_ANON_KEY.', ErrorCodes::MISSING_CONFIGURATION);
 
 	}
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Pair\Tests\Unit\Services;
 
 use Pair\Exceptions\PairException;
+use Pair\Exceptions\ErrorCodes;
 use Pair\Services\SupabaseClient;
 use Pair\Tests\Support\TestCase;
 
@@ -159,12 +160,13 @@ class SupabaseClientTest extends TestCase {
 	}
 
 	/**
-	 * Verify Realtime URL creation uses WebSocket protocol and configured key.
+	 * Verify Realtime URLs use only the public key, even when an override is supplied.
 	 */
 	public function testRealtimeWebSocketUrlUsesConfiguredKey(): void {
 
 		$client = new FakeSupabaseClient();
 		$url = $client->realtimeWebSocketUrl([
+			'apikey' => 'service-key',
 			'log_level' => 'info',
 			'vsn' => '2.0.0',
 		]);
@@ -177,6 +179,74 @@ class SupabaseClientTest extends TestCase {
 		$this->assertSame('anon-key', $query['apikey']);
 		$this->assertSame('2.0.0', $query['vsn']);
 		$this->assertSame('info', $query['log_level']);
+		$this->assertStringNotContainsString('service-key', $url);
+
+	}
+
+	/**
+	 * Verify missing public credentials never fall back to a service role in Realtime URLs.
+	 */
+	public function testRealtimeRequiresAnon(): void {
+
+		foreach (['', '   '] as $anonKey) {
+			$client = new SupabaseClient('https://pair-test.supabase.co', $anonKey, 'service-secret');
+
+			try {
+				$client->realtimeWebSocketUrl(['apikey' => 'override']);
+				$this->fail('Realtime must reject a missing anonymous key.');
+			} catch (PairException $exception) {
+				$this->assertSame(ErrorCodes::MISSING_CONFIGURATION, $exception->getCode());
+				$this->assertSame('Missing Supabase anonymous key. Set SUPABASE_ANON_KEY.', $exception->getMessage());
+				$this->assertStringNotContainsString('service-secret', $exception->getMessage());
+			}
+		}
+
+	}
+
+	/**
+	 * Verify anonymous and user-scoped HTTP authentication requires a public key.
+	 */
+	public function testRequestsRequireAnon(): void {
+
+		$client = new SupabaseClient('https://pair-test.supabase.co', '', 'service-secret');
+
+		foreach ([[], ['bearerToken' => 'user-token', 'serviceRole' => false]] as $options) {
+			try {
+				$this->invokeInaccessibleMethod($client, 'requestHeaders', [[], $options]);
+				$this->fail('Public requests must reject a missing anonymous key.');
+			} catch (PairException $exception) {
+				$this->assertSame(ErrorCodes::MISSING_CONFIGURATION, $exception->getCode());
+				$this->assertSame('Missing Supabase anonymous key. Set SUPABASE_ANON_KEY.', $exception->getMessage());
+			}
+		}
+
+	}
+
+	/**
+	 * Verify explicit server requests still work without an anonymous key.
+	 */
+	public function testServerCredentials(): void {
+
+		$client = new SupabaseClient('https://pair-test.supabase.co', '', 'service-secret');
+		$headers = $this->invokeInaccessibleMethod($client, 'requestHeaders', [[], ['serviceRole' => true]]);
+
+		$this->assertSame('service-secret', $headers['apikey']);
+		$this->assertSame('Bearer service-secret', $headers['Authorization']);
+
+	}
+
+	/**
+	 * Verify anonymous and authenticated requests keep public and user credentials separate.
+	 */
+	public function testPublicCredentials(): void {
+
+		$client = new SupabaseClient('https://pair-test.supabase.co', 'anon-key', 'service-secret');
+
+		foreach ([[], ['bearerToken' => 'user-token']] as $options) {
+			$headers = $this->invokeInaccessibleMethod($client, 'requestHeaders', [[], $options]);
+			$this->assertSame('anon-key', $headers['apikey']);
+			$this->assertSame('Bearer ' . ($options['bearerToken'] ?? 'anon-key'), $headers['Authorization']);
+		}
 
 	}
 
