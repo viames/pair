@@ -1464,9 +1464,17 @@ class Application {
 	}
 
 	/**
-	 * Detects browser data requests that cannot safely consume a login HTML redirect.
+	 * Detects data requests while keeping explicit browser navigations on the login redirect flow.
 	 */
 	private function requestExpectsDataResponse(): bool {
+
+		$fetchDestination = strtolower(trim((string)($_SERVER['HTTP_SEC_FETCH_DEST'] ?? '')));
+		$fetchMode = strtolower(trim((string)($_SERVER['HTTP_SEC_FETCH_MODE'] ?? '')));
+
+		// Browser navigation metadata takes precedence over inherited AJAX or JSON headers.
+		if ('navigate' === $fetchMode or in_array($fetchDestination, ['document', 'iframe', 'frame'], true)) {
+			return false;
+		}
 
 		$requestedWith = strtolower(trim((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')));
 
@@ -1486,10 +1494,7 @@ class Application {
 			return true;
 		}
 
-		$fetchDestination = strtolower(trim((string)($_SERVER['HTTP_SEC_FETCH_DEST'] ?? '')));
-		$fetchMode = strtolower(trim((string)($_SERVER['HTTP_SEC_FETCH_MODE'] ?? '')));
-
-		return 'empty' === $fetchDestination and 'navigate' !== $fetchMode;
+		return 'empty' === $fetchDestination;
 
 	}
 

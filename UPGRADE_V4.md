@@ -10,6 +10,12 @@ Pair v4 moves application code away from implicit `ActiveRecord` payloads and hi
 
 The API documentation path follows the same rule: CRUD OpenAPI response schemas now derive from `readModel` when configured.
 
+### Pair 4.1.3 session responses and Supabase keys
+
+Explicit browser document navigations now take precedence over AJAX and JSON headers when a web session is missing or expired. Protected pages redirect to login; background fetch/XHR requests retain the existing HTTP 401 session-expired payload. API modules and native bearer-token flows keep their contracts. No schema migration or new session setting is required.
+
+Supabase anonymous, user-token, and Realtime flows require `SUPABASE_ANON_KEY`. A missing public key raises a configuration error instead of falling back to `SUPABASE_SERVICE_ROLE_KEY`; server-only credentials must remain confined to service-role operations.
+
 ### Shared password hashes with Pair 1
 
 Pair 4.1.2 adds two optional `.env` settings. When omitted, the previous behavior is unchanged:
