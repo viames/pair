@@ -23,6 +23,9 @@ tooling, progressive enhancement, authentication helpers and conservative
 upgrade tooling in a codebase intended to remain inspectable by both people and
 AI-assisted workflows.
 
+[Quick start](#quick-start) · [Requirements](#requirements) ·
+[Documentation](#documentation) · [Development](#development)
+
 ## Status
 
 | Line | Status | Use |
@@ -30,21 +33,28 @@ AI-assisted workflows.
 | Pair 4 | Stable | New and current applications |
 | Pair 3 | Maintenance | Existing applications awaiting migration |
 
-Pair 4.1.3 is the current stable release. Pair 4 is used in production across
-the maintainer's applications. See
-[Releases](https://github.com/viames/pair/releases) for version history and
-[UPGRADE_V4.md](https://github.com/viames/pair/blob/main/UPGRADE_V4.md) for migration guidance.
+Pair 4 is used in production across the maintainer's applications. The
+[release history](https://github.com/viames/pair/releases) lists published versions;
+see the [upgrade guide](https://github.com/viames/pair/blob/main/UPGRADE_V4.md)
+for migration from earlier lines.
 
 ## Quick start
 
-Install Pair 4.1.3 or a later compatible Pair 4 release:
+With the [requirements](#requirements) installed, create a ready-to-run application
+with authentication, ACL, migrations and localization:
+
+```sh
+composer create-project viames/pair_boilerplate my-project
+```
+
+To add the framework to an existing project:
 
 ```sh
 composer require "viames/pair:^4.1.3"
 ```
 
-Bootstrap the application in `public/index.php` after configuring its `.env`
-and database (see the [setup guide](https://github.com/viames/pair/wiki/index)):
+Configure the application's `.env` and database using the
+[setup guide](https://github.com/viames/pair/wiki/index), then bootstrap in `public/index.php`:
 
 ```php
 <?php
@@ -53,28 +63,18 @@ use Pair\Core\Application;
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 
-$app = Application::getInstance();
-$app->run();
-```
-
-For authentication, ACL, migrations, localization and a ready-to-run
-application structure, start with the boilerplate:
-
-```sh
-composer create-project viames/pair_boilerplate my-project
+Application::getInstance()->run();
 ```
 
 ## Why Pair
 
-- Server-rendered applications without a mandatory frontend build chain
-- Explicit controllers, responses and typed page-state objects in Pair 4
-- ActiveRecord-style ORM with casting, relations and query helpers
-- CRUD generators and OpenAPI-oriented API contracts
-- PairUI progressive enhancement with no runtime dependency
-- PWA, push, passkey and native mobile helpers
-- Conservative, dry-run-first migration tools
-- Focused tests and CI across supported PHP versions
-- Optional integrations without forcing them into the core runtime
+- [Explicit controllers](https://github.com/viames/pair/wiki/Controller), typed page state and page, fragment, JSON, text and empty responses
+- [ActiveRecord](https://github.com/viames/pair/wiki/ActiveRecord) persistence, casting, relations and collections
+- [Forms](https://github.com/viames/pair/wiki/Form), validation, CSRF, authentication, ACL and sessions
+- [API and CRUD tooling](https://github.com/viames/pair/wiki/API) with explicit read models and OpenAPI contracts
+- [PairUI](https://github.com/viames/pair/wiki/PairUI.js) progressive enhancement, PWA, push and passkeys without a mandatory frontend build
+- Native iOS/Android helpers and [optional integrations](https://github.com/viames/pair/wiki/Integrations)
+- Conservative upgrade tooling, logging, diagnostics and tests across supported PHP versions
 
 ## A Pair 4 page
 
@@ -115,32 +115,8 @@ Default routes use the form `/<module>/<action>/<params...>`. Legacy Pair
 controllers and views remain available as migration bridges, while new Pair 4
 modules should use explicit response contracts.
 
-## Main capabilities
-
-### Web and data
-
-- MVC routing and explicit page, JSON, redirect, file and stream responses
-- ActiveRecord-style persistence, collections, relations and type casting
-- Form controls, validation presets and CSRF protection
-- Authentication, ACL and session helpers
-- Logging, SQL traces and development diagnostics
-
-### APIs and clients
-
-- CRUD-oriented API controllers and explicit read models
-- OpenAPI-oriented response contracts
-- OAuth2 and bearer-session building blocks
-- iOS and Android helpers for Pair-backed applications
-
-### Progressive enhancement
-
-PairUI adds lightweight `data-*` directives for text, visibility, attributes,
-events, models and repeated content. Additional helpers cover PWA installation,
-service workers, routing, skeleton states, validation, passkeys and push
-notifications while preserving server-rendered behavior.
-
-See [PairUI.js](https://github.com/viames/pair/wiki/PairUI.js) and the
-[documentation index](https://github.com/viames/pair/wiki) for examples.
+For a complete controller/state/layout example, see the
+[implementation patterns](https://github.com/viames/pair/blob/main/PAIR_PATTERNS.md#controller-and-page-response).
 
 ## Requirements
 
@@ -157,11 +133,14 @@ respective SDKs; see [Integrations](https://github.com/viames/pair/wiki/Integrat
 
 ## Development
 
+From the framework checkout:
+
 ```sh
 composer install
 composer test
-composer run benchmark-v4
 ```
+
+Use `composer run benchmark-v4` for migration/performance checks when relevant.
 
 Generate Pair 4 code from an application that has Pair installed:
 
@@ -171,23 +150,27 @@ vendor/bin/pair make:api api
 vendor/bin/pair make:crud order --table=orders --fields=id,customer_id,total_amount
 ```
 
-Upgrade tools operate in dry-run mode first and report application-specific
-code that still requires manual migration. Follow [UPGRADE_V4.md](https://github.com/viames/pair/blob/main/UPGRADE_V4.md)
-and begin from a clean working tree or verified backup.
+For upgrades, follow [UPGRADE_V4.md](https://github.com/viames/pair/blob/main/UPGRADE_V4.md),
+start from a clean working tree or verified backup, and pass `--dry-run` explicitly
+before writing changes. Tool mode defaults differ between upgrade generations.
 
 ## Documentation
 
-- [Application](https://github.com/viames/pair/wiki/Application)
-- [Router](https://github.com/viames/pair/wiki/Router)
-- [Controller](https://github.com/viames/pair/wiki/Controller)
-- [ActiveRecord](https://github.com/viames/pair/wiki/ActiveRecord)
-- [Forms](https://github.com/viames/pair/wiki/Form)
-- [API exposure](https://github.com/viames/pair/wiki/ApiExposable)
-- [CRUD controllers](https://github.com/viames/pair/wiki/CrudController)
-- [PairUI](https://github.com/viames/pair/wiki/PairUI.js)
-- [Configuration](https://github.com/viames/pair/wiki/Configuration-file)
-- [Pair 4 design](https://github.com/viames/pair/blob/main/PAIR_V4_DESIGN.md)
-- [Pair 4 upgrade guide](https://github.com/viames/pair/blob/main/UPGRADE_V4.md)
+Choose a guide by task:
+
+| Task | Guide |
+| --- | --- |
+| Set up an application | [Bootstrap](https://github.com/viames/pair/wiki/index), [configuration](https://github.com/viames/pair/wiki/Configuration-file), [starter project](https://github.com/viames/pair_boilerplate) |
+| Learn the framework or find a class | [Wiki learning paths and reference index](https://github.com/viames/pair/wiki) |
+| Generate a web, API or CRUD module | [Generator](https://github.com/viames/pair/wiki/Generator) |
+| Migrate an existing application | [Pair 4 upgrade guide](https://github.com/viames/pair/blob/main/UPGRADE_V4.md) |
+| Connect native clients | [Mobile auth setup](https://github.com/viames/pair/blob/main/docs/MOBILE_AUTH_APP_SETUP.md), [iOS](https://github.com/viames/pair/blob/main/docs/MOBILE_IOS_STACK.md), [Android](https://github.com/viames/pair/blob/main/docs/MOBILE_ANDROID_STACK.md) |
+| Work on the framework with an agent | [AGENTS.md](https://github.com/viames/pair/blob/main/AGENTS.md), then [quick start and source map](https://github.com/viames/pair/blob/main/SKILL.md) |
+| Understand v4 internals and design | [Architecture](https://github.com/viames/pair/blob/main/PAIR_ARCHITECTURE.md), [design rationale](https://github.com/viames/pair/blob/main/PAIR_V4_DESIGN.md) |
+| Release or inspect package contents | [Release workflow](https://github.com/viames/pair/blob/main/RELEASING.md), [Composer dist contents](https://github.com/viames/pair/blob/main/docs/COMPOSER_DIST_CONTENTS.md) |
+
+The wiki follows `main` and may document unreleased changes. Compare examples
+with the source for the Pair version installed in your application.
 
 ## Security
 

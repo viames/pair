@@ -1,204 +1,149 @@
 # AGENTS.md — Pair Framework v4
 
-Guide for automated agents (LLMs, code assistants, review bots) working on this repository.
+Primary entrypoint for automated agents working on this repository. Read this
+first, then [SKILL.md](SKILL.md) for the source map and local commands. Do not add
+agent-specific shim files unless they contain genuinely non-duplicated
+operational requirements.
 
-This is the **primary entrypoint** for AI agents working on this repository.
-Read this file first.
-Do not add agent-specific shim files unless they contain genuinely non-duplicated operational requirements.
-
-This file owns the high-level operating contract for agents:
-
-- workflow
-- repository exploration requirements
-- technical conventions
-- change hygiene
-- review expectations
-- completion format
-- document ownership and reading order
-
-After this file:
-
-- read `SKILL.md` for the compact quick-start and document map
-- read task-specific documents only when needed
-
-> Version scope
->
-> The default branch of this repository documents and implements Pair v4, the current stable line used by the maintainer's applications. Use the `v3` branch only for the previous maintenance line. Guidance in this branch targets Pair v4 and may not apply, or may apply only partially, to products based on earlier major versions.
-
----
+The default branch implements and documents **Pair v4**, the stable line used by
+the maintainer's applications. The `v3` branch is the previous maintenance line;
+v4 guidance may not apply to it.
 
 ## Mission
 
-Help improve the **Pair v4 framework** with **small, safe, reviewable changes** that respect existing architecture and conventions.
+Make small, safe, reviewable changes consistent with existing Pair architecture.
+Preserve backward compatibility unless explicitly asked otherwise. When guidance
+conflicts, favor the smallest safe change aligned with existing patterns and the
+precedence below.
 
-When instructions conflict, prefer the smallest safe change aligned with existing Pair patterns and backward compatibility.
-
----
-
-## Repository exploration (required before coding)
+## Workflow
 
 Before making any change:
 
-1. Inspect the `/src` directory to understand namespace layout.
-2. Identify the closest existing component solving a similar problem.
-3. Read at least one full class in that component to understand conventions.
-4. Check if utilities already exist before creating helpers.
-5. Inspect `/tests` (if present) to understand expected behavior.
-6. Verify public API usage before modifying framework classes.
+1. Inspect `src/` to understand the namespace layout.
+2. Find the closest component solving a similar problem and read at least one
+   full class in it.
+3. Check for existing utilities before creating helpers or architectural patterns.
+4. Inspect `tests/` to understand expected behavior.
+5. Verify public API usage before modifying framework classes.
 
-Never introduce a new architectural pattern if an existing one already solves the problem.
+Then:
 
-If `/tests` is not present, verify behavior through the closest available manual or local validation path and mention that in the final report.
+1. Implement the smallest change in the owning component, following nearby code
+   and the conventions below.
+2. Add or update deterministic tests when behavior changes. Never modify tests
+   merely to make a broken implementation pass.
+3. Run relevant checks and verify compatibility, security and performance. If
+   tests are absent, use the closest manual/local validation and report that limit.
+4. Update the owning documentation when commands, configuration or public
+   behavior change; public framework changes require the relevant sibling
+   `pair.wiki` pages, especially API and `.env` references.
+5. Review the diff for unrelated files, dependencies and secrets, then report
+   the result using the completion format below.
 
----
-
-## Workflow (recommended)
-
-1. Locate the relevant component in `/src`.
-2. Read existing patterns in that component or namespace.
-3. Implement the **smallest possible change** that solves the task.
-4. Verify that backward compatibility is preserved (unless explicitly requested otherwise).
-5. Add or update tests if the behavior changes.
-6. Keep the implementation consistent with Pair conventions defined in this file and nearby code.
-7. If public framework behavior changes, update the relevant pages in the sibling `pair.wiki` docs, especially for `src/Api` and `.env` configuration changes.
-
-Use deeper documents only when needed:
-
-- `PAIR_PATTERNS.md` for idiomatic implementation details
-- `PAIR_ARCHITECTURE.md` for framework internals
-- `PAIR_TASKS.md` for larger or riskier tasks
-- `PAIR_CONTEXT.md` when there is a risk of importing patterns from other frameworks
+For an ambiguous or overly broad request, or one risking an architectural or
+compatibility mistake, ask for clarification before changing code.
 
 ## Documentation roles
 
-Use each file for its owning responsibility:
+Each topic has one owning document. Link to it instead of copying rules, unless
+repetition prevents a likely mistake.
 
-- `AGENTS.md`: primary entrypoint, workflow, mandatory exploration, technical conventions, output contract, document ownership
-- `SKILL.md`: compact quick-start, search heuristics, component map, minimal runbook
-- `PAIR_ARCHITECTURE.md`: framework internals and design reasoning
-- `PAIR_PATTERNS.md`: implementation patterns and nearby code shape
-- `PAIR_CONTEXT.md`: strategic context and anti-pattern avoidance
-- `PAIR_TASKS.md`: guidance for larger, riskier, or multi-step tasks
+| Document | Owns |
+| --- | --- |
+| [AGENTS.md](AGENTS.md) | Workflow, required exploration, conventions, change hygiene, completion format, document ownership and precedence. |
+| [SKILL.md](SKILL.md) | Compact quick start, component map, search heuristics and local commands. |
+| [PAIR_ARCHITECTURE.md](PAIR_ARCHITECTURE.md) | Framework internals and request lifecycle. |
+| [PAIR_PATTERNS.md](PAIR_PATTERNS.md) | Idiomatic implementation examples. |
+| [PAIR_CONTEXT.md](PAIR_CONTEXT.md) | Strategic context and avoiding unsuitable patterns from other frameworks. |
+| [PAIR_TASKS.md](PAIR_TASKS.md) | Work crossing layers, performance evidence, migrations and rollout risk. |
+| [README.md](README.md) | Public introduction, installation and guide selection. |
+| [Pair wiki](https://github.com/viames/pair/wiki) | Application workflows, class/API references and environment configuration. |
+| [UPGRADE_V4.md](UPGRADE_V4.md) | Application upgrade commands, mode defaults and manual migration steps. |
+| [PAIR_V4_DESIGN.md](PAIR_V4_DESIGN.md) | v4 design rationale; verify proposals against current source. |
+| [RELEASING.md](RELEASING.md) | Branch and release process. |
+| [Composer dist contents](docs/COMPOSER_DIST_CONTENTS.md) | Files shipped to consuming applications. |
 
-Do not duplicate the same rule in multiple files unless the repetition prevents a likely mistake.
+### Reading order
 
-## Reading order
+Read `AGENTS.md`, then `SKILL.md`, then one task-specific document only if needed.
+For small local tasks, stop after the first two unless uncertainty remains.
 
-Default reading order for most tasks:
+### Conflict resolution
 
-1. `AGENTS.md`
-2. `SKILL.md`
-3. One deeper task-specific document only if uncertainty remains
-
-If the task is small and local, stop after step 2 unless there is ambiguity or architectural risk.
-
-## Conflict resolution
-
-If guidance conflicts, use this order:
-
-1. Existing repository code
-2. Tests
-3. `AGENTS.md`
-4. `SKILL.md`
-5. `PAIR_ARCHITECTURE.md`
-6. `PAIR_CONTEXT.md`
-7. `PAIR_PATTERNS.md`
-8. `PAIR_TASKS.md`
-
----
+Use this precedence: existing code → tests → `AGENTS.md` → `SKILL.md` →
+`PAIR_ARCHITECTURE.md` → `PAIR_CONTEXT.md` → `PAIR_PATTERNS.md` → `PAIR_TASKS.md`.
 
 ## Technical conventions
 
-Use these defaults unless nearby code establishes a more specific local pattern.
+Nearby code may establish a more specific local pattern.
 
 ### Runtime and dependencies
 
 - Target PHP 8.4.1 and 8.5.
-- Required Composer extensions are `curl`, `intl`, `json`, `mbstring`, `PDO`, and `pdo_mysql` for the default MySQL driver.
-- Feature-specific extensions should remain optional unless the feature already requires them, for example `fileinfo`, `openssl`, `redis`, or `xdebug`.
-- Do not introduce new runtime dependencies for simple framework behavior.
+- Required Composer extensions: `curl`, `intl`, `json`, `mbstring`, `PDO` and
+  `pdo_mysql` for the default MySQL driver.
+- Keep feature-specific extensions optional unless the feature requires them:
+  for example `fileinfo`, `openssl`, `redis` and `xdebug`.
+- Do not add runtime dependencies for simple framework behavior. Any new
+  dependency needs clear justification, especially heavy packages.
 
-### PHP conventions
+### PHP
 
-- Use PSR-4 classes under the `Pair\` namespace.
-- Use tabs for indentation.
-- Keep one class per file and match filename to class name.
-- Use `CamelCase` for classes, `camelCase` for variables and methods, `UPPER_SNAKE_CASE` for constants, and suffix interfaces with `Interface`.
-- Use short English names for functions and tests: one word when clear, two if ambiguous, three only for exceptional cases.
-- Put opening braces on the same line.
-- Prefer readable multi-line control flow over compact clever code.
-- Prefer `and` / `or`; use parentheses when precedence could be unclear.
-- Avoid short PHP tags.
+- PSR-4 classes under `Pair\`, one class per file matching its name.
+- Tabs for indentation; opening braces on the same line; no short PHP tags.
+- `CamelCase` classes, `camelCase` variables/methods, `UPPER_SNAKE_CASE` constants;
+  suffix interfaces with `Interface`.
+- Short English function/test names: one word when clear, two if ambiguous,
+  three only in exceptional cases.
+- Readable multi-line control flow; prefer `and` / `or`, with parentheses where
+  precedence could be unclear.
 
-### JavaScript and frontend conventions
+### Frontend and framework
 
-- Prefer vanilla JavaScript and PairUI directives.
-- Keep frontend behavior lightweight, build-free, and progressively enhanced.
-- Do not introduce jQuery or heavy frontend frameworks.
-- Keep server-rendered behavior intact unless the task explicitly moves logic client-side.
+- Vanilla JavaScript and PairUI directives: lightweight, build-free, progressive
+  enhancement. No jQuery or heavy frontend frameworks.
+- Preserve server-rendered behavior unless explicitly asked to move it client-side.
+- Use ActiveRecord relation/parent helpers and collections instead of manual
+  SQL joins when they express the intent.
+- Default routes: `/<module>/<action>/<params>`, resolving `<action>Action()`.
+- New v4 web modules prefer explicit `Pair\Web\Controller` responses.
+  `Pair\Core\Controller` and legacy views remain migration bridges.
+- Layouts stay mostly HTML. `declare(strict_types=1)` and hints such as
+  `/** @var FooPageState $state */` are not runtime contracts.
 
-### Framework conventions
+### Security and performance
 
-- Pair uses ActiveRecord. Prefer ORM relation helpers, parent relation helpers, and collections over manual SQL joins when they express the intent.
-- Default routing is `/<module>/<action>/<params>`, with actions resolved as `<action>Action()`.
-- New Pair v4 web work should prefer explicit `Pair\Web\Controller` responses; `Pair\Core\Controller` and legacy views remain migration bridges.
-- Layout files should stay mostly HTML; editor/static-analysis hints such as `declare(strict_types=1)` or `/** @var FooPageState $state */` are not runtime contracts.
-
-### Security, tests, and performance
-
-- Keep framework code secure by default, especially input validation, output escaping, CSRF, sessions, and database queries.
-- When tests exist, update or add deterministic tests for changed behavior.
-- Never modify tests merely to make a broken implementation pass.
-- Avoid N+1 queries, repeated database calls, heavy loops, and unnecessary allocations.
-- Prefer cached results and existing collections where they fit the existing code.
+- Secure defaults for input validation, output escaping, CSRF, sessions and queries.
+- Avoid N+1 queries, repeated database calls, heavy loops and unnecessary allocations.
+- Reuse cached results and existing collections where appropriate.
 
 ## Change hygiene
 
-Agents must follow these rules:
+- Keep diffs minimal and limited to the task; no unsolicited or large unrelated refactors.
+- Reuse existing utilities and architecture; do not create parallel subsystems.
+- Do not change public APIs or these coding conventions without an explicit request.
+- Never log sensitive data or commit credentials/secrets.
+- Add comments/docblocks to touched PHP and JS functions and short comments for
+  introduced or changed non-trivial paths. Write all framework comments/docblocks
+  in English.
+- Comments/docblocks are non-authoritative: removing them must not change runtime
+  behavior. Required behavior, configuration and migration-critical instructions
+  must also exist outside comments/docblocks.
 
-- Keep diffs minimal.
-- Avoid unsolicited refactoring.
-- Preserve backward compatibility by default.
-- Do not introduce heavy dependencies for simple tasks.
-- Do not introduce jQuery.
-- Do not log sensitive data.
-- Do not commit credentials or secrets.
-- Do not modify unrelated files.
-- Add comments/docblocks to PHP and JS functions that are touched.
-- Add a short comment for non-trivial code paths that are introduced or changed.
-- Comments and docblocks in Pair framework code must always be written in English.
-- Comments and docblocks are non-authoritative documentation only; removing them must never change runtime behavior.
-- Do not encode required behavior, configuration, or migration-critical instructions exclusively in comments or docblocks.
-- If a request is ambiguous, too broad, or risks an architectural or backward-compatibility mistake, ask for clarification before changing code.
+## Completion format
 
----
+Every proposal or final report must cover:
 
-## Avoid
+- What changed and why.
+- Files modified.
+- Risk and rollback.
+- Verification performed and manual test steps, including any limits.
+- Optional follow-up improvements when useful.
 
-Agents must avoid:
+For pull requests, use:
 
-- Large refactors unrelated to the task
-- Rewriting existing utilities with custom implementations
-- Introducing new dependencies without clear justification
-- Changing public APIs without explicit request
-- Changing coding conventions defined in this file
-- Creating parallel architectures for existing components
-
----
-
-## Output expectations (PR / assistant response)
-
-Every change proposal or pull request should include:
-
-1. **What changed**
-2. **Why the change is needed**
-3. **Files modified**
-4. **Risk assessment**
-5. **Manual test steps**
-6. **Possible follow‑up improvements (optional)**
-
-### PR description template
-
+```text
 What / Why:
 - ...
 
@@ -210,21 +155,4 @@ Risk and rollback:
 
 Manual test:
 - [ ] ...
-
----
-
-## Agent checklist
-
-Before completing the task:
-
-- [ ] I read `AGENTS.md` first and used it as the primary guide
-- [ ] I followed conventions defined in `AGENTS.md`
-- [ ] I applied the quick-start guardrails defined in `SKILL.md`
-- [ ] I explored the repository before coding
-- [ ] I preserved backward compatibility
-- [ ] I did not introduce performance regressions
-- [ ] I did not introduce new dependencies unnecessarily
-- [ ] I did not commit secrets
-- [ ] I updated or added tests when behavior changed
-- [ ] I updated `pair.wiki` docs when public framework behavior changed
-- [ ] I documented manual test steps if applicable
+```

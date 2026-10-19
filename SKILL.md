@@ -11,188 +11,95 @@ tags:
 language: "en"
 ---
 
-# Pair Framework v4 — SKILL
+# Pair Framework v4 — Quick start
 
-Use this file as the **compact quick-start companion** to `AGENTS.md`.
+Read [AGENTS.md](AGENTS.md) first. It owns version scope, workflow, conventions,
+change hygiene, document ownership, conflict resolution, and completion format.
+This file provides navigation and commands for framework development.
 
-Read `AGENTS.md` first.
-Then use this file to move quickly through the repository without losing the main workflow and output rules.
-This quick-start assumes Pair v4 on the default branch. The authoritative version-scope note lives in `AGENTS.md`.
+## Choose the next document
 
----
+| Need | Read |
+| --- | --- |
+| Framework internals and request flow | [Architecture](PAIR_ARCHITECTURE.md) |
+| Concrete implementation examples | [Patterns](PAIR_PATTERNS.md) |
+| Avoiding assumptions from other frameworks | [Context](PAIR_CONTEXT.md) |
+| Work crossing layers, migration, or performance risk | [Task guidance](PAIR_TASKS.md) |
+| Migrating a consuming application to v4 | [Upgrade guide](UPGRADE_V4.md) |
+| Application setup and public API reference | [Pair wiki](https://github.com/viames/pair/wiki) |
+| Releases and package contents | [Release workflow](RELEASING.md), [Composer dist contents](docs/COMPOSER_DIST_CONTENTS.md) |
 
-## Scope
-
-Framework development in this repository:
-
-- src/
-- assets/
-- translations/
-- tests
-
-The goal is to produce **safe, minimal, reviewable changes**.
-
----
-
-## Quick Guardrails
-
-Use this file for navigation, not as a second source of truth.
-
-- Workflow, technical conventions, change hygiene, clarification rules, and final output format are owned by `AGENTS.md`.
-- Reuse existing framework patterns before introducing helpers or abstractions.
-- Prefer additive changes over rewrites.
-- Use the smallest set of documents needed for the current task.
-
----
-
-## Fast path
-
-Use this decision guide to avoid reading too much documentation:
-
-- For any code change: read `AGENTS.md`, then use this file for navigation.
-- For architecture or framework internals: read `PAIR_ARCHITECTURE.md`.
-- For implementation style and nearby code shape: read `PAIR_PATTERNS.md`.
-- To avoid importing patterns from heavier frameworks: read `PAIR_CONTEXT.md`.
-- For larger features, refactors, migrations, or performance work: read `PAIR_TASKS.md`.
-
-Start with `AGENTS.md` and `SKILL.md`, then stop unless the task still needs deeper context.
-
----
-
-## Official Docs Shortcuts
-
-Use the official Pair wiki when the task touches one of these areas:
-
-- Routing, URL params, ordering, and pagination state: `Router`
-- Controller lifecycle, `_init()`, model/view loading, and PRG flows: `Controller`
-- View responsibility, `render()`, assigned variables, and layout behavior: `View`
-- Table-mapped entities, request population, persistence, and relations: `ActiveRecord`
-- Control rendering, CSRF, generated forms, and select conventions: `Form`
-- Progressive enhancement with `data-*` directives and lightweight helpers: `PairUI.js`
-- Runtime configuration or new environment keys: `.env configuration`
-
-Prefer these official docs over generic framework assumptions when behavior is unclear.
-
----
+For a small local task, stop after this file unless a specific uncertainty
+requires another document.
 
 ## Component map
 
-Use this map to find the right area quickly before searching broadly:
+Paths are relative to the framework repository, not a consuming application's
+`vendor/viames/pair` directory.
 
-- `src/Core`: application lifecycle, router, controller, model, view, logger, environment.
-- `src/Orm`: ActiveRecord, query builder, collections, database access.
-- `src/Api`: API controllers, request/response wrappers, middleware, throttling, OpenAPI support.
-- `src/Html`: forms, widgets, menus, render helpers, form controls.
-- `src/Helpers`: reusable framework helpers and utility-style classes.
-- `src/Services`: integrations with external services and provider-specific logic.
-- `src/Models`: framework models built on Pair ORM.
-- `src/Push`: push notification delivery and subscription handling.
-- `src/Exceptions`: framework exception types and error codes.
-- `src/Traits`: small reusable behavior shared across classes.
-- `assets`: PairUI and frontend-side JavaScript helpers.
-- `translations`: localization resources.
+| Area | Responsibility and starting points |
+| --- | --- |
+| `src/Core` | Bootstrap, routing, environment, logging, runtime adapters; `Application.php`, `Router.php`. Legacy `Controller.php`, `Model.php`, `View.php` support migration. |
+| `src/Web` | Explicit web controllers, page and fragment responses; `Controller.php`, `PageResponse.php`, `FragmentResponse.php`. |
+| `src/Http` | Immutable input, uploads, response contracts, JSON/text responses and HTTP caching; `Input.php`, `ResponseInterface.php`. |
+| `src/Data` | Explicit read contracts and mapping; `ReadModel.php`, `RecordMapper.php`, `Payload.php`. |
+| `src/Api` | API controllers, request validation, CRUD, middleware, throttling, OpenAPI; `ApiController.php`, `Request.php`, `RequestData.php`. |
+| `src/Orm` | Persistence, queries, collections and database access; `ActiveRecord.php`, `Query.php`, `Collection.php`, `Database.php`. |
+| `src/Models` | Built-in framework records, including users, sessions, ACL and API tokens. |
+| `src/Html` | Forms, controls, menus, UI rendering and templates; `Form.php`, `FormControl.php`. |
+| `src/Helpers`, `src/Traits` | Shared utilities and small reusable behaviors. |
+| `src/Cache`, `src/Search` | Cache stores and search indexing contracts. |
+| `src/Services`, `src/Push` | External integrations, notification delivery and subscriptions. |
+| `src/Packages` | Installable ZIP/manifest packages, separate from runtime extensions. |
+| `src/Console` | Module, API and CRUD generation; `MakeCommand.php`. |
+| `src/Exceptions` | Framework exceptions and error codes. |
+| `assets`, `translations`, `migrations` | Frontend helpers, localization and framework schema migrations. |
+| `mobile` | Native iOS and Android client sources; excluded from Composer dist. |
+| `tests/Unit`, `tests/Support`, `tests/Fixtures` | Behavioral tests, isolated doubles and fixture applications. |
 
-If the task touches request handling, check `src/Core`, `src/Api`, and nearby helpers before creating new flow logic.
-If the task touches UI or forms, check `src/Html` and `assets` before adding new frontend patterns.
+## Targeted searches
 
----
+Search by class or namespace, then by method within the owning component.
+Read one complete nearby class and its tests before editing.
 
-## Search heuristics
+```sh
+rg --files src/Web src/Http tests/Unit/Web tests/Unit/Http
+rg -n 'function page|function pageOrFragment' src/Web
+rg -n 'checkToken|validateToken' src/Html tests/Unit/Html
+rg -n 'data-text|data-show' assets/PairUI.js
+```
 
-When locating code, prefer targeted searches over broad grep-style scans:
+For web requests, start in `src/Web` and `src/Http`; inspect `src/Core` for
+application dispatch or legacy modules. For APIs, start in `src/Api`.
+Search forms and frontend behavior in `src/Html` and `assets` together.
 
-- Search by namespace or class name first.
-- Search by method name only after identifying the likely component area.
-- Search for one nearby concrete example before designing a new approach.
-- For forms and UI, search in `src/Html` and `assets` together.
-- For API flows, search in `src/Api` first, then `src/Core`, then related models/helpers.
-- For ORM behavior, search in `src/Orm` and then in the model using that behavior.
+The wiki provides focused references for [controllers](https://github.com/viames/pair/wiki/Controller),
+[ORM](https://github.com/viames/pair/wiki/ActiveRecord), [forms](https://github.com/viames/pair/wiki/Form),
+[PairUI](https://github.com/viames/pair/wiki/PairUI.js), and
+[environment configuration](https://github.com/viames/pair/wiki/Configuration-file).
+Compare them with the checked-out source when behavior is uncertain.
 
-Useful starting points:
+## Local verification
 
-- request or validation logic: `src/Api/Request.php`, `src/Core/Controller.php`
-- form rendering: `src/Html/Form.php`, `src/Html/FormControl.php`
-- frontend progressive enhancement: `assets/PairUI.js`
-- application lifecycle: `src/Core/Application.php`, `src/Core/Router.php`
+From the framework root, after installing development dependencies:
 
-If a search returns too many matches, narrow by namespace or directory before reading more files.
+```sh
+composer install
+composer test
+vendor/bin/phpunit -c phpunit.xml.dist tests/Unit/Web/ControllerTest.php
+```
 
----
+Choose the relevant test path for a focused check. Use `composer run benchmark-v4`
+when assessing v4 migration/performance behavior; it is not required for every edit.
+For documentation-only work, check links, source references and example syntax.
 
-## Accuracy checklist
+Run generators from a consuming application with Pair installed:
 
-Before editing, confirm these high-risk assumptions:
+```sh
+vendor/bin/pair make:module orders
+vendor/bin/pair make:api api
+vendor/bin/pair make:crud order --table=orders --fields=id,customer_id,total_amount
+```
 
-- The change follows an existing Pair pattern nearby.
-- The public API remains compatible unless the task explicitly says otherwise.
-- ORM helpers are not being bypassed without a concrete reason.
-- Server-rendered behavior is preserved unless the task explicitly moves logic client-side.
-- Security behavior is not weakened.
-
----
-
-## Task recipes
-
-Use these default flows for common tasks.
-
-### Small bug fix
-
-1. Reproduce or isolate the failing behavior.
-2. Find the closest class handling the same responsibility.
-3. Implement the smallest safe fix.
-4. Check that adjacent behavior did not change.
-5. Update or add tests if they exist for that area.
-
-### Small feature
-
-1. Identify the correct layer: controller, model, helper, service, or frontend helper.
-2. Reuse an existing pattern in the same namespace.
-3. Prefer additive behavior over changing an existing public contract.
-4. Keep frontend behavior progressive and lightweight.
-
-### Local refactor
-
-1. Confirm the goal is clarity, duplication removal, or maintainability.
-2. Keep external behavior unchanged.
-3. Limit the refactor to the smallest useful scope.
-4. Do not expand into nearby unrelated cleanup.
-5. Verify public APIs and tests remain valid.
-
-### Documentation update
-
-1. Update only the document that owns the topic.
-2. Keep examples aligned with current Pair behavior.
-3. Avoid copying rules across multiple files.
-4. Preserve the distinction between entrypoint, workflow, and technical reference.
-
----
-
-## Capabilities of the Pair framework
-
-The framework provides:
-
-- MVC routing system
-- ActiveRecord ORM
-- migration tools
-- push notification system
-- PWA helpers
-- PairUI frontend helper library
-- optional integrations with external services
-
-Agents should reuse existing framework components instead of reimplementing similar functionality.
-
----
-
-## Documentation map
-
-Document ownership and conflict resolution are defined in `AGENTS.md`.
-
-Use deeper docs only for their narrow role:
-
-- `AGENTS.md`: authoritative workflow, technical conventions, and output contract
-- `PAIR_ARCHITECTURE.md`: framework internals and request flow
-- `PAIR_CONTEXT.md`: anti-import guardrails
-- `PAIR_PATTERNS.md`: idiomatic code shape and examples
-- `PAIR_TASKS.md`: extra guidance for broader or higher-risk tasks
-
-Read the minimum set needed for the task. More documentation is not automatically better if it delays a safe, pattern-consistent change.
+Application upgrade commands and their dry-run/write behavior belong in the
+[upgrade guide](UPGRADE_V4.md); do not infer migration safety from generator commands.
