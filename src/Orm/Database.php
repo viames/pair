@@ -2,6 +2,7 @@
 
 namespace Pair\Orm;
 
+use Pair\Cache\SchemaCache;
 use Pair\Core\Env;
 use Pair\Core\Logger;
 use Pair\Core\Observability;
@@ -40,6 +41,9 @@ class Database {
 	 * List of temporary table structures (describe, foreignKeys, inverseForeignKeys).
 	 */
 	private array $definitions = [];
+
+	/** Disable shared metadata after switching schemas or using temporary tables. */
+	private bool $schemaCacheBypassed = false;
 
 	/**
 	 * Request-local cache for table existence checks.
@@ -262,12 +266,15 @@ class Database {
 		// check the internal memory-cache
 		if (!isset($this->definitions[$tableName]['foreignKeys'])) {
 
-			// old-style join because of speedness
+			// match the complete constraint identity before filtering the requested table.
 			$query =
 				'SELECT k.`CONSTRAINT_NAME`, k.`COLUMN_NAME`, k.`REFERENCED_TABLE_NAME`,
 				k.`REFERENCED_COLUMN_NAME`, r.`UPDATE_RULE`, r.`DELETE_RULE`
 				FROM information_schema.`KEY_COLUMN_USAGE` AS k
 				JOIN information_schema.`REFERENTIAL_CONSTRAINTS` AS r
+				ON r.CONSTRAINT_SCHEMA = k.CONSTRAINT_SCHEMA
+				AND r.TABLE_NAME = k.TABLE_NAME
+				AND r.CONSTRAINT_NAME = k.CONSTRAINT_NAME
 				WHERE k.`CONSTRAINT_NAME` != "PRIMARY"
 				AND k.`TABLE_SCHEMA` = :dbName AND k.`TABLE_NAME` = :tableName
 				AND r.`CONSTRAINT_SCHEMA` = :dbName AND r.`TABLE_NAME` = :tableName
@@ -278,7 +285,7 @@ class Database {
 				'tableName' => $tableName
 			];
 
-			$this->definitions[$tableName]['foreignKeys'] = self::load($query, $params);
+			$this->definitions[$tableName]['foreignKeys'] = $this->schemaCacheBypassed ? self::load($query, $params) : SchemaCache::remember($tableName . ':foreign', fn(): array => self::load($query, $params));
 
 		}
 
@@ -311,12 +318,15 @@ class Database {
 		// check the internal memory-cache
 		if (!isset($this->definitions[$tableName]['inverseForeignKeys'])) {
 
-			// old-style join because of speedness
+			// match the complete constraint identity before filtering the requested table.
 			$query =
 				'SELECT k.CONSTRAINT_NAME, k.REFERENCED_COLUMN_NAME, k.TABLE_NAME,
 				k.COLUMN_NAME, r.UPDATE_RULE, r.DELETE_RULE
 				FROM information_schema.`KEY_COLUMN_USAGE` AS k
 				JOIN information_schema.`REFERENTIAL_CONSTRAINTS` AS r
+				ON r.CONSTRAINT_SCHEMA = k.CONSTRAINT_SCHEMA
+				AND r.TABLE_NAME = k.TABLE_NAME
+				AND r.CONSTRAINT_NAME = k.CONSTRAINT_NAME
 				WHERE k.CONSTRAINT_NAME != "PRIMARY"
 				AND k.TABLE_SCHEMA = :dbName AND k.REFERENCED_TABLE_NAME = :tableName
 				AND r.CONSTRAINT_SCHEMA = :dbName AND r.REFERENCED_TABLE_NAME = :tableName
@@ -327,7 +337,7 @@ class Database {
 				'tableName' => $tableName
 			];
 
-			$this->definitions[$tableName]['inverseForeignKeys'] = self::load($query, $params);
+			$this->definitions[$tableName]['inverseForeignKeys'] = $this->schemaCacheBypassed ? self::load($query, $params) : SchemaCache::remember($tableName . ':inverse', fn(): array => self::load($query, $params));
 
 		}
 
@@ -1129,7 +1139,13 @@ class Database {
 	 */
 	private function clearSchemaMetadataCacheForQuery(string $query): void {
 
+		if (preg_match('/^\s*(?:USE\b|(?:CREATE|DROP)\s+TEMPORARY\s+TABLE\b)/i', $query)) {
+			$this->schemaCacheBypassed = true;
+			$this->clearSchemaMetadataCache();
+		}
+
 		if (self::isSchemaMutationQuery($query)) {
+			SchemaCache::invalidate();
 			$this->clearSchemaMetadataCache();
 		}
 

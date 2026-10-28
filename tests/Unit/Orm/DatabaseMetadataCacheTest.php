@@ -69,6 +69,15 @@ class DatabaseMetadataCacheTest extends TestCase {
 
 	}
 
+	/** A schema switch invalidates in-memory definitions and bypasses shared schema metadata. */
+	public function testSchemaSwitch(): void {
+		$database = Database::getInstance();
+		$this->setInaccessibleProperty($database, 'definitions', ['users' => ['inverseForeignKeys' => []]]);
+		$this->invokeInaccessibleMethod($database, 'clearSchemaMetadataCacheForQuery', ['USE `fixture`']);
+		$this->assertSame([], $this->inaccessibleProperty($database, 'definitions'));
+		$this->assertTrue($this->inaccessibleProperty($database, 'schemaCacheBypassed'));
+	}
+
 	/**
 	 * Return a private property value through reflection for focused cache assertions.
 	 */

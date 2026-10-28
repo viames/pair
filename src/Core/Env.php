@@ -54,6 +54,7 @@ class Env {
 		'REDIS_DB' => 0,
 		'REDIS_TIMEOUT' => 1,
 		'PAIR_CACHE_DRIVER' => 'file',
+		'PAIR_SCHEMA_CACHE_VERSION' => '',
 		'PAIR_CACHE_PATH' => '',
 		'PAIR_CACHE_PREFIX' => 'pair',
 		'PAIR_CACHE_REDIS_PREFIX' => 'pair:cache:',
