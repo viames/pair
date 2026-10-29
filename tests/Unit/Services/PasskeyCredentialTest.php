@@ -32,6 +32,10 @@ final class PasskeyCredentialTest extends TestCase {
 		$this->assertIsString($x);
 		$this->assertIsString($y);
 
+		// OpenSSL may omit leading zero bytes; COSE P-256 coordinates require 32 bytes.
+		$x = str_pad($x, 32, "\x00", STR_PAD_LEFT);
+		$y = str_pad($y, 32, "\x00", STR_PAD_LEFT);
+
 		$credentialId = random_bytes(16);
 		$coseKey = self::cborMap([
 			self::cborUnsigned(1) . self::cborUnsigned(2),

@@ -15,7 +15,8 @@ class PairException extends \Exception {
 
 	/**
 	 * Tracks the error message in the LogBar, takes a system snapshot and sends e-mail/telegram
-	 * notifications. In case of critical errors, throws a CriticalException.
+	 * notifications for errors. Routine session lifecycle failures are logged as notices.
+	 * In case of critical errors, throws a CriticalException.
 	 *
 	 * @param string The error message.
 	 * @param int The error code.
@@ -49,8 +50,13 @@ class PairException extends \Exception {
 		$trackedMessage = ($previous and $previous->getMessage()) ? $previous->getMessage() : $message;
 		$logger = Logger::getInstance();
 
+		// Missing, expired or already consumed passkey challenges are routine session failures.
+		$passkeyLifecycleFailure = (ErrorCodes::INVALID_REQUEST === $code
+			and null === $previous
+			and in_array($message, ['Passkey challenge not found', 'Passkey challenge expired'], true));
+
 		// Expired or regenerated sessions can legitimately make CSRF tokens missing or stale.
-		if (in_array($code, [ErrorCodes::CSRF_TOKEN_NOT_FOUND, ErrorCodes::CSRF_TOKEN_INVALID], true)) {
+		if ($passkeyLifecycleFailure or in_array($code, [ErrorCodes::CSRF_TOKEN_NOT_FOUND, ErrorCodes::CSRF_TOKEN_INVALID], true)) {
 			$logger->notice($trackedMessage, ['errorCode' => $code]);
 		} else {
 			$logger->error($trackedMessage, ['errorCode' => $code]);
