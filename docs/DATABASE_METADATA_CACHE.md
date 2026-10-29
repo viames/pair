@@ -4,12 +4,14 @@
 
 Foreign-key and inverse foreign-key lookups join the complete constraint identity
 (schema, table and constraint name) and retain their request-local cache.
+`describeTable()` and `describeColumn()` also reuse the complete column description,
+including a missing-column result, without caching application data.
 To share these metadata reads between requests, set `PAIR_SCHEMA_CACHE_VERSION`
 to a non-empty schema release identifier in the application `.env`. The default
 is empty: existing applications keep live database lookups.
 
 The configured Pair cache store is used, separated by host, database, database
-user and schema version. Entries contain only foreign-key metadata and expire
+user and schema version. Entries contain only column descriptions and foreign-key metadata and expire
 after one hour. Empty results are cached; cache errors fall back to SQL. No query
 results, users, permissions or application rows are stored.
 
@@ -27,5 +29,5 @@ PAIR_SCHEMA_CACHE_VERSION="schema-2026-10-28"
 ```
 
 The low-level `Pair\Cache\SchemaCache` is an internal metadata helper; application
-code should continue using `Database::getForeignKeys()` and
-`Database::getInverseForeignKeys()`.
+code should continue using `Database::describeTable()`, `Database::describeColumn()`,
+`Database::getForeignKeys()` and `Database::getInverseForeignKeys()`.

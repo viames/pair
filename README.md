@@ -50,7 +50,7 @@ composer create-project viames/pair_boilerplate my-project
 To add the framework to an existing project:
 
 ```sh
-composer require "viames/pair:^4.1.4"
+composer require "viames/pair:^4.1.5"
 ```
 
 Configure the application's `.env` and database using the

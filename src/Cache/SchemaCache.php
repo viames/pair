@@ -4,7 +4,7 @@ namespace Pair\Cache;
 
 use Pair\Core\Env;
 
-/** Caches only immutable foreign-key metadata within an explicitly versioned schema. */
+/** Caches only column descriptions and foreign-key metadata within an explicitly versioned schema. */
 final class SchemaCache {
 
 	/** Invalidates this database namespace after successful DDL executed through Pair. */

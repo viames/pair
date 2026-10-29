@@ -153,31 +153,26 @@ class Database {
 	}
 
 	/**
-	 * Return data about a column scheme trying to load table description records by object cache.
-	 * false in case of unvalid column name.
+	 * Return a column from the complete cached table description, or null for an unknown column.
 	 *
 	 * @param	string	Name of table to describe.
 	 * @param	string	Column name.
 	 */
 	public function describeColumn(string $tableName, string $column): ?\stdClass {
 
-		// search in cached table structure
-		if (isset($this->definitions[$tableName]['describe'])) {
-			foreach ($this->definitions[$tableName]['describe'] as $d) {
-				if ($column == $d->Field) {
-					return $d;
-				}
+		// share the full description; an absent column is also an authoritative result.
+		foreach ($this->describeTable($tableName) as $description) {
+			if ($column === $description->Field) {
+				return $description;
 			}
 		}
 
-		$res = self::load('DESCRIBE `' . $tableName . '` `' . $column . '`', [], Database::OBJECT);
-
-		return ($res ? $res : null);
+		return null;
 
 	}
 
 	/**
-	 * Return data about table scheme. Memory cached.
+	 * Return table metadata with request-local and optional versioned shared caching.
 	 *
 	 * @param	string	Name of table to describe.
 	 * @return	\stdClass[]
@@ -187,8 +182,10 @@ class Database {
 		// check if was set in the object cache property
 		if (!isset($this->definitions[$tableName]['describe'])) {
 
-			$res = self::load('DESCRIBE `' . $tableName . '`');
-			$this->definitions[$tableName]['describe'] = is_null($res) ? [] : $res;
+			$load = fn(): array => self::load('DESCRIBE `' . str_replace('`', '``', $tableName) . '`') ?? [];
+			$this->definitions[$tableName]['describe'] = $this->schemaCacheBypassed
+				? $load()
+				: SchemaCache::remember($tableName . ':describe', $load);
 
 		}
 
