@@ -147,3 +147,9 @@ where needed. A minimal binding, after loading `PairUI.js`:
 The initial text remains available before enhancement. Use `data-text` for plain
 text; inspect the [PairUI reference](https://github.com/viames/pair/wiki/PairUI.js)
 and [source](assets/PairUI.js) for directives, region updates and lifecycle handling.
+
+## Atomic callbacks and nested transactions
+
+`Database::transaction(callable $callback): mixed` owns a PDO transaction when none exists, otherwise uses a unique savepoint. The result is returned after success; failures roll back only this scope unless MySQL already aborted the whole transaction (for example a deadlock). The callback must not issue DDL or commit/rollback the surrounding transaction. There is no automatic retry. Record objects may require reload after rollback.
+
+Models whose delete hooks perform multiple writes can override `protected function usesAtomicDelete(): bool` to return `true`; the existing `delete()` lifecycle then runs inside this callback, including hooks and the final DELETE. Default behavior remains unchanged. External side effects must be queued transactionally, not sent inside the callback.

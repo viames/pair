@@ -1047,6 +1047,44 @@ class Database {
 	}
 
 	/**
+	 * Executes an atomic callback, using a savepoint inside an existing transaction.
+	 * The callback must not issue DDL or manage the surrounding transaction.
+	 */
+	public static function transaction(callable $callback): mixed {
+
+		$self = static::getInstance();
+		$self->openConnection();
+		$ownsTransaction = !$self->handler->inTransaction();
+		$savepoint = 'pair_' . bin2hex(random_bytes(12));
+		if ($ownsTransaction) {
+			$self->handler->beginTransaction();
+		} else {
+			static::run('SAVEPOINT ' . $savepoint);
+		}
+		try {
+			$result = $callback();
+			if ($ownsTransaction) {
+				$self->handler->commit();
+			} else {
+				static::run('RELEASE SAVEPOINT ' . $savepoint);
+			}
+			return $result;
+		} catch (\Throwable $error) {
+			// A deadlock may already have rolled back the entire transaction.
+			if ($self->handler->inTransaction()) {
+				if ($ownsTransaction) {
+					$self->handler->rollBack();
+				} else {
+					static::run('ROLLBACK TO SAVEPOINT ' . $savepoint);
+					static::run('RELEASE SAVEPOINT ' . $savepoint);
+				}
+			}
+			throw $error;
+		}
+
+	}
+
+	/**
 	 * Starts a transaction.
 	 */
 	public static function start(): void {

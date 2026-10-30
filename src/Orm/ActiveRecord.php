@@ -852,6 +852,22 @@ abstract class ActiveRecord implements \JsonSerializable {
 	 */
 	final public function delete(): bool {
 
+		return $this->usesAtomicDelete()
+			? Database::transaction(fn(): bool => $this->deleteRecord())
+			: $this->deleteRecord();
+
+	}
+
+	/** Allows models with multi-write delete hooks to opt into atomic deletion. */
+	protected function usesAtomicDelete(): bool {
+
+		return false;
+
+	}
+
+	/** Runs the existing deletion lifecycle within the caller's transaction scope. */
+	private function deleteRecord(): bool {
+
 		if (!$this->getId()) return false;
 
 		// hook a custom function before deletion
