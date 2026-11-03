@@ -41,6 +41,11 @@ A page state can be a plain typed object; it does not have to implement `ReadMod
 See `Application::run()`, `initializeController()`, `runController()`, and
 `renderTemplate()` for the dispatch and wrapping decisions.
 
+`Session::extendTimeout()` updates the in-memory activity time on every request
+and writes `start_time` when its DATETIME second changes. Repeated calls in the
+same second avoid redundant writes; session lifetime, expiration checks, logout
+and revocation stay unchanged. Expired-session cleanup is still request-local.
+
 ## API request flow
 
 [ApiController](src/Api/ApiController.php) extends the explicit web controller

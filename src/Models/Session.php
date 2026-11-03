@@ -158,12 +158,26 @@ class Session extends ActiveRecord {
 	}
 
 	/**
-	 * Extends timeout updating startTime of this session, based on user’s time zone.
+	 * Extend the session timeout without rewriting an unchanged DATETIME second.
 	 */
 	public function extendTimeout() {
 
-		$this->startTime = new \DateTime();
-		$this->update('startTime');
+		$this->extendTimeoutAt(new \DateTime());
+
+	}
+
+	/**
+	 * Preserve the current in-memory activity time and persist every new database second.
+	 */
+	private function extendTimeoutAt(\DateTime $now): void {
+
+		$sameSecond = (isset($this->startTime)
+			and $this->startTime->getTimestamp() === $now->getTimestamp()
+			and $this->startTime->format('Y-m-d H:i:s') === $now->format('Y-m-d H:i:s'));
+		$this->startTime = $now;
+		if (!$sameSecond) {
+			$this->update('startTime');
+		}
 
 	}
 
