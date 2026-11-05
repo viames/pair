@@ -14,7 +14,7 @@ use PHPUnit\Framework\TestCase;
 final class ApplicationSessionResponseTest extends TestCase {
 
 	/**
-	 * Provide browser navigation and background request metadata.
+	 * Provide navigation metadata and legacy HTML/JSON response preferences.
 	 *
 	 * @return array<string, array{array<string, string>, bool}>
 	 */
@@ -42,6 +42,15 @@ final class ApplicationSessionResponseTest extends TestCase {
 			'legacy JSON client' => [['HTTP_ACCEPT' => 'application/json'], true],
 			'Problem Details' => [['HTTP_ACCEPT' => 'application/problem+json'], true],
 			'legacy JSON body' => [['CONTENT_TYPE' => 'application/json; charset=utf-8'], true],
+			'legacy mixed Accept' => [['HTTP_ACCEPT' => 'text/html,application/json'], false],
+			'legacy HTML preferred' => [['HTTP_ACCEPT' => 'text/html,application/json;q=0.9'], false],
+			'legacy XHTML preferred' => [['HTTP_ACCEPT' => 'application/xhtml+xml,application/problem+json;q=0.9'], false],
+			'legacy JSON preferred' => [['HTTP_ACCEPT' => 'text/html;q=0.8,application/json'], true],
+			'legacy HTML excluded' => [['HTTP_ACCEPT' => 'text/html;q=0,application/json'], true],
+			'legacy JSON excluded' => [['HTTP_ACCEPT' => 'application/json;q=0,*/*'], false],
+			'legacy XHR mixed Accept' => [['HTTP_X_REQUESTED_WITH' => 'XMLHttpRequest', 'HTTP_ACCEPT' => 'text/html,application/json'], true],
+			'fetch mixed Accept' => [$fetch + ['HTTP_ACCEPT' => 'text/html,application/json'], true],
+			'JSON body with HTML Accept' => [['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT' => 'text/html'], true],
 			'legacy HTML page' => [['HTTP_ACCEPT' => 'text/html,application/xhtml+xml'], false],
 			'missing metadata' => [[], false],
 		];

@@ -1464,7 +1464,7 @@ class Application {
 	}
 
 	/**
-	 * Detects data requests while keeping explicit browser navigations on the login redirect flow.
+	 * Detects data requests while preserving navigation metadata and legacy HTML preferences.
 	 */
 	private function requestExpectsDataResponse(): bool {
 
@@ -1478,13 +1478,8 @@ class Application {
 
 		$requestedWith = strtolower(trim((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')));
 
-		if (in_array($requestedWith, ['xmlhttprequest', 'pairrouter'], true)) {
-			return true;
-		}
-
-		$acceptHeader = strtolower(trim((string)($_SERVER['HTTP_ACCEPT'] ?? '')));
-
-		if (str_contains($acceptHeader, 'application/json') or str_contains($acceptHeader, 'application/problem+json')) {
+		// Explicit background requests still need a readable 401, including HTML fragments.
+		if ('empty' === $fetchDestination or in_array($requestedWith, ['xmlhttprequest', 'pairrouter'], true)) {
 			return true;
 		}
 
@@ -1494,7 +1489,30 @@ class Application {
 			return true;
 		}
 
-		return 'empty' === $fetchDestination;
+		$acceptHeader = strtolower(trim((string)($_SERVER['HTTP_ACCEPT'] ?? '')));
+		$htmlQuality = 0.0;
+		$jsonQuality = 0.0;
+
+		// Legacy browsers or proxies may omit Fetch Metadata and accept both HTML and JSON.
+		foreach (explode(',', $acceptHeader) as $range) {
+			$parts = array_map('trim', explode(';', $range));
+			$mediaType = array_shift($parts);
+			$quality = 1.0;
+
+			foreach ($parts as $parameter) {
+				if (preg_match('/^q\s*=\s*(0(?:\.\d{0,3})?|1(?:\.0{0,3})?)$/D', $parameter, $matches)) {
+					$quality = (float)$matches[1];
+				}
+			}
+
+			if (in_array($mediaType, ['text/html', 'application/xhtml+xml'], true)) {
+				$htmlQuality = max($htmlQuality, $quality);
+			} else if (in_array($mediaType, ['application/json', 'application/problem+json'], true)) {
+				$jsonQuality = max($jsonQuality, $quality);
+			}
+		}
+
+		return $jsonQuality > $htmlQuality;
 
 	}
 
