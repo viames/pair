@@ -66,6 +66,7 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+/** Preserve document navigation semantics separately from background data requests. */
 self.addEventListener("fetch", (event) => {
   const request = event.request;
 
@@ -74,7 +75,10 @@ self.addEventListener("fetch", (event) => {
     const strategy = resolveCacheStrategy(request, url);
     const fallbackPath = request.mode === "navigate" ? OFFLINE_FALLBACK : null;
 
-    event.respondWith(executeCacheStrategy(strategy, request, fallbackPath));
+    event.respondWith(
+      executeCacheStrategy(strategy, request, fallbackPath)
+        .then((response) => resolveNavigationResponse(request, response))
+    );
     return;
   }
 
@@ -141,6 +145,34 @@ async function broadcastMessage(type, payload = {}) {
 
   for (const client of clients) {
     client.postMessage({ type, payload });
+  }
+}
+
+/**
+ * Redirect an expired document navigation even if network metadata was lost by the browser.
+ * Background requests retain their original JSON response and authentication status.
+ */
+async function resolveNavigationResponse(request, response) {
+  if (request.mode !== "navigate" || response.status !== 401 ||
+      response.headers.get("X-Pair-Auth-Expired") !== "1") {
+    return response;
+  }
+
+  try {
+    const payload = await response.clone().json();
+    if (payload.code !== "AUTH_SESSION_EXPIRED" || typeof payload.loginUrl !== "string" || !payload.loginUrl.trim()) {
+      return response;
+    }
+
+    const loginUrl = new URL(payload.loginUrl, request.url);
+    // only the application's own authentication response may select a same-origin destination.
+    if (loginUrl.origin !== self.location.origin || loginUrl.username || loginUrl.password || loginUrl.href === request.url) {
+      return response;
+    }
+
+    return Response.redirect(loginUrl.href, 302);
+  } catch (_error) {
+    return response;
   }
 }
 

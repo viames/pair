@@ -43,6 +43,9 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --no-progress --prefer-dist
 
+      - name: Run service worker tests
+        run: node --test tests/js/*.test.cjs
+
       - name: Run PHPUnit
         run: vendor/bin/phpunit -c phpunit.xml.dist
 
