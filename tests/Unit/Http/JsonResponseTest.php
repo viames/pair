@@ -75,9 +75,9 @@ PHP);
 	}
 
 	/**
-	 * Verify null payloads keep the legacy no-content status promotion.
+	 * Verify null payloads preserve an explicitly requested success status.
 	 */
-	public function testSendWithNullPayloadPromotesNoContentStatus(): void {
+	public function testNullStatus(): void {
 
 		$result = $this->runPhpSnippet(<<<'PHP'
 register_shutdown_function(function (): void {
@@ -89,7 +89,7 @@ $response->send();
 PHP);
 
 		$this->assertSame(0, $result['exitCode']);
-		$this->assertSame(204, $this->extractReportedStatusCode($result['stderr']));
+		$this->assertSame(201, $this->extractReportedStatusCode($result['stderr']));
 		$this->assertSame('null', $result['stdout']);
 
 	}

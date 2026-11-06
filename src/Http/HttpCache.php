@@ -94,7 +94,7 @@ final class HttpCache {
 	public static function isNotModified(?string $etag = null, \DateTimeInterface|int|string|null $lastModified = null, ?array $server = null): bool {
 
 		$server ??= $_SERVER;
-		$method = strtoupper((string)($server['REQUEST_METHOD'] ?? 'GET'));
+		$method = (string)($server['REQUEST_METHOD'] ?? 'GET');
 
 		if (!in_array($method, ['GET', 'HEAD'], true)) {
 			return false;
@@ -102,8 +102,17 @@ final class HttpCache {
 
 		$ifNoneMatch = trim((string)($server['HTTP_IF_NONE_MATCH'] ?? ''));
 
-		if (!is_null($etag) and strlen($ifNoneMatch)) {
-			return self::etagMatches($etag, $ifNoneMatch);
+		try {
+			$status = EntityTag::evaluate($method, $etag, $server['HTTP_IF_MATCH'] ?? null,
+				$server['HTTP_IF_NONE_MATCH'] ?? null);
+		} catch (\InvalidArgumentException) {
+			return false;
+		}
+		if (412 === $status) {
+			return false;
+		}
+		if (array_key_exists('HTTP_IF_NONE_MATCH', $server)) {
+			return 304 === $status;
 		}
 
 		$ifModifiedSince = trim((string)($server['HTTP_IF_MODIFIED_SINCE'] ?? ''));
@@ -126,6 +135,21 @@ final class HttpCache {
 	public static function json(mixed $payload, int $httpCode = 200, ?string $etag = null, \DateTimeInterface|int|string|null $lastModified = null, ?string $cacheControl = null, ?array $server = null): ResponseInterface {
 
 		$headers = self::headers($etag, $lastModified, $cacheControl);
+		if ($httpCode < 200 or $httpCode >= 300) {
+			return new JsonResponse($payload, $httpCode, $headers);
+		}
+
+
+		$server ??= $_SERVER;
+		try {
+			$status = EntityTag::evaluate((string)($server['REQUEST_METHOD'] ?? 'GET'), $etag,
+				$server['HTTP_IF_MATCH'] ?? null, $server['HTTP_IF_NONE_MATCH'] ?? null);
+		} catch (\InvalidArgumentException) {
+			return new EmptyResponse(400);
+		}
+		if (412 === $status) {
+			return new EmptyResponse(412, $headers);
+		}
 
 		if (self::isNotModified($etag, $lastModified, $server)) {
 			return new EmptyResponse(304, $headers);
@@ -141,40 +165,6 @@ final class HttpCache {
 	public static function notModified(?string $etag = null, \DateTimeInterface|int|string|null $lastModified = null, ?string $cacheControl = null): EmptyResponse {
 
 		return new EmptyResponse(304, self::headers($etag, $lastModified, $cacheControl));
-
-	}
-
-	/**
-	 * Return true when an If-None-Match header matches an ETag.
-	 */
-	private static function etagMatches(string $etag, string $ifNoneMatch): bool {
-
-		foreach (explode(',', $ifNoneMatch) as $candidate) {
-
-			$candidate = trim($candidate);
-
-			if ('*' === $candidate or self::normalizeEtag($candidate) === self::normalizeEtag($etag)) {
-				return true;
-			}
-
-		}
-
-		return false;
-
-	}
-
-	/**
-	 * Normalize weak and strong validators to their opaque tag.
-	 */
-	private static function normalizeEtag(string $etag): string {
-
-		$etag = trim($etag);
-
-		if (str_starts_with($etag, 'W/')) {
-			$etag = substr($etag, 2);
-		}
-
-		return trim($etag);
 
 	}
 

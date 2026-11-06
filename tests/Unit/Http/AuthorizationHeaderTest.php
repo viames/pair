@@ -43,15 +43,15 @@ class AuthorizationHeaderTest extends TestCase {
 	}
 
 	/**
-	 * Verify Basic credential parsing trims values and rejects incomplete pairs.
+	 * Verify Basic credential parsing preserves octets and rejects incomplete pairs.
 	 */
 	public function testBasicCredentialsParsesValidHeader(): void {
 
 		$header = 'Basic ' . base64_encode(' client-id : secret-value ');
 
 		$this->assertSame([
-			'id'		=> 'client-id',
-			'secret'	=> 'secret-value',
+			'id'		=> ' client-id ',
+			'secret'	=> ' secret-value ',
 		], AuthorizationHeader::basicCredentials($header));
 
 		$this->assertNull(AuthorizationHeader::basicCredentials('Basic ' . base64_encode('client-only')));

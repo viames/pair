@@ -200,9 +200,9 @@ PHP);
 	}
 
 	/**
-	 * Verify null responses keep the current framework behavior of promoting the status to 204.
+	 * Verify null responses preserve their explicitly requested status.
 	 */
-	public function testRespondWithNullPromotesNoContentStatus(): void {
+	public function testNullPreservesStatus(): void {
 
 		$result = $this->runPhpSnippet(<<<'PHP'
 register_shutdown_function(function (): void {
@@ -213,7 +213,7 @@ Pair\Api\ApiResponse::respond(null, 201);
 PHP);
 
 		$this->assertSame(0, $result['exitCode']);
-		$this->assertSame(204, $this->extractReportedStatusCode($result['stderr']));
+		$this->assertSame(201, $this->extractReportedStatusCode($result['stderr']));
 		$this->assertSame('null', $result['stdout']);
 
 	}

@@ -66,11 +66,11 @@ final class AuthorizationHeader {
 	 */
 	public static function bearerToken(?string $header): ?string {
 
-		if (!$header or !preg_match('/^\s*Bearer\s+(\S+)\s*$/i', $header, $matches)) {
+		if (!$header or !preg_match('~^Bearer +([A-Za-z0-9._\~+/-]+=*)$~iD', trim($header, " \t"), $matches)) {
 			return null;
 		}
 
-		return trim($matches[1]);
+		return $matches[1];
 
 	}
 
@@ -81,19 +81,18 @@ final class AuthorizationHeader {
 	 */
 	public static function basicCredentials(?string $header): ?array {
 
-		if (!$header or !preg_match('/^\s*Basic\s+(\S+)\s*$/i', $header, $matches)) {
+		if (!$header or !preg_match('~^Basic +([A-Za-z0-9+/]+={0,2})$~iD', trim($header, " \t"), $matches)) {
 			return null;
 		}
 
 		$decoded = base64_decode($matches[1], true);
 
-		if (false === $decoded or !str_contains($decoded, ':')) {
+		if (false === $decoded or !str_contains($decoded, ':') or rtrim(base64_encode($decoded), '=') !== rtrim($matches[1], '=')) {
 			return null;
 		}
 
 		list($clientId, $clientSecret) = explode(':', $decoded, 2);
-		$clientId = trim($clientId);
-		$clientSecret = trim($clientSecret);
+		// Credentials are octet strings: whitespace inside either component is significant.
 
 		if ('' === $clientId or '' === $clientSecret) {
 			return null;

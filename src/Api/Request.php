@@ -31,7 +31,7 @@ class Request {
 	 */
 	public function method(): string {
 
-		return strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
+		return $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 	}
 
@@ -253,8 +253,15 @@ class Request {
 	 */
 	public function isJson(): bool {
 
-		$contentType = $this->header('Content-Type') ?? '';
-		return str_contains($contentType, 'application/json');
+		$contentType = $this->header('Content-Type');
+		if (null === $contentType) {
+			return false;
+		}
+		try {
+			return 'application/json' === \Pair\Http\MediaType::parse($contentType)[0];
+		} catch (\InvalidArgumentException) {
+			return false;
+		}
 
 	}
 

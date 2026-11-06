@@ -84,7 +84,19 @@ class OAuth2Token extends ActiveRecord {
 	 */
 	public static function basicCredentials(): ?array {
 
-		return AuthorizationHeader::basicCredentials(self::getAuthorizationHeader());
+		// Preserve this legacy facade; new OAuth endpoints use Pair\Api\OAuth2::clientCredentials().
+		$header = self::getAuthorizationHeader();
+		if (!$header or !preg_match('/^\\s*Basic\\s+(\\S+)\\s*$/i', $header, $matches)) {
+			return null;
+		}
+		$decoded = base64_decode($matches[1], true);
+		if (false === $decoded or !str_contains($decoded, ':')) {
+			return null;
+		}
+		[$id, $secret] = explode(':', $decoded, 2);
+		$id = trim($id);
+		$secret = trim($secret);
+		return ('' !== $id and '' !== $secret) ? ['id'=>$id, 'secret'=>$secret] : null;
 
 	}
 
@@ -95,7 +107,12 @@ class OAuth2Token extends ActiveRecord {
 	 */
 	public static function bearerToken(): ?string {
 
-		return AuthorizationHeader::bearerToken(self::getAuthorizationHeader());
+		// Preserve the legacy facade while AuthorizationHeader enforces the RFC 6750 grammar.
+		$header = self::getAuthorizationHeader();
+		if (!$header or !preg_match('/^\\s*Bearer\\s+(\\S+)\\s*$/i', $header, $matches)) {
+			return null;
+		}
+		return trim($matches[1]);
 
 	}
 
@@ -144,12 +161,13 @@ class OAuth2Token extends ActiveRecord {
 	}
 
 	/**
-	 * Validate that a bearer token exists and is still within configured lifetime.
+	 * Preserve pre-v4 token validation for applications with a frozen external contract.
+	 * @deprecated New endpoints must use isValid() or validateBearer().
 	 *
 	 * @param string $bearerToken The token value to validate.
 	 * @return bool True if the token is valid and not expired.
 	 */
-	public static function isValid(string $bearerToken): bool {
+	public static function isLegacyValid(string $bearerToken): bool {
 
 		$bearerToken = trim($bearerToken);
 
@@ -165,6 +183,28 @@ class OAuth2Token extends ActiveRecord {
 
 		return (bool)Database::load($query, [$bearerToken], Database::COUNT);
 
+	}
+
+	/** Validate a token with client revocation and exact token comparison, keeping the historical refresh clock. */
+	public static function isValid(string $bearerToken): bool {
+		return null !== self::validateBearer($bearerToken, null, false);
+	}
+
+	/** Return the enabled client's ID for an exact bearer token, with a fixed lifetime by default. */
+	public static function validateBearer(string $bearerToken, ?int $lifetime = null, bool $fixedLifetime = true): ?string {
+		if (AuthorizationHeader::bearerToken('Bearer ' . $bearerToken) !== $bearerToken) {
+			return null;
+		}
+		$lifetime ??= self::getLifetimeSeconds();
+		if ($lifetime < 1) {
+			throw new \InvalidArgumentException('OAuth lifetime must be positive.');
+		}
+		$clock = $fixedLifetime ? 'created_at' : 'updated_at';
+		$row = Database::load('SELECT t.token, t.client_id FROM oauth2_tokens t INNER JOIN oauth2_clients c ON c.id=t.client_id WHERE t.token=? AND c.enabled=1 AND t.' . $clock . '>DATE_SUB(NOW(), INTERVAL ' . $lifetime . ' SECOND)', [$bearerToken], Database::OBJECT);
+		if (!$row or !hash_equals((string)$row->token, $bearerToken)) {
+			return null;
+		}
+		return (string)$row->client_id;
 	}
 
 	/**

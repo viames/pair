@@ -125,9 +125,10 @@ class OAuth2Client extends ActiveRecord {
 	}
 
 	/**
-	 * Send the access token as an OAuth2-compliant JSON response and terminate execution.
+	 * Preserve the historical response for frozen application contracts only.
+	 * @deprecated Use accessTokenResponse() for explicit RFC 6749 responses.
 	 */
-	public function sendAccessTokenResponse(): void {
+	public function sendLegacyAccessTokenResponse(): void {
 
 		$body = [
 			'access_token'	=> $this->issueAccessToken(),
@@ -140,6 +141,32 @@ class OAuth2Client extends ActiveRecord {
 		print json_encode($body);
 		die();
 
+	}
+
+	/** Create a fresh token using the database clock, without deleting or extending existing tokens. */
+	public function createAccessToken(): string {
+		if (!$this->isLoaded() or !$this->enabled) {
+			throw new \RuntimeException('OAuth2 client not available');
+		}
+		$token = OAuth2Token::generateToken();
+		if (1 !== Database::run('INSERT INTO oauth2_tokens (client_id, token, created_at, updated_at) VALUES (?, ?, NOW(), NOW())', [$this->id, $token])) {
+			throw new \RuntimeException('OAuth2 token persistence failed');
+		}
+		return $token;
+	}
+
+	/** Return an explicit RFC 6749 response; authenticate the client before calling this method. */
+	public function accessTokenResponse(?string $scope = null): \Pair\Http\JsonResponse {
+		// Validate response options before persisting a token.
+		$lifetime = OAuth2Token::getLifetimeSeconds();
+		\Pair\Api\OAuth2::tokenPayload('validation', $lifetime, $scope);
+		return \Pair\Api\OAuth2::tokenResponse($this->createAccessToken(), $lifetime, $scope);
+	}
+
+	/** Send the standards-compliant response while retaining the terminating legacy call style. */
+	public function sendAccessTokenResponse(): void {
+		$this->accessTokenResponse()->send();
+		exit;
 	}
 
 }

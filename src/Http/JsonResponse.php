@@ -20,7 +20,9 @@ final readonly class JsonResponse implements ResponseInterface {
 	public function __construct(
 		private mixed $payload,
 		private int $httpCode = 200,
-		private array $headers = []
+		private array $headers = [],
+		private ?bool $head = null,
+		private int $jsonFlags = 0
 	) {}
 
 	/**
@@ -28,14 +30,18 @@ final readonly class JsonResponse implements ResponseInterface {
 	 */
 	public function send(): void {
 
-		$payload = $this->normalizePayload();
-		$httpCode = empty($payload) ? 204 : $this->httpCode;
-
-		// Preserve the historical no-content promotion while avoiding hidden exits.
-		header('Content-Type: application/json', true);
+		$bodyless = ($this->httpCode < 200 or in_array($this->httpCode, [204, 205, 304], true));
+		// Encode before sending any headers, so invalid JSON cannot become a successful empty response.
+		$body = $bodyless ? '' : json_encode($this->normalizePayload(), JSON_THROW_ON_ERROR | $this->jsonFlags);
+		if (!$bodyless) {
+			header('Content-Type: application/json', true);
+		}
 		$this->sendHeaders();
-		http_response_code($httpCode);
-		print json_encode($payload);
+		http_response_code($this->httpCode);
+		$head = $this->head ?? (($_SERVER['REQUEST_METHOD'] ?? '') === 'HEAD');
+		if (!$head) {
+			print $body;
+		}
 
 	}
 
