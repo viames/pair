@@ -47,24 +47,21 @@ With the [requirements](#requirements) installed, create an application with
 authentication, ACL, migrations and localization:
 
 ```sh
-composer create-project viames/pair_boilerplate my-project dev-main
+composer create-project viames/pair_boilerplate my-project
 cd my-project
-composer require "viames/pair:^4.1.12"
 ```
 
-The Pair 4 starter is currently on the boilerplate's `main` branch, selected by
-`dev-main`; its current stable release, `3.0.0`, installs Pair 3. The final command
-selects the stable Pair 4 framework instead of keeping the starter's older lock.
-The next stable starter, 4.0.0, is being prepared with the fixed Composer CLI;
-see its [release procedure](https://github.com/viames/pair_boilerplate/blob/main/RELEASING.md).
+The stable [starter 4.0.0](https://github.com/viames/pair_boilerplate/releases/tag/4.0.0)
+requires Pair ^4.1.12. Composer resolves stable dependencies and creates the new
+application's own `composer.lock`; commit that lock with your application.
 
 1. Serve the project through Apache with `mod_rewrite` and `.htaccess` overrides
    enabled. If it is inside your local document root, open
    `http://localhost/my-project/`; otherwise use your configured virtual-host URL.
    See the [starter setup](https://github.com/viames/pair_boilerplate#installation)
    for the Apache configuration.
-2. Follow the browser installer using a dedicated MySQL database and an account
-   permitted to initialize it. The installer imports the schema and seed data,
+2. Follow the browser installer using a dedicated new or empty MySQL database
+   and an account permitted to initialize it. The installer imports the schema and seed data,
    writes `.env` and creates the first administrator. It requires `fileinfo`
    in addition to the framework's required PHP extensions.
 3. Log in with the generated credentials, change the initial password and run
@@ -198,7 +195,7 @@ composer test:install
 
 The [installation check](https://github.com/viames/pair/tree/main/tests/Integration/Composer)
 tests real Composer archives and consuming projects offline. Add
-`-- ../pair_boilerplate` to verify the prepared stable starter as well; it needs
+`-- ../pair_boilerplate` to verify stable starter creation as well; it needs
 the development-only PHP `zip` extension. Optional database checks use a guarded
 disposable schema and never read an application's credentials.
 
