@@ -80,6 +80,8 @@
 	},
 	"scripts": {
 		"test": "phpunit -c phpunit.xml.dist",
+		"test:mysql": "phpunit -c tests/mysql.xml",
+		"test:install": "php tests/Integration/Composer/install.php",
 		"upgrade-to-v2": "php scripts/upgrade-to-v2.php",
 		"upgrade-to-v3": "php scripts/upgrade-to-v3.php",
 		"upgrade-to-v4": "php scripts/upgrade-to-v4.php",

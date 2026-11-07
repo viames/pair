@@ -198,7 +198,7 @@ class Database {
 	 */
 	public function disconnect(): void {
 
-		unset($this->handler);
+		$this->handler = null;
 		$this->clearSchemaMetadataCache();
 		$this->mysqlVersion = null;
 
@@ -895,16 +895,19 @@ class Database {
 			return;
 		}
 
-		$dsn = 'mysql:host=' . Env::get('DB_HOST') . ';dbname=' . Env::get('DB_NAME');
+		// Declare the client charset to PDO as well as MySQL so quoting uses the same encoding.
+		$dsn = 'mysql:host=' . Env::get('DB_HOST') . ';dbname=' . Env::get('DB_NAME') . ';charset=utf8mb4';
 		$options = [
 			\Pdo\Mysql::ATTR_PERSISTENT		=> $persistent,
-			\Pdo\Mysql::ATTR_INIT_COMMAND	=> "SET NAMES utf8",
 			\Pdo\Mysql::ATTR_FOUND_ROWS		=> true
 		];
 
 		try {
 			$this->handler = new \PDO($dsn, Env::get('DB_USER'), Env::get('DB_PASS'), $options);
+			// PDO init commands are not replayed when a persistent connection is reused.
+			$this->handler->exec('SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci');
 		} catch (\PDOException $e) {
+			$this->handler = null;
 			throw new CriticalException($e->getMessage(), ErrorCodes::DB_CONNECTION_FAILED, $e);
 		}
 
@@ -985,8 +988,8 @@ class Database {
 	}
 
 	/**
-	 * Set MySQL connection as UTF8mb4 and collation as utf8mb4_unicode_ci, useful to
-	 * support extended unicode like Emoji.
+	 * Reapply utf8mb4 and utf8mb4_unicode_ci to this connection without changing
+	 * database/server defaults or requiring administrative privileges.
 	 */
 	public function setUtf8unicode(): void {
 
@@ -994,25 +997,8 @@ class Database {
 
 		try {
 
-			// set names
+			// SET NAMES changes only the client, connection and result character sets.
 			$this->handler->exec('SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci');
-
-			// prepare query to discover db user privileges
-			$stat = $this->handler->prepare('SELECT `PRIVILEGE_TYPE` FROM information_schema.user_privileges' .
-				' WHERE `GRANTEE` = \'' . Env::get('DB_USER') . '\'@\'' . Env::get('DB_HOST') . '\'');
-
-			// get user privileges
-			$privilegeType = $stat->fetch(\PDO::FETCH_COLUMN);
-
-			if (in_array($privilegeType, ['SUPER', 'SYSTEM_VARIABLES_ADMIN', 'SESSION_VARIABLES_ADMIN'])) {
-
-				$this->handler->exec(
-					'SET character_set_client = "utf8mb4", character_set_connection = "utf8mb4",
-					character_set_database = "utf8mb4", character_set_results = "utf8mb4",
-					character_set_server = "utf8mb4", collation_connection = "utf8mb4_unicode_ci",
-					collation_database = "utf8mb4_unicode_ci", collation_server = "utf8mb4_unicode_ci"');
-
-			}
 
 		} catch (\PDOException $e) {
 

@@ -89,6 +89,17 @@ composer test
 vendor/bin/phpunit -c phpunit.xml.dist tests/Unit/Web/ControllerTest.php
 ```
 
+For database compatibility, provision the disposable schema described in
+[the MySQL integration guide](tests/Integration/MySql/README.md), then run
+`composer test:mysql`. This separate suite targets real MySQL 8.0, 8.4 and 26.10
+connections; never configure it with an application's database.
+
+Run `composer test:install` to test the actual Composer dist and executable in
+isolated consuming projects. Add `-- ../pair_boilerplate` for stable starter
+creation, CLI, installer and baseline checks. See the
+[installation test guide](tests/Integration/Composer/README.md) for optional
+disposable MySQL credentials and local artifact fixtures.
+
 Choose the relevant test path for a focused check. Use `composer run benchmark-v4`
 when assessing v4 migration/performance behavior; it is not required for every edit.
 For documentation-only work, check links, source references and example syntax.

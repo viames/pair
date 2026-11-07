@@ -3,6 +3,22 @@
 
 declare(strict_types=1);
 
-require dirname(__DIR__) . '/vendor/autoload.php';
+// Composer proxies provide the application's autoloader, including custom vendor directories.
+$autoloadFile = $_composer_autoload_path ?? null;
+
+if (!is_string($autoloadFile) or !is_file($autoloadFile)) {
+	// Support the framework checkout and direct execution from a standard vendor tree.
+	$autoloadFile = dirname(__DIR__) . '/vendor/autoload.php';
+	if (!is_file($autoloadFile)) {
+		$autoloadFile = dirname(__DIR__, 3) . '/autoload.php';
+	}
+}
+
+if (!is_file($autoloadFile)) {
+	fwrite(STDERR, "Composer autoloader not found. Run composer install in the project root.\n");
+	exit(1);
+}
+
+require $autoloadFile;
 
 exit((new \Pair\Console\MakeCommand())->run($argv));

@@ -10,6 +10,73 @@ Pair v4 moves application code away from implicit `ActiveRecord` payloads and hi
 
 The API documentation path follows the same rule: CRUD OpenAPI response schemas now derive from `readModel` when configured.
 
+### Pair 4.1.12: MySQL 26.10 and utf8mb4
+
+Pair 4.1.12 adds the connection and compatibility changes described below.
+MySQL 8.0 and 8.4 remain integration-test targets alongside MySQL 26.10, with
+PHP 8.4 and 8.5. No new application setting or framework schema migration is required.
+
+Normal and persistent PDO connections now declare `charset=utf8mb4` and apply
+`utf8mb4_unicode_ci` before use. The session settings are reapplied when PDO
+reuses a persistent connection. `disconnect()` leaves the instance reconnectable.
+The existing `setUtf8unicode(): void` method remains available and changes only
+session communication settings, without administrative privileges or queries
+against privilege tables.
+
+`DB_UTF8` still defaults to `true` and controls the legacy Application startup
+call to `setUtf8unicode()`. Setting it to `false` skips that call but does not
+disable the new connection default, including in CLI scripts using `Database` directly.
+
+Update only Pair through Composer and review the resulting lock-file diff. Review application
+Composer hooks before running them: this framework change does not require
+database migrations or asset regeneration. Applications with a local Composer
+path repository must refresh their installed copy and verify its source reference;
+editing the framework checkout alone does not update a mirrored vendor directory.
+
+Before rollout:
+
+1. Verify application reads and writes on its current MySQL version, including
+   quoted and prepared values, JSON and four-byte Unicode where the schema permits it.
+2. Check existing column character sets separately. A connection charset change
+   does not convert databases, tables or columns; emoji storage requires `utf8mb4`
+   columns. Preserve application-specific collation and SQL-mode requirements.
+3. Exercise reconnects, persistent connections, transactions/savepoints and
+   application login, save and export paths. Test against a restored copy before
+   upgrading a database server.
+4. Follow the [database upgrade guidance](https://github.com/viames/pair/wiki/Database#mysql-compatibility-and-unicode)
+   for backup, supported server-version steps and one-server-at-a-time rollout.
+
+For a framework rollback, restore the previous `composer.json`/`composer.lock`
+and reinstall their locked dependencies through the application's normal release
+process. This does not undo a MySQL data-directory upgrade or a separate schema
+conversion: those require their own verified backup and recovery procedure.
+
+Framework maintainers can run the separate real-server suite with `composer test:mysql`;
+see the [MySQL integration guide](tests/Integration/MySql/README.md) for its isolated
+schema, restricted account and environment variables. It does not validate an
+application's SQL or authorize a server upgrade.
+
+### Pair 4.1.12: Composer CLI and stable starter
+
+The executable bootstrap in Pair 4.1.12 uses the consuming project's autoloader
+provided by Composer's proxy. This fixes `vendor/bin/pair` trying to load a
+nonexistent nested `vendor/viames/pair/vendor/autoload.php`. The framework
+checkout and direct execution from a conventional vendor tree retain fallbacks;
+custom vendor/bin paths use the Composer proxy metadata available since Composer 2.2.
+Missing dependencies produce a concise installation hint and a nonzero exit status.
+
+Starter 4.0.0 requires the fixed Pair release, declares its PHP/extensions, and excludes the old template
+lock from dist so a new app resolves current stable Pair 4 dependencies and writes
+its own lock. Its fresh schema/seed includes passkey storage, Pair 4 `super` users and
+the baseline migration markers. Login and Self test use the current Pair APIs.
+Fresh installation accepts only a new or empty database and does not reseed an
+existing populated application database. Use migrations for existing applications.
+
+See the [installation test guide](tests/Integration/Composer/README.md) and the
+[starter release procedure](https://github.com/viames/pair_boilerplate/blob/main/RELEASING.md)
+for installation verification and publication order. Existing application upgrades
+remain separate from preparing or publishing these packages.
+
 ### Pair 4.1.3 session responses and Supabase keys
 
 Explicit browser document navigations now take precedence over AJAX and JSON headers when a web session is missing or expired. Protected pages redirect to login; background fetch/XHR requests retain the existing HTTP 401 session-expired payload. API modules and native bearer-token flows keep their contracts. No schema migration or new session setting is required.

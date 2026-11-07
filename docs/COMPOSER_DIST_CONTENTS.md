@@ -32,3 +32,12 @@ Repository-only material should stay in Git but not be copied into `vendor/viame
 - local editor, environment, and generated files.
 
 The mobile stacks are useful source assets for native app development, but they are not required by PHP web applications using Pair 4. They should be consumed from the Pair Git repository or from future dedicated package distribution channels, not from a web project's Composer vendor directory.
+
+## Verify the installed package
+
+Run `composer test:install` from the framework checkout after installing dev
+dependencies. The [installation test](../tests/Integration/Composer/README.md)
+archives the working tree using Composer's dist filters, installs it through a
+local artifact repository, checks that repository-only files and nested vendor
+trees are absent, and executes real generated binaries in normal/custom vendor
+directories. Unit tests of `MakeCommand` alone cannot verify this packaging path.

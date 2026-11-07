@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit bootstrap="bootstrap.php"
+	colors="true"
+	cacheDirectory="../.phpunit.cache"
+	failOnRisky="true"
+	failOnWarning="true"
+	beStrictAboutOutputDuringTests="true">
+	<testsuites>
+		<testsuite name="MySQL">
+			<directory>Integration/MySql</directory>
+		</testsuite>
+	</testsuites>
+	<php>
+		<ini name="display_errors" value="1"/>
+		<server name="PAIR_TESTING" value="1"/>
+	</php>
+</phpunit>

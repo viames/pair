@@ -56,9 +56,30 @@ Create the GitHub Release from the pushed tag and include user-facing upgrade, c
 ## Release checklist
 
 - Run the full test suite before tagging.
+- Run `composer test:install` for changes to binaries, packaging or Composer metadata.
+- For database changes, run the [MySQL integration suite](tests/Integration/MySql/README.md)
+  on the supported PHP/MySQL matrix as well. A green unit suite alone does not
+  verify MySQL server compatibility.
 - Update the stable version and Composer constraint in `README.md` and the wiki `Home` page.
+- Replace unreleased labels in `README.md`, `UPGRADE_V4.md` and the wiki with the
+  actual release version when publishing the corresponding changes; do not
+  describe them as part of an earlier published tag.
 - Verify `composer.json` requirements and documentation links match the release.
 - GitHub Pages renders `index.md`, which includes `README.md`; keep presentation content in the README instead of maintaining a second copy.
 - After publishing, verify the Pages quick start and wiki home display the new version.
 - Confirm upgrade scripts and migration notes still match the published major version.
 - Write GitHub Release notes with breaking changes, upgrade steps, and manual rollback instructions.
+
+## Coordinated Pair 4 starter release
+
+Pair 4.1.12 and `pair_boilerplate` 4.0.0 coordinate the Composer CLI/starter
+corrections. Test the two working trees with
+`composer test:install -- ../pair_boilerplate`, including the starter's optional
+disposable MySQL test. Local artifact versions are fixtures, not published tags.
+
+Publish the framework release first and verify that Composer can resolve its
+stable tag. Then follow the [starter release procedure](https://github.com/viames/pair_boilerplate/blob/main/RELEASING.md),
+publish its stable tag and verify the default public `composer create-project`
+command again without local repositories or `dev-main`. Update the README and
+wiki quick starts only after that public path succeeds. Preparing or publishing
+these packages does not update or deploy consuming applications.

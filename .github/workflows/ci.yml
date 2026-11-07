@@ -34,7 +34,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php-version }}
-          extensions: curl, intl, mbstring, pdo_mysql
+          extensions: curl, intl, mbstring, pdo_mysql, zip
           coverage: none
 
       - name: Validate composer.json
@@ -48,6 +48,56 @@ jobs:
 
       - name: Run PHPUnit
         run: vendor/bin/phpunit -c phpunit.xml.dist
+
+      - name: Verify installed Composer binaries
+        run: composer test:install
+
+  mysql:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php-version: ['8.4', '8.5']
+        mysql-version: ['8.0', '8.4', '26.10']
+
+    services:
+      mysql:
+        image: mysql:${{ matrix.mysql-version }}
+        env:
+          MYSQL_ROOT_PASSWORD: pair-root
+          MYSQL_DATABASE: pair_test_integration
+          MYSQL_USER: pair_test
+          MYSQL_PASSWORD: pair-test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 --silent"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          extensions: curl, intl, mbstring, pdo_mysql
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Run MySQL integration tests
+        run: composer test:mysql
+        env:
+          PAIR_TEST_DB_HOST: 127.0.0.1
+          PAIR_TEST_DB_NAME: pair_test_integration
+          PAIR_TEST_DB_USER: pair_test
+          PAIR_TEST_DB_PASS: pair-test
+          PAIR_TEST_MYSQL_VERSION: ${{ matrix.mysql-version }}
 
   mobile-ios:
     runs-on: macos-latest
