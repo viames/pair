@@ -5,6 +5,7 @@
 **A lightweight PHP framework for maintainable, server-rendered applications.**
 
 [Website](https://viames.github.io/pair/) ·
+[Packagist](https://packagist.org/packages/viames/pair) ·
 [Documentation](https://github.com/viames/pair/wiki) ·
 [Starter project](https://github.com/viames/pair_boilerplate) ·
 [Codex plugin](https://github.com/viames/pair-plugin) ·
