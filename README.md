@@ -1,4 +1,4 @@
-![Pair — Clear architecture. Maintainable software.](https://raw.githubusercontent.com/viames/pair/main/.github/assets/cover.jpg)
+![Pair — PHP framework. Codex companion.](https://raw.githubusercontent.com/viames/pair/main/.github/assets/cover-blue.jpg)
 
 # Pair
 
