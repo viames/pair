@@ -1,6 +1,6 @@
 {
 	"name": "viames/pair",
-	"description": "Lightweight PHP framework for fast server-rendered web applications with MVC routing, ActiveRecord ORM and API tooling",
+	"description": "Lightweight PHP framework for maintainable business applications, with explicit architecture and a companion Codex plugin.",
 	"type": "library",
 	"license": "MIT",
 	"keywords": [
@@ -37,7 +37,7 @@
 	"authors": [
 		{
 			"name": "Viames Marino",
-			"homepage": "https://viames.it",
+			"homepage": "https://vmingegneria.it/",
 			"role": "Creator and maintainer"
 		}
 	],
