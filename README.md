@@ -17,6 +17,10 @@
 [![License](https://poser.pugx.org/viames/pair/license)](https://packagist.org/packages/viames/pair)
 [![PHP requirement](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fviames%2Fpair%2Fmain%2Fcomposer.json&query=%24.require.php&label=PHP&color=777BB4)](https://github.com/viames/pair/blob/main/composer.json)
 
+> **Developing with Codex?** Install the [Pair companion plugin](https://github.com/viames/pair-plugin)
+> for six version-aware skills covering modules, APIs, forms, migrations and CRUD.
+> [Installation and example](#pair-plugin-for-codex).
+
 Pair is designed for small and medium PHP/MySQL applications where clear
 architecture, low operational overhead and long-term maintainability matter
 more than a heavy frontend toolchain.
@@ -25,10 +29,6 @@ It combines explicit MVC responses, an ActiveRecord-style ORM, CRUD and OpenAPI
 tooling, progressive enhancement, authentication helpers and conservative
 upgrade tooling in a codebase intended to remain inspectable by both people and
 AI-assisted workflows.
-
-> **Developing with Codex?** Install the [Pair companion plugin](https://github.com/viames/pair-plugin)
-> for six version-aware skills covering modules, APIs, forms, migrations and CRUD.
-> [Installation and example](#pair-plugin-for-codex).
 
 [Quick start](#quick-start) · [Codex plugin](#pair-plugin-for-codex) · [Application development](#application-development) · [Requirements](#requirements) ·
 [Documentation](#documentation) · [Development](#development)
