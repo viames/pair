@@ -5,6 +5,7 @@
 [Website](https://viames.github.io/pair/) ·
 [Documentation](https://github.com/viames/pair/wiki) ·
 [Starter project](https://github.com/viames/pair_boilerplate) ·
+[Codex plugin](https://github.com/viames/pair-plugin) ·
 [Releases](https://github.com/viames/pair/releases) ·
 [Security](https://github.com/viames/pair/blob/main/SECURITY.md)
 
@@ -23,7 +24,11 @@ tooling, progressive enhancement, authentication helpers and conservative
 upgrade tooling in a codebase intended to remain inspectable by both people and
 AI-assisted workflows.
 
-[Quick start](#quick-start) · [Application development](#application-development) · [Requirements](#requirements) ·
+> **Developing with Codex?** Install the [Pair companion plugin](https://github.com/viames/pair-plugin)
+> for six version-aware skills covering modules, APIs, forms, migrations and CRUD.
+> [Installation and example](#pair-plugin-for-codex).
+
+[Quick start](#quick-start) · [Codex plugin](#pair-plugin-for-codex) · [Application development](#application-development) · [Requirements](#requirements) ·
 [Documentation](#documentation) · [Development](#development)
 
 ## Status
@@ -76,6 +81,35 @@ composer require "viames/pair:^4.1.12"
 Then follow the [bootstrap guide](https://github.com/viames/pair/wiki/index)
 and [environment reference](https://github.com/viames/pair/wiki/Configuration-file)
 to configure its database and `public/index.php`.
+
+## Pair plugin for Codex
+
+The [Pair plugin](https://github.com/viames/pair-plugin), maintained alongside the
+framework, helps Codex work with Pair applications and framework source. Its six
+skills identify the installed Pair version and guide module development, API
+validation and access checks, forms, migration reviews and generated CRUD reviews.
+On-demand references cover authentication, ORM, integrations and upgrades.
+
+Install it in a Codex version that supports Git-backed plugin marketplaces:
+
+```sh
+codex plugin marketplace add viames/pair-plugin
+codex plugin add pair@viames-pair
+```
+
+Start a **new chat in your Pair project**, invoke `@Pair` and describe the task.
+For example:
+
+> @Pair Review the orders API's validation and access checks using the installed
+> Pair version, and run the relevant tests.
+
+The plugin supplies instructions and references; it uses Codex's existing tools
+and permissions. Your application's PHP/Composer environment is still required,
+and installing the plugin does not upgrade Pair.
+
+[Plugin documentation and updates](https://github.com/viames/pair-plugin#readme) ·
+[Available skills](https://github.com/viames/pair-plugin#skills) ·
+[Releases](https://github.com/viames/pair-plugin/releases)
 
 ## Why Pair
 
@@ -219,6 +253,7 @@ Choose a guide by task:
 | Task | Guide |
 | --- | --- |
 | Start an application | [Starter project](https://github.com/viames/pair_boilerplate), [bootstrap](https://github.com/viames/pair/wiki/index), [configuration](https://github.com/viames/pair/wiki/Configuration-file) |
+| Work on Pair with Codex | [Companion plugin and installation](#pair-plugin-for-codex), [six skills](https://github.com/viames/pair-plugin#skills) |
 | Build modules and APIs | [Wiki learning paths and class reference](https://github.com/viames/pair/wiki), [generator](https://github.com/viames/pair/wiki/Generator) |
 | Upgrade an application | [Pair 4 upgrade guide](https://github.com/viames/pair/blob/main/UPGRADE_V4.md) |
 | Contribute to Pair | [Framework development](#development), [implementation patterns](https://github.com/viames/pair/blob/main/PAIR_PATTERNS.md) |
