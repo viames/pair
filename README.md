@@ -1,3 +1,5 @@
+![Pair — Clear architecture. Maintainable software.](https://raw.githubusercontent.com/viames/pair/main/.github/assets/cover.jpg)
+
 # Pair
 
 **A lightweight PHP framework for maintainable, server-rendered applications.**
