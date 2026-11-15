@@ -42,7 +42,7 @@ AI-assisted workflows.
 | Pair 4 `main` | Unreleased | Framework development and upcoming changes |
 | Pair 3 | Maintenance | Existing applications awaiting migration |
 
-The current stable release is [Pair 4.1.12](https://github.com/viames/pair/releases/tag/4.1.12).
+The current stable release is [Pair 4.1.13](https://github.com/viames/pair/releases/tag/4.1.13).
 
 Pair 4 is used in production across the maintainer's applications. The
 [release history](https://github.com/viames/pair/releases) lists published versions;

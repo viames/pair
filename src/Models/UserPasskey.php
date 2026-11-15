@@ -216,7 +216,7 @@ class UserPasskey extends ActiveRecord {
 			$this->signCount = $signCount;
 		}
 
-		return $this->update('lastUsedAt', 'updatedAt', 'signCount');
+		return $this->update(['lastUsedAt', 'updatedAt', 'signCount']);
 
 	}
 
@@ -228,7 +228,7 @@ class UserPasskey extends ActiveRecord {
 		$this->revokedAt = new \DateTime();
 		$this->updatedAt = new \DateTime();
 
-		return $this->update('revokedAt', 'updatedAt');
+		return $this->update(['revokedAt', 'updatedAt']);
 
 	}
 
