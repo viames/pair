@@ -2227,7 +2227,7 @@ class Application {
 	}
 
 	/**
-	 * Runs the MVC pattern to handle the current request and render the appropriate view.
+	 * Dispatches controller actions, preserving legacy view-only routes and returning 404 for unknown explicit actions.
 	 *
 	 * @throws	AppException	If an application-level error occurs.
 	 */
@@ -2279,6 +2279,15 @@ class Application {
 
 			if (!class_exists($controllerName)) {
 				throw new CriticalException('Controller ' . $controllerName . ' not found', ErrorCodes::CONTROLLER_NOT_FOUND);
+			}
+
+			// Preserve view-only legacy actions while treating unknown explicit actions as 404 resources.
+			if (!method_exists($controllerName, $action) and !method_exists($controllerName, 'renderView')) {
+				$this->modal(Translator::safeDo('ERROR', null, 'Error'), Translator::safeDo('RESOURCE_NOT_FOUND', $router->url, 'Resource not found: %s'));
+				$this->style = '404';
+				$this->pageTitle(ApiResponse::localizedMessage('HTTP_404_ERROR'));
+				http_response_code(404);
+				return;
 			}
 
 			try {

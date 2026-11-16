@@ -21,6 +21,11 @@ class ApplicationResponseDispatchTest extends TestCase {
 	private int $outputBufferLevel = 0;
 
 	/**
+	 * HTTP status observed before each test starts.
+	 */
+	private int|false $httpStatus = false;
+
+	/**
 	 * Prepare a minimal application tree for the runtime-dispatch scenarios.
 	 */
 	protected function setUp(): void {
@@ -28,6 +33,7 @@ class ApplicationResponseDispatchTest extends TestCase {
 		parent::setUp();
 
 		$this->outputBufferLevel = ob_get_level();
+		$this->httpStatus = http_response_code();
 		$this->resetApplicationSingleton();
 		$this->prepareFixtureApplication();
 		$this->defineRuntimeConstants();
@@ -49,6 +55,7 @@ class ApplicationResponseDispatchTest extends TestCase {
 			ob_end_clean();
 		}
 
+		http_response_code($this->httpStatus ?: 200);
 		$this->resetApplicationSingleton();
 		$this->removeDirectory(APPLICATION_PATH . '/modules');
 		$this->removeDirectory(APPLICATION_PATH . '/templates');
@@ -107,6 +114,114 @@ class ApplicationResponseDispatchTest extends TestCase {
 		$this->assertIsString($output);
 		$this->assertStringContainsString('<div class="shell"></div>', $output);
 		$this->assertContains('Pair v4 failure', $app->getAllNotificationsMessages());
+
+	}
+
+	/**
+	 * Verify the malformed login action returns the themed 404 before controller boot.
+	 */
+	public function testMalformedAction(): void {
+
+		$this->assertMissingAction('malformed', 'login.');
+
+	}
+
+	/**
+	 * Verify an ordinary unknown action is also a 404 resource.
+	 */
+	public function testUnknownAction(): void {
+
+		$this->assertMissingAction('unknown', 'unavailable');
+
+	}
+
+	/**
+	 * Verify a controller with no default action does not produce a configuration emergency.
+	 */
+	public function testMissingDefault(): void {
+
+		$this->assertMissingAction('missingdefault', '');
+
+	}
+
+	/**
+	 * Verify view-only legacy routes still render when there is no action method.
+	 */
+	public function testLegacyViewOnly(): void {
+
+		$modulePath = APPLICATION_PATH . '/modules/legacyview';
+		mkdir($modulePath, 0777, true);
+		file_put_contents($modulePath . '/controller.php', <<<'PHP'
+<?php
+
+/**
+ * Minimal legacy rendering contract without an action method.
+ */
+final class LegacyviewController {
+
+	/**
+	 * Render the selected view without requiring a matching action.
+	 */
+	public function renderView(): void {
+
+		print '<main>Legacy view</main>';
+
+	}
+
+}
+PHP
+		);
+		$app = $this->bootApplicationForRoute('legacyview', 'details');
+		http_response_code(200);
+
+		ob_start();
+		ob_start();
+		$app->run();
+		$output = ob_get_clean();
+
+		$this->assertSame(200, http_response_code());
+		$this->assertStringContainsString('<div class="shell"><main>Legacy view</main></div>', $output);
+
+	}
+
+	/**
+	 * Verify missing actions bypass boot side effects and use the existing 404 template.
+	 */
+	private function assertMissingAction(string $module, string $action): void {
+
+		$modulePath = APPLICATION_PATH . '/modules/' . $module;
+		mkdir($modulePath, 0777, true);
+		$className = ucfirst($module) . 'Controller';
+		file_put_contents($modulePath . '/controller.php', str_replace('MissingController', $className, <<<'PHP'
+<?php
+
+/**
+ * Explicit controller whose boot must never run for an unknown action.
+ */
+final class MissingController extends \Pair\Web\Controller {
+
+	/**
+	 * Fail if dispatch incorrectly constructs the controller for a missing action.
+	 */
+	protected function boot(): void {
+
+		throw new \RuntimeException('Unknown action must not boot the controller.');
+
+	}
+
+}
+PHP
+		));
+		file_put_contents(APPLICATION_PATH . '/templates/default/404.php', '<main>Resource not found</main>');
+		$app = $this->bootApplicationForRoute($module, $action);
+
+		ob_start();
+		ob_start();
+		$app->run();
+		$output = ob_get_clean();
+
+		$this->assertSame(404, http_response_code());
+		$this->assertSame('<main>Resource not found</main>', $output);
 
 	}
 
