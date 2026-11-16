@@ -10,6 +10,19 @@ Pair v4 moves application code away from implicit `ActiveRecord` payloads and hi
 
 The API documentation path follows the same rule: CRUD OpenAPI response schemas now derive from `readModel` when configured.
 
+### Pair 4.1.14: Unknown controller actions
+
+Controllers without `renderView()` now return HTTP 404 for unknown actions,
+including a missing `defaultAction()`, before controller construction. The
+application must provide its usual `404.php` template. Existing actions still
+follow the explicit response contract; returning no response remains a
+configuration error unless the request is headless.
+
+Legacy controllers implementing `renderView()` retain view-only routes without
+a corresponding action method. No migration, configuration change or client
+contract update is required. To roll back this patch, restore the application's
+previous Pair constraint and lockfile and reinstall its locked dependencies.
+
 ### Pair 4.1.12: MySQL 26.10 and utf8mb4
 
 Pair 4.1.12 adds the connection and compatibility changes described below.
