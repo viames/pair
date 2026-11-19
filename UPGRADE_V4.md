@@ -10,6 +10,14 @@ Pair v4 moves application code away from implicit `ActiveRecord` payloads and hi
 
 The API documentation path follows the same rule: CRUD OpenAPI response schemas now derive from `readModel` when configured.
 
+### Pair 4.1.15: Smaller ACL reads
+
+User authorization loads only the module name and action for ordinary group
+rules. The indexed ACL map remains local to the user object. A newly loaded
+user reads the current rules for its group, so permission changes remain visible
+subject to the database transaction. No schema or configuration change is needed.
+To roll back, restore the previous Composer constraint and lockfile and reinstall.
+
 ### Pair 4.1.14: Unknown controller actions
 
 Controllers without `renderView()` now return HTTP 404 for unknown actions,

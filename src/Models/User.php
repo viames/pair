@@ -9,7 +9,6 @@ use Pair\Core\Router;
 use Pair\Helpers\Translator;
 use Pair\Helpers\Utilities;
 use Pair\Orm\ActiveRecord;
-use Pair\Orm\Collection;
 use Pair\Orm\Database;
 use Pair\Models\Audit;
 use Pair\Models\Locale;
@@ -939,33 +938,6 @@ class User extends ActiveRecord {
 	}
 
 	/**
-	 * Loads the ACL rules for this user from the database.
-	 *
-	 * Returns a Collection of Rule entries and caches the result
-	 * for subsequent calls.
-	 *
-	 * @return Collection
-	 */
-	private function getAcl(): Collection {
-
-		if (!$this->issetCache('acl')) {
-
-			$query =
-				'SELECT r.*, m.`name` AS `module_name`
-				FROM `rules` AS r
-				INNER JOIN `acl` AS a ON a.`rule_id` = r.`id`
-				INNER JOIN `modules` AS m ON r.`module_id` = m.`id`
-				WHERE a.`group_id` = ?';
-
-			$this->setCache('acl', Rule::getObjectsByQuery($query, [$this->__get('groupId')]));
-
-		}
-
-		return $this->getCache('acl');
-
-	}
-
-	/**
 	 * Return an indexed ACL map so repeated menu checks avoid scanning all rules.
 	 *
 	 * @return	array<string, array{wildcard: bool, default: bool, actions: array<string, bool>}>
@@ -978,13 +950,16 @@ class User extends ActiveRecord {
 
 		$this->aclAccessMap = [];
 
-		foreach ($this->getAcl() as $rule) {
+		$query =
+			'SELECT m.`name` AS `module_name`, r.`action`
+			FROM `rules` AS r
+			INNER JOIN `acl` AS a ON a.`rule_id` = r.`id`
+			INNER JOIN `modules` AS m ON r.`module_id` = m.`id`
+			WHERE a.`group_id` = ? AND r.`super_only` = 0';
 
-			if ($rule->superOnly) {
-				continue;
-			}
+		foreach (Database::load($query, [$this->__get('groupId')]) as $rule) {
 
-			$module = (string)$rule->moduleName;
+			$module = (string)$rule->module_name;
 
 			if (!isset($this->aclAccessMap[$module])) {
 				$this->aclAccessMap[$module] = [

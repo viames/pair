@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace Pair\Tests\Unit\Models;
 
 use Pair\Models\User;
-use Pair\Orm\ActiveRecord;
-use Pair\Orm\Collection;
+use Pair\Orm\Database;
 use Pair\Tests\Support\TestCase;
 
 /**
@@ -42,56 +41,41 @@ class UserTest extends TestCase {
 			define('URL_PATH', null);
 		}
 
-		$user = $this->newUserWithAcl([
-			$this->rule('dashboard', null),
-			$this->rule('orders', 'default'),
-			$this->rule('reports', 'export'),
-			$this->rule('admin', null, true),
+		$statement = $this->createMock(\PDOStatement::class);
+		$statement->expects($this->once())->method('execute')->with([2])->willReturn(true);
+		$statement->method('fetchAll')->willReturn([
+			(object)['module_name' => 'dashboard', 'action' => null],
+			(object)['module_name' => 'orders', 'action' => 'default'],
+			(object)['module_name' => 'reports', 'action' => 'export'],
 		]);
+		$pdo = $this->createMock(\PDO::class);
+		$pdo->expects($this->once())->method('prepare')->with($this->callback(static function (string $query): bool {
+			return str_contains($query, 'SELECT m.`name` AS `module_name`, r.`action`')
+				and str_contains($query, 'a.`group_id` = ? AND r.`super_only` = 0');
+		}))->willReturn($statement);
 
-		$this->assertTrue($user->canAccess('dashboard'));
-		$this->assertTrue($user->canAccess('dashboard', 'stats'));
-		$this->assertTrue($user->canAccess('orders'));
-		$this->assertFalse($user->canAccess('orders', 'edit'));
-		$this->assertTrue($user->canAccess('reports/export'));
-		$this->assertFalse($user->canAccess('reports/delete'));
-		$this->assertFalse($user->canAccess('admin'));
-		$this->assertTrue($user->canAccess('user', 'profile'));
+		$instance = new \ReflectionProperty(Database::class, 'instance');
+		$previous = $instance->getValue();
+		$database = (new \ReflectionClass(Database::class))->newInstanceWithoutConstructor();
+		$this->setInaccessibleProperty($database, 'handler', $pdo);
+		$instance->setValue(null, $database);
 
-	}
+		try {
+			$user = (new \ReflectionClass(User::class))->newInstanceWithoutConstructor();
+			$this->setInaccessibleProperty($user, 'groupId', 2);
+			$this->setInaccessibleProperty($user, 'super', false);
 
-	/**
-	 * Create a user test double with an already-loaded ACL cache.
-	 *
-	 * @param	array<int, object>	$rules	Rule-like objects consumed by User::canAccess().
-	 */
-	private function newUserWithAcl(array $rules): User {
-
-		$reflection = new \ReflectionClass(User::class);
-		$user = $reflection->newInstanceWithoutConstructor();
-
-		$super = new \ReflectionProperty(User::class, 'super');
-		$super->setValue($user, false);
-
-		$cache = new \ReflectionProperty(ActiveRecord::class, 'cache');
-		$cache->setValue($user, [
-			'acl' => new Collection($rules),
-		]);
-
-		return $user;
-
-	}
-
-	/**
-	 * Build the minimal rule object shape used by the ACL map.
-	 */
-	private function rule(string $moduleName, ?string $action, bool $superOnly = false): object {
-
-		return (object)[
-			'moduleName' => $moduleName,
-			'action' => $action,
-			'superOnly' => $superOnly,
-		];
+			$this->assertTrue($user->canAccess('dashboard'));
+			$this->assertTrue($user->canAccess('dashboard', 'stats'));
+			$this->assertTrue($user->canAccess('orders'));
+			$this->assertFalse($user->canAccess('orders', 'edit'));
+			$this->assertTrue($user->canAccess('reports/export'));
+			$this->assertFalse($user->canAccess('reports/delete'));
+			$this->assertFalse($user->canAccess('admin'));
+			$this->assertTrue($user->canAccess('user', 'profile'));
+		} finally {
+			$instance->setValue(null, $previous);
+		}
 
 	}
 
