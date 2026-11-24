@@ -2,10 +2,12 @@
 
 namespace Pair\Push;
 
+use Http\Discovery\Psr18ClientDiscovery;
 use Minishlink\WebPush\Subscription;
 use Minishlink\WebPush\WebPush;
 
 use Pair\Models\PushSubscription;
+use Psr\Log\LoggerInterface;
 
 /**
  * Sends Web Push notifications using the VAPID authentication and Minishlink library.
@@ -15,15 +17,18 @@ class WebPushSender {
 
 	private VapidConfig $config;
 
+	private ?LoggerInterface $logger;
+
 	private int $ttl = 3600;
 
 	/**
 	 * Constructor.
 	 *
 	 * @param VapidConfig|null $config The VAPID configuration. If null, a default configuration is used.
+	 * @param LoggerInterface|null $logger Preserves the severity of Web Push diagnostics when provided.
 	 * @throws \RuntimeException If the WebPush library is not installed.
 	 */
-	public function __construct(?VapidConfig $config = null) {
+	public function __construct(?VapidConfig $config = null, ?LoggerInterface $logger = null) {
 
 		// check whether WebPush package is available
 		if (!class_exists(WebPush::class)) {
@@ -31,20 +36,7 @@ class WebPushSender {
 		}
 
 		$this->config = $config ?? new VapidConfig();
-
-	}
-
-	/**
-	 * Resolve the content encoding for a subscription endpoint.
-	 */
-	private function resolveContentEncoding(string $endpoint): string {
-
-		$host = parse_url($endpoint, PHP_URL_HOST);
-		if ($host and strtolower($host) === 'web.push.apple.com') {
-			return 'aes128gcm';
-		}
-
-		return 'aesgcm';
+		$this->logger = $logger;
 
 	}
 
@@ -70,10 +62,22 @@ class WebPushSender {
 				]
 			];
 
-			$webPush = new WebPush($authConfig);
+			$host = strtolower((string)parse_url($endpoint, PHP_URL_HOST));
+			$isWindows = PushEndpoint::isWindowsHost($host);
+			$contentEncoding = $isWindows || $host === 'web.push.apple.com' ? 'aes128gcm' : 'aesgcm';
 
-			// prepare subscription
-			$contentEncoding = $this->resolveContentEncoding($endpoint);
+			// WNS takes an encrypted Web Push payload as a raw notification.
+			if ($isWindows) {
+				$client = new WindowsPushClient(Psr18ClientDiscovery::find());
+				$webPush = $this->logger === null
+					? new WebPush($authConfig, client: $client)
+					: new WebPush($authConfig, client: $client, logger: $this->logger);
+			} else {
+				$webPush = $this->logger === null
+					? new WebPush($authConfig)
+					: new WebPush($authConfig, logger: $this->logger);
+			}
+
 			$sub = Subscription::create([
 				'endpoint' => $subscription->endpoint,
 				'publicKey' => $subscription->p256dh,

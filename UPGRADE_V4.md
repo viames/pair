@@ -10,6 +10,16 @@ Pair v4 moves application code away from implicit `ActiveRecord` payloads and hi
 
 The API documentation path follows the same rule: CRUD OpenAPI response schemas now derive from `readModel` when configured.
 
+### Pair 4.1.16: Microsoft Edge Web Push
+
+Applications can accept Microsoft WNS endpoints with the shared
+`Pair\Push\PushEndpoint::isSupported()` validator. Pair sends those
+notifications with `aes128gcm` and the WNS raw header. Edge delivery uses
+`minishlink/web-push` 11. Applications can pass a PSR-3 logger to the sender
+when using that library version. Existing subscriptions and database schema
+stay compatible. To roll back, restore the application's previous constraint
+and lockfile and reinstall its locked dependencies.
+
 ### Pair 4.1.15: Smaller ACL reads
 
 User authorization loads only the module name and action for ordinary group
