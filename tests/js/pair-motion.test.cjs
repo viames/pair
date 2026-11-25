@@ -65,7 +65,7 @@ function fixture() {
 					reject = fail;
 				});
 				const run = {
-					frames, options, progress: 0, cancelled: false,
+					target: this, frames, options, progress: 0, cancelled: false,
 					finished,
 					effect: { getComputedTiming: () => ({ progress: run.progress }) },
 					finish: resolve,
@@ -83,10 +83,10 @@ function fixture() {
 	const document = { createElement: element, hidden: false };
 	const window = {
 		matchMedia: () => preference, CSS: { supports: () => true },
-		getComputedStyle: node => ({ opacity: '1', getPropertyValue: () => {
+		getComputedStyle: node => ({ opacity: '1', display: node.display ?? 'block', getPropertyValue: () => {
 			for (let item = node; item; item = item.parentElement) if (item.tempo) return item.tempo;
 			return '';
-		}, translate: node.translate ?? 'none', backgroundColor: 'transparent', direction: node.direction ?? 'ltr' }),
+		}, translate: node.translate ?? 'none', transform: node.transform ?? 'none', scale: node.scale ?? 'none', color: '#17293a', backgroundColor: 'transparent', direction: node.direction ?? 'ltr' }),
 		addEventListener() {}, removeEventListener() {}
 	};
 	vm.runInNewContext(source, { document, window });
@@ -411,6 +411,166 @@ test('page entrance groups blocks, clamps the delay and respects the reading dir
 	assert.equal(runs[2].frames[0].translate, undefined);
 });
 
+test('lift entrances combine a restrained scale, rise and fade without overriding authored scale', async () => {
+	const { api, element, runs } = fixture();
+	const { root, blocks } = composition(element, ['0', '1']);
+	blocks[1].scale = '1.1';
+	const entrance = api.page.enter(root, { effect: 'lift' });
+	assert.equal(runs[0].options.duration, 310);
+	assert.equal(runs[0].frames[0].opacity, .52);
+	assert.equal(runs[0].frames[0].translate, '0 14px');
+	assert.equal(runs[0].frames[0].scale, '.985');
+	assert.equal(runs[0].frames[1].scale, '1');
+	assert.equal(runs[1].frames[0].scale, undefined);
+	const ready = api.page.ready(root, { closest: () => blocks[0] });
+	api.page.cancel(root);
+	assert.equal(await entrance, false);
+	assert.equal(await ready, false);
+});
+
+/** Model the visible objects inside one card without changing the card layout. */
+function contentBlocks(card, element, count) {
+	const blocks = Array.from({ length: count }, () => element());
+	for (const block of blocks) {
+		block.closest = selector => selector === '[data-pair-motion-enter]' ? card : null;
+		card.append(block);
+	}
+	card.querySelectorAll = () => blocks;
+	return blocks;
+}
+
+test('composition overlaps each card with its contents and waits for both before nested effects', async () => {
+	const { api, element, runs } = fixture();
+	const { root, blocks } = composition(element, ['0', '1']);
+	const contents = contentBlocks(blocks[0], element, 2);
+	let inner = false;
+	const compositionDone = api.page.enter(root, { contents: true });
+	const contentDone = api.page.ready(root, contents[0]);
+	contentDone.then(completed => { inner = completed; });
+	assert.equal(runs.length, 4);
+	assert.equal(runs[0].options.easing, 'cubic-bezier(.25, .28, .62, .9)');
+	assert.deepEqual(runs.slice(1, 3).map(run => run.options.delay), [0, 38]);
+	assert.equal(runs[1].options.easing, runs[0].options.easing);
+	assert.equal(runs[1].options.duration, 220);
+	assert.equal(runs[1].options.fill, 'backwards');
+	assert.equal(runs[1].frames[0].opacity, 0);
+	runs[0].finish();
+	runs[3].finish();
+	runs[1].finish();
+	await Promise.resolve();
+	assert.equal(inner, false);
+	runs[2].finish();
+	assert.equal(await compositionDone, true);
+	assert.equal(await contentDone, true);
+	assert.equal(inner, true);
+});
+
+test('composition follows the chosen overlap, card stagger and inherited tempo', () => {
+	for (const [overlap, expected] of [[0, 680], [.3, 500], [.5, 380], [1, 80]]) {
+		const { api, element, runs } = fixture();
+		const { root, blocks } = composition(element, ['0', '1']);
+		contentBlocks(blocks[1], element, 1);
+		blocks[1].tempo = 2;
+
+		api.page.enter(root, { contents: true, duration: 300, contentsOverlap: overlap });
+		assert.equal(runs[1].options.delay, 80);
+		assert.equal(runs[2].options.delay, expected);
+		assert.equal(runs[2].options.duration, 440);
+		api.page.cancel(root);
+	}
+});
+
+test('keyboard focus and cancellation restore held card contents immediately', async () => {
+	const { api, element, runs } = fixture();
+	const { root, blocks } = composition(element, ['0', '1']);
+	contentBlocks(blocks[0], element, 1);
+	const [second] = contentBlocks(blocks[1], element, 1);
+	const complete = api.page.enter(root, { contents: true });
+	const ready = api.page.ready(root, second);
+	blocks[0].dispatchEvent(new Event('focusin'));
+	assert.equal(runs[1].cancelled, true);
+	assert.equal(runs[3].cancelled, false);
+	api.page.cancel(root);
+	assert.equal(runs[3].cancelled, true);
+	assert.equal(await ready, false);
+	assert.equal(await complete, false);
+});
+
+/** Provide the actual card face while letting the library create the reverse. */
+function flipCard(block, element) {
+	const front = element();
+	block.display = 'grid';
+	block.setAttribute('data-pair-motion-flip', '');
+	block.querySelector = selector => selector === ':scope > [data-pair-motion-flip-front]' ? front : null;
+	block.append(front);
+	return front;
+}
+
+test('card flip turns a decorative reverse into the real front and waits for the full composition', async () => {
+	const { api, element, runs } = fixture();
+	const { root, blocks } = composition(element, ['0', '1']);
+	const front = flipCard(blocks[1], element);
+	blocks[1].tempo = 2;
+
+	const completed = api.page.enter(root, { effect: 'flip' });
+	const back = blocks[1].children[1];
+	assert.equal(back.getAttribute('aria-hidden'), 'true');
+	assert.equal(back.className, 'pair-motion-flip-back');
+	assert.equal(runs[0].frames[0].opacity, .7);
+	assert.equal(runs[1].frames[0].transform, 'perspective(1000px) rotateY(180deg)');
+	assert.equal(runs[1].frames[1].transform, 'perspective(1000px) rotateY(0deg)');
+	assert.equal(runs[1].options.duration, 720);
+	assert.equal(runs[1].options.delay, 80);
+	assert.equal(runs[1].options.easing, 'ease-in-out');
+	assert.deepEqual(Array.from(runs[2].frames, frame => frame.opacity), [0, 0, 1, 1]);
+	assert.deepEqual(Array.from(runs[3].frames, frame => frame.opacity), [1, 1, 0, 0]);
+	assert.equal(runs[3].options.duration, 720);
+	runs[0].finish();
+	await Promise.resolve();
+	assert.equal(blocks[1].children[1], back);
+	runs[1].finish();
+	assert.equal(await completed, true);
+	assert.deepEqual(blocks[1].children, [front]);
+	assert.equal(runs[2].cancelled, true);
+	assert.equal(runs[3].cancelled, true);
+});
+
+test('card replay, focus and reduced motion remove only their own temporary reverse', async () => {
+	const { api, element, preference, runs } = fixture();
+	const { root, blocks: [block] } = composition(element, ['0']);
+	const front = flipCard(block, element);
+	const old = api.page.enter(root, { effect: 'flip' });
+	const replacement = api.page.enter(root, { effect: 'flip' });
+	assert.equal(runs[1].cancelled, true);
+	assert.equal(runs[2].cancelled, true);
+	assert.equal(block.children.length, 2);
+	assert.equal(await old, false);
+	block.dispatchEvent(new Event('focusin'));
+	assert.deepEqual(block.children, [front]);
+	assert.equal(await replacement, true);
+	assert.equal(runs[3].cancelled, true);
+
+	api.page.enter(root, { effect: 'flip' });
+	preference.matches = true;
+	preference.dispatchEvent(new Event('change'));
+	await Promise.resolve();
+	assert.deepEqual(block.children, [front]);
+	assert.equal(await api.page.enter(root, { effect: 'flip' }), true);
+	assert.equal(runs.length, 9);
+});
+
+test('a card wrapper with its own transform falls back to the normal entrance', () => {
+	const { api, element, runs } = fixture();
+	const { root, blocks: [block] } = composition(element, ['0']);
+	const front = flipCard(block, element);
+	block.transform = 'matrix(1, 0, 0, 1, 5, 0)';
+
+	api.page.enter(root, { effect: 'flip' });
+	assert.equal(runs[0].frames[0].transform, undefined);
+	assert.equal(runs[0].frames[0].opacity, .7);
+	assert.deepEqual(block.children, [front]);
+});
+
 test('page entrance keeps focus immediate and cancels superseded and reduced-motion runs', async () => {
 	const { api, document, element, preference, runs } = fixture();
 	const { root, blocks } = composition(element, [null, null, null]);
@@ -475,10 +635,68 @@ test('viewport entrance plays newly visible blocks once and releases the observe
 	await Promise.resolve();
 });
 
-test('viewport entrance falls back to the existing HTML when the observer is unavailable', () => {
+test('a viewport cascade waits for the chart card and the running cards, then leaves lower cards observable', async () => {
+	const { api, element, runs, window } = fixture();
+	const { root, blocks } = composition(element, ['0', '1', '2', '3']);
+	const observed = new Set();
+	let notify;
+	window.IntersectionObserver = class {
+		constructor(callback) { notify = callback; }
+		observe(item) { observed.add(item); }
+		unobserve(item) { observed.delete(item); }
+		disconnect() { observed.clear(); }
+	};
+	let completed = false;
+	let cardReady = false;
+	let lowerReady = false;
+	const entrance = api.page.enter(root, { trigger: 'viewport', waitFor: blocks[1] });
+	const ready = api.page.ready(root, { closest: () => blocks[1] });
+	const lower = api.page.ready(root, { closest: () => blocks[3] });
+	ready.then(result => { cardReady = result; });
+	lower.then(result => { lowerReady = result; });
+	entrance.then(result => { completed = result; });
+	notify([{ target: blocks[0], isIntersecting: true }]);
+	runs[0].finish();
+	await Promise.resolve();
+	assert.equal(completed, false);
+
+	notify([{ target: blocks[1], isIntersecting: true }, { target: blocks[2], isIntersecting: true }]);
+	runs[1].finish();
+	await Promise.resolve();
+	assert.equal(completed, false);
+	runs[2].finish();
+	assert.equal(await entrance, true);
+	assert.equal(await ready, true);
+	assert.equal(cardReady, true);
+	assert.equal(lowerReady, false);
+	assert.equal(observed.has(blocks[3]), true);
+	notify([{ target: blocks[3], isIntersecting: true }]);
+	assert.equal(runs.length, 4);
+	runs[3].finish();
+	assert.equal(await lower, true);
+	assert.equal(observed.size, 0);
+});
+
+test('page completion distinguishes cancellation from motion that is skipped', async () => {
+	const { api, element, preference, window } = fixture();
+	const { root, blocks } = composition(element, ['0']);
+	window.IntersectionObserver = class {
+		observe() {}
+		disconnect() {}
+	};
+	const superseded = api.page.enter(root, { trigger: 'viewport', waitFor: blocks[0] });
+	const skipped = api.page.enter(root, { trigger: 'viewport', waitFor: blocks[0] });
+	assert.equal(await superseded, false);
+	preference.matches = true;
+	preference.dispatchEvent(new Event('change'));
+	assert.equal(await skipped, true);
+	assert.equal(await api.page.enter(root), true);
+});
+
+test('viewport entrance falls back to the existing HTML when the observer is unavailable', async () => {
 	const { api, element, runs } = fixture();
 	const { root } = composition(element, ['0']);
-	api.page.enter(root, { trigger: 'viewport' });
+	assert.equal(await api.page.enter(root, { trigger: 'viewport' }), true);
 	assert.equal(runs.length, 0);
 });
 
@@ -535,6 +753,70 @@ test('chart reveal clips only the plotted area and settles with reduced motion o
 	assert.equal(frames.size, 1);
 	next.beforeDestroy(chart);
 	assert.equal(frames.size, 0);
+});
+
+
+test('chart cascades clip the series while waiting and ignore late completions after disposal', async () => {
+	const { api, element, window } = fixture();
+	const frames = [];
+	window.requestAnimationFrame = draw => frames.push(draw);
+	const rectangles = [];
+	let draws = 0;
+	const chart = {
+		canvas: element(),
+		chartArea: { left: 0, top: 0, right: 100, bottom: 60, width: 100, height: 60 },
+		ctx: { save() {}, restore() {}, beginPath() {}, rect(...rect) { rectangles.push(rect); }, clip() {} },
+		draw() { draws++; },
+	};
+
+	let finish;
+	const after = new Promise(resolve => { finish = resolve; });
+	const plugin = api.chart.reveal({ after });
+	plugin.afterInit(chart);
+	plugin.beforeDatasetsDraw(chart);
+	plugin.afterDatasetsDraw(chart);
+	assert.deepEqual(rectangles, [[0, 0, 0, 60]]);
+	assert.equal(frames.length, 0);
+	finish(true);
+	await new Promise(resolve => setImmediate(resolve));
+	assert.equal(frames.length, 1);
+
+	let late;
+	const oldEntrance = new Promise(resolve => { late = resolve; });
+	const removed = api.chart.reveal({ after: oldEntrance });
+	removed.afterInit(chart);
+	removed.beforeDestroy(chart);
+	late(true);
+	await new Promise(resolve => setImmediate(resolve));
+	assert.equal(frames.length, 1);
+	assert.equal(draws, 0);
+});
+
+test('cancelled and reduced-motion cascades show the full chart without scheduling a reveal', async () => {
+	const { api, element, preference, window } = fixture();
+	let frames = 0;
+	let draws = 0;
+	window.requestAnimationFrame = () => { frames++; };
+	const chart = { canvas: element(), draw() { draws++; } };
+
+	const aborted = Promise.resolve(false);
+	api.chart.reveal({ after: aborted }).afterInit(chart);
+	await new Promise(resolve => setImmediate(resolve));
+	assert.equal(draws, 1);
+	assert.equal(frames, 0);
+
+	const rejected = Promise.reject(new Error('unavailable'));
+	api.chart.reveal({ after: rejected }).afterInit(chart);
+	await new Promise(resolve => setImmediate(resolve));
+	assert.equal(draws, 2);
+	assert.equal(frames, 0);
+
+	const never = new Promise(() => {});
+	api.chart.reveal({ after: never }).afterInit(chart);
+	preference.matches = true;
+	preference.dispatchEvent(new Event('change'));
+	assert.equal(draws, 3);
+	assert.equal(frames, 0);
 });
 
 
@@ -690,21 +972,21 @@ test('selection realigns instantly after a resize', () => {
 	assert.equal(indicator.classList.contains('pair-motion-selection-instant'), false);
 });
 
-test('selection accents only the last opted-in label after the slide finishes', async () => {
+test('only the last completed slide settles its background without changing the choice', async () => {
 	const { api, element, runs } = fixture();
 	const root = element();
 	const items = [element(), element(), element()];
-	const labels = items.map(() => element());
 	let active = items[0];
 	for (const [index, item] of items.entries()) {
+		item.offsetLeft = 4;
 		item.offsetTop = 4 + index * 44;
 		item.matches = () => item === active;
-		item.querySelector = selector => selector === '[data-pair-motion-selection-label]' ? labels[index] : null;
 	}
 	root.append(...items);
 	root.querySelectorAll = () => items;
 	api.selection.mount(root);
 	const indicator = root.firstElementChild;
+	indicator.offsetWidth = 800;
 	let finish;
 	/** Expose the transition associated with each selection, independently of the test clock. */
 	function nextSlide() {
@@ -725,7 +1007,16 @@ test('selection accents only the last opted-in label after the slide finishes', 
 	finishLast();
 	await new Promise(resolve => setImmediate(resolve));
 	assert.equal(runs.length, 1);
-	assert.equal(runs[0].options.duration, 280);
+	assert.equal(runs[0].target, indicator);
+	assert.equal(runs[0].options.duration, 220);
+	const restingTransform = 'translate(4px, 92px)';
+	assert.deepEqual(Array.from(runs[0].frames, frame => frame.transform), [
+		restingTransform, restingTransform + ' scale(1.01, 1.07)', restingTransform,
+	]);
+	assert.equal(indicator.style.transform, restingTransform);
+	assert.equal(indicator.style.height, '40px');
+	assert.deepEqual(Array.from(runs[0].frames).slice(0, 2).map(frame => frame.easing), ['ease-in-out', 'ease-in-out']);
+	assert.equal(runs[0].frames[1].color, undefined);
 	api.selection.unmount(root);
 	assert.equal(runs[0].cancelled, true);
 	await Promise.resolve();

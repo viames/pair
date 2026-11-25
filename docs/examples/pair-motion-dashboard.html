@@ -5,14 +5,15 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<meta name="description" content="Try PairMotion on a sample operations dashboard with a rolling KPI, goal meter and animated delivery chart.">
 	<title>Operations dashboard · PairMotion</title>
-	<link rel="stylesheet" href="../../assets/pair-motion.css">
-	<script src="../../assets/PairMotion.js" defer></script>
+	<link rel="stylesheet" href="../../assets/pair-motion.css?v=contents-overlap">
+	<script src="../../assets/PairMotion.js?v=4.5.0" defer></script>
 	<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js" defer></script>
-	<script src="pair-motion-dashboard.js" defer></script>
+	<script src="pair-motion-tempo.js?v=staged-composition" defer></script>
+	<script src="pair-motion-dashboard.js?v=contents-overlap" defer></script>
 	<style>
 		:root { color-scheme: light dark; font: 1rem/1.5 system-ui, sans-serif; --ink: light-dark(#17293a, #eaf2f8); --muted: light-dark(#465c71, #b0c1ce); --card: light-dark(#fff, #1d2d3b); --bg: light-dark(#edf2f6, #121d28); --accent: light-dark(#116d63, #67d9c6); --line: light-dark(#d5dfe6, #354a5b); }
 		body { background: var(--bg); color: var(--ink); margin: 0; }
-		main { max-inline-size: 64rem; margin-inline: auto; padding: clamp(1rem, 4vw, 3rem); --pair-motion-progress-fill: var(--accent); }
+		main { max-inline-size: 64rem; margin-inline: auto; padding: clamp(1rem, 4vw, 3rem); --pair-motion-progress-fill: var(--accent); --pair-motion-flip-back-background: light-dark(#e2eeec, #253942); --pair-motion-flip-back-border-color: var(--line); --pair-motion-flip-back-radius: .75rem; }
 		nav { display: flex; flex-wrap: wrap; gap: .5rem 1rem; font-size: .9rem; }
 		a { color: var(--accent); text-underline-offset: .2em; }
 		h1 { margin: .65rem 0 .25rem; font-size: clamp(1.75rem, 4vw, 2.65rem); line-height: 1.15; letter-spacing: -.035em; }
@@ -20,7 +21,13 @@
 		p { margin: .4rem 0 .8rem; }
 		.muted { color: var(--muted); }
 		.toolbar, .cards { display: flex; flex-wrap: wrap; gap: .65rem; }
-		.toolbar { align-items: end; margin-block: 1.25rem; }
+		.toolbar { align-items: center; margin-block: 1.25rem; }
+		.tempo-control { display: grid; grid-template-columns: minmax(0, 1fr) max-content; align-items: center; column-gap: .45rem; inline-size: min(100%, 17rem); }
+		.tempo-control label, .tempo-control code { grid-column: 1 / -1; }
+		.tempo-control input { inline-size: 100%; min-block-size: 2rem; margin: 0; accent-color: var(--accent); }
+		.tempo-control output { min-inline-size: 4ch; font-variant-numeric: tabular-nums; text-align: end; }
+		.tempo-control code { color: var(--muted); font-size: .82rem; overflow-wrap: anywhere; }
+		.cascade-option { display: inline-flex; align-items: center; gap: .35rem; min-block-size: 2.75rem; }
 		button, select { font: inherit; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: .45rem; min-block-size: 2.75rem; padding-inline: .8rem; }
 		button { cursor: pointer; }
 		button:hover { border-color: var(--accent); }
@@ -30,6 +37,7 @@
 		.kpi { font-size: clamp(1.8rem, 4vw, 2.65rem); font-weight: 720; margin-block: .1rem .5rem; }
 		.kpi small { font-size: .95rem; font-weight: 500; color: var(--muted); }
 		.plot { position: relative; block-size: clamp(12rem, 31vw, 20rem); margin-block: .65rem; }
+		.plot canvas { color: var(--accent); border-color: var(--line); }
 		details { margin-block-start: .65rem; }
 		summary { cursor: pointer; }
 		table { border-collapse: collapse; inline-size: 100%; }
@@ -49,35 +57,54 @@
 		<div class="toolbar" hidden>
 			<label>Period <select id="period"><option value="oct">October</option><option value="nov">November</option></select></label>
 			<button id="refresh" type="button">Refresh data</button>
+			<label>Entrance <select id="entrance-effect"><option value="lift">Lift</option><option value="flip">Card flip</option><option value="slide">Slide</option></select></label>
 			<button id="replay" type="button">Replay entrance</button>
+			<label class="cascade-option"><input id="cascade" type="checkbox" checked> Cascade contents</label>
+			<div class="tempo-control">
+				<label for="motion-speed">Animation speed</label>
+				<input id="motion-speed" type="range" min="0.35" max="2" step="0.05" value="0.4" aria-valuetext="0.4 times normal speed">
+				<output id="motion-speed-value" for="motion-speed" aria-hidden="true">0.4×</output>
+				<code id="motion-tempo-css">--pair-motion-duration-factor: 2.5;</code>
+			</div>
+			<div class="tempo-control">
+				<label for="contents-overlap">Card / content overlap</label>
+				<input id="contents-overlap" type="range" min="0" max="100" step="1" value="100" aria-valuetext="100 percent">
+				<output id="contents-overlap-value" for="contents-overlap" aria-hidden="true">100%</output>
+			</div>
 		</div>
 		<div class="cards">
-			<section class="card" data-pair-motion-enter="1">
-				<h2>Orders fulfilled</h2>
-				<p class="kpi"><span id="orders" data-pair-motion-counter><span data-pair-motion-value>51</span></span> <small>of 100</small></p>
-				<div id="target" data-pair-motion-progress><progress max="100" value="51" aria-label="Fulfilment target">51%</progress></div>
-			</section>
-			<section class="card" data-pair-motion-enter="1">
-				<h2>Awaiting pickup</h2>
-				<p class="kpi"><span id="pickup" data-pair-motion-counter><span data-pair-motion-value>12</span></span></p>
-				<div data-pair-motion-region>
-					<p class="muted" id="queue-note" data-pair-motion-content>Next pickup Friday afternoon.</p>
-				</div>
+			<div data-pair-motion-enter="1" data-pair-motion-flip>
+				<section class="card" data-pair-motion-flip-front>
+					<h2 data-pair-motion-content-enter>Orders fulfilled</h2>
+					<p class="kpi" data-pair-motion-content-enter><span id="orders" data-pair-motion-counter><span data-pair-motion-value>51</span></span> <small>of 100</small></p>
+					<div id="target" data-pair-motion-content-enter data-pair-motion-progress><progress max="100" value="51" aria-label="Fulfilment target">51%</progress></div>
+				</section>
+			</div>
+			<div data-pair-motion-enter="1" data-pair-motion-flip>
+				<section class="card" data-pair-motion-flip-front>
+					<h2 data-pair-motion-content-enter>Awaiting pickup</h2>
+					<p class="kpi" data-pair-motion-content-enter><span id="pickup" data-pair-motion-counter><span data-pair-motion-value>12</span></span></p>
+					<div data-pair-motion-content-enter data-pair-motion-region>
+						<p class="muted" id="queue-note" data-pair-motion-content>Next pickup Friday afternoon.</p>
+					</div>
+				</section>
+			</div>
+		</div>
+		<div data-pair-motion-enter="2" data-pair-motion-flip>
+			<section class="card" data-pair-motion-flip-front>
+				<h2 data-pair-motion-content-enter>Daily deliveries</h2>
+				<div class="plot" data-pair-motion-content-enter hidden><canvas id="deliveries" role="img" aria-label="Daily deliveries. Values are in the data table."></canvas></div>
+				<details data-pair-motion-content-enter data-pair-motion-disclosure>
+					<summary>Delivery data</summary>
+					<div data-pair-motion-disclosure-body>
+						<table>
+							<thead><tr><th scope="col">Day</th><th scope="col">Orders</th></tr></thead>
+							<tbody id="delivery-data"><tr><th scope="row">Mon</th><td>8</td></tr><tr><th scope="row">Tue</th><td>11</td></tr><tr><th scope="row">Wed</th><td>9</td></tr><tr><th scope="row">Thu</th><td>13</td></tr><tr><th scope="row">Fri</th><td>10</td></tr></tbody>
+						</table>
+					</div>
+				</details>
 			</section>
 		</div>
-		<section class="card" data-pair-motion-enter="2">
-			<h2>Daily deliveries</h2>
-			<div class="plot" hidden><canvas id="deliveries" role="img" aria-label="Daily deliveries. Values are in the data table."></canvas></div>
-			<details data-pair-motion-disclosure>
-				<summary>Delivery data</summary>
-				<div data-pair-motion-disclosure-body>
-					<table>
-						<thead><tr><th scope="col">Day</th><th scope="col">Orders</th></tr></thead>
-						<tbody id="delivery-data"><tr><th scope="row">Mon</th><td>8</td></tr><tr><th scope="row">Tue</th><td>11</td></tr><tr><th scope="row">Wed</th><td>9</td></tr><tr><th scope="row">Thu</th><td>13</td></tr><tr><th scope="row">Fri</th><td>10</td></tr></tbody>
-					</table>
-				</div>
-			</details>
-		</section>
 	</main>
 </body>
 </html>

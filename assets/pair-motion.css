@@ -132,6 +132,24 @@
 	.pair-motion-progress-track { visibility: hidden; }
 }
 
+[data-pair-motion-flip] {
+	display: grid;
+	min-inline-size: 0;
+}
+[data-pair-motion-flip] > [data-pair-motion-flip-front],
+[data-pair-motion-flip] > .pair-motion-flip-back {
+	grid-area: 1 / 1;
+	min-inline-size: 0;
+}
+.pair-motion-flip-back {
+	box-sizing: border-box;
+	pointer-events: none;
+	opacity: 0;
+	background: var(--pair-motion-flip-back-background, var(--bs-tertiary-bg, Canvas));
+	border: 1px solid var(--pair-motion-flip-back-border-color, var(--bs-border-color, GrayText));
+	border-radius: var(--pair-motion-flip-back-radius, var(--bs-border-radius, .5rem));
+}
+
 /* Temporary visual layers stay outside the native control and accessibility flow. */
 .pair-motion-leaving {
 	position: fixed;

@@ -17,6 +17,7 @@
 	const regions = new WeakMap();
 	const pages = new WeakMap();
 	const easing = 'cubic-bezier(.22, 1, .36, 1)';
+	const compositionEasing = 'cubic-bezier(.25, .28, .62, .9)';
 	const digit = /^[0-9]$/;
 	const choiceItems = ':scope > [data-pair-motion-item]';
 	const selectedChoice = '[aria-selected="true"], [aria-pressed="true"], [aria-current]:not([aria-current="false"], [aria-current=""])';
@@ -28,8 +29,8 @@
 	}
 
 	/** Start an owned animation and remove its bookkeeping on completion or cancellation. */
-	function animate(element, frames, options, done) {
-		const factor = durationFactor(element);
+	function animate(element, frames, options, done, tempoElement = element) {
+		const factor = durationFactor(tempoElement);
 		const timing = factor === 1 ? options : { ...options, duration: options.duration * factor };
 		if (factor !== 1 && options.delay !== undefined) timing.delay = options.delay * factor;
 		const animation = element.animate(frames, timing);
@@ -172,11 +173,10 @@
 		setCounter(root, final.value, { ...final, positions: final.positions.map(() => 0) }, { ...options, forward: true });
 	}
 
-	/** Accent the opted-in label only after the current indicator finishes moving. */
-	function highlightSelectionArrival(state, active) {
-		const label = active.querySelector('[data-pair-motion-selection-label]');
-		if (!label || !canAnimate(label)) return;
+	/** Let the decorative selection background settle after its slide. */
+	function pulseSelectionArrival(state) {
 		const indicator = state.indicator;
+		if (!canAnimate(indicator)) return;
 		// Commit the new geometry before reading the transitions the browser started.
 		indicator.getBoundingClientRect();
 		const transitions = indicator.getAnimations?.().filter(animation =>
@@ -186,27 +186,37 @@
 		state.arrival = pending;
 
 		/** A later selection, resize or teardown invalidates this arrival. */
-		function accent() {
+		function settleBackground() {
 			if (state.arrival !== pending) return;
 			state.arrival = null;
-			if (!canAnimate(label)) return;
-			const accentColor = 'var(--pair-motion-selection-arrival-color, var(--pair-motion-focus-color, Highlight))';
-			const color = global.getComputedStyle(label).color;
+			if (!canAnimate(indicator)) return;
+			const width = indicator.offsetWidth;
+			const height = indicator.offsetHeight;
+			if (!width || !height) return;
+
+			// Keep the translated centre fixed and cap expansion on wide rows.
+			const transform = indicator.style.transform;
+			const scaleX = 1 + Math.min(.025, 8 / width);
+			const scaleY = 1 + Math.min(.07, 4 / height);
+			const expanded = transform + ' scale(' + scaleX + ', ' + scaleY + ')';
+
 			/** Drop the finished effect without touching a newer one. */
 			function settled() {
-				if (state.accent === animation) state.accent = null;
+				if (state.pulse === animation) state.pulse = null;
 			}
-			const animation = animate(label, [
-				{ color: accentColor }, { color: accentColor, offset: .24 }, { color }
-			], { duration: 280, easing }, settled);
-			state.accent = animation;
+			const animation = animate(indicator, [
+				{ transform, easing: 'ease-in-out' },
+				{ transform: expanded, offset: .4, easing: 'ease-in-out' },
+				{ transform },
+			], { duration: 220 }, settled);
+			state.pulse = animation;
 		}
 
-		/** An interrupted transition has no arrival to highlight. */
+		/** An interrupted slide has no arrival to animate. */
 		function cancelled() {
 			if (state.arrival === pending) state.arrival = null;
 		}
-		pending.then(accent, cancelled);
+		pending.then(settleBackground, cancelled);
 	}
 
 	/** Read the selected item without modifying the app's radio or ARIA state. */
@@ -230,7 +240,7 @@
 		state.active = visible ? active : null;
 		if (changed || immediate) {
 			state.arrival = null;
-			state.accent?.cancel();
+			state.pulse?.cancel();
 		}
 		if (immediate) indicator.classList.add('pair-motion-selection-instant');
 		if (visible) {
@@ -245,7 +255,7 @@
 			indicator.getBoundingClientRect();
 			indicator.classList.remove('pair-motion-selection-instant');
 		}
-		if (arriving) highlightSelectionArrival(state, active);
+		if (arriving) pulseSelectionArrival(state);
 	}
 
 	/** Add one decorative layer and observe size changes for this group only. */
@@ -272,7 +282,7 @@
 		const state = selections.get(root);
 		if (!state) return;
 		state.arrival = null;
-		state.accent?.cancel();
+		state.pulse?.cancel();
 		state.observer?.disconnect();
 		root.removeEventListener('change', state.update);
 		if (!state.observer) global.removeEventListener('resize', state.resize);
@@ -630,33 +640,129 @@
 		return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
 	}
 
-	/** Release the observer and ownership of a completed or cancelled entrance. */
-	function releasePage(root, run) {
+	/** Release observation and settle the completion signal. */
+	function releasePage(root, run, completed) {
 		run.observer?.disconnect();
+		motion.removeEventListener?.('change', run.reduce);
 		pages.delete(root);
+		run.resolve(completed);
+		for (const { resolve } of run.waiters.values()) resolve(completed);
+		run.waiters.clear();
 	}
 
-	/** Settle the entrance for this page before replacing it or replaying the sequence. */
-	function cancelPage(root) {
+	/** End the owned entrance and drop its remaining effects. */
+	function endPage(root, completed) {
 		const run = pages.get(root);
 		if (!run) return;
-		releasePage(root, run);
-		for (const animation of run.animations.values()) animation.cancel();
+		releasePage(root, run, completed);
+		for (const cancel of run.animations.values()) cancel();
+		for (const layer of run.contents.values()) layer.cancel();
+		run.contents.clear();
 	}
 
-	/** Reveal marked blocks in place, using DOM order or an explicit shared step. */
+	/** Cancel an entrance before replacing its content or replaying it. */
+	function cancelPage(root) {
+		endPage(root, false);
+	}
+
+	/** Wait for the marked block around an element and the entrances still playing. */
+	function readyPage(root, element) {
+		const run = pages.get(root);
+		if (!run) return Promise.resolve(true);
+		let item = element?.closest('[data-pair-motion-enter]');
+		while (item && !run.items.has(item)) item = item.parentElement?.closest('[data-pair-motion-enter]');
+		if (!item || (!run.pending.has(item) && !run.animations.size && !run.contents.size)) return Promise.resolve(true);
+		if (!run.waiters.has(item)) {
+			const waiter = {};
+			waiter.finished = new Promise(resolve => { waiter.resolve = resolve; });
+			run.waiters.set(item, waiter);
+		}
+		return run.waiters.get(item).finished;
+	}
+
+	/** Reveal card contents on the same timeline as their shell without changing layout. */
+	function animatePageContents(card, start) {
+		const selector = '[data-pair-motion-content-enter]';
+		/** A marked ancestor owns its subtree inside this card. */
+		function isTarget(element) {
+			const ancestor = element.parentElement?.closest(selector);
+			return element.closest('[data-pair-motion-enter]') === card &&
+				(!ancestor || !card.contains(ancestor)) && canAnimate(element) && element.getClientRects().length;
+		}
+		const targets = [...card.querySelectorAll(selector)].filter(isTarget);
+		if (!targets.length) return null;
+		const translate = global.CSS?.supports('translate', '0px');
+		const effects = [];
+
+		/** Restore the card contents immediately on focus or cancellation. */
+		function cancel() {
+			for (const effect of effects) effect.cancel();
+		}
+
+		for (const [index, element] of targets.entries()) {
+			const style = global.getComputedStyle(element);
+			const from = { opacity: 0 };
+			const to = { opacity: Number(style.opacity) };
+			if (translate && style.translate === 'none') {
+				from.translate = '0 6px';
+				to.translate = 'none';
+			}
+			// Use the card's tempo for both phases so the delayed reveal stays in sync.
+			const delay = start + Math.min(index * 38, 114);
+			effects.push(animate(element, [from, to], { duration: 220, delay, easing: compositionEasing, fill: 'backwards' }, undefined, card));
+		}
+
+		card.addEventListener('focusin', cancel, { once: true });
+		/** Drop the focus listener after the contents finish or are cancelled. */
+		function release() { card.removeEventListener('focusin', cancel); }
+		const finished = Promise.allSettled(effects.map(effect => effect.finished)).then(release);
+		return { cancel, finished };
+	}
+
+	/** Build a temporary reverse face for a card on its own transform layer. */
+	function prepareCardFlip(item, style, direction) {
+		if (item.getAttribute('data-pair-motion-flip') === null || style.transform !== 'none' || style.display !== 'grid') return null;
+		const front = item.querySelector(':scope > [data-pair-motion-flip-front]');
+		if (!front) return null;
+		const frontOpacity = Number(global.getComputedStyle(front).opacity);
+		const back = document.createElement('span');
+		back.className = 'pair-motion-flip-back';
+		back.setAttribute('aria-hidden', 'true');
+		item.append(back);
+		const perspective = 'perspective(' + Math.max(1000, item.offsetWidth * 2) + 'px) ';
+		return {
+			front, frontOpacity, back,
+			frames: [
+				{ transform: perspective + 'rotateY(' + 180 * direction + 'deg)', transformOrigin: 'center' },
+				{ transform: perspective + 'rotateY(0deg)', transformOrigin: 'center' },
+			],
+		};
+	}
+
+	/** Switch faces at the edge of the turn, where the projected card has no width. */
+	function flipFace(from, to) {
+		return [{ opacity: from }, { opacity: from, offset: .5 }, { opacity: to, offset: .5 }, { opacity: to }];
+	}
+
+	/** Reveal marked blocks and resolve once the requested entrance has settled. */
 	function enterPage(root, options = {}) {
 		cancelPage(root);
-		if (!root?.matches('[data-pair-motion-page]') || !canAnimate(root)) return;
-		const duration = boundedOption(options.duration, 220, 0, 800);
+		if (!root?.matches('[data-pair-motion-page]') || !canAnimate(root)) return Promise.resolve(true);
+		const flip = options.effect === 'flip' && global.CSS?.supports('transform', 'perspective(1000px) rotateY(0deg)');
+		const lift = options.effect === 'lift';
+		const baseDuration = lift ? 310 : 220;
+		const duration = boundedOption(options.duration, flip ? 360 : baseDuration, 0, 800);
 		const inViewport = options.trigger === 'viewport';
-		if (!duration || (inViewport && typeof global.IntersectionObserver !== 'function')) return;
+		if (!duration || (inViewport && typeof global.IntersectionObserver !== 'function')) return Promise.resolve(true);
 
 		const stagger = boundedOption(options.stagger, 40, 0, 200);
 		const maxDelay = boundedOption(options.maxDelay, 160, 0, 400);
-		const distance = boundedOption(options.distance, 8, 0, 32);
-		const opacity = boundedOption(options.opacity, .7, 0, 1);
-		const curve = motionCurve(options.easing);
+		const contentsOverlap = boundedOption(options.contentsOverlap, 1, 0, 1);
+		const distance = boundedOption(options.distance, lift ? 14 : 8, 0, 32);
+		const opacity = boundedOption(options.opacity, lift ? .52 : .7, 0, 1);
+		const scale = lift && global.CSS?.supports('scale', '1');
+		// Keep the movement visible close to each handoff in a staged entrance.
+		const curve = options.contents && options.easing === undefined ? compositionEasing : motionCurve(options.easing);
 		const direction = global.getComputedStyle(root).direction === 'rtl' ? -1 : 1;
 		const offsets = {
 			bottom: '0 ' + distance + 'px', top: '0 ' + -distance + 'px',
@@ -671,25 +777,45 @@
 			const order = /^\d+$/.test(step) ? Number(step) : index;
 			pending.set(item, Number.isSafeInteger(order) ? order : index);
 		}
-		if (!pending.size) return;
+		if (!pending.size) return Promise.resolve(true);
 
-		const run = { animations: new Map(), observer: null };
+		const waitFor = inViewport && pending.has(options.waitFor) ? options.waitFor : null;
+		const run = {
+			items: new Set(pending.keys()), pending, waiters: new Map(), visible: new Set(),
+			animations: new Map(), contents: new Map(), observer: null, reduce: skipForReducedMotion,
+		};
+		const finished = new Promise(resolve => { run.resolve = resolve; });
 		pages.set(root, run);
+		motion.addEventListener?.('change', skipForReducedMotion);
 
-		/** Settle after the last block has either finished or been skipped. */
+		/** Show the resting state, including offscreen blocks, when motion is reduced. */
+		function skipForReducedMotion() {
+			if (motion.matches && pages.get(root) === run) endPage(root, true);
+		}
+
+		/** Resolve after the requested group settles and retain any remaining scroll entrances. */
 		function releaseWhenDone() {
-			if (!pending.size && !run.animations.size && pages.get(root) === run) releasePage(root, run);
+			if (run.animations.size || run.contents.size || pages.get(root) !== run) return;
+			if (!pending.size) {
+				releasePage(root, run, true);
+				return;
+			}
+			if (waitFor && !pending.has(waitFor)) run.resolve(true);
+			for (const [item, waiter] of run.waiters) {
+				if (pending.has(item)) continue;
+				run.waiters.delete(item);
+				waiter.resolve(true);
+			}
+			playVisible();
 		}
 
 		/** Play a block relative to the first step of its current batch. */
 		function play(item, order) {
 			pending.delete(item);
 			run.observer?.unobserve(item);
-			if (!canAnimate(item) || !item.getClientRects().length || item.contains(document.activeElement)) {
-				releaseWhenDone();
-				return;
-			}
+			if (!canAnimate(item) || !item.getClientRects().length || item.contains(document.activeElement)) return;
 			const style = global.getComputedStyle(item);
+			const card = flip ? prepareCardFlip(item, style, direction) : null;
 			const from = { opacity: Number(style.opacity) * opacity };
 			const to = { opacity: Number(style.opacity) };
 			// Leave an existing individual translation under the control of the page's styles.
@@ -697,38 +823,88 @@
 				from.translate = offset;
 				to.translate = 'none';
 			}
+			if (scale && (style.scale === 'none' || style.scale === '1')) {
+				from.scale = '.985';
+				to.scale = '1';
+			}
 			const delay = Math.min(maxDelay, order * stagger);
+			const faces = [];
 
+			/** Restore the actual card and remove this run's decorative face. */
+			function clearFaces() {
+				for (const face of faces.splice(0)) face.cancel();
+				card?.back.remove();
+			}
 			/** Show focused content in its resting position immediately. */
 			function showFocused() {
+				clearFaces();
 				animation.cancel();
 			}
-			/** Remove the listener and only the bookkeeping for this run. */
+			/** Remove only the visuals and bookkeeping owned by this run. */
 			function settled() {
+				clearFaces();
 				item.removeEventListener('focusin', showFocused);
 				run.animations.delete(item);
 				releaseWhenDone();
 			}
-			const animation = animate(item, [from, to], { duration, delay, easing: curve, fill: 'backwards' }, settled);
-			run.animations.set(item, animation);
+			const frames = card?.frames ?? [from, to];
+			const easing = card && !options.contents && options.easing === undefined ? 'ease-in-out' : curve;
+			const timing = { duration, delay, easing, fill: 'backwards' };
+			const animation = animate(item, frames, timing, settled);
+			if (card) {
+				// Paint both faces on one plane to keep content from appearing mirrored.
+				const faceTiming = { ...timing, fill: 'both' };
+				faces.push(
+					animate(card.front, flipFace(0, card.frontOpacity), faceTiming, undefined, item),
+					animate(card.back, flipFace(1, 0), faceTiming, undefined, item),
+				);
+			}
+			run.animations.set(item, showFocused);
 			item.addEventListener('focusin', showFocused, { once: true });
+
+			if (options.contents) {
+				const layer = animatePageContents(item, delay + duration * (1 - contentsOverlap));
+				if (!layer) return;
+				run.contents.set(item, layer);
+
+				/** Release the waiters once the shells and contents have settled. */
+				function contentsReady() {
+					run.contents.delete(item);
+					releaseWhenDone();
+				}
+				layer.finished.then(contentsReady);
+			}
 		}
 
 		if (!inViewport) {
 			for (const [item, order] of pending) play(item, order);
-			return;
+			releaseWhenDone();
+			return finished;
+		}
+
+		/** Admit a viewport batch unless only the current batch's contents are still moving. */
+		function playVisible() {
+			if (!run.visible.size || (run.contents.size && !run.animations.size)) return;
+			const visible = [...run.visible];
+			run.visible.clear();
+			const first = visible.reduce((order, item) => Math.min(order, pending.get(item)), Infinity);
+			for (const item of visible) play(item, pending.get(item) - first);
+			releaseWhenDone();
 		}
 
 		/** Reveal each block once when it first intersects the chosen viewport. */
 		function intersect(entries) {
 			if (pages.get(root) !== run) return;
-			const latest = new Map(entries.map(({ target, isIntersecting }) => [target, isIntersecting]));
-			const visible = [...latest].filter(([item, isIntersecting]) => isIntersecting && pending.has(item));
-			const first = visible.reduce((order, [item]) => Math.min(order, pending.get(item)), Infinity);
-			for (const [item] of visible) play(item, pending.get(item) - first);
+			for (const { target, isIntersecting } of entries) {
+				if (!pending.has(target)) continue;
+				if (isIntersecting) run.visible.add(target);
+				else run.visible.delete(target);
+			}
+			playVisible();
 		}
 		run.observer = new global.IntersectionObserver(intersect, { root: options.viewport ?? null });
 		for (const item of pending.keys()) run.observer.observe(item);
+		return finished;
 	}
 
 	/** Resolve a shared motion curve without passing untrusted CSS to the animation engine. */
@@ -813,7 +989,7 @@
 	}
 
 	/** Create an optional Chart.js 4 plugin that reveals the plotted series in place. */
-	function revealChart({ duration = 400, origin = 'start' } = {}) {
+	function revealChart({ duration = 400, origin = 'start', after } = {}) {
 		const length = boundedOption(duration, 400, 0, 1000);
 		if (!length || motion.matches || document.hidden || typeof global.requestAnimationFrame !== 'function') return null;
 
@@ -822,6 +998,15 @@
 		let progress = 1;
 		let frame;
 		let clipped = false;
+		let disposed = false;
+		let preference;
+
+		/** Stop listening once the chart has left the waiting state. */
+		function detachPreference() {
+			if (!preference) return;
+			motion.removeEventListener?.('change', preference);
+			preference = undefined;
+		}
 
 		/** Restore the canvas before axes overlays or tooltips are drawn. */
 		function restore({ ctx }) {
@@ -850,7 +1035,28 @@
 					chart.draw();
 					frame = progress < 1 ? global.requestAnimationFrame(draw) : undefined;
 				}
-				frame = global.requestAnimationFrame(draw);
+				/** Start the reveal when its prerequisite settles or show the final plot when skipped. */
+				function begin(completed) {
+					if (disposed || progress === 1) return;
+					detachPreference();
+					if (completed === false || motion.matches || document.hidden) {
+						progress = 1;
+						chart.draw();
+						return;
+					}
+					frame = global.requestAnimationFrame(draw);
+				}
+
+				if (after == null) {
+					begin();
+					return;
+				}
+
+				/** Reveal the final dataset immediately if the motion preference changes while waiting. */
+				preference = () => { if (motion.matches) begin(false); };
+				motion.addEventListener?.('change', preference);
+				/** A rejected prerequisite must still leave the data visible. */
+				Promise.resolve(after).then(begin, () => begin(false));
 			},
 			/** Clip only dataset drawing, preserving the chart geometry and values. */
 			beforeDatasetsDraw({ ctx, chartArea }) {
@@ -868,6 +1074,8 @@
 			afterDraw: restore,
 			/** Release any pending redraw before Chart.js removes the canvas context. */
 			beforeDestroy(chart) {
+				disposed = true;
+				detachPreference();
 				if (frame !== undefined) global.cancelAnimationFrame(frame);
 				restore(chart);
 			},
@@ -1010,7 +1218,7 @@
 		element: { capture: captureElement, enter: enterElement },
 		disclosure: { mount: mountDisclosure, set: setDisclosure, unmount: unmountDisclosure },
 		region: { replace: replaceRegion },
-		page: { enter: enterPage, cancel: cancelPage },
+		page: { enter: enterPage, ready: readyPage, cancel: cancelPage },
 		chart: { reveal: revealChart, capture: captureChart, transition: transitionChart }
 	};
 	global.Pair = global.Pair || {};

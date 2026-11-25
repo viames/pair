@@ -42,7 +42,7 @@ AI-assisted workflows.
 | Pair 4 `main` | Unreleased | Framework development and upcoming changes |
 | Pair 3 | Maintenance | Existing applications awaiting migration |
 
-The current stable release is [Pair 4.4.0](https://github.com/viames/pair/releases/tag/4.4.0).
+The current stable release is [Pair 4.5.0](https://github.com/viames/pair/releases/tag/4.5.0).
 
 Pair 4 is used in production across the maintainer's applications. The
 [release history](https://github.com/viames/pair/releases) lists published versions;
@@ -78,7 +78,7 @@ application's own `composer.lock`; commit that lock with your application.
 For an existing application, install the framework directly:
 
 ```sh
-composer require "viames/pair:^4.4.0"
+composer require "viames/pair:^4.5.0"
 ```
 
 Then follow the [bootstrap guide](https://github.com/viames/pair/wiki/index)

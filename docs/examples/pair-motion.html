@@ -5,9 +5,10 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<meta name="description" content="Try PairMotion's rolling counters, sliding selection and transition effects in an operations interface.">
 	<title>PairMotion examples</title>
-	<link rel="stylesheet" href="../../assets/pair-motion.css">
-	<script src="../../assets/PairMotion.js" defer></script>
-	<script src="pair-motion-examples.js" defer></script>
+	<link rel="stylesheet" href="../../assets/pair-motion.css?v=contents-overlap">
+	<script src="../../assets/PairMotion.js?v=4.5.0" defer></script>
+	<script src="pair-motion-tempo.js?v=staged-composition" defer></script>
+	<script src="pair-motion-examples.js?v=staged-composition" defer></script>
 	<style>
 		:root {
 			color-scheme: light dark;
@@ -27,11 +28,10 @@
 			--pair-motion-progress-height: .65rem;
 			--pair-motion-leaving-background: var(--stage);
 		}
-		:root[data-motion-tempo="slow"] { --pair-motion-duration-factor: 2; }
 		* { box-sizing: border-box; }
 		body { background: var(--bg); color: var(--ink); margin: 0; }
 		.frame { max-inline-size: 66rem; margin-inline: auto; padding: clamp(1rem, 4vw, 3rem); }
-		header { margin-block-end: 1.5rem; }
+		header { margin-block-end: 1rem; }
 		nav, .controls { display: flex; flex-wrap: wrap; gap: .55rem; }
 		nav { font-size: .9rem; gap: .5rem 1rem; }
 		a { color: var(--accent); text-underline-offset: .2em; }
@@ -39,11 +39,17 @@
 		h2 { margin: 0 0 .7rem; font-size: 1.15rem; }
 		p { margin: .4rem 0 .8rem; }
 		.muted { color: var(--muted); }
-		#playback { margin-block-start: 1rem; }
-		#playback label { display: inline-flex; align-items: center; flex-wrap: wrap; gap: .5rem; }
+		#playback { position: sticky; inset-block-start: .5rem; z-index: 4; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .45rem .8rem; margin-block-end: 1rem; padding: .5rem .7rem; background: var(--card); border: 1px solid var(--line); border-radius: .65rem; }
+		#playback label { display: flex; align-items: center; flex: 1 1 15rem; flex-wrap: wrap; gap: .3rem .6rem; }
+		#playback input { flex: 1 1 6rem; min-inline-size: 4rem; max-inline-size: 12rem; min-block-size: 2rem; margin: 0; accent-color: var(--accent); }
+		#playback output { min-inline-size: 4ch; font-variant-numeric: tabular-nums; }
+		#playback code { color: var(--muted); font-size: .82rem; overflow-wrap: anywhere; }
+		#playback p { margin: 0; }
+		#sliding-selection { scroll-margin-block-start: 8rem; }
 		main { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr)); gap: .85rem; }
 		section { display: flex; flex-direction: column; min-inline-size: 0; padding: 1rem; background: var(--card); border: 1px solid var(--line); border-radius: .75rem; }
 		section > .controls:last-child { padding-block-start: .8rem; margin-block-start: auto; }
+		section > .controls + .stage { margin-block-start: .8rem; }
 		button, select { font: inherit; font-size: .9rem; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: .45rem; min-block-size: 2.75rem; padding-inline: .75rem; }
 		button { cursor: pointer; }
 		button[aria-pressed="true"] { background: var(--tint); border-color: var(--accent); }
@@ -86,21 +92,26 @@
 	<div class="frame">
 		<header>
 			<nav aria-label="PairMotion resources">
-				<a href="pair-motion-dashboard.html">Operations dashboard</a>
+				<a href="pair-motion-dashboard.html">Operations dashboard with cascaded animation</a>
 				<a href="https://github.com/viames/pair/wiki/PairMotion.js">API guide</a>
 				<a href="https://github.com/viames/pair/tree/main/docs/examples">Source on GitHub</a>
 			</nav>
 			<h1>PairMotion examples</h1>
-			<div id="playback" hidden>
-				<label for="tempo">Playback <select id="tempo"><option value="normal">Normal</option><option value="slow">Half speed</option></select></label>
-				<p id="motion-preference" class="muted" hidden>Reduced motion is active on this device.</p>
-			</div>
 		</header>
+		<div id="playback" hidden>
+			<label for="motion-speed">Animation speed
+				<input id="motion-speed" type="range" min="0.35" max="2" step="0.05" value="0.4" aria-valuetext="0.4 times normal speed">
+				<output id="motion-speed-value" for="motion-speed" aria-hidden="true">0.4×</output>
+			</label>
+			<code id="motion-tempo-css">--pair-motion-duration-factor: 2.5;</code>
+			<button type="button" id="replay-page">Replay page</button>
+			<p id="motion-preference" class="muted" hidden>Reduced motion is active on this device.</p>
+		</div>
 
 		<main id="motion-cards" data-pair-motion-page>
 			<section data-pair-motion-enter>
-				<h2>Page entrance</h2>
-				<div id="entrance" class="stage" data-pair-motion-page role="region" aria-label="Page entrance preview">
+				<h2 data-pair-motion-content-enter>Page entrance</h2>
+				<div id="entrance" class="stage" data-pair-motion-content-enter data-pair-motion-page role="region" aria-label="Page entrance preview">
 					<div class="entrance-grid">
 						<div data-pair-motion-enter="0"><strong>Summary</strong><span>84 orders</span></div>
 						<div data-pair-motion-enter="1"><strong>Production</strong><span>18 today</span></div>
@@ -108,19 +119,19 @@
 						<div data-pair-motion-enter="2"><strong>Goal</strong><span>84 of 100</span></div>
 					</div>
 				</div>
-				<div class="controls" data-demo-controls hidden>
-					<button type="button" id="replay-entrance">Replay entrance</button>
+				<div class="controls" data-pair-motion-content-enter data-demo-controls hidden>
+					<button type="button" id="replay-entrance">Replay preview</button>
 					<button type="button" id="scroll-entrance" aria-pressed="false">Reveal on scroll</button>
 				</div>
 			</section>
 
 			<section data-pair-motion-enter>
-				<h2>Rolling counter</h2>
-				<div class="stage">
+				<h2 data-pair-motion-content-enter>Rolling counter</h2>
+				<div class="stage" data-pair-motion-content-enter>
 					<p class="muted">Orders fulfilled</p>
 					<p class="metric"><span id="counter" data-pair-motion-counter><span data-pair-motion-value aria-live="polite" aria-atomic="true">51</span></span> <small>of 100</small></p>
 				</div>
-				<div class="controls" id="counter-controls" data-demo-controls hidden>
+				<div class="controls" data-pair-motion-content-enter id="counter-controls" data-demo-controls hidden>
 					<button type="button" value="51">Set 51</button>
 					<button type="button" value="68">Set 68</button>
 					<button type="button" value="102">Set 102</button>
@@ -128,32 +139,32 @@
 				</div>
 			</section>
 
-			<section data-pair-motion-enter>
-				<h2>Sliding selection</h2>
-				<div class="stage">
+			<section id="sliding-selection" data-pair-motion-enter>
+				<h2 data-pair-motion-content-enter>Sliding selection</h2>
+				<div class="stage" data-pair-motion-content-enter>
 					<div id="selection" data-pair-motion-selection="vertical" role="group" aria-label="Order status">
-						<label data-pair-motion-item><input name="status" type="radio" checked> <span data-pair-motion-selection-label>Open</span></label>
-						<label data-pair-motion-item><input name="status" type="radio"> <span data-pair-motion-selection-label>In progress</span></label>
-						<label data-pair-motion-item><input name="status" type="radio"> <span data-pair-motion-selection-label>Complete</span></label>
+						<label data-pair-motion-item><input name="status" type="radio" checked> Open</label>
+						<label data-pair-motion-item><input name="status" type="radio"> In progress</label>
+						<label data-pair-motion-item><input name="status" type="radio"> Complete</label>
 					</div>
 				</div>
 			</section>
 
 			<section data-pair-motion-enter>
-				<h2>Progress</h2>
-				<div class="stage">
+				<h2 data-pair-motion-content-enter>Progress</h2>
+				<div class="stage" data-pair-motion-content-enter>
 					<p class="metric"><span id="progress-value" data-pair-motion-counter><span data-pair-motion-value aria-live="polite" aria-atomic="true">35%</span></span> <small>processed</small></p>
 					<div id="progress" data-pair-motion-progress><progress value="35" max="100" aria-label="Orders processed">35%</progress></div>
 				</div>
-				<div class="controls" id="progress-controls" data-demo-controls hidden>
+				<div class="controls" data-pair-motion-content-enter id="progress-controls" data-demo-controls hidden>
 					<button type="button" value="35">Set 35%</button>
 					<button type="button" value="80">Set 80%</button>
 				</div>
 			</section>
 
 			<section data-pair-motion-enter>
-				<h2>Ranked list</h2>
-				<div class="stage">
+				<h2 data-pair-motion-content-enter>Ranked list</h2>
+				<div class="stage" data-pair-motion-content-enter>
 					<ol id="ranking">
 						<li data-pair-motion-key="north">North</li>
 						<li data-pair-motion-key="central">Central</li>
@@ -161,12 +172,12 @@
 						<li data-pair-motion-key="east" hidden>East</li>
 					</ol>
 				</div>
-				<div class="controls" data-demo-controls hidden><button id="reverse" type="button" aria-pressed="false">Change ranking</button></div>
+				<div class="controls" data-pair-motion-content-enter data-demo-controls hidden><button id="reverse" type="button" aria-pressed="false">Change ranking</button></div>
 			</section>
 
 			<section data-pair-motion-enter>
-				<h2>Anchored disclosure</h2>
-				<div class="stage">
+				<h2 data-pair-motion-content-enter>Anchored disclosure</h2>
+				<div class="stage" data-pair-motion-content-enter>
 					<details id="details" data-pair-motion-disclosure>
 						<summary><span data-pair-motion-chevron aria-hidden="true">▸</span>Delivery details</summary>
 						<div data-pair-motion-disclosure-body><p>Delivery is scheduled for Friday. Two parcels are ready to ship.</p></div>
@@ -175,12 +186,12 @@
 			</section>
 
 			<section data-pair-motion-enter>
-				<h2>Content replacement</h2>
-				<div class="controls" id="report-controls" data-demo-controls hidden>
+				<h2 data-pair-motion-content-enter>Content replacement</h2>
+				<div class="controls" data-pair-motion-content-enter id="report-controls" data-demo-controls hidden>
 					<button type="button" id="reset-report" aria-pressed="true">Overview</button>
 					<button type="button" id="show-report" aria-pressed="false">Full report</button>
 				</div>
-				<div id="report" class="stage" data-pair-motion-region aria-live="polite">
+				<div id="report" class="stage" data-pair-motion-content-enter data-pair-motion-region aria-live="polite">
 					<div data-pair-motion-content>12 orders processed today.</div>
 				</div>
 				<template id="report-ready">
@@ -192,14 +203,14 @@
 			</section>
 
 			<section data-pair-motion-enter>
-				<h2>Directional steps</h2>
-				<div id="wizard" class="stage" data-pair-motion-region>
+				<h2 data-pair-motion-content-enter>Directional steps</h2>
+				<div id="wizard" class="stage" data-pair-motion-content-enter data-pair-motion-region>
 					<div data-pair-motion-content>
 						<h3 id="wizard-heading" tabindex="-1">1. Delivery</h3>
 						<p class="muted" id="wizard-description">Delivery address confirmed.</p>
 					</div>
 				</div>
-				<div class="controls" data-demo-controls hidden>
+				<div class="controls" data-pair-motion-content-enter data-demo-controls hidden>
 					<button type="button" id="previous-step" disabled>Back</button>
 					<button type="button" id="next-step">Next</button>
 				</div>

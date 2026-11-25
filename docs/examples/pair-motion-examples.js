@@ -6,7 +6,7 @@
 	/** Get a control from the static demo markup. */
 	const byId = id => document.getElementById(id);
 	const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
-	const tempo = byId('tempo');
+	const tempo = byId('motion-speed');
 
 	/** Explain immediately why a motion preview is static when the system requests it. */
 	function updatePreference() {
@@ -14,14 +14,11 @@
 		tempo.disabled = preference.matches;
 	}
 
-	/** Adjust the duration of subsequent examples without changing the system preference. */
-	function setTempo() {
-		document.documentElement.dataset.motionTempo = tempo.value;
-	}
-	tempo.addEventListener('change', setTempo);
 	preference.addEventListener?.('change', updatePreference);
 	updatePreference();
 
+	const page = byId('motion-cards');
+	const manual = new Set();
 	const entrance = byId('entrance');
 	const scroll = byId('scroll-entrance');
 
@@ -32,12 +29,17 @@
 		else entrance.removeAttribute('tabindex');
 		entrance.scrollTop = 0;
 		scroll.setAttribute('aria-pressed', String(onScroll));
-		const options = { duration: 280, stagger: 54, distance: 8, opacity: .64 };
+		const options = { effect: 'lift', duration: 270, stagger: 45, distance: 8, opacity: .64 };
 		if (onScroll) Object.assign(options, { trigger: 'viewport', viewport: entrance });
 		motion.page.enter(entrance, options);
 	}
-	byId('replay-entrance').addEventListener('click', () => playEntrance(false));
-	scroll.addEventListener('click', () => playEntrance(true));
+	/** Keep manual preview controls ahead of any queued page entrance effect. */
+	function playPreview(onScroll) {
+		manual.add(entrance);
+		playEntrance(onScroll);
+	}
+	byId('replay-entrance').addEventListener('click', () => playPreview(false));
+	scroll.addEventListener('click', () => playPreview(true));
 	motion.selection.mount(byId('selection'));
 
 	const counter = byId('counter');
@@ -45,9 +47,15 @@
 	/** Retarget the reel from its visible position and let any new digit roll as well. */
 	byId('counter-controls').addEventListener('click', event => {
 		const button = event.target.closest('button');
-		if (button?.value) motion.counter.set(counter, button.value, undefined, reel);
+		if (!button?.value) return;
+		manual.add(counter);
+		motion.counter.set(counter, button.value, undefined, reel);
 	});
-	byId('reel-replay').addEventListener('click', () => motion.counter.enter(counter, reel));
+	/** Replay the reel without leaving a second replay queued behind the page entrance. */
+	byId('reel-replay').addEventListener('click', () => {
+		manual.add(counter);
+		motion.counter.enter(counter, reel);
+	});
 
 	const progress = byId('progress');
 	const progressCounter = byId('progress-value');
@@ -59,6 +67,7 @@
 	byId('progress-controls').addEventListener('click', event => {
 		const button = event.target.closest('button');
 		if (!button?.value) return;
+		manual.add(progress);
 		motion.progress.set(progress, Number(button.value));
 		motion.counter.set(progressCounter, button.value + '%', undefined, progressTiming);
 	});
@@ -116,6 +125,28 @@
 	for (const controls of document.querySelectorAll('[data-demo-controls]')) controls.hidden = false;
 	byId('playback').hidden = false;
 
-	// Animate each card once per load, independently of the nested entrance demo.
-	motion.page.enter(byId('motion-cards'), { trigger: 'viewport', duration: 280, stagger: 48, maxDelay: 144, distance: 8, opacity: .7 });
+	/** Play a card's preview only after the current group has reached its resting layout. */
+	function afterCard(node, play) {
+		motion.page.ready(page, node).then(completed => {
+			if (completed && !manual.has(node) && !preference.matches && node.isConnected) play();
+		});
+	}
+
+	/** Play the composition first, then the displayed counters, progress and nested preview. */
+	function replayPage() {
+		manual.clear();
+		motion.page.enter(page, { effect: 'lift', trigger: 'viewport', contents: true, stagger: 48, maxDelay: 144 });
+		afterCard(entrance, () => playEntrance(scroll.getAttribute('aria-pressed') === 'true'));
+		afterCard(counter, () => motion.counter.enter(counter, reel));
+		afterCard(progress, () => {
+			const value = progress.querySelector('progress').value;
+			motion.counter.enter(progressCounter, progressTiming);
+			motion.progress.set(progress, null);
+			motion.progress.set(progress, value, undefined, 0);
+		});
+	}
+
+	mountPairMotionDemoTempo(document.documentElement, replayPage);
+	byId('replay-page').addEventListener('click', replayPage);
+	replayPage();
 })();
