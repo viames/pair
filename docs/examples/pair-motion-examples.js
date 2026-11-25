@@ -50,14 +50,17 @@
 	byId('reel-replay').addEventListener('click', () => motion.counter.enter(counter, reel));
 
 	const progress = byId('progress');
-	const progressLabel = byId('progress-value');
+	const progressCounter = byId('progress-value');
+	const progressTiming = { duration: 380, easing: 'ease-in-out' };
+	progress.style.setProperty('--demo-progress-duration', progressTiming.duration + 'ms');
+	progress.style.setProperty('--demo-progress-easing', progressTiming.easing);
 	motion.progress.set(progress, progress.querySelector('progress').value);
-	/** Move the existing fill while committing the new progress value immediately. */
+	/** Commit the real value immediately and animate both its digits and its fill with the same timing. */
 	byId('progress-controls').addEventListener('click', event => {
 		const button = event.target.closest('button');
 		if (!button?.value) return;
 		motion.progress.set(progress, Number(button.value));
-		progressLabel.textContent = button.value + '%';
+		motion.counter.set(progressCounter, button.value + '%', undefined, progressTiming);
 	});
 
 	const rank = byId('ranking');

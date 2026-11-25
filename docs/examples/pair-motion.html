@@ -59,10 +59,16 @@
 		@media (min-width: 24rem) { #entrance:not(.viewport) .entrance-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 		.metric { margin: 0; font-size: clamp(2.4rem, 7vw, 3.25rem); font-weight: 720; line-height: 1.2; }
 		.metric small { color: var(--muted); font-size: .95rem; font-weight: 500; }
-		#counter { --pair-motion-counter-min-width: 3ch; }
-		#counter .pair-motion-reel-window { mask-image: linear-gradient(transparent, black 10%, black 90%, transparent); }
+		#counter, #progress-value { --pair-motion-counter-min-width: 3ch; }
+		:is(#counter, #progress-value) .pair-motion-reel-window { mask-image: linear-gradient(transparent, black 10%, black 90%, transparent); }
 		#selection input { accent-color: var(--accent); }
 		#progress { margin-block-start: .65rem; }
+		@media (prefers-reduced-motion: no-preference) {
+			#progress .pair-motion-progress-fill {
+				transition-duration: calc(var(--demo-progress-duration, 180ms) * var(--pair-motion-duration-factor, 1));
+				transition-timing-function: var(--demo-progress-easing, ease-in-out);
+			}
+		}
 		#ranking { padding-inline-start: 1.5rem; margin: 0; }
 		#ranking > li { padding: .38rem .55rem; background: var(--stage); border-block-end: 1px solid var(--line); }
 		#ranking > li:last-child { border-block-end: 0; }
@@ -136,7 +142,7 @@
 			<section>
 				<h2>Progress</h2>
 				<div class="stage">
-					<p class="metric"><span id="progress-value" aria-live="polite">35%</span> <small>processed</small></p>
+					<p class="metric"><span id="progress-value" data-pair-motion-counter><span data-pair-motion-value aria-live="polite" aria-atomic="true">35%</span></span> <small>processed</small></p>
 					<div id="progress" data-pair-motion-progress><progress value="35" max="100" aria-label="Orders processed">35%</progress></div>
 				</div>
 				<div class="controls" id="progress-controls" data-demo-controls hidden>
