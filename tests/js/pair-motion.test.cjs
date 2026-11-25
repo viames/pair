@@ -18,7 +18,7 @@ function fixture() {
 		const events = new EventTarget();
 		const names = new Set();
 		return {
-			children: [], style: {}, x: 0, y: 0, offsetWidth: 100, offsetHeight: 40,
+			children: [], style: { setProperty() {} }, x: 0, y: 0, offsetWidth: 100, offsetHeight: 40,
 			classList: {
 				add: name => names.add(name),
 				contains: name => names.has(name),
@@ -83,7 +83,10 @@ function fixture() {
 	const document = { createElement: element, hidden: false };
 	const window = {
 		matchMedia: () => preference, CSS: { supports: () => true },
-		getComputedStyle: node => ({ opacity: '1', translate: node.translate ?? 'none', backgroundColor: 'transparent', direction: node.direction ?? 'ltr' }),
+		getComputedStyle: node => ({ opacity: '1', getPropertyValue: () => {
+			for (let item = node; item; item = item.parentElement) if (item.tempo) return item.tempo;
+			return '';
+		}, translate: node.translate ?? 'none', backgroundColor: 'transparent', direction: node.direction ?? 'ltr' }),
 		addEventListener() {}, removeEventListener() {}
 	};
 	vm.runInNewContext(source, { document, window });
@@ -532,4 +535,112 @@ test('chart reveal clips only the plotted area and settles with reduced motion o
 	assert.equal(frames.size, 1);
 	next.beforeDestroy(chart);
 	assert.equal(frames.size, 0);
+});
+
+
+test('keyed removal creates an inert layer and keeps new and retained rows in the normal list', async () => {
+	const { api, document, element, runs, window } = fixture();
+	document.body = element();
+	window.innerHeight = 600;
+	window.innerWidth = 1000;
+	const list = element();
+	const old = element();
+	const retained = element();
+	const incoming = element();
+	old.setAttribute('data-pair-motion-key', 'old');
+	retained.setAttribute('data-pair-motion-key', 'kept');
+	incoming.setAttribute('data-pair-motion-key', 'new');
+	old.getBoundingClientRect = () => ({ top: 10, left: 10, right: 110, bottom: 50, width: 100, height: 40 });
+	/** Make a decorative copy independent of the source row. */
+	old.cloneNode = retained.cloneNode = () => Object.assign(element(), { attributes: [] });
+	list.append(old, retained);
+
+	api.layout.update(list, () => { old.remove(); list.prepend(incoming); }, { exit: true });
+	assert.deepEqual(list.children, [incoming, retained]);
+	const layer = document.body.firstElementChild;
+	assert.equal(layer.inert, true);
+	assert.equal(layer.getAttribute('aria-hidden'), 'true');
+	assert.equal(runs[0].options.duration, 160);
+	assert.equal(runs[1].frames[0].translate, '0 5px');
+	runs[0].finish();
+	await Promise.resolve();
+	assert.equal(document.body.children.length, 0);
+});
+
+test('a related element bounds its travel and clears its motion on keyboard focus', async () => {
+	const { api, element, runs } = fixture();
+	const source = element();
+	const destination = element();
+	source.x = 150;
+	api.element.enter(destination, api.element.capture(source), { distance: 30, duration: 210 });
+	assert.equal(runs[0].frames[0].translate, '30px 0px');
+	assert.equal(runs[0].options.duration, 210);
+	destination.dispatchEvent(new Event('focusin'));
+	assert.equal(runs[0].cancelled, true);
+	await Promise.resolve();
+});
+
+test('confirmation keeps the result text and replaces an earlier icon timer', async () => {
+	const { api, element, runs, window } = fixture();
+	const button = element();
+	const idle = element();
+	const check = element();
+	const status = element();
+	const timers = new Map();
+	let next = 0;
+	window.setTimeout = callback => { timers.set(++next, callback); return next; };
+	window.clearTimeout = id => timers.delete(id);
+	button.querySelector = selector => selector === '[data-pair-motion-idle]' ? idle : check;
+
+	api.effect.confirm(button, { status, message: 'Saved' });
+	assert.equal(status.textContent, 'Saved');
+	assert.equal(idle.hidden, true);
+	assert.equal(check.hidden, false);
+	api.effect.confirm(button, { status, message: 'Saved again' });
+	assert.equal(runs[0].cancelled, true);
+	assert.equal(timers.size, 1);
+	timers.values().next().value();
+	assert.equal(check.hidden, true);
+	assert.equal(idle.hidden, false);
+	assert.equal(status.textContent, 'Saved again');
+	await Promise.resolve();
+});
+
+test('chart transition uses sampled Y only for matching labels and scales', () => {
+	const { api, document, element, preference } = fixture();
+	const canvas = Object.assign(element(), { width: 100, height: 100 });
+	document.createElement = () => Object.assign(element(), { getContext: () => ({ drawImage() {} }) });
+	const data = { labels: ['A', 'B'], datasets: [{ label: 'Mobile', data: [4, 6] }] };
+	const y = { type: 'linear', min: 0, max: 10, getValueForPixel: pixel => 10 - pixel / 10, getPixelForValue: value => (10 - value) * 10 };
+	const chart = {
+		canvas, width: 100, height: 100, data, scales: { y, x: { type: 'category' } },
+		getDatasetMeta: () => ({ data: [{ y: 60 }, { y: 40 }] }),
+	};
+	const previous = api.chart.capture(chart);
+	const config = { type: 'line', data: { ...data, datasets: [{ label: 'Mobile', data: [7, 8] }] }, options: { animation: false } };
+	const next = api.chart.transition(config, previous);
+	const point = { chart, datasetIndex: 0, dataIndex: 0, mode: 'default' };
+	assert.equal(next.options.animations.y.duration(point), 250);
+	assert.equal(next.options.animations.y.from(point), 60);
+	y.max = 15;
+	assert.equal(next.options.animations.y.duration(point), 0);
+	assert.equal(api.chart.transition(config, previous, { morph: false }).options.animation, false);
+	preference.matches = true;
+	assert.equal(api.chart.transition(config, previous), config);
+});
+
+test('initial reels preserve the rendered total and follow the inherited tempo', async () => {
+	const { api, element, runs } = fixture();
+	const root = element();
+	root.tempo = '1.3';
+	const value = { textContent: '51' };
+	root.querySelector = () => value;
+	api.counter.enter(root);
+	assert.equal(value.textContent, '51');
+	assert.deepEqual(runs.map(run => run.options.duration), [442, 442]);
+	assert.equal(root.children[0].getAttribute('aria-hidden'), 'true');
+	assert.equal(root.children[0].children[0].children[0].children.map(frame => frame.textContent).join(''), '012345');
+	for (const run of runs) run.finish();
+	await Promise.resolve();
+	assert.equal(root.children.length, 0);
 });

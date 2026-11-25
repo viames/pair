@@ -61,7 +61,7 @@
 	left: 0;
 	border-radius: var(--pair-motion-selection-radius, .375rem);
 	pointer-events: none;
-	transition: transform 180ms cubic-bezier(.22, 1, .36, 1), width 180ms ease-out, height 180ms ease-out;
+	transition: transform calc(180ms * var(--pair-motion-duration-factor, 1)) cubic-bezier(.22, 1, .36, 1), width calc(180ms * var(--pair-motion-duration-factor, 1)) ease-out, height calc(180ms * var(--pair-motion-duration-factor, 1)) ease-out;
 }
 
 [data-pair-motion-progress] {
@@ -89,7 +89,7 @@
 	block-size: 100%;
 	background: var(--pair-motion-progress-fill, Highlight);
 	transform-origin: left center;
-	transition: transform 180ms cubic-bezier(.22, 1, .36, 1);
+	transition: transform calc(180ms * var(--pair-motion-duration-factor, 1)) cubic-bezier(.22, 1, .36, 1);
 }
 .pair-motion-progress-fill:dir(rtl) { transform-origin: right center; }
 
@@ -106,7 +106,7 @@
 [data-pair-motion-disclosure] > summary:has([data-pair-motion-chevron])::-webkit-details-marker { display: none; }
 [data-pair-motion-disclosure] > summary [data-pair-motion-chevron] {
 	display: inline-block;
-	transition: rotate 180ms cubic-bezier(.22, 1, .36, 1);
+	transition: rotate calc(180ms * var(--pair-motion-duration-factor, 1)) cubic-bezier(.22, 1, .36, 1);
 }
 [data-pair-motion-disclosure][open]:not(.pair-motion-disclosure-closing) > summary [data-pair-motion-chevron] {
 	rotate: 90deg;
@@ -128,3 +128,28 @@
 	.pair-motion-progress-mounted > progress { opacity: 1; }
 	.pair-motion-progress-track { visibility: hidden; }
 }
+
+/* Temporary visual layers stay outside the native control and accessibility flow. */
+.pair-motion-leaving {
+	position: fixed;
+	z-index: 20;
+	overflow: hidden;
+	pointer-events: none;
+	background: var(--pair-motion-leaving-background, var(--bs-body-bg, Canvas));
+	border-radius: var(--pair-motion-leaving-radius, .375rem);
+}
+.pair-motion-chart-previous {
+	position: absolute;
+	inset: 0;
+	inline-size: 100%;
+	block-size: 100%;
+	pointer-events: none;
+}
+[data-pair-motion-feedback-icon] {
+	display: inline-grid;
+	place-items: center;
+	inline-size: 1.25em;
+	block-size: 1em;
+}
+[data-pair-motion-feedback-icon] > * { grid-area: 1 / 1; }
+[data-pair-motion-feedback-icon] > [hidden] { display: none; }

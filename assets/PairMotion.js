@@ -9,6 +9,9 @@
 	const counters = new WeakMap();
 	const selections = new WeakMap();
 	const moves = new WeakMap();
+	const exits = new WeakMap();
+	const confirmations = new WeakMap();
+	const sharedElements = new WeakMap();
 	const effects = new WeakMap();
 	const disclosures = new WeakMap();
 	const regions = new WeakMap();
@@ -18,9 +21,18 @@
 	const choiceItems = ':scope > [data-pair-motion-item]';
 	const selectedChoice = '[aria-selected="true"], [aria-pressed="true"], [aria-current]:not([aria-current="false"], [aria-current=""])';
 
+	/** Read a motion tempo that can be scoped to a page or component through CSS. */
+	function durationFactor(element) {
+		const value = global.getComputedStyle(element).getPropertyValue?.('--pair-motion-duration-factor');
+		return boundedOption(value, 1, .25, 3);
+	}
+
 	/** Start an owned animation and remove its bookkeeping on completion or cancellation. */
 	function animate(element, frames, options, done) {
-		const animation = element.animate(frames, options);
+		const factor = durationFactor(element);
+		const timing = factor === 1 ? options : { ...options, duration: options.duration * factor };
+		if (factor !== 1 && options.delay !== undefined) timing.delay = options.delay * factor;
+		const animation = element.animate(frames, timing);
 		animations.add(animation);
 		/** Settle both successful and cancelled animations without leaving a rejected promise. */
 		function settle() {
@@ -54,9 +66,9 @@
 		return cycle(reel.start + reel.distance * progress);
 	}
 
-	/** Build the shortest run of digits, including any fractional starting frame. */
-	function reelFor(start, target) {
-		const distance = cycle(target - start + 5) - 5;
+	/** Build the digit run from a whole or fractional frame. */
+	function reelFor(start, target, forward) {
+		const distance = forward ? cycle(target - start) : cycle(target - start + 5) - 5;
 		const first = Math.floor(Math.min(start, start + distance));
 		const last = Math.ceil(Math.max(start, start + distance));
 		const track = document.createElement('span');
@@ -94,7 +106,7 @@
 	}
 
 	/** Replace the semantic value immediately and animate only the decorative ASCII digits. */
-	function setCounter(root, value, from) {
+	function setCounter(root, value, from, { forward = false } = {}) {
 		const text = root.querySelector(':scope > [data-pair-motion-value]');
 		if (!text) return;
 		const next = String(value);
@@ -121,7 +133,7 @@
 				continue;
 			}
 			const target = Number(character);
-			const reel = reelFor(positions[reels.length] ?? target, target);
+			const reel = reelFor(positions[reels.length] ?? target, target, forward);
 			reels.push(reel);
 			characters.push(reel.viewport);
 		}
@@ -147,6 +159,13 @@
 				{ transform: 'translateY(' + reel.to + '%)' }
 			], { duration: 340, easing, fill: 'both' }, settled);
 		}
+	}
+
+	/** Roll the initially rendered digits forward from zero without replacing their semantic text. */
+	function enterCounter(root) {
+		const final = captureCounter(root);
+		if (counters.has(root) || !final.positions.length) return;
+		setCounter(root, final.value, { ...final, positions: final.positions.map(() => 0) }, { forward: true });
 	}
 
 	/** Read the selected item without modifying the app's radio or ARIA state. */
@@ -259,16 +278,81 @@
 		return items;
 	}
 
+	/** Capture removed items in a non-interactive visual layer when requested by the caller. */
+	function captureLeaving(element, rect) {
+		if (!document.body || rect.bottom < 0 || rect.top > global.innerHeight || rect.right < 0 || rect.left > global.innerWidth) return null;
+		const copy = element.cloneNode(true);
+		for (const node of copy.querySelectorAll('script, style, link, iframe, object, embed, video, audio')) node.remove();
+		for (const node of [copy, ...copy.querySelectorAll('*')]) {
+			for (const { name } of [...node.attributes]) {
+				if (/^(on|data-)/i.test(name) || /^(id|name|autofocus|form)$/i.test(name)) node.removeAttribute(name);
+			}
+		}
+		const shell = document.createElement('div');
+		shell.className = 'pair-motion-leaving';
+		shell.inert = true;
+		shell.setAttribute('aria-hidden', 'true');
+		shell.style.setProperty('--pair-motion-duration-factor', durationFactor(element));
+		Object.assign(shell.style, { left: rect.left + 'px', top: rect.top + 'px', width: rect.width + 'px', height: rect.height + 'px' });
+		if (element.tagName === 'TR') {
+			const table = document.createElement('table');
+			const body = document.createElement('tbody');
+			table.className = element.closest('table')?.className ?? '';
+			table.style.cssText = 'width:100%; table-layout:fixed; margin:0';
+			for (const [index, cell] of [...copy.cells].entries()) {
+				cell.style.width = element.cells[index].getBoundingClientRect().width + 'px';
+			}
+			body.append(copy);
+			table.append(body);
+			shell.append(table);
+		} else shell.append(copy);
+		return shell;
+	}
+
+	/** Remove outgoing layers owned by this list before an overlapping update. */
+	function clearLeaving(root) {
+		const active = exits.get(root);
+		if (active) for (const animation of active) animation.cancel();
+	}
+
+	/** Fade a removed item in place without keeping it in the layout or accessibility tree. */
+	function playLeaving(root, shell, duration, distance, curve) {
+		if (!document.body) return;
+		document.body.append(shell);
+		const active = exits.get(root) ?? new Set();
+		exits.set(root, active);
+		/** Stop the viewport-anchored exit when the user scrolls. */
+		function stop() { animation.cancel(); }
+		/** Remove both the visual layer and the temporary scroll listener. */
+		function settled() {
+			shell.remove();
+			global.removeEventListener('scroll', stop, true);
+			active.delete(animation);
+			if (!active.size && exits.get(root) === active) exits.delete(root);
+		}
+		const animation = animate(shell, [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(' + -distance + 'px)' }], {
+			duration, easing: curve
+		}, settled);
+		active.add(animation);
+		global.addEventListener('scroll', stop, { capture: true, once: true });
+	}
+
 	/** Capture unique positions before a region or its list is replaced. */
-	function captureLayout(root) {
+	function captureLayout(root, { exit = false } = {}) {
 		if (!root || !canAnimate(root) || !global.CSS?.supports('translate', '0px')) return null;
+		clearLeaving(root);
 		const starts = new Map();
 		const origin = root.getBoundingClientRect();
 		const previous = keyed(root);
+		let capturedLeaving = 0;
 		for (const [key, element] of previous) {
 			if (!element) continue;
 			const rect = element.getBoundingClientRect();
-			if (rect.width && rect.height) starts.set(key, { left: rect.left - origin.left, top: rect.top - origin.top });
+			if (rect.width && rect.height) {
+				const shell = exit && capturedLeaving < 30 ? captureLeaving(element, rect) : null;
+				if (shell) capturedLeaving += 1;
+				starts.set(key, { left: rect.left - origin.left, top: rect.top - origin.top, shell });
+			}
 		}
 		for (const element of previous.values()) {
 			if (element) moves.get(element)?.cancel();
@@ -277,17 +361,29 @@
 	}
 
 	/** Play a captured layout against the direct children now in the document. */
-	function playLayout(root, starts) {
+	function playLayout(root, starts, options = {}) {
 		if (!root || !starts || !canAnimate(root)) return;
+		clearLeaving(root);
+		const duration = boundedOption(options.duration, 180, 0, 800);
+		if (!duration) return;
+		const distance = boundedOption(options.distance, options.exit ? 5 : 0, 0, 32);
+		const curve = motionCurve(options.easing);
+		const items = keyed(root);
+		if (options.exit) {
+			for (const [key, state] of starts) {
+				if (!items.has(key) && state.shell) playLeaving(root, state.shell, Math.min(duration, 160), distance, curve);
+			}
+		}
 
 		const origin = root.getBoundingClientRect();
 		const changes = [];
-		for (const [key, element] of keyed(root)) {
+		for (const [key, element] of items) {
 			if (!element) continue;
 			const end = element.getBoundingClientRect();
-			if (!end.width || !end.height) continue;
+			if (!end.width || !end.height || (options.exit && element.contains(document.activeElement))) continue;
 			const start = starts.get(key);
 			const initial = start ? { translate: (start.left + origin.left - end.left) + 'px ' + (start.top + origin.top - end.top) + 'px' } : { opacity: 0 };
+			if (!start && distance) initial.translate = '0 ' + distance + 'px';
 			if (initial.translate !== '0px 0px') changes.push({ element, start, initial });
 		}
 
@@ -296,16 +392,19 @@
 			function settled() {
 				if (moves.get(element) === animation) moves.delete(element);
 			}
-			const animation = animate(element, [initial, start ? { translate: '0px 0px' } : { opacity: 1 }], { duration: 180, easing }, settled);
+			const final = start ? { translate: '0px 0px' } : { opacity: 1 };
+			if (!start && distance) final.translate = 'none';
+			moves.get(element)?.cancel();
+			const animation = animate(element, [initial, final], { duration, easing: curve }, settled);
 			moves.set(element, animation);
 		}
 	}
 
 	/** Apply a synchronous DOM change with keyed motion and return the callback result. */
-	function updateLayout(root, apply) {
-		const starts = captureLayout(root);
+	function updateLayout(root, apply, options) {
+		const starts = captureLayout(root, options);
 		const result = apply();
-		playLayout(root, starts);
+		playLayout(root, starts, options);
 		return result;
 	}
 
@@ -500,8 +599,7 @@
 		const maxDelay = boundedOption(options.maxDelay, 160, 0, 400);
 		const distance = boundedOption(options.distance, 8, 0, 32);
 		const opacity = boundedOption(options.opacity, .7, 0, 1);
-		const curves = { 'ease-out': easing, 'ease-in-out': 'ease-in-out', linear: 'linear' };
-		const curve = Object.hasOwn(curves, options.easing) ? curves[options.easing] : easing;
+		const curve = motionCurve(options.easing);
 		const direction = global.getComputedStyle(root).direction === 'rtl' ? -1 : 1;
 		const offsets = {
 			bottom: '0 ' + distance + 'px', top: '0 ' + -distance + 'px',
@@ -576,6 +674,87 @@
 		for (const item of pending.keys()) run.observer.observe(item);
 	}
 
+	/** Resolve a shared motion curve without passing untrusted CSS to the animation engine. */
+	function motionCurve(curve) {
+		const curves = { 'ease-out': easing, 'ease-in-out': 'ease-in-out', linear: 'linear' };
+		return Object.hasOwn(curves, curve) ? curves[curve] : easing;
+	}
+
+	/** Capture a visible element's geometry to match its counterpart after rendering. */
+	function captureElement(element) {
+		if (!element || !canAnimate(element)) return null;
+		const { left, top, width, height } = element.getBoundingClientRect();
+		return width && height ? { left, top, width, height } : null;
+	}
+
+	/** Let an element arrive from the former position of the same content. */
+	function enterElement(element, from, options = {}) {
+		if (!element) return;
+		sharedElements.get(element)?.cancel();
+		if (!from || !canAnimate(element) || element.contains(document.activeElement)) return;
+		const to = captureElement(element);
+		if (!to) return;
+		const duration = boundedOption(options.duration, 200, 0, 800);
+		if (!duration) return;
+		const distance = boundedOption(options.distance, 96, 0, 320);
+		const x = from.left - to.left;
+		const y = from.top - to.top;
+		const factor = Math.min(1, distance / (Math.hypot(x, y) || 1));
+		const style = global.getComputedStyle(element);
+		const initial = { opacity: Number(style.opacity) * .55 };
+		const final = { opacity: Number(style.opacity) };
+		if (factor && style.translate === 'none' && global.CSS?.supports('translate', '0px')) {
+			initial.translate = x * factor + 'px ' + y * factor + 'px';
+			final.translate = 'none';
+		}
+		/** Settle immediately if the moving element receives keyboard focus. */
+		function focus() { animation.cancel(); }
+		/** Release the animation and listener when the destination settles. */
+		function settled() {
+			element.removeEventListener('focusin', focus);
+			if (sharedElements.get(element) === animation) sharedElements.delete(element);
+		}
+		const animation = animate(element, [initial, final], { duration, easing: motionCurve(options.easing) }, settled);
+		sharedElements.set(element, animation);
+		element.addEventListener('focusin', focus, { once: true });
+	}
+
+	/** Restore the idle visual and clear the timer of the current confirmation. */
+	function clearConfirmation(root) {
+		const state = confirmations.get(root);
+		if (!state) return;
+		confirmations.delete(root);
+		global.clearTimeout(state.timer);
+		state.animation?.cancel();
+		state.idle.hidden = false;
+		state.confirmed.hidden = true;
+	}
+
+	/** Confirm a completed action while its native control remains usable. */
+	function confirmEffect(root, options = {}) {
+		if (options.status && typeof options.message === 'string') options.status.textContent = options.message;
+		if (!root) return;
+		clearConfirmation(root);
+		const idle = root.querySelector('[data-pair-motion-idle]');
+		const confirmed = root.querySelector('[data-pair-motion-confirmed]');
+		if (!idle || !confirmed) return;
+		const duration = boundedOption(options.duration, 180, 0, 800);
+		const hold = boundedOption(options.hold, 950, 0, 4000);
+		const distance = boundedOption(options.distance, 4, 0, 12);
+		idle.hidden = true;
+		confirmed.hidden = false;
+		const state = { idle, confirmed };
+		if (duration && canAnimate(confirmed)) {
+			state.animation = animate(confirmed, [{ opacity: .25, transform: 'translateY(' + distance + 'px) scale(.8)' }, { opacity: 1, transform: 'none' }], {
+				duration, easing: motionCurve(options.easing)
+			});
+		}
+		/** Return to the idle icon without altering the confirmation text. */
+		function reset() { clearConfirmation(root); }
+		state.timer = global.setTimeout(reset, (state.animation ? duration * durationFactor(confirmed) : 0) + hold);
+		confirmations.set(root, state);
+	}
+
 	/** Create an optional Chart.js 4 plugin that reveals the plotted series in place. */
 	function revealChart({ duration = 400, origin = 'start' } = {}) {
 		const length = boundedOption(duration, 400, 0, 1000);
@@ -604,11 +783,12 @@
 					fromEnd = (origin === 'end') !== rtl;
 				}
 				let start;
+				const time = length * durationFactor(chart.canvas);
 				progress = 0;
 				/** Redraw from the real coordinates until the clipping window is fully open. */
 				function draw(now) {
 					start ??= now;
-					const elapsed = Math.min(1, (now - start) / length);
+					const elapsed = Math.min(1, (now - start) / time);
 					progress = motion.matches || document.hidden ? 1 : 1 - (1 - elapsed) ** 3;
 					chart.draw();
 					frame = progress < 1 ? global.requestAnimationFrame(draw) : undefined;
@@ -637,17 +817,144 @@
 		};
 	}
 
+	/** Capture dataset coordinates as currently painted, including interrupted updates. */
+	function captureChart(chart) {
+		if (!chart?.canvas || !canAnimate(chart.canvas) || !chart.width || !chart.height) return null;
+		const bitmap = document.createElement('canvas');
+		bitmap.width = chart.canvas.width;
+		bitmap.height = chart.canvas.height;
+		const context = bitmap.getContext('2d');
+		context?.drawImage(chart.canvas, 0, 0);
+
+		const scale = chart.scales.y;
+		const labels = chart.data.labels ?? [];
+		const series = new Map();
+		for (const [index, dataset] of chart.data.datasets.entries()) {
+			const key = dataset.pairMotionKey ?? dataset.label;
+			if (!key || series.has(key)) {
+				series.set(key, null);
+				continue;
+			}
+			const points = chart.getDatasetMeta(index).data;
+			if (scale?.type === 'linear' && chart.isDatasetVisible?.(index) !== false && points.length === labels.length) {
+				series.set(key, points.map(point => point.skip ? NaN : scale.getValueForPixel(point.y)));
+			}
+		}
+		return {
+			bitmap: context ? bitmap : null, series, labels: [...labels],
+			min: scale?.min, max: scale?.max, reverse: !!scale?.options?.reverse,
+			xType: chart.scales.x?.type, xReverse: !!chart.scales.x?.options?.reverse
+		};
+	}
+
+	/** Configure one replacement chart to morph compatible data or blend the old plot out. */
+	function transitionChart(config, previous, options = {}) {
+		if (!previous || motion.matches || document.hidden) return config;
+		const duration = boundedOption(options.duration, 250, 0, 800);
+		const fadeDuration = boundedOption(options.fadeDuration, 180, 0, 800);
+		const labels = config.data?.labels ?? [];
+		const datasets = config.data?.datasets ?? [];
+		const axesMatch = options.morph !== false && config.type === 'line' && labels.length > 0 &&
+			labels.length === previous.labels.length && labels.every((label, index) => label === previous.labels[index]);
+		const keys = datasets.map(dataset => dataset.pairMotionKey ?? dataset.label);
+		const before = keys.map(key => previous.series.get(key));
+		const compatible = axesMatch && keys.length > 0 && keys.length === previous.series.size && new Set(keys).size === keys.length &&
+			before.every(points => points?.every(Number.isFinite)) &&
+			datasets.every(dataset => !dataset.hidden && dataset.animation !== false && Array.isArray(dataset.data) &&
+				dataset.data.length === labels.length && dataset.data.every(Number.isFinite));
+		const curves = { 'ease-out': 'easeOutCubic', 'ease-in-out': 'easeInOutCubic', linear: 'linear' };
+		const curve = Object.hasOwn(curves, options.easing) ? curves[options.easing] : curves['ease-out'];
+		let first = true;
+		let fade = [];
+		let overlay;
+		let preference;
+		let factor = 1;
+
+		/** Require the real resolved scale to match before interpreting old point positions. */
+		function sameScale(chart) {
+			const y = chart.scales.y;
+			const x = chart.scales.x;
+			return compatible && y?.type === 'linear' && y.min === previous.min && y.max === previous.max &&
+				!!y.options?.reverse === previous.reverse && x?.type === previous.xType && !!x?.options?.reverse === previous.xReverse;
+		}
+
+		/** Drop the source image immediately when the chart is superseded. */
+		function removeOverlay() {
+			overlay?.remove();
+			overlay = null;
+		}
+
+		const plugin = {
+			id: 'pair-motion-transition',
+			/** Resolve the chart tempo once before Chart.js evaluates individual points. */
+			beforeUpdate(chart) { factor = durationFactor(chart.canvas); },
+			/** Crossfade when coordinates are not comparable and settle active morphs on preference changes. */
+			afterUpdate(chart) {
+				if (!first) return;
+				first = false;
+				if (duration && sameScale(chart)) {
+					// Chart.js resets new controllers before its first draw. Paint the captured frame
+					// immediately so a second refresh can also sample this new chart before the first tick.
+					for (const [index, points] of before.entries()) {
+						for (const [point, element] of chart.getDatasetMeta(index).data.entries()) {
+							element.y = chart.scales.y.getPixelForValue(points[point]);
+						}
+					}
+					/** Set the actual point positions immediately when reduced motion is enabled. */
+					preference = () => {
+						if (!motion.matches) return;
+						chart.stop();
+						chart.update('none');
+					};
+					motion.addEventListener?.('change', preference);
+				} else if (fadeDuration && previous.bitmap && chart.canvas.parentElement && canAnimate(chart.canvas)) {
+					overlay = previous.bitmap;
+					overlay.className = 'pair-motion-chart-previous';
+					overlay.setAttribute('aria-hidden', 'true');
+					chart.canvas.parentElement.append(overlay);
+					fade = [
+						animate(chart.canvas, [{ opacity: .25 }, { opacity: 1 }], { duration: fadeDuration, easing: motionCurve(options.easing) }),
+						animate(overlay, [{ opacity: 1 }, { opacity: 0 }], { duration: fadeDuration, easing: motionCurve(options.easing) }, removeOverlay)
+					];
+				}
+			},
+			/** Remove the old chart image and callback before Chart.js releases its canvas. */
+			beforeDestroy() {
+				for (const animation of fade) animation.cancel();
+				removeOverlay();
+				if (preference) motion.removeEventListener?.('change', preference);
+			}
+		};
+
+		const chartOptions = { ...config.options };
+		if (compatible && duration) {
+			chartOptions.animation = { duration: 0, easing: curve };
+			chartOptions.animations = {
+				colors: false, numbers: false,
+				y: {
+					type: 'number', easing: curve,
+					/** Animate only the first real update and only on a compatible scale. */
+					duration(context) { return first && context.mode !== 'reset' && sameScale(context.chart) ? duration * factor : 0; },
+					/** Use the visually sampled coordinates without changing parsed data or tooltips. */
+					from(context) { return context.chart.scales.y.getPixelForValue(before[context.datasetIndex]?.[context.dataIndex]); },
+				}
+			};
+		}
+		return { ...config, options: chartOptions, plugins: [...(config.plugins ?? []), plugin] };
+	}
+
 	motion.addEventListener?.('change', reduce);
 	const api = {
-		counter: { capture: captureCounter, set: setCounter },
+		counter: { capture: captureCounter, set: setCounter, enter: enterCounter },
 		selection: { mount: mountSelection, sync: syncSelection, unmount: unmountSelection },
 		progress: { capture: captureProgress, set: setProgress },
 		layout: { capture: captureLayout, play: playLayout, update: updateLayout },
-		effect: { fade, highlight },
+		effect: { fade, highlight, confirm: confirmEffect, clearConfirmation },
+		element: { capture: captureElement, enter: enterElement },
 		disclosure: { mount: mountDisclosure, set: setDisclosure, unmount: unmountDisclosure },
 		region: { replace: replaceRegion },
 		page: { enter: enterPage, cancel: cancelPage },
-		chart: { reveal: revealChart }
+		chart: { reveal: revealChart, capture: captureChart, transition: transitionChart }
 	};
 	global.Pair = global.Pair || {};
 	global.Pair.Motion = global.PairMotion = api;
