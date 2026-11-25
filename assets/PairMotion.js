@@ -106,18 +106,21 @@
 	}
 
 	/** Replace the semantic value immediately and animate only the decorative ASCII digits. */
-	function setCounter(root, value, from, { forward = false } = {}) {
+	function setCounter(root, value, from, options = {}) {
 		const text = root.querySelector(':scope > [data-pair-motion-value]');
 		if (!text) return;
 		const next = String(value);
 		if (!from && text.textContent === next) return;
 
 		const { positions, width } = from ?? captureCounter(root);
+		const duration = boundedOption(options.duration, 340, 0, 1000);
+		const stagger = boundedOption(options.stagger, 0, 0, 60);
+		const curve = options.easing ? motionCurve(options.easing) : easing;
 		const previous = counters.get(root);
 		if (previous) finishCounter(root, previous);
 
 		if (text.textContent !== next) text.textContent = next;
-		if (!width || !canAnimate(root) || !global.CSS?.supports('block-size', '1lh')) return;
+		if (!duration || !width || !canAnimate(root) || !global.CSS?.supports('block-size', '1lh')) return;
 
 		const visual = document.createElement('span');
 		visual.className = 'pair-motion-counter-visual';
@@ -133,7 +136,8 @@
 				continue;
 			}
 			const target = Number(character);
-			const reel = reelFor(positions[reels.length] ?? target, target, forward);
+			const start = positions[reels.length] ?? (options.rollNewDigits && positions.length ? 0 : target);
+			const reel = reelFor(start, target, options.forward);
 			reels.push(reel);
 			characters.push(reel.viewport);
 		}
@@ -153,23 +157,23 @@
 			if (pending === 0) finishCounter(root, state);
 		}
 
-		for (const reel of changed) {
+		for (const [index, reel] of changed.entries()) {
 			reel.animation = animate(reel.track, [
 				{ transform: 'translateY(' + reel.from + '%)' },
 				{ transform: 'translateY(' + reel.to + '%)' }
-			], { duration: 340, easing, fill: 'both' }, settled);
+			], { duration, delay: Math.min(120, stagger * index), easing: curve, fill: 'both' }, settled);
 		}
 	}
 
 	/** Roll the initially rendered digits forward from zero without replacing their semantic text. */
-	function enterCounter(root) {
+	function enterCounter(root, options = {}) {
 		const final = captureCounter(root);
 		if (counters.has(root) || !final.positions.length) return;
-		setCounter(root, final.value, { ...final, positions: final.positions.map(() => 0) }, { forward: true });
+		setCounter(root, final.value, { ...final, positions: final.positions.map(() => 0) }, { ...options, forward: true });
 	}
 
 	/** Read the selected item without modifying the app's radio or ARIA state. */
-	function syncSelection(root) {
+	function syncSelection(root, immediate = false) {
 		const state = selections.get(root);
 		if (!state) return;
 		const items = new Set(root.querySelectorAll(choiceItems));
@@ -184,6 +188,7 @@
 			item.matches(selectedChoice) || item.querySelector(':scope > input[type="radio"]:checked'));
 		const visible = Boolean(active?.offsetWidth && active.offsetHeight);
 		const indicator = state.indicator;
+		if (immediate) indicator.classList.add('pair-motion-selection-instant');
 		if (visible) {
 			indicator.style.width = active.offsetWidth + 'px';
 			indicator.style.height = active.offsetHeight + 'px';
@@ -192,6 +197,10 @@
 		if (indicator.parentElement !== root) root.prepend(indicator);
 		indicator.hidden = !visible;
 		root.classList.toggle('pair-motion-selection-mounted', visible);
+		if (immediate) {
+			indicator.getBoundingClientRect();
+			indicator.classList.remove('pair-motion-selection-instant');
+		}
 	}
 
 	/** Add one decorative layer and observe size changes for this group only. */
@@ -201,13 +210,14 @@
 			indicator.className = 'pair-motion-selection-indicator';
 			indicator.setAttribute('aria-hidden', 'true');
 			indicator.hidden = true;
-			/** Reposition the indicator after a native selection or a resize. */
+			/** Animate native selection changes, but align immediately when layout changes. */
 			const update = () => syncSelection(root);
-			const observer = global.ResizeObserver ? new global.ResizeObserver(update) : null;
-			selections.set(root, { indicator, observer, update, items: new Set() });
+			const resize = () => syncSelection(root, true);
+			const observer = global.ResizeObserver ? new global.ResizeObserver(resize) : null;
+			selections.set(root, { indicator, observer, update, resize, items: new Set() });
 			observer?.observe(root);
 			root.addEventListener('change', update);
-			if (!observer) global.addEventListener('resize', update);
+			if (!observer) global.addEventListener('resize', resize);
 		}
 		syncSelection(root);
 	}
@@ -218,7 +228,7 @@
 		if (!state) return;
 		state.observer?.disconnect();
 		root.removeEventListener('change', state.update);
-		if (!state.observer) global.removeEventListener('resize', state.update);
+		if (!state.observer) global.removeEventListener('resize', state.resize);
 		state.indicator.remove();
 		root.classList.remove('pair-motion-selection-mounted');
 		selections.delete(root);

@@ -27,6 +27,7 @@
 	flex-wrap: wrap;
 	gap: .25rem;
 	max-inline-size: 100%;
+	overflow: clip;
 	padding: .25rem;
 }
 [data-pair-motion-selection][hidden], .pair-motion-selection-indicator[hidden] { display: none; }
@@ -63,6 +64,8 @@
 	pointer-events: none;
 	transition: transform calc(180ms * var(--pair-motion-duration-factor, 1)) cubic-bezier(.22, 1, .36, 1), width calc(180ms * var(--pair-motion-duration-factor, 1)) ease-out, height calc(180ms * var(--pair-motion-duration-factor, 1)) ease-out;
 }
+
+.pair-motion-selection-instant { transition: none; }
 
 [data-pair-motion-progress] {
 	display: grid;

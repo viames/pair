@@ -644,3 +644,48 @@ test('initial reels preserve the rendered total and follow the inherited tempo',
 	await Promise.resolve();
 	assert.equal(root.children.length, 0);
 });
+
+test('custom counter cadence rolls an added digit from zero', async () => {
+	const { api, element, runs } = fixture();
+	const root = element();
+	const value = { textContent: '51' };
+	root.querySelector = () => value;
+	api.counter.set(root, '102', undefined, { duration: 380, stagger: 22, rollNewDigits: true });
+	assert.equal(value.textContent, '102');
+	assert.deepEqual(runs.map(run => run.options.delay), [0, 22, 44]);
+	assert.deepEqual(runs.map(run => run.options.duration), [380, 380, 380]);
+	assert.equal(root.children[0].children[0].children[0].children.map(frame => frame.textContent).join(''), '01');
+	for (const run of runs) run.finish();
+	await Promise.resolve();
+	assert.equal(root.children.length, 0);
+});
+
+test('selection realigns instantly after a resize', () => {
+	const { api, element, window } = fixture();
+	let notify;
+	window.ResizeObserver = class {
+		/** Record the browser callback without introducing a layout clock. */
+		constructor(callback) { notify = callback; }
+		observe() {}
+		unobserve() {}
+		disconnect() {}
+	};
+	const root = element();
+	const item = element();
+	item.matches = () => true;
+	item.offsetLeft = 4;
+	item.offsetTop = 4;
+	root.querySelectorAll = () => [item];
+	root.append(item);
+	api.selection.mount(root);
+	const indicator = root.firstElementChild;
+	item.offsetWidth = 72;
+	/** Verify the instant style is in effect when the new geometry is committed. */
+	indicator.getBoundingClientRect = () => {
+		assert.equal(indicator.classList.contains('pair-motion-selection-instant'), true);
+		return { width: 72 };
+	};
+	notify();
+	assert.equal(indicator.style.width, '72px');
+	assert.equal(indicator.classList.contains('pair-motion-selection-instant'), false);
+});
