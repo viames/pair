@@ -689,3 +689,44 @@ test('selection realigns instantly after a resize', () => {
 	assert.equal(indicator.style.width, '72px');
 	assert.equal(indicator.classList.contains('pair-motion-selection-instant'), false);
 });
+
+test('selection accents only the last opted-in label after the slide finishes', async () => {
+	const { api, element, runs } = fixture();
+	const root = element();
+	const items = [element(), element(), element()];
+	const labels = items.map(() => element());
+	let active = items[0];
+	for (const [index, item] of items.entries()) {
+		item.offsetTop = 4 + index * 44;
+		item.matches = () => item === active;
+		item.querySelector = selector => selector === '[data-pair-motion-selection-label]' ? labels[index] : null;
+	}
+	root.append(...items);
+	root.querySelectorAll = () => items;
+	api.selection.mount(root);
+	const indicator = root.firstElementChild;
+	let finish;
+	/** Expose the transition associated with each selection, independently of the test clock. */
+	function nextSlide() {
+		const finished = new Promise(resolve => { finish = resolve; });
+		indicator.getAnimations = () => [{ transitionProperty: 'transform', finished }];
+		return finish;
+	}
+	const finishFirst = nextSlide();
+	active = items[1];
+	api.selection.sync(root);
+	const finishLast = nextSlide();
+	active = items[2];
+	api.selection.sync(root);
+	assert.equal(runs.length, 0);
+	finishFirst();
+	await new Promise(resolve => setImmediate(resolve));
+	assert.equal(runs.length, 0);
+	finishLast();
+	await new Promise(resolve => setImmediate(resolve));
+	assert.equal(runs.length, 1);
+	assert.equal(runs[0].options.duration, 280);
+	api.selection.unmount(root);
+	assert.equal(runs[0].cancelled, true);
+	await Promise.resolve();
+});

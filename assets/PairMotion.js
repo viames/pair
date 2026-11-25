@@ -172,6 +172,43 @@
 		setCounter(root, final.value, { ...final, positions: final.positions.map(() => 0) }, { ...options, forward: true });
 	}
 
+	/** Accent the opted-in label only after the current indicator finishes moving. */
+	function highlightSelectionArrival(state, active) {
+		const label = active.querySelector('[data-pair-motion-selection-label]');
+		if (!label || !canAnimate(label)) return;
+		const indicator = state.indicator;
+		// Commit the new geometry before reading the transitions the browser started.
+		indicator.getBoundingClientRect();
+		const transitions = indicator.getAnimations?.().filter(animation =>
+			['transform', 'width', 'height'].includes(animation.transitionProperty));
+		if (!transitions?.length) return;
+		const pending = Promise.all(transitions.map(animation => animation.finished));
+		state.arrival = pending;
+
+		/** A later selection, resize or teardown invalidates this arrival. */
+		function accent() {
+			if (state.arrival !== pending) return;
+			state.arrival = null;
+			if (!canAnimate(label)) return;
+			const accentColor = 'var(--pair-motion-selection-arrival-color, var(--pair-motion-focus-color, Highlight))';
+			const color = global.getComputedStyle(label).color;
+			/** Drop the finished effect without touching a newer one. */
+			function settled() {
+				if (state.accent === animation) state.accent = null;
+			}
+			const animation = animate(label, [
+				{ color: accentColor }, { color: accentColor, offset: .24 }, { color }
+			], { duration: 280, easing }, settled);
+			state.accent = animation;
+		}
+
+		/** An interrupted transition has no arrival to highlight. */
+		function cancelled() {
+			if (state.arrival === pending) state.arrival = null;
+		}
+		pending.then(accent, cancelled);
+	}
+
 	/** Read the selected item without modifying the app's radio or ARIA state. */
 	function syncSelection(root, immediate = false) {
 		const state = selections.get(root);
@@ -188,6 +225,13 @@
 			item.matches(selectedChoice) || item.querySelector(':scope > input[type="radio"]:checked'));
 		const visible = Boolean(active?.offsetWidth && active.offsetHeight);
 		const indicator = state.indicator;
+		const changed = state.active !== (visible ? active : null);
+		const arriving = !immediate && changed && visible && state.active && !indicator.hidden;
+		state.active = visible ? active : null;
+		if (changed || immediate) {
+			state.arrival = null;
+			state.accent?.cancel();
+		}
 		if (immediate) indicator.classList.add('pair-motion-selection-instant');
 		if (visible) {
 			indicator.style.width = active.offsetWidth + 'px';
@@ -201,6 +245,7 @@
 			indicator.getBoundingClientRect();
 			indicator.classList.remove('pair-motion-selection-instant');
 		}
+		if (arriving) highlightSelectionArrival(state, active);
 	}
 
 	/** Add one decorative layer and observe size changes for this group only. */
@@ -226,6 +271,8 @@
 	function unmountSelection(root) {
 		const state = selections.get(root);
 		if (!state) return;
+		state.arrival = null;
+		state.accent?.cancel();
 		state.observer?.disconnect();
 		root.removeEventListener('change', state.update);
 		if (!state.observer) global.removeEventListener('resize', state.resize);
