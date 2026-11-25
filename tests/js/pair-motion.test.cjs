@@ -15,6 +15,7 @@ function fixture() {
 	/** Make an element with an isolated animation and DOM state. */
 	function element() {
 		const attributes = new Map();
+		const events = new EventTarget();
 		const names = new Set();
 		return {
 			children: [], style: {}, x: 0, y: 0, offsetWidth: 100, offsetHeight: 40,
@@ -32,8 +33,11 @@ function fixture() {
 			matches: () => false,
 			querySelector: () => null,
 			querySelectorAll: () => [],
-			addEventListener() {},
-			removeEventListener() {},
+			contains(other) { return other === this; },
+			getClientRects: () => [1],
+			addEventListener: events.addEventListener.bind(events),
+			removeEventListener: events.removeEventListener.bind(events),
+			dispatchEvent: events.dispatchEvent.bind(events),
 			/** Assign each child to the same parent without duplicating existing nodes. */
 			append(...children) {
 				for (const child of children) {
@@ -79,11 +83,11 @@ function fixture() {
 	const document = { createElement: element, hidden: false };
 	const window = {
 		matchMedia: () => preference, CSS: { supports: () => true },
-		getComputedStyle: node => ({ opacity: '1', backgroundColor: 'transparent', direction: node.direction ?? 'ltr' }),
+		getComputedStyle: node => ({ opacity: '1', translate: node.translate ?? 'none', backgroundColor: 'transparent', direction: node.direction ?? 'ltr' }),
 		addEventListener() {}, removeEventListener() {}
 	};
 	vm.runInNewContext(source, { document, window });
-	return { api: window.PairMotion, pair: window.Pair, element, preference, runs, document };
+	return { api: window.PairMotion, pair: window.Pair, element, preference, runs, document, window };
 }
 
 test('counter exposes the final text while only changed digits roll', async () => {
@@ -369,4 +373,163 @@ test('direction follows reading order and reduced motion still renders exactly o
 	assert.equal(runs[2].cancelled, true);
 	assert.deepEqual(steps, ['next', 'previous', 'next in RTL', 'instant']);
 	assert.equal(root.classList.contains('pair-motion-clipping'), false);
+});
+
+
+/** Set up an entrance with independently marked blocks and optional shared steps. */
+function composition(element, steps) {
+	const root = element();
+	root.matches = selector => selector === '[data-pair-motion-page]';
+	const blocks = steps.map(step => {
+		const block = element();
+		block.closest = () => root;
+		if (step !== null) block.setAttribute('data-pair-motion-enter', step);
+		return block;
+	});
+	root.querySelectorAll = () => blocks;
+	return { root, blocks };
+}
+
+test('page entrance groups blocks, clamps the delay and respects the reading direction', () => {
+	const { api, element, runs } = fixture();
+	const { root, blocks } = composition(element, [null, '1', '1', '5', '7']);
+	const nested = element();
+	blocks[4].closest = () => nested;
+	blocks[2].translate = '4px';
+	root.direction = 'rtl';
+
+	api.page.enter(root, { duration: '300', stagger: 45, maxDelay: 100, origin: 'start', opacity: .8, distance: 12, easing: 'linear' });
+	assert.deepEqual(runs.map(run => run.options.delay), [0, 45, 45, 100]);
+	assert.equal(runs[0].options.easing, 'linear');
+	assert.equal(runs[0].options.duration, 300);
+	assert.equal(runs[0].options.fill, 'backwards');
+	assert.equal(runs[0].frames[0].opacity, .8);
+	assert.equal(runs[0].frames[0].translate, '12px 0');
+	assert.equal(runs[2].frames[0].translate, undefined);
+});
+
+test('page entrance keeps focus immediate and cancels superseded and reduced-motion runs', async () => {
+	const { api, document, element, preference, runs } = fixture();
+	const { root, blocks } = composition(element, [null, null, null]);
+	document.activeElement = blocks[0];
+	blocks[2].getClientRects = () => [];
+	api.page.enter(root);
+	assert.equal(runs.length, 1);
+	blocks[1].dispatchEvent(new Event('focusin'));
+	assert.equal(runs[0].cancelled, true);
+	await Promise.resolve();
+
+	api.page.enter(root);
+	api.page.enter(root);
+	assert.equal(runs[1].cancelled, true);
+	assert.equal(runs[2].cancelled, false);
+	preference.matches = true;
+	preference.dispatchEvent(new Event('change'));
+	assert.equal(runs[2].cancelled, true);
+	api.page.enter(root);
+	assert.equal(runs.length, 3);
+
+	preference.matches = false;
+	api.page.enter(root);
+	api.page.cancel(root);
+	assert.equal(runs[3].cancelled, true);
+	await Promise.resolve();
+});
+
+
+test('viewport entrance plays newly visible blocks once and releases the observer when cancelled', async () => {
+	const { api, element, runs, window } = fixture();
+	const { root, blocks } = composition(element, ['2', '3', '4']);
+	const viewport = element();
+	const observed = new Set();
+	let notify;
+	let disconnected = false;
+	window.IntersectionObserver = class {
+		/** Record the scroll container and simulate entries independently from animation. */
+		constructor(callback, options) {
+			assert.equal(options.root, viewport);
+			notify = callback;
+		}
+		observe(item) { observed.add(item); }
+		unobserve(item) { observed.delete(item); }
+		disconnect() { disconnected = true; observed.clear(); }
+	};
+
+	api.page.enter(root, { trigger: 'viewport', viewport });
+	assert.equal(runs.length, 0);
+	assert.equal(observed.size, 3);
+	notify([{ target: blocks[0], isIntersecting: true }, { target: blocks[1], isIntersecting: true }, { target: blocks[2], isIntersecting: false }]);
+	assert.deepEqual(runs.map(run => run.options.delay), [0, 40]);
+	notify([{ target: blocks[2], isIntersecting: true }, { target: blocks[2], isIntersecting: true }, { target: blocks[0], isIntersecting: true }]);
+	assert.deepEqual(runs.map(run => run.options.delay), [0, 40, 0]);
+	assert.equal(observed.size, 0);
+
+	api.page.cancel(root);
+	assert.equal(disconnected, true);
+	assert.equal(runs.every(run => run.cancelled), true);
+	notify([{ target: blocks[2], isIntersecting: true }]);
+	assert.equal(runs.length, 3);
+	await Promise.resolve();
+});
+
+test('viewport entrance falls back to the existing HTML when the observer is unavailable', () => {
+	const { api, element, runs } = fixture();
+	const { root } = composition(element, ['0']);
+	api.page.enter(root, { trigger: 'viewport' });
+	assert.equal(runs.length, 0);
+});
+
+test('chart reveal clips only the plotted area and settles with reduced motion or destruction', () => {
+	const { api, element, preference, window } = fixture();
+	const frames = new Map();
+	const rectangles = [];
+	let nextFrame = 0;
+	let saves = 0;
+	window.requestAnimationFrame = draw => {
+		frames.set(++nextFrame, draw);
+		return nextFrame;
+	};
+	window.cancelAnimationFrame = frame => frames.delete(frame);
+
+	/** Advance the callbacks scheduled for the next frame. */
+	function advance(timestamp) {
+		const batch = [...frames.values()];
+		frames.clear();
+		for (const draw of batch) draw(timestamp);
+	}
+
+	const plugin = api.chart.reveal({ duration: 400, origin: 'bottom' });
+	const chart = {
+		canvas: element(),
+		chartArea: { left: 10, top: 10, right: 90, bottom: 50, width: 80, height: 40 },
+		ctx: {
+			save() { saves++; },
+			restore() { saves--; },
+			rect(...rectangle) { rectangles.push(rectangle); },
+			beginPath() {},
+			clip() {},
+		},
+		/** Simulate drawing and a skipped dataset completion hook. */
+		draw() {
+			plugin.beforeDatasetsDraw(this);
+			plugin.afterDraw(this);
+		},
+	};
+	plugin.afterInit(chart);
+	advance(0);
+	advance(200);
+	assert.deepEqual(rectangles, [[10, 50, 80, 0], [10, 15, 80, 35]]);
+	assert.equal(saves, 0);
+
+	preference.matches = true;
+	advance(210);
+	assert.equal(rectangles.length, 2);
+	assert.equal(frames.size, 0);
+	assert.equal(api.chart.reveal(), null);
+	preference.matches = false;
+	const next = api.chart.reveal();
+	next.afterInit(chart);
+	assert.equal(frames.size, 1);
+	next.beforeDestroy(chart);
+	assert.equal(frames.size, 0);
 });

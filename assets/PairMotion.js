@@ -12,6 +12,7 @@
 	const effects = new WeakMap();
 	const disclosures = new WeakMap();
 	const regions = new WeakMap();
+	const pages = new WeakMap();
 	const easing = 'cubic-bezier(.22, 1, .36, 1)';
 	const digit = /^[0-9]$/;
 	const choiceItems = ':scope > [data-pair-motion-item]';
@@ -467,6 +468,175 @@
 		return result;
 	}
 
+	/** Keep numeric options within the range of a short page entrance. */
+	function boundedOption(value, fallback, min, max) {
+		const number = typeof value === 'string' && value.trim() ? Number(value) : value;
+		return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
+	}
+
+	/** Release the observer and ownership of a completed or cancelled entrance. */
+	function releasePage(root, run) {
+		run.observer?.disconnect();
+		pages.delete(root);
+	}
+
+	/** Settle the entrance for this page before replacing it or replaying the sequence. */
+	function cancelPage(root) {
+		const run = pages.get(root);
+		if (!run) return;
+		releasePage(root, run);
+		for (const animation of run.animations.values()) animation.cancel();
+	}
+
+	/** Reveal marked blocks in place, using DOM order or an explicit shared step. */
+	function enterPage(root, options = {}) {
+		cancelPage(root);
+		if (!root?.matches('[data-pair-motion-page]') || !canAnimate(root)) return;
+		const duration = boundedOption(options.duration, 220, 0, 800);
+		const inViewport = options.trigger === 'viewport';
+		if (!duration || (inViewport && typeof global.IntersectionObserver !== 'function')) return;
+
+		const stagger = boundedOption(options.stagger, 40, 0, 200);
+		const maxDelay = boundedOption(options.maxDelay, 160, 0, 400);
+		const distance = boundedOption(options.distance, 8, 0, 32);
+		const opacity = boundedOption(options.opacity, .7, 0, 1);
+		const curves = { 'ease-out': easing, 'ease-in-out': 'ease-in-out', linear: 'linear' };
+		const curve = Object.hasOwn(curves, options.easing) ? curves[options.easing] : easing;
+		const direction = global.getComputedStyle(root).direction === 'rtl' ? -1 : 1;
+		const offsets = {
+			bottom: '0 ' + distance + 'px', top: '0 ' + -distance + 'px',
+			start: -direction * distance + 'px 0', end: direction * distance + 'px 0',
+		};
+		const origin = options.origin ?? 'bottom';
+		const offset = distance && Object.hasOwn(offsets, origin) && global.CSS?.supports('translate', '0px') ? offsets[origin] : null;
+		const items = [...root.querySelectorAll('[data-pair-motion-enter]')].filter(item => item.closest('[data-pair-motion-page]') === root);
+		const pending = new Map();
+		for (const [index, item] of items.entries()) {
+			const step = item.getAttribute('data-pair-motion-enter');
+			const order = /^\d+$/.test(step) ? Number(step) : index;
+			pending.set(item, Number.isSafeInteger(order) ? order : index);
+		}
+		if (!pending.size) return;
+
+		const run = { animations: new Map(), observer: null };
+		pages.set(root, run);
+
+		/** Settle after the last block has either finished or been skipped. */
+		function releaseWhenDone() {
+			if (!pending.size && !run.animations.size && pages.get(root) === run) releasePage(root, run);
+		}
+
+		/** Play a block relative to the first step of its current batch. */
+		function play(item, order) {
+			pending.delete(item);
+			run.observer?.unobserve(item);
+			if (!canAnimate(item) || !item.getClientRects().length || item.contains(document.activeElement)) {
+				releaseWhenDone();
+				return;
+			}
+			const style = global.getComputedStyle(item);
+			const from = { opacity: Number(style.opacity) * opacity };
+			const to = { opacity: Number(style.opacity) };
+			// Leave an existing individual translation under the control of the page's styles.
+			if (offset && style.translate === 'none') {
+				from.translate = offset;
+				to.translate = 'none';
+			}
+			const delay = Math.min(maxDelay, order * stagger);
+
+			/** Show focused content in its resting position immediately. */
+			function showFocused() {
+				animation.cancel();
+			}
+			/** Remove the listener and only the bookkeeping for this run. */
+			function settled() {
+				item.removeEventListener('focusin', showFocused);
+				run.animations.delete(item);
+				releaseWhenDone();
+			}
+			const animation = animate(item, [from, to], { duration, delay, easing: curve, fill: 'backwards' }, settled);
+			run.animations.set(item, animation);
+			item.addEventListener('focusin', showFocused, { once: true });
+		}
+
+		if (!inViewport) {
+			for (const [item, order] of pending) play(item, order);
+			return;
+		}
+
+		/** Reveal each block once when it first intersects the chosen viewport. */
+		function intersect(entries) {
+			if (pages.get(root) !== run) return;
+			const latest = new Map(entries.map(({ target, isIntersecting }) => [target, isIntersecting]));
+			const visible = [...latest].filter(([item, isIntersecting]) => isIntersecting && pending.has(item));
+			const first = visible.reduce((order, [item]) => Math.min(order, pending.get(item)), Infinity);
+			for (const [item] of visible) play(item, pending.get(item) - first);
+		}
+		run.observer = new global.IntersectionObserver(intersect, { root: options.viewport ?? null });
+		for (const item of pending.keys()) run.observer.observe(item);
+	}
+
+	/** Create an optional Chart.js 4 plugin that reveals the plotted series in place. */
+	function revealChart({ duration = 400, origin = 'start' } = {}) {
+		const length = boundedOption(duration, 400, 0, 1000);
+		if (!length || motion.matches || document.hidden || typeof global.requestAnimationFrame !== 'function') return null;
+
+		const horizontal = origin !== 'top' && origin !== 'bottom';
+		let fromEnd = origin === 'bottom';
+		let progress = 1;
+		let frame;
+		let clipped = false;
+
+		/** Restore the canvas before axes overlays or tooltips are drawn. */
+		function restore({ ctx }) {
+			if (!clipped) return;
+			ctx.restore();
+			clipped = false;
+		}
+
+		return {
+			id: 'pair-motion-reveal',
+			/** Begin the reveal after the chart has been attached to the canvas. */
+			afterInit(chart) {
+				if (motion.matches || document.hidden) return;
+				if (horizontal) {
+					const rtl = global.getComputedStyle(chart.canvas).direction === 'rtl';
+					fromEnd = (origin === 'end') !== rtl;
+				}
+				let start;
+				progress = 0;
+				/** Redraw from the real coordinates until the clipping window is fully open. */
+				function draw(now) {
+					start ??= now;
+					const elapsed = Math.min(1, (now - start) / length);
+					progress = motion.matches || document.hidden ? 1 : 1 - (1 - elapsed) ** 3;
+					chart.draw();
+					frame = progress < 1 ? global.requestAnimationFrame(draw) : undefined;
+				}
+				frame = global.requestAnimationFrame(draw);
+			},
+			/** Clip only dataset drawing, preserving the chart geometry and values. */
+			beforeDatasetsDraw({ ctx, chartArea }) {
+				if (progress === 1 || !chartArea) return;
+				const { left, top, right, bottom, width, height } = chartArea;
+				const visibleWidth = horizontal ? width * progress : width;
+				const visibleHeight = horizontal ? height : height * progress;
+				ctx.save();
+				ctx.beginPath();
+				ctx.rect(horizontal && fromEnd ? right - visibleWidth : left, !horizontal && fromEnd ? bottom - visibleHeight : top, visibleWidth, visibleHeight);
+				ctx.clip();
+				clipped = true;
+			},
+			afterDatasetsDraw: restore,
+			afterDraw: restore,
+			/** Release any pending redraw before Chart.js removes the canvas context. */
+			beforeDestroy(chart) {
+				if (frame !== undefined) global.cancelAnimationFrame(frame);
+				restore(chart);
+			},
+		};
+	}
+
 	motion.addEventListener?.('change', reduce);
 	const api = {
 		counter: { capture: captureCounter, set: setCounter },
@@ -475,7 +645,9 @@
 		layout: { capture: captureLayout, play: playLayout, update: updateLayout },
 		effect: { fade, highlight },
 		disclosure: { mount: mountDisclosure, set: setDisclosure, unmount: unmountDisclosure },
-		region: { replace: replaceRegion }
+		region: { replace: replaceRegion },
+		page: { enter: enterPage, cancel: cancelPage },
+		chart: { reveal: revealChart }
 	};
 	global.Pair = global.Pair || {};
 	global.Pair.Motion = global.PairMotion = api;

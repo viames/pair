@@ -13,6 +13,7 @@
 		section { border: 1px solid GrayText; border-radius: .75rem; padding: 1rem; }
 		h2 { margin-block: 0 .75rem; font-size: 1.125rem; }
 		button { margin-block-start: .5rem; min-block-size: 2.75rem; padding-inline: .75rem; }
+		#entrance.viewport { max-block-size: 5.5rem; overflow: auto; }
 		#counter { font-size: 2rem; --pair-motion-counter-min-width: 3ch; }
 		#ranking { padding-inline-start: 1.75rem; }
 		#ranking > li { padding-block: .25rem; }
@@ -24,6 +25,17 @@
 <body>
 	<h1>PairMotion</h1>
 	<main>
+		<section>
+			<h2>Page entrance</h2>
+			<div id="entrance" data-pair-motion-page role="region" aria-label="Page entrance preview">
+				<p data-pair-motion-enter="0">Summary · 84 orders</p>
+				<p data-pair-motion-enter="1">Production · 18 today</p>
+				<p data-pair-motion-enter="1">Open tasks · 3 remaining</p>
+				<p data-pair-motion-enter="2">Goals · 84 of 100</p>
+			</div>
+			<button type="button" id="replay-entrance" hidden>Replay entrance</button>
+			<button type="button" id="scroll-entrance" hidden>Reveal on scroll</button>
+		</section>
 		<section>
 			<h2>Rolling counter</h2>
 			<div><span id="counter" data-pair-motion-counter><span data-pair-motion-value aria-live="polite" aria-atomic="true">10</span></span></div>
@@ -106,6 +118,24 @@
 		/** Connect the sample controls once the standalone script is available. */
 		document.addEventListener('DOMContentLoaded', () => {
 			if (!window.PairMotion) return;
+			const entrance = document.getElementById('entrance');
+			const replay = document.getElementById('replay-entrance');
+			/** Replay the grouped page entrance with adjustable timing and offset. */
+			replay.addEventListener('click', () => {
+				entrance.classList.remove('viewport');
+				entrance.removeAttribute('tabindex');
+				PairMotion.page.enter(entrance, { stagger: 65, distance: 12 });
+			});
+			replay.hidden = false;
+			const scroll = document.getElementById('scroll-entrance');
+			/** Use a small scroll pane to try one-shot viewport entrances. */
+			scroll.addEventListener('click', () => {
+				entrance.classList.add('viewport');
+				entrance.tabIndex = 0;
+				entrance.scrollTop = 0;
+				PairMotion.page.enter(entrance, { trigger: 'viewport', viewport: entrance });
+			});
+			scroll.hidden = false;
 			PairMotion.selection.mount(document.getElementById('selection'));
 			const counter = document.getElementById('counter');
 			const counterControls = document.getElementById('counter-controls');
