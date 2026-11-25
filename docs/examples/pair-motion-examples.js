@@ -115,4 +115,7 @@
 	next.addEventListener('click', () => showStep(true));
 	for (const controls of document.querySelectorAll('[data-demo-controls]')) controls.hidden = false;
 	byId('playback').hidden = false;
+
+	// Animate each card once per load, independently of the nested entrance demo.
+	motion.page.enter(byId('motion-cards'), { trigger: 'viewport', duration: 280, stagger: 48, maxDelay: 144, distance: 8, opacity: .7 });
 })();
