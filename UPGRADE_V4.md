@@ -10,6 +10,19 @@ Pair v4 moves application code away from implicit `ActiveRecord` payloads and hi
 
 The API documentation path follows the same rule: CRUD OpenAPI response schemas now derive from `readModel` when configured.
 
+### Pair 4.2.0: PairMotion
+
+PairMotion ships as optional, build-free JavaScript and CSS assets. Copy the
+assets with the standard asset copy step, then load both files on the pages
+that opt in. The [PairMotion guide](https://github.com/viames/pair/wiki/PairMotion.js)
+covers counters, sliding selection, progress, keyed list motion, disclosures
+and region transitions. Existing applications can keep their current markup
+and asset list. No migration or configuration changes are required.
+
+To remove the integration, remove the page-level asset includes and keep the
+server-rendered controls and values. To downgrade Pair, restore the previous
+Composer constraint and lockfile, then reinstall the locked version.
+
 ### Pair 4.1.16: Microsoft Edge Web Push
 
 Applications can accept Microsoft WNS endpoints with the shared

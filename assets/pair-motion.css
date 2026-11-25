@@ -1,0 +1,130 @@
+/* PairMotion scopes all styles to explicitly marked controls. */
+[data-pair-motion-counter] {
+	display: inline-grid;
+	justify-items: end;
+	min-inline-size: var(--pair-motion-counter-min-width, 0ch);
+	font-variant-numeric: tabular-nums;
+	white-space: pre;
+}
+
+[data-pair-motion-counter] > [data-pair-motion-value],
+.pair-motion-counter-visual { grid-area: 1 / 1; }
+.pair-motion-counter-running > [data-pair-motion-value] { opacity: 0; }
+.pair-motion-counter-visual {
+	display: flex;
+	justify-content: end;
+	pointer-events: none;
+	user-select: none;
+}
+.pair-motion-reel-window { inline-size: 1ch; block-size: 1lh; overflow: hidden; }
+.pair-motion-reel,
+.pair-motion-reel > span { display: block; }
+
+[data-pair-motion-selection] {
+	position: relative;
+	isolation: isolate;
+	display: inline-flex;
+	flex-wrap: wrap;
+	gap: .25rem;
+	max-inline-size: 100%;
+	padding: .25rem;
+}
+[data-pair-motion-selection][hidden], .pair-motion-selection-indicator[hidden] { display: none; }
+[data-pair-motion-selection="vertical"] { display: flex; flex-flow: column nowrap; }
+[data-pair-motion-selection] > [data-pair-motion-item] {
+	position: relative;
+	z-index: 1;
+	display: flex;
+	align-items: center;
+	gap: .5rem;
+	min-block-size: 2.75rem;
+	padding: .375rem .75rem;
+	border-radius: var(--pair-motion-selection-radius, .375rem);
+}
+[data-pair-motion-selection] > [data-pair-motion-item]:focus-visible,
+[data-pair-motion-selection] > [data-pair-motion-item]:has(> input:focus-visible) {
+	outline: 2px solid var(--pair-motion-focus-color, Highlight);
+	outline-offset: -2px;
+}
+[data-pair-motion-selection]:not(.pair-motion-selection-mounted) > [data-pair-motion-item]:is(
+	[aria-selected="true"],
+	[aria-pressed="true"],
+	[aria-current]:not([aria-current="false"], [aria-current=""]),
+	:has(> input[type="radio"]:checked)
+),
+.pair-motion-selection-indicator {
+	background: var(--pair-motion-selection-fill, color-mix(in srgb, currentColor 14%, transparent));
+}
+.pair-motion-selection-indicator {
+	position: absolute;
+	top: 0;
+	left: 0;
+	border-radius: var(--pair-motion-selection-radius, .375rem);
+	pointer-events: none;
+	transition: transform 180ms cubic-bezier(.22, 1, .36, 1), width 180ms ease-out, height 180ms ease-out;
+}
+
+[data-pair-motion-progress] {
+	display: grid;
+	inline-size: 100%;
+}
+[data-pair-motion-progress] > progress,
+.pair-motion-progress-track {
+	grid-area: 1 / 1;
+	inline-size: 100%;
+	block-size: var(--pair-motion-progress-height, .5rem);
+}
+[data-pair-motion-progress] > progress {
+	accent-color: var(--pair-motion-progress-fill, Highlight);
+}
+.pair-motion-progress-mounted > progress { opacity: 0; }
+.pair-motion-progress-track {
+	overflow: hidden;
+	border-radius: var(--pair-motion-progress-radius, 1rem);
+	background: var(--pair-motion-progress-track, color-mix(in srgb, currentColor 14%, transparent));
+	pointer-events: none;
+}
+.pair-motion-progress-fill {
+	display: block;
+	block-size: 100%;
+	background: var(--pair-motion-progress-fill, Highlight);
+	transform-origin: left center;
+	transition: transform 180ms cubic-bezier(.22, 1, .36, 1);
+}
+.pair-motion-progress-fill:dir(rtl) { transform-origin: right center; }
+
+[data-pair-motion-region],
+[data-pair-motion-disclosure-body] {
+	display: flow-root;
+	box-sizing: border-box;
+}
+[data-pair-motion-region] {
+	min-block-size: var(--pair-motion-region-min-block-size, 0);
+}
+.pair-motion-clipping { overflow: hidden; overflow: clip; }
+[data-pair-motion-disclosure] > summary:has([data-pair-motion-chevron]) { list-style: none; }
+[data-pair-motion-disclosure] > summary:has([data-pair-motion-chevron])::-webkit-details-marker { display: none; }
+[data-pair-motion-disclosure] > summary [data-pair-motion-chevron] {
+	display: inline-block;
+	transition: rotate 180ms cubic-bezier(.22, 1, .36, 1);
+}
+[data-pair-motion-disclosure][open]:not(.pair-motion-disclosure-closing) > summary [data-pair-motion-chevron] {
+	rotate: 90deg;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.pair-motion-counter-running > [data-pair-motion-value] { opacity: 1; }
+	.pair-motion-counter-visual { visibility: hidden; }
+	.pair-motion-selection-indicator,
+	.pair-motion-progress-fill,
+	[data-pair-motion-disclosure] > summary [data-pair-motion-chevron] { transition: none; }
+}
+
+@media (forced-colors: active) {
+	.pair-motion-selection-indicator {
+		outline: 2px solid Highlight;
+		outline-offset: -2px;
+	}
+	.pair-motion-progress-mounted > progress { opacity: 1; }
+	.pair-motion-progress-track { visibility: hidden; }
+}

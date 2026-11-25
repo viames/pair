@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>PairMotion examples</title>
+	<link rel="stylesheet" href="../../assets/pair-motion.css">
+	<script src="../../assets/PairMotion.js" defer></script>
+	<style>
+		:root { color-scheme: light dark; font: 1rem/1.5 system-ui, sans-serif; }
+		body { max-inline-size: 56rem; margin-inline: auto; padding: 1rem; }
+		main { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: 1rem; }
+		section { border: 1px solid GrayText; border-radius: .75rem; padding: 1rem; }
+		h2 { margin-block: 0 .75rem; font-size: 1.125rem; }
+		button { margin-block-start: .5rem; min-block-size: 2.75rem; padding-inline: .75rem; }
+		#counter { font-size: 2rem; --pair-motion-counter-min-width: 3ch; }
+		#ranking { padding-inline-start: 1.75rem; }
+		#ranking > li { padding-block: .25rem; }
+		[data-pair-motion-chevron] { margin-inline-end: .375rem; }
+		#wizard { --pair-motion-region-min-block-size: 8rem; }
+		#wizard-heading { margin-block: 0 .375rem; font-size: 1rem; }
+	</style>
+</head>
+<body>
+	<h1>PairMotion</h1>
+	<main>
+		<section>
+			<h2>Rolling counter</h2>
+			<div><span id="counter" data-pair-motion-counter><span data-pair-motion-value aria-live="polite" aria-atomic="true">10</span></span></div>
+			<div id="counter-controls" hidden>
+				<button type="button" value="10">Set 10</button>
+				<button type="button" value="50">Set 50</button>
+				<button type="button" value="102">Set 102</button>
+			</div>
+		</section>
+		<section>
+			<h2>Sliding selection</h2>
+			<div id="selection" data-pair-motion-selection="vertical" role="group" aria-label="Order status">
+				<label data-pair-motion-item><input name="status" type="radio" checked> Open</label>
+				<label data-pair-motion-item><input name="status" type="radio"> In progress</label>
+				<label data-pair-motion-item><input name="status" type="radio"> Complete</label>
+			</div>
+		</section>
+		<section>
+			<h2>Progress</h2>
+			<p id="progress-value" aria-live="polite">35 out of 100</p>
+			<div id="progress" data-pair-motion-progress><progress value="35" max="100" aria-label="Orders processed">35%</progress></div>
+			<div id="progress-controls" hidden>
+				<button type="button" value="35">Set 35%</button>
+				<button type="button" value="80">Set 80%</button>
+			</div>
+		</section>
+		<section>
+			<h2>Ranked list</h2>
+			<ol id="ranking">
+				<li data-pair-motion-key="north">North</li>
+				<li data-pair-motion-key="central">Central</li>
+				<li data-pair-motion-key="south">South</li>
+			</ol>
+			<button id="reverse" type="button" hidden>Reverse ranking</button>
+		</section>
+		<section>
+			<h2>Anchored disclosure</h2>
+			<details id="details" data-pair-motion-disclosure>
+				<summary><span data-pair-motion-chevron aria-hidden="true">▸</span>Delivery details</summary>
+				<div data-pair-motion-disclosure-body>
+					<p>Delivery is scheduled for Friday. Two parcels are ready to ship.</p>
+					<p>Open or close the details again while the panel is moving.</p>
+				</div>
+			</details>
+		</section>
+		<section>
+			<h2>Content replacement</h2>
+			<div id="report" data-pair-motion-region aria-live="polite">
+				<div data-pair-motion-content>Report preview is loading.</div>
+			</div>
+			<div id="report-controls" hidden>
+				<button type="button" id="show-report">Show report</button>
+				<button type="button" id="reset-report">Show placeholder</button>
+			</div>
+			<template id="report-ready">
+				<div data-pair-motion-content>
+					<strong>Report ready</strong>
+					<ul>
+						<li>12 orders processed</li>
+						<li>3 orders awaiting pickup</li>
+					</ul>
+				</div>
+			</template>
+		</section>
+		<section>
+			<h2>Directional steps</h2>
+			<div id="wizard" data-pair-motion-region>
+				<div data-pair-motion-content>
+					<h3 id="wizard-heading" tabindex="-1">1. Delivery</h3>
+					<p id="wizard-description">Delivery address confirmed.</p>
+				</div>
+			</div>
+			<div id="wizard-controls" hidden>
+				<button type="button" id="previous-step" disabled>Back</button>
+				<button type="button" id="next-step">Next</button>
+			</div>
+		</section>
+	</main>
+	<script>
+		/** Connect the sample controls once the standalone script is available. */
+		document.addEventListener('DOMContentLoaded', () => {
+			if (!window.PairMotion) return;
+			PairMotion.selection.mount(document.getElementById('selection'));
+			const counter = document.getElementById('counter');
+			const counterControls = document.getElementById('counter-controls');
+			/** Simulate a change to the formatted counter value. */
+			counterControls.addEventListener('click', event => {
+				if (event.target.type === 'button') PairMotion.counter.set(counter, event.target.value);
+			});
+			counterControls.hidden = false;
+			const progress = document.getElementById('progress');
+			const progressLabel = document.getElementById('progress-value');
+			const progressControls = document.getElementById('progress-controls');
+			/** Update the real progress and its visible textual equivalent together. */
+			progressControls.addEventListener('click', event => {
+				if (event.target.type !== 'button') return;
+				PairMotion.progress.set(progress, Number(event.target.value));
+				progressLabel.textContent = event.target.value + ' out of 100';
+			});
+			progressControls.hidden = false;
+			const rank = document.getElementById('ranking');
+			const reverse = document.getElementById('reverse');
+			/** Demonstrate keyed movement using the same DOM nodes. */
+			reverse.addEventListener('click', () => PairMotion.layout.update(rank, () => {
+				rank.append(...Array.from(rank.children).reverse());
+			}));
+			reverse.hidden = false;
+			PairMotion.disclosure.mount(document.getElementById('details'));
+
+			const report = document.getElementById('report');
+			const placeholder = report.firstElementChild.cloneNode(true);
+			const ready = document.getElementById('report-ready').content;
+			/** Replace the preview's content with the finished report or its placeholder. */
+			function showReport(content) {
+				PairMotion.region.replace(report, () => {
+					report.replaceChildren(content.cloneNode(true));
+				});
+			}
+			document.getElementById('show-report').addEventListener('click', () => showReport(ready));
+			document.getElementById('reset-report').addEventListener('click', () => showReport(placeholder));
+			document.getElementById('report-controls').hidden = false;
+
+			const wizard = document.getElementById('wizard');
+			const heading = document.getElementById('wizard-heading');
+			const description = document.getElementById('wizard-description');
+			const previous = document.getElementById('previous-step');
+			const next = document.getElementById('next-step');
+			/** Apply the chosen step and keep focus on its heading. */
+			function showStep(review) {
+				PairMotion.region.replace(wizard, () => {
+					heading.textContent = review ? '2. Review' : '1. Delivery';
+					description.textContent = review ? 'Review the quantities and delivery address before submitting.' : 'Delivery address confirmed.';
+					previous.disabled = !review;
+					next.disabled = review;
+				}, { direction: review ? 'forward' : 'backward' });
+				heading.focus({ preventScroll: true });
+			}
+			previous.addEventListener('click', () => showStep(false));
+			next.addEventListener('click', () => showStep(true));
+			document.getElementById('wizard-controls').hidden = false;
+		});
+	</script>
+</body>
+</html>

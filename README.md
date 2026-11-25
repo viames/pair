@@ -42,7 +42,7 @@ AI-assisted workflows.
 | Pair 4 `main` | Unreleased | Framework development and upcoming changes |
 | Pair 3 | Maintenance | Existing applications awaiting migration |
 
-The current stable release is [Pair 4.1.16](https://github.com/viames/pair/releases/tag/4.1.16).
+The current stable release is [Pair 4.2.0](https://github.com/viames/pair/releases/tag/4.2.0).
 
 Pair 4 is used in production across the maintainer's applications. The
 [release history](https://github.com/viames/pair/releases) lists published versions;
@@ -78,7 +78,7 @@ application's own `composer.lock`; commit that lock with your application.
 For an existing application, install the framework directly:
 
 ```sh
-composer require "viames/pair:^4.1.16"
+composer require "viames/pair:^4.2.0"
 ```
 
 Then follow the [bootstrap guide](https://github.com/viames/pair/wiki/index)
@@ -121,6 +121,7 @@ and installing the plugin does not upgrade Pair.
 - [Forms](https://github.com/viames/pair/wiki/Form), validation, CSRF, authentication, ACL and sessions
 - [API and CRUD tooling](https://github.com/viames/pair/wiki/API) with explicit read models and OpenAPI contracts
 - [PairUI](https://github.com/viames/pair/wiki/PairUI.js) progressive enhancement, PWA, push and passkeys without a mandatory frontend build
+- [PairMotion](https://github.com/viames/pair/wiki/PairMotion.js) optional rolling counters, sliding selection, progress and keyed list motion
 - Native iOS/Android helpers and [optional integrations](https://github.com/viames/pair/wiki/Integrations)
 - Conservative upgrade tooling, logging, diagnostics and tests across supported PHP versions
 
