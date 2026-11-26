@@ -93,7 +93,7 @@ class Env {
 		'OPENAI_API_BASE_URL' => 'https://api.openai.com/v1',
 		'OPENAI_RESPONSES_MODEL' => 'gpt-5.4-mini',
 		'OPENAI_EMBEDDINGS_MODEL' => 'text-embedding-3-small',
-		'OPENAI_REALTIME_MODEL' => 'gpt-realtime',
+		'OPENAI_REALTIME_MODEL' => 'gpt-realtime-2.1',
 		'OPENAI_TIMEOUT' => 30,
 		'OPENAI_CONNECT_TIMEOUT' => 5,
 		'OPENAI_STORE_RESPONSES' => false,

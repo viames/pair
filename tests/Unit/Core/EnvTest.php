@@ -58,7 +58,7 @@ class EnvTest extends TestCase {
 		$this->assertSame('https://api.openai.com/v1', Env::get('OPENAI_API_BASE_URL'));
 		$this->assertSame('gpt-5.4-mini', Env::get('OPENAI_RESPONSES_MODEL'));
 		$this->assertSame('text-embedding-3-small', Env::get('OPENAI_EMBEDDINGS_MODEL'));
-		$this->assertSame('gpt-realtime', Env::get('OPENAI_REALTIME_MODEL'));
+		$this->assertSame('gpt-realtime-2.1', Env::get('OPENAI_REALTIME_MODEL'));
 		$this->assertSame(30, Env::get('OPENAI_TIMEOUT'));
 		$this->assertSame(5, Env::get('OPENAI_CONNECT_TIMEOUT'));
 		$this->assertFalse(Env::get('OPENAI_STORE_RESPONSES'));

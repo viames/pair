@@ -144,6 +144,30 @@ class OpenAIClientTest extends TestCase {
 	}
 
 	/**
+	 * Verify Realtime sessions use the default and respect explicit model configuration.
+	 */
+	public function testRealtimeModel(): void {
+
+		$client = new FakeOpenAIClient(null);
+		$client->createRealtimeClientSecret();
+		$this->assertSame('gpt-realtime-2.1', $client->lastRequest()['payload']['session']['model']);
+
+		$_ENV['OPENAI_REALTIME_MODEL'] = '';
+		$client = new FakeOpenAIClient(null);
+		$client->createRealtimeClientSecret();
+		$this->assertSame('gpt-realtime-2.1', $client->lastRequest()['payload']['session']['model']);
+
+		$_ENV['OPENAI_REALTIME_MODEL'] = 'configured-realtime';
+		$client = new FakeOpenAIClient(null);
+		$client->createRealtimeClientSecret();
+		$this->assertSame('configured-realtime', $client->lastRequest()['payload']['session']['model']);
+
+		$client->createRealtimeClientSecret(['model' => 'session-realtime'], ['model' => 'request-realtime']);
+		$this->assertSame('session-realtime', $client->lastRequest()['payload']['session']['model']);
+
+	}
+
+	/**
 	 * Verify configured API keys can be detected before outbound calls are made.
 	 */
 	public function testApiKeySetReflectsConfiguredKey(): void {
@@ -170,9 +194,9 @@ final class FakeOpenAIClient extends OpenAIClient {
 	/**
 	 * Build the fake with deterministic model names.
 	 */
-	public function __construct() {
+	public function __construct(?string $realtimeModel = 'rt-test') {
 
-		parent::__construct('sk-test', 'https://api.openai.test/v1', 'gpt-test', 'embed-test', 'rt-test');
+		parent::__construct('sk-test', 'https://api.openai.test/v1', 'gpt-test', 'embed-test', $realtimeModel);
 
 	}
 

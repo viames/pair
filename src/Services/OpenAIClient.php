@@ -29,9 +29,9 @@ class OpenAIClient {
 	private const DEFAULT_EMBEDDINGS_MODEL = 'text-embedding-3-small';
 
 	/**
-	 * Default Realtime model alias used by OpenAI's GA Realtime examples.
+	 * Default model for new Realtime sessions.
 	 */
-	private const DEFAULT_REALTIME_MODEL = 'gpt-realtime';
+	private const DEFAULT_REALTIME_MODEL = 'gpt-realtime-2.1';
 
 	/**
 	 * Default Responses model chosen for low-latency application use.
