@@ -5,11 +5,12 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<meta name="description" content="Try PairMotion on a sample operations dashboard with a rolling KPI, goal meter and animated delivery chart.">
 	<title>Operations dashboard · PairMotion</title>
-	<link rel="stylesheet" href="../../assets/pair-motion.css?v=contents-overlap">
-	<script src="../../assets/PairMotion.js?v=4.4.1" defer></script>
+	<link rel="stylesheet" href="../../assets/pair-motion.css?v=prepaint">
+	<script src="../../assets/PairMotionBoot.js"></script>
+	<script src="../../assets/PairMotion.js?v=selection-settle" defer></script>
 	<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js" defer></script>
 	<script src="pair-motion-tempo.js?v=staged-composition" defer></script>
-	<script src="pair-motion-dashboard.js?v=contents-overlap" defer></script>
+	<script src="pair-motion-dashboard.js?v=prepaint" defer></script>
 	<style>
 		:root { color-scheme: light dark; font: 1rem/1.5 system-ui, sans-serif; --ink: light-dark(#17293a, #eaf2f8); --muted: light-dark(#465c71, #b0c1ce); --card: light-dark(#fff, #1d2d3b); --bg: light-dark(#edf2f6, #121d28); --accent: light-dark(#116d63, #67d9c6); --line: light-dark(#d5dfe6, #354a5b); }
 		body { background: var(--bg); color: var(--ink); margin: 0; }
@@ -22,6 +23,7 @@
 		.muted { color: var(--muted); }
 		.toolbar, .cards { display: flex; flex-wrap: wrap; gap: .65rem; }
 		.toolbar { align-items: center; margin-block: 1.25rem; }
+		.toolbar[inert], .plot[inert] { visibility: hidden; }
 		.tempo-control { display: grid; grid-template-columns: minmax(0, 1fr) max-content; align-items: center; column-gap: .45rem; inline-size: min(100%, 17rem); }
 		.tempo-control label, .tempo-control code { grid-column: 1 / -1; }
 		.tempo-control input { inline-size: 100%; min-block-size: 2rem; margin: 0; accent-color: var(--accent); }
@@ -44,9 +46,10 @@
 		td, th { text-align: start; border-block-end: 1px solid var(--line); padding: .3rem .6rem; }
 		.toolbar[hidden], .plot[hidden] { display: none; }
 	</style>
+	<noscript><style>.toolbar, .plot { display: none; }</style></noscript>
 </head>
 <body>
-	<main id="dashboard" data-pair-motion-page>
+	<main id="dashboard" data-pair-motion-page data-pair-motion-prepaint>
 		<nav aria-label="PairMotion">
 			<a href="pair-motion.html">Component examples</a>
 			<a href="https://github.com/viames/pair/wiki/PairMotion.js">API guide</a>
@@ -54,7 +57,7 @@
 		</nav>
 		<h1 data-pair-motion-enter="0">Delivery operations</h1>
 		<p class="muted">Sample data · Orders fulfilled, targets and daily deliveries</p>
-		<div class="toolbar" hidden>
+		<div class="toolbar" inert>
 			<label>Period <select id="period"><option value="oct">October</option><option value="nov">November</option></select></label>
 			<button id="refresh" type="button">Refresh data</button>
 			<label>Entrance <select id="entrance-effect"><option value="lift">Lift</option><option value="flip">Card flip</option><option value="slide">Slide</option></select></label>
@@ -80,7 +83,7 @@
 					<div id="target" data-pair-motion-content-enter data-pair-motion-progress><progress max="100" value="51" aria-label="Fulfilment target">51%</progress></div>
 				</section>
 			</div>
-			<div data-pair-motion-enter="1" data-pair-motion-flip>
+			<div data-pair-motion-enter="2" data-pair-motion-flip>
 				<section class="card" data-pair-motion-flip-front>
 					<h2 data-pair-motion-content-enter>Awaiting pickup</h2>
 					<p class="kpi" data-pair-motion-content-enter><span id="pickup" data-pair-motion-counter><span data-pair-motion-value>12</span></span></p>
@@ -90,10 +93,10 @@
 				</section>
 			</div>
 		</div>
-		<div data-pair-motion-enter="2" data-pair-motion-flip>
+		<div data-pair-motion-enter="3" data-pair-motion-flip>
 			<section class="card" data-pair-motion-flip-front>
 				<h2 data-pair-motion-content-enter>Daily deliveries</h2>
-				<div class="plot" data-pair-motion-content-enter hidden><canvas id="deliveries" role="img" aria-label="Daily deliveries. Values are in the data table."></canvas></div>
+				<div class="plot" data-pair-motion-content-enter inert><canvas id="deliveries" role="img" aria-label="Daily deliveries. Values are in the data table."></canvas></div>
 				<details data-pair-motion-content-enter data-pair-motion-disclosure>
 					<summary>Delivery data</summary>
 					<div data-pair-motion-disclosure-body>

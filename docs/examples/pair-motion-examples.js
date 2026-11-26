@@ -8,9 +8,8 @@
 	const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
 	const tempo = byId('motion-speed');
 
-	/** Explain immediately why a motion preview is static when the system requests it. */
+	/** Disable the tempo control when the operating system requests reduced motion. */
 	function updatePreference() {
-		byId('motion-preference').hidden = !preference.matches;
 		tempo.disabled = preference.matches;
 	}
 
@@ -21,25 +20,46 @@
 	const manual = new Set();
 	const entrance = byId('entrance');
 	const scroll = byId('scroll-entrance');
+	const boxes = new Map(Array.from(entrance.children, box => [box, box.getAttribute('data-pair-motion-enter')]));
+	const previewOptions = { effect: 'lift', duration: 270, stagger: 45, distance: 8, opacity: .64 };
+	let pendingScroll;
 
-	/** Keep the preview frame in place and use either a full replay or a scroll trigger. */
-	function playEntrance(onScroll) {
-		entrance.classList.toggle('viewport', onScroll);
-		if (onScroll) entrance.tabIndex = 0;
-		else entrance.removeAttribute('tabindex');
-		entrance.scrollTop = 0;
-		scroll.setAttribute('aria-pressed', String(onScroll));
-		const options = { effect: 'lift', duration: 270, stagger: 45, distance: 8, opacity: .64 };
-		if (onScroll) Object.assign(options, { trigger: 'viewport', viewport: entrance });
-		motion.page.enter(entrance, options);
+	/** Translate the same boxes between grid and column, then animate only unseen boxes on scroll. */
+	function showScrollLayout(active) {
+		pendingScroll = null;
+		motion.layout.update(entrance, () => {
+			motion.page.cancel(entrance);
+			for (const [box, step] of boxes) box.setAttribute('data-pair-motion-enter', step);
+			entrance.classList.toggle('viewport', active);
+			if (active) entrance.tabIndex = 0;
+			else entrance.removeAttribute('tabindex');
+			entrance.scrollTop = 0;
+			scroll.setAttribute('aria-pressed', String(active));
+		}, { duration: 440, easing: 'ease-in-out' });
+		if (!active) return;
+
+		const moves = [...boxes.keys()].flatMap(box => box.getAnimations?.() ?? []);
+		const settled = Promise.allSettled(moves.map(move => move.finished));
+		pendingScroll = settled;
+		settled.then(() => {
+			if (pendingScroll !== settled) return;
+			pendingScroll = null;
+			const viewport = entrance.getBoundingClientRect();
+			for (const box of boxes.keys()) {
+				if (box.getBoundingClientRect().top < viewport.bottom) box.removeAttribute('data-pair-motion-enter');
+			}
+			motion.page.enter(entrance, { ...previewOptions, trigger: 'viewport', viewport: entrance });
+		});
 	}
-	/** Keep manual preview controls ahead of any queued page entrance effect. */
-	function playPreview(onScroll) {
-		manual.add(entrance);
-		playEntrance(onScroll);
+
+	/** Replay the grid entrance or return from the scroll column. */
+	function replayEntrance() {
+		if (entrance.classList.contains('viewport')) showScrollLayout(false);
+		else motion.page.enter(entrance, previewOptions);
 	}
-	byId('replay-entrance').addEventListener('click', () => playPreview(false));
-	scroll.addEventListener('click', () => playPreview(true));
+
+	byId('replay-entrance').addEventListener('click', replayEntrance);
+	scroll.addEventListener('click', () => showScrollLayout(!entrance.classList.contains('viewport')));
 	motion.selection.mount(byId('selection'));
 
 	const counter = byId('counter');
@@ -48,14 +68,10 @@
 	byId('counter-controls').addEventListener('click', event => {
 		const button = event.target.closest('button');
 		if (!button?.value) return;
-		manual.add(counter);
 		motion.counter.set(counter, button.value, undefined, reel);
 	});
-	/** Replay the reel without leaving a second replay queued behind the page entrance. */
-	byId('reel-replay').addEventListener('click', () => {
-		manual.add(counter);
-		motion.counter.enter(counter, reel);
-	});
+	/** Replay the reel from zero on explicit request. */
+	byId('reel-replay').addEventListener('click', () => motion.counter.enter(counter, reel));
 
 	const progress = byId('progress');
 	const progressCounter = byId('progress-value');
@@ -122,8 +138,8 @@
 	}
 	previous.addEventListener('click', () => showStep(false));
 	next.addEventListener('click', () => showStep(true));
-	for (const controls of document.querySelectorAll('[data-demo-controls]')) controls.hidden = false;
-	byId('playback').hidden = false;
+	for (const controls of document.querySelectorAll('[data-demo-controls]')) controls.inert = false;
+	byId('playback').inert = false;
 
 	/** Play a card's preview only after the current group has reached its resting layout. */
 	function afterCard(node, play) {
@@ -132,21 +148,22 @@
 		});
 	}
 
-	/** Play the composition first, then the displayed counters, progress and nested preview. */
-	function replayPage() {
+	/** Stage the entrance values before the cards appear and play the counters as their contents reveal. */
+	function replayPage(rollCounters) {
 		manual.clear();
-		motion.page.enter(page, { effect: 'lift', trigger: 'viewport', contents: true, stagger: 48, maxDelay: 144 });
-		afterCard(entrance, () => playEntrance(scroll.getAttribute('aria-pressed') === 'true'));
-		afterCard(counter, () => motion.counter.enter(counter, reel));
+		motion.page.enter(page, { effect: 'lift', trigger: 'viewport', contents: true, stagger: 48, maxDelay: 260 });
+		if (rollCounters) {
+			motion.counter.enter(counter, { ...reel, after: motion.page.ready(page, counter, { phase: 'reveal' }) });
+			motion.counter.enter(progressCounter, { ...progressTiming, after: motion.page.ready(page, progressCounter, { phase: 'reveal' }) });
+		}
 		afterCard(progress, () => {
 			const value = progress.querySelector('progress').value;
-			motion.counter.enter(progressCounter, progressTiming);
 			motion.progress.set(progress, null);
 			motion.progress.set(progress, value, undefined, 0);
 		});
 	}
 
-	mountPairMotionDemoTempo(document.documentElement, replayPage);
-	byId('replay-page').addEventListener('click', replayPage);
-	replayPage();
+	mountPairMotionDemoTempo(document.documentElement, () => replayPage(false));
+	byId('replay-page').addEventListener('click', () => replayPage(true));
+	replayPage(true);
 })();

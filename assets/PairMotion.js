@@ -16,6 +16,7 @@
 	const disclosures = new WeakMap();
 	const regions = new WeakMap();
 	const pages = new WeakMap();
+	const skippedEntrances = new WeakSet();
 	const easing = 'cubic-bezier(.22, 1, .36, 1)';
 	const compositionEasing = 'cubic-bezier(.25, .28, .62, .9)';
 	const digit = /^[0-9]$/;
@@ -146,7 +147,7 @@
 		const changed = reels.filter(reel => reel.distance !== 0);
 		if (!changed.length) return;
 		visual.append(...characters.reverse());
-		const state = { visual, reels };
+		const state = { visual, reels, waiting: options.after != null };
 		counters.set(root, state);
 		root.append(visual);
 		root.classList.add('pair-motion-counter-running');
@@ -163,13 +164,33 @@
 				{ transform: 'translateY(' + reel.from + '%)' },
 				{ transform: 'translateY(' + reel.to + '%)' }
 			], { duration, delay: Math.min(120, stagger * index), easing: curve, fill: 'both' }, settled);
+			if (state.waiting) {
+				reel.animation.pause();
+				reel.animation.currentTime = 0;
+			}
+		}
+
+		if (state.waiting) {
+			/** Start from the first visual frame only after the enclosing effect completes. */
+			function start(completed) {
+				if (counters.get(root) !== state) return;
+				if (completed === false || !canAnimate(root) || root.isConnected === false) {
+					finishCounter(root, state);
+					return;
+				}
+				state.waiting = false;
+				for (const reel of changed) reel.animation.play();
+			}
+			Promise.resolve(options.after).then(start, () => start(false));
 		}
 	}
 
-	/** Roll the initially rendered digits forward from zero without replacing their semantic text. */
+	/** Stage the reel at zero without replacing the initially rendered semantic text. */
 	function enterCounter(root, options = {}) {
+		const current = counters.get(root);
+		if (current && !current.waiting) return;
 		const final = captureCounter(root);
-		if (counters.has(root) || !final.positions.length) return;
+		if (!final.positions.length) return;
 		setCounter(root, final.value, { ...final, positions: final.positions.map(() => 0) }, { ...options, forward: true });
 	}
 
@@ -194,11 +215,12 @@
 			const height = indicator.offsetHeight;
 			if (!width || !height) return;
 
-			// Keep the translated centre fixed and cap expansion on wide rows.
+			// Alternate the axes around the resting centre, with a smaller second swing.
 			const transform = indicator.style.transform;
-			const scaleX = 1 + Math.min(.025, 8 / width);
-			const scaleY = 1 + Math.min(.07, 4 / height);
-			const expanded = transform + ' scale(' + scaleX + ', ' + scaleY + ')';
+			const stretchX = Math.min(.025, 8 / width);
+			const stretchY = Math.min(.085, 4 / height);
+			const taller = transform + ' scale(' + (1 - stretchX) + ', ' + (1 + stretchY) + ')';
+			const wider = transform + ' scale(' + (1 + stretchX / 2) + ', ' + (1 - stretchY / 2) + ')';
 
 			/** Drop the finished effect without touching a newer one. */
 			function settled() {
@@ -206,9 +228,10 @@
 			}
 			const animation = animate(indicator, [
 				{ transform, easing: 'ease-in-out' },
-				{ transform: expanded, offset: .4, easing: 'ease-in-out' },
+				{ transform: taller, offset: .24, easing: 'ease-in-out' },
+				{ transform: wider, offset: .58, easing: 'ease-in-out' },
 				{ transform },
-			], { duration: 220 }, settled);
+			], { duration: 110 }, settled);
 			state.pulse = animation;
 		}
 
@@ -640,6 +663,22 @@
 		return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
 	}
 
+	/** Settle a reveal signal and discard its timer. */
+	function finishReveal(cue, completed) {
+		if (!cue) return;
+		if (cue.timer !== undefined) global.clearTimeout(cue.timer);
+		cue.resolve?.(completed);
+		cue.resolve = null;
+	}
+
+	/** Schedule the reveal only when a consumer is waiting and the card has been admitted. */
+	function scheduleReveal(cue) {
+		if (!cue.resolve || cue.at === undefined) return;
+		const delay = cue.at - (global.performance?.now() ?? Date.now());
+		if (delay <= 0) finishReveal(cue, true);
+		else cue.timer = global.setTimeout(() => finishReveal(cue, true), delay);
+	}
+
 	/** Release observation and settle the completion signal. */
 	function releasePage(root, run, completed) {
 		run.observer?.disconnect();
@@ -648,6 +687,8 @@
 		run.resolve(completed);
 		for (const { resolve } of run.waiters.values()) resolve(completed);
 		run.waiters.clear();
+		for (const cue of run.reveals.values()) finishReveal(cue, completed);
+		run.reveals.clear();
 	}
 
 	/** End the owned entrance and drop its remaining effects. */
@@ -665,13 +706,24 @@
 		endPage(root, false);
 	}
 
-	/** Wait for the marked block around an element and the entrances still playing. */
-	function readyPage(root, element) {
+	/** Wait for either the card reveal or the complete entrance around an element. */
+	function readyPage(root, element, { phase } = {}) {
 		const run = pages.get(root);
-		if (!run) return Promise.resolve(true);
+		if (!run) return Promise.resolve(!skippedEntrances.has(root));
 		let item = element?.closest('[data-pair-motion-enter]');
 		while (item && !run.items.has(item)) item = item.parentElement?.closest('[data-pair-motion-enter]');
-		if (!item || (!run.pending.has(item) && !run.animations.size && !run.contents.size)) return Promise.resolve(true);
+		if (!item) return Promise.resolve(true);
+		if (phase === 'reveal') {
+			const cue = run.reveals.get(item) ?? {};
+			if (!cue.finished) {
+				if (!run.pending.has(item) && cue.at === undefined) return Promise.resolve(true);
+				cue.finished = new Promise(resolve => { cue.resolve = resolve; });
+				run.reveals.set(item, cue);
+				scheduleReveal(cue);
+			}
+			return cue.finished;
+		}
+		if (!run.pending.has(item) && !run.animations.size && !run.contents.size) return Promise.resolve(true);
 		if (!run.waiters.has(item)) {
 			const waiter = {};
 			waiter.finished = new Promise(resolve => { waiter.resolve = resolve; });
@@ -747,7 +799,19 @@
 	/** Reveal marked blocks and resolve once the requested entrance has settled. */
 	function enterPage(root, options = {}) {
 		cancelPage(root);
-		if (!root?.matches('[data-pair-motion-page]') || !canAnimate(root)) return Promise.resolve(true);
+		if (!root?.matches('[data-pair-motion-page]')) return Promise.resolve(true);
+		skippedEntrances.delete(root);
+		const prepaint = root.getAttribute('data-pair-motion-prepaint') !== null;
+		if (prepaint) {
+			const guard = global.getComputedStyle(root).getPropertyValue('--pair-motion-prepaint').trim();
+			root.removeAttribute('data-pair-motion-prepaint');
+			// Once static content has painted, a late entrance would rewind it visibly.
+			if (guard !== 'active') {
+				skippedEntrances.add(root);
+				return Promise.resolve(false);
+			}
+		}
+		if (!canAnimate(root)) return Promise.resolve(true);
 		const flip = options.effect === 'flip' && global.CSS?.supports('transform', 'perspective(1000px) rotateY(0deg)');
 		const lift = options.effect === 'lift';
 		const baseDuration = lift ? 310 : 220;
@@ -781,7 +845,7 @@
 
 		const waitFor = inViewport && pending.has(options.waitFor) ? options.waitFor : null;
 		const run = {
-			items: new Set(pending.keys()), pending, waiters: new Map(), visible: new Set(),
+			items: new Set(pending.keys()), pending, waiters: new Map(), reveals: new Map(), visible: new Set(),
 			animations: new Map(), contents: new Map(), observer: null, reduce: skipForReducedMotion,
 		};
 		const finished = new Promise(resolve => { run.resolve = resolve; });
@@ -813,7 +877,10 @@
 		function play(item, order) {
 			pending.delete(item);
 			run.observer?.unobserve(item);
-			if (!canAnimate(item) || !item.getClientRects().length || item.contains(document.activeElement)) return;
+			if (!canAnimate(item) || !item.getClientRects().length || item.contains(document.activeElement)) {
+				finishReveal(run.reveals.get(item), false);
+				return;
+			}
 			const style = global.getComputedStyle(item);
 			const card = flip ? prepareCardFlip(item, style, direction) : null;
 			const from = { opacity: Number(style.opacity) * opacity };
@@ -837,6 +904,7 @@
 			}
 			/** Show focused content in its resting position immediately. */
 			function showFocused() {
+				finishReveal(run.reveals.get(item), false);
 				clearFaces();
 				animation.cancel();
 			}
@@ -862,9 +930,16 @@
 			run.animations.set(item, showFocused);
 			item.addEventListener('focusin', showFocused, { once: true });
 
-			if (options.contents) {
-				const layer = animatePageContents(item, delay + duration * (1 - contentsOverlap));
-				if (!layer) return;
+			const contentsStart = delay + duration * (1 - contentsOverlap);
+			const layer = options.contents && animatePageContents(item, contentsStart);
+			const cue = run.reveals.get(item) ?? {};
+			// Give the staggered content time to become visible and keep reels on the front of a flip card.
+			const revealAt = Math.max(layer ? contentsStart + 130 : delay + duration * .4, card ? delay + duration * .55 : 0);
+			cue.at = (global.performance?.now() ?? Date.now()) + revealAt * durationFactor(item);
+			run.reveals.set(item, cue);
+			scheduleReveal(cue);
+
+			if (layer) {
 				run.contents.set(item, layer);
 
 				/** Release the waiters once the shells and contents have settled. */
@@ -903,6 +978,17 @@
 			playVisible();
 		}
 		run.observer = new global.IntersectionObserver(intersect, { root: options.viewport ?? null });
+		if (prepaint) {
+			// Arm the first visible batch in the same frame that drops the CSS guard.
+			const bounds = options.viewport?.getBoundingClientRect() ??
+				{ top: 0, left: 0, right: global.innerWidth, bottom: global.innerHeight };
+			for (const item of pending.keys()) {
+				const rect = item.getBoundingClientRect();
+				if (rect.bottom > bounds.top && rect.top < bounds.bottom &&
+					rect.right > bounds.left && rect.left < bounds.right) run.visible.add(item);
+			}
+			playVisible();
+		}
 		for (const item of pending.keys()) run.observer.observe(item);
 		return finished;
 	}

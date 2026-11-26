@@ -69,6 +69,8 @@ function fixture() {
 					finished,
 					effect: { getComputedTiming: () => ({ progress: run.progress }) },
 					finish: resolve,
+					pause() { run.paused = true; },
+					play() { run.paused = false; },
 					cancel() {
 						run.cancelled = true;
 						reject(new Error('cancelled'));
@@ -145,6 +147,15 @@ test('reduced motion cancels owned effects and commits later counter values imme
 	assert.equal(runs.length, 1);
 	assert.equal(root.children.length, 0);
 	assert.equal(value.textContent, '102');
+});
+
+test('selection slides and resizes with the same ease-in-out curve', () => {
+	const styles = readFileSync(join(__dirname, '../../assets/pair-motion.css'), 'utf8');
+	const indicatorRules = Array.from(styles.matchAll(/^\.pair-motion-selection-indicator \{([^}]+)\}/gm));
+	const transition = indicatorRules.map(rule => rule[1].match(/\btransition:\s*([^;]+);/)).find(Boolean);
+
+	assert.ok(transition);
+	assert.match(transition[1], /^transform .* ease-in-out,\s*width .* ease-in-out,\s*height .* ease-in-out$/);
 });
 
 test('selection follows ARIA state without moving or modifying the items', () => {
@@ -465,6 +476,32 @@ test('composition overlaps each card with its contents and waits for both before
 	assert.equal(inner, true);
 });
 
+test('early reveals follow card order while full completion still waits', async () => {
+	const { api, element, window } = fixture();
+	const { root, blocks } = composition(element, ['0', '1']);
+	const [top] = contentBlocks(blocks[0], element, 1);
+	const [bottom] = contentBlocks(blocks[1], element, 1);
+	root.tempo = blocks[0].tempo = blocks[1].tempo = 2;
+	const timers = new Map();
+	window.performance = { now: () => 0 };
+	window.setTimeout = (play, delay) => { timers.set(delay, play); return delay; };
+	window.clearTimeout = delay => timers.delete(delay);
+	const settled = api.page.enter(root, { contents: true, stagger: 58 });
+	const first = api.page.ready(root, top, { phase: 'reveal' });
+	const second = api.page.ready(root, bottom, { phase: 'reveal' });
+	let complete = false;
+	settled.then(value => { complete = value; });
+	assert.deepEqual([...timers.keys()], [260, 376]);
+
+	timers.get(260)();
+	assert.equal(await first, true);
+	assert.equal(complete, false);
+	api.page.cancel(root);
+	assert.equal(await second, false);
+	assert.equal(await settled, false);
+	assert.equal(timers.size, 0);
+});
+
 test('composition follows the chosen overlap, card stagger and inherited tempo', () => {
 	for (const [overlap, expected] of [[0, 680], [.3, 500], [.5, 380], [1, 80]]) {
 		const { api, element, runs } = fixture();
@@ -691,6 +728,46 @@ test('page completion distinguishes cancellation from motion that is skipped', a
 	preference.dispatchEvent(new Event('change'));
 	assert.equal(await skipped, true);
 	assert.equal(await api.page.enter(root), true);
+});
+
+test('the first visible batch is armed before the paint guard is released', async () => {
+	const { api, element, runs, window } = fixture();
+	const { root, blocks } = composition(element, ['0', '1']);
+	root.setAttribute('data-pair-motion-prepaint', '');
+	const originalStyle = window.getComputedStyle;
+	window.getComputedStyle = node => node === root
+		? { ...originalStyle(node), getPropertyValue: name => name === '--pair-motion-prepaint' ? 'active' : '' }
+		: originalStyle(node);
+	window.innerHeight = window.innerWidth = 100;
+	blocks[0].getBoundingClientRect = () => ({ top: 10, left: 0, bottom: 60, right: 100 });
+	blocks[1].getBoundingClientRect = () => ({ top: 110, left: 0, bottom: 160, right: 100 });
+
+	const observed = new Set();
+	window.IntersectionObserver = class {
+		observe(node) { observed.add(node); }
+		unobserve(node) { observed.delete(node); }
+		disconnect() { observed.clear(); }
+	};
+	const entrance = api.page.enter(root, { trigger: 'viewport' });
+	assert.equal(root.getAttribute('data-pair-motion-prepaint'), null);
+	assert.deepEqual(runs.map(run => run.target), [blocks[0]]);
+	assert.deepEqual([...observed], [blocks[1]]);
+	api.page.cancel(root);
+	assert.equal(await entrance, false);
+});
+
+test('expired paint guards keep the static page and allow a deliberate replay', async () => {
+	const { api, element, runs } = fixture();
+	const { root } = composition(element, ['0']);
+	root.setAttribute('data-pair-motion-prepaint', '');
+	assert.equal(await api.page.enter(root), false);
+	assert.equal(await api.page.ready(root, root, { phase: 'reveal' }), false);
+	assert.equal(runs.length, 0);
+
+	const replay = api.page.enter(root);
+	assert.equal(runs.length, 1);
+	runs[0].finish();
+	assert.equal(await replay, true);
 });
 
 test('viewport entrance falls back to the existing HTML when the observer is unavailable', async () => {
@@ -927,6 +1004,41 @@ test('initial reels preserve the rendered total and follow the inherited tempo',
 	assert.equal(root.children.length, 0);
 });
 
+test('the first visual frame already shows zero while the card is entering', async () => {
+	const { api, element, runs } = fixture();
+	const root = element();
+	const value = { textContent: '51' };
+	root.querySelector = () => value;
+	let settleCard;
+	const after = new Promise(resolve => { settleCard = resolve; });
+
+	api.counter.enter(root, { after });
+	assert.equal(value.textContent, '51');
+	assert.deepEqual(Array.from(api.counter.capture(root).positions), [0, 0]);
+	assert.ok(runs.every(run => run.paused && run.currentTime === 0));
+	settleCard(true);
+	await new Promise(resolve => setImmediate(resolve));
+	assert.ok(runs.every(run => !run.paused));
+	for (const run of runs) run.finish();
+	await new Promise(resolve => setImmediate(resolve));
+	assert.equal(root.children.length, 0);
+	api.counter.set(root, '51');
+	assert.equal(runs.length, 2);
+});
+
+test('a cancelled entrance restores the authoritative value', async () => {
+	const { api, element, runs } = fixture();
+	const root = element();
+	const value = { textContent: '51' };
+	root.querySelector = () => value;
+
+	api.counter.enter(root, { after: Promise.resolve(false) });
+	await new Promise(resolve => setImmediate(resolve));
+	assert.deepEqual(Array.from(api.counter.capture(root).positions), [1, 5]);
+	assert.equal(root.classList.contains('pair-motion-counter-running'), false);
+	assert.ok(runs.every(run => run.cancelled));
+});
+
 test('custom counter cadence rolls an added digit from zero', async () => {
 	const { api, element, runs } = fixture();
 	const root = element();
@@ -1008,14 +1120,17 @@ test('only the last completed slide settles its background without changing the 
 	await new Promise(resolve => setImmediate(resolve));
 	assert.equal(runs.length, 1);
 	assert.equal(runs[0].target, indicator);
-	assert.equal(runs[0].options.duration, 220);
+	assert.equal(runs[0].options.duration, 110);
 	const restingTransform = 'translate(4px, 92px)';
 	assert.deepEqual(Array.from(runs[0].frames, frame => frame.transform), [
-		restingTransform, restingTransform + ' scale(1.01, 1.07)', restingTransform,
+		restingTransform,
+		restingTransform + ' scale(0.99, 1.085)',
+		restingTransform + ' scale(1.005, 0.9575)',
+		restingTransform,
 	]);
 	assert.equal(indicator.style.transform, restingTransform);
 	assert.equal(indicator.style.height, '40px');
-	assert.deepEqual(Array.from(runs[0].frames).slice(0, 2).map(frame => frame.easing), ['ease-in-out', 'ease-in-out']);
+	assert.deepEqual(Array.from(runs[0].frames).slice(0, 3).map(frame => frame.easing), ['ease-in-out', 'ease-in-out', 'ease-in-out']);
 	assert.equal(runs[0].frames[1].color, undefined);
 	api.selection.unmount(root);
 	assert.equal(runs[0].cancelled, true);

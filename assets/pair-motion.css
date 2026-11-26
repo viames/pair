@@ -1,4 +1,13 @@
 /* PairMotion scopes all styles to explicitly marked controls. */
+@media (prefers-reduced-motion: no-preference) {
+	[data-pair-motion-boot] [data-pair-motion-prepaint] {
+		--pair-motion-prepaint: active;
+	}
+	[data-pair-motion-boot] [data-pair-motion-prepaint] [data-pair-motion-enter]:not(:focus-within) {
+		opacity: 0;
+	}
+}
+
 [data-pair-motion-counter] {
 	display: inline-grid;
 	justify-items: end;
@@ -62,7 +71,10 @@
 	left: 0;
 	border-radius: var(--pair-motion-selection-radius, .375rem);
 	pointer-events: none;
-	transition: transform calc(180ms * var(--pair-motion-duration-factor, 1)) cubic-bezier(.22, 1, .36, 1), width calc(180ms * var(--pair-motion-duration-factor, 1)) ease-out, height calc(180ms * var(--pair-motion-duration-factor, 1)) ease-out;
+	transition:
+		transform calc(180ms * var(--pair-motion-duration-factor, 1)) ease-in-out,
+		width calc(180ms * var(--pair-motion-duration-factor, 1)) ease-in-out,
+		height calc(180ms * var(--pair-motion-duration-factor, 1)) ease-in-out;
 }
 
 .pair-motion-selection-instant { transition: none; }

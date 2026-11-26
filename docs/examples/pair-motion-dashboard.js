@@ -28,7 +28,7 @@
 		if (!window.Chart) return;
 		const previous = chart && kind !== 'entrance' ? motion.chart.capture(chart) : null;
 		chart?.destroy();
-		canvas.parentElement.hidden = false;
+		canvas.parentElement.inert = false;
 		const colors = getComputedStyle(canvas);
 		const labelColor = getComputedStyle(dashboard).color;
 		const reveal = kind !== 'refresh' && motion.chart.reveal({ after });
@@ -49,19 +49,21 @@
 	}
 
 	/** Update the real KPIs and table immediately before animating their visual presentation. */
-	function render(kind) {
+	function render(kind, rollCounters = false) {
 		if (kind !== 'entrance') motion.page.cancel(dashboard);
 		const data = states[period.value][snapshot];
 		const total = data.values.reduce((sum, value) => sum + value, 0);
 		let after;
 		if (kind === 'entrance') {
 			motion.page.enter(dashboard, {
-				effect: effect.value, trigger: 'viewport', stagger: 52,
+				effect: effect.value, trigger: 'viewport', stagger: 52, maxDelay: 208,
 				contents: cascade.checked, contentsOverlap: overlap.valueAsNumber / 100,
 			});
 			after = cascade.checked ? motion.page.ready(dashboard, canvas) : undefined;
-			revealContent(orders, () => motion.counter.enter(orders));
-			revealContent(pickup, () => motion.counter.enter(pickup));
+			if (rollCounters) {
+				motion.counter.enter(orders, { after: cascade.checked ? motion.page.ready(dashboard, orders, { phase: 'reveal' }) : undefined });
+				motion.counter.enter(pickup, { after: cascade.checked ? motion.page.ready(dashboard, pickup, { phase: 'reveal' }) : undefined });
+			}
 			revealContent(target, () => {
 				motion.progress.set(target, null);
 				motion.progress.set(target, total, 100, 0);
@@ -94,23 +96,23 @@
 	}
 
 	/** Replay the composition without changing period, progress or data. */
-	function replay() {
+	function replay(rollCounters = false) {
 		overlap.disabled = !cascade.checked;
-		render('entrance');
+		render('entrance', rollCounters);
 	}
 
-	mountPairMotionDemoTempo(dashboard, replay);
-	effect.addEventListener('change', replay);
-	cascade.addEventListener('change', replay);
+	mountPairMotionDemoTempo(dashboard, () => replay());
+	effect.addEventListener('change', () => replay());
+	cascade.addEventListener('change', () => replay());
 	overlap.addEventListener('input', updateOverlap);
-	overlap.addEventListener('change', replay);
+	overlap.addEventListener('change', () => replay());
 	updateOverlap();
 	motion.disclosure.mount(table.closest('details'));
-	dashboard.querySelector('.toolbar').hidden = false;
+	dashboard.querySelector('.toolbar').inert = false;
 	/** Alternate between two server-equivalent snapshots for the selected period. */
 	document.getElementById('refresh').addEventListener('click', () => { snapshot ^= 1; render('refresh'); });
 	/** Load the new month's fulfilled orders and animate the populated chart. */
 	period.addEventListener('change', () => { snapshot = 0; render('period'); });
-	document.getElementById('replay').addEventListener('click', replay);
-	replay();
+	document.getElementById('replay').addEventListener('click', () => replay(true));
+	replay(true);
 })();
