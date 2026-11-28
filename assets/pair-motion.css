@@ -11,7 +11,7 @@
 [data-pair-motion-counter] {
 	display: inline-grid;
 	justify-items: end;
-	min-inline-size: var(--pair-motion-counter-min-width, 0ch);
+	min-inline-size: max(var(--pair-motion-counter-min-width, 0ch), var(--pair-motion-counter-reserved-width, 0em));
 	font-variant-numeric: tabular-nums;
 	white-space: pre;
 }

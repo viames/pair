@@ -5,9 +5,9 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<meta name="description" content="Try PairMotion on a sample operations dashboard with a rolling KPI, goal meter and animated delivery chart.">
 	<title>Operations dashboard · PairMotion</title>
-	<link rel="stylesheet" href="../../assets/pair-motion.css?v=prepaint">
+	<link rel="stylesheet" href="../../assets/pair-motion.css?v=counter-alignment">
 	<script src="../../assets/PairMotionBoot.js"></script>
-	<script src="../../assets/PairMotion.js?v=selection-settle" defer></script>
+	<script src="../../assets/PairMotion.js?v=counter-alignment" defer></script>
 	<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js" defer></script>
 	<script src="pair-motion-tempo.js?v=staged-composition" defer></script>
 	<script src="pair-motion-dashboard.js?v=prepaint" defer></script>
@@ -38,6 +38,8 @@
 		.card { background: var(--card); border: 1px solid var(--line); border-radius: .75rem; padding: 1.1rem; min-inline-size: 0; }
 		.kpi { font-size: clamp(1.8rem, 4vw, 2.65rem); font-weight: 720; margin-block: .1rem .5rem; }
 		.kpi small { font-size: .95rem; font-weight: 500; color: var(--muted); }
+		#orders { --pair-motion-counter-min-width: 3ch; }
+		#pickup { --pair-motion-counter-min-width: 2ch; }
 		.plot { position: relative; block-size: clamp(12rem, 31vw, 20rem); margin-block: .65rem; }
 		.plot canvas { color: var(--accent); border-color: var(--line); }
 		details { margin-block-start: .65rem; }

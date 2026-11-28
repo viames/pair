@@ -20,6 +20,7 @@
 	const easing = 'cubic-bezier(.22, 1, .36, 1)';
 	const compositionEasing = 'cubic-bezier(.25, .28, .62, .9)';
 	const digit = /^[0-9]$/;
+	const counterReserve = '--pair-motion-counter-reserved-width';
 	const choiceItems = ':scope > [data-pair-motion-item]';
 	const selectedChoice = '[aria-selected="true"], [aria-pressed="true"], [aria-current]:not([aria-current="false"], [aria-current=""])';
 
@@ -97,14 +98,25 @@
 		for (const reel of state.reels) reel.animation?.cancel();
 	}
 
-	/** Capture the value and visible reel positions before replacing a component. */
+	/** Reserve the widest value in font-relative units, including across fragment replacements. */
+	function counterSpace(root, text, previous = {}) {
+		const fontSize = Number.parseFloat(global.getComputedStyle(root).fontSize);
+		const held = Number.parseFloat(root.style.getPropertyValue?.(counterReserve)) || 0;
+		const size = Number.parseFloat(global.getComputedStyle(text).inlineSize) || 0;
+		const measured = fontSize > 0 ? size / fontSize : 0;
+		const legacy = fontSize > 0 && Number.isFinite(previous.width) ? previous.width / fontSize : 0;
+		return Math.max(held, measured, previous.reserve ?? legacy);
+	}
+
+	/** Capture the visible reels and reserved space before replacing a component. */
 	function captureCounter(root) {
-		const value = root.querySelector(':scope > [data-pair-motion-value]')?.textContent ?? '';
+		const text = root.querySelector(':scope > [data-pair-motion-value]');
+		const value = text?.textContent ?? '';
 		const state = counters.get(root);
 		const positions = state
 			? state.reels.map(position)
 			: Array.from(value).filter(character => digit.test(character)).reverse().map(Number);
-		return { value, positions, width: root.getBoundingClientRect().width };
+		return { value, positions, width: root.getBoundingClientRect().width, reserve: text ? counterSpace(root, text) : 0 };
 	}
 
 	/** Replace the semantic value immediately and animate only the decorative ASCII digits. */
@@ -114,7 +126,9 @@
 		const next = String(value);
 		if (!from && text.textContent === next) return;
 
-		const { positions, width } = from ?? captureCounter(root);
+		const { positions, width, reserve } = from ?? captureCounter(root);
+		const space = from ? counterSpace(root, text, from) : reserve;
+		if (space > 0) root.style.setProperty(counterReserve, space + 'em');
 		const duration = boundedOption(options.duration, 340, 0, 1000);
 		const stagger = boundedOption(options.stagger, 0, 0, 60);
 		const curve = options.easing ? motionCurve(options.easing) : easing;
@@ -127,7 +141,6 @@
 		const visual = document.createElement('span');
 		visual.className = 'pair-motion-counter-visual';
 		visual.setAttribute('aria-hidden', 'true');
-		visual.style.minInlineSize = width + 'px';
 		const reels = [];
 		const characters = [];
 
@@ -194,52 +207,113 @@
 		setCounter(root, final.value, { ...final, positions: final.positions.map(() => 0) }, { ...options, forward: true });
 	}
 
-	/** Let the decorative selection background settle after its slide. */
-	function pulseSelectionArrival(state) {
-		const indicator = state.indicator;
-		if (!canAnimate(indicator)) return;
-		// Commit the new geometry before reading the transitions the browser started.
-		indicator.getBoundingClientRect();
-		const transitions = indicator.getAnimations?.().filter(animation =>
-			['transform', 'width', 'height'].includes(animation.transitionProperty));
-		if (!transitions?.length) return;
-		const pending = Promise.all(transitions.map(animation => animation.finished));
-		state.arrival = pending;
+	/** Read the indicator as painted, including a selection interrupted in flight. */
+	function selectionSurface(state) {
+		const { indicator } = state;
+		if (!canAnimate(indicator) || !global.DOMMatrixReadOnly || global.matchMedia('(forced-colors: active)').matches ||
+			!global.CSS?.supports('clip-path', 'path("M0 0 L1 0 L0 1 Z")')) return null;
+		const style = global.getComputedStyle(indicator);
+		const width = Number.parseFloat(style.width);
+		const height = Number.parseFloat(style.height);
+		if (!(width > 0 && height > 0)) return null;
+		const { m41: left, m42: top } = new global.DOMMatrixReadOnly(style.transform);
+		const radius = state.flow ? state.radius : style.borderTopLeftRadius.split(' ');
+		return { left, top, width, height, radius, clipPath: style.clipPath };
+	}
 
-		/** A later selection, resize or teardown invalidates this arrival. */
-		function settleBackground() {
-			if (state.arrival !== pending) return;
-			state.arrival = null;
-			if (!canAnimate(indicator)) return;
-			const width = indicator.offsetWidth;
-			const height = indicator.offsetHeight;
-			if (!width || !height) return;
+	/** Construct a stable clockwise path so each curve keeps its place on a change of direction. */
+	function selectionOutline(width, height, radius, depths, wave, horizontal) {
+		const [top, right, bottom, left] = depths;
+		const spanX = width - right - left;
+		const spanY = height - bottom - top;
+		/** Resolve a CSS corner radius in the current box. */
+		function corner(value, size, span) {
+			const amount = Number.parseFloat(value) || 0;
+			return Math.min(value.endsWith('%') ? size * amount / 100 : amount, span / 2);
+		}
+		const rx = corner(radius[0], width, spanX);
+		const ry = corner(radius[1] ?? radius[0], height, spanY);
+		const corners = [[left, top], [width - right, top], [width - right, height - bottom], [left, height - bottom]];
+		const directions = [[1, 0], [0, 1], [-1, 0], [0, -1]];
+		/** Keep the path compact while preserving subpixel positions. */
+		const point = (x, y) => x.toFixed(2) + ' ' + y.toFixed(2);
+		let path = 'M' + point(left + rx, top);
+		for (const [index, [x, y]] of corners.entries()) {
+			const next = (index + 1) % 4;
+			const [ex, ey] = corners[next];
+			const [dx, dy] = directions[index];
+			const [nextX, nextY] = directions[next];
+			const bow = depths[index] * 4 / 3;
+			const ripple = Boolean(dx) === horizontal ? wave : 0;
+			const first = bow - ripple * .85;
+			const second = bow - ripple * .15;
+			path += ' C' + point(x + (ex - x) / 3 + dy * first, y + (ey - y) / 3 - dx * first) +
+				' ' + point(ex - (ex - x) / 3 + dy * second, ey - (ey - y) / 3 - dx * second) +
+				' ' + point(ex - dx * rx, ey - dy * ry);
+			path += ' Q' + point(ex, ey) + ' ' + point(ex + nextX * rx, ey + nextY * ry);
+		}
+		return 'path("' + path + ' Z")';
+	}
 
-			// Alternate the axes around the resting centre, with a smaller second swing.
-			const transform = indicator.style.transform;
-			const stretchX = Math.min(.025, 8 / width);
-			const stretchY = Math.min(.085, 4 / height);
-			const taller = transform + ' scale(' + (1 - stretchX) + ', ' + (1 + stretchY) + ')';
-			const wider = transform + ' scale(' + (1 + stretchX / 2) + ', ' + (1 - stretchY / 2) + ')';
+	/** Pull the leading edge, draw the tail after it and return to the authored silhouette. */
+	function flowSelection(state, from, to) {
+		const dx = to.left + to.width / 2 - from.left - from.width / 2;
+		const dy = to.top + to.height / 2 - from.top - from.height / 2;
+		const horizontal = Math.abs(dx) >= Math.abs(dy);
+		const reverse = (horizontal ? dx : dy) < 0;
+		const axis = horizontal ? 'left' : 'top';
+		const cross = horizontal ? 'top' : 'left';
+		const length = horizontal ? 'width' : 'height';
+		const breadth = horizontal ? 'height' : 'width';
+		const headSide = horizontal ? (reverse ? 3 : 1) : (reverse ? 0 : 2);
+		const pull = Math.min(1, 140 / Math.max(Math.abs(dx), Math.abs(dy), 1));
+		/** Interpolate a coordinate and limit the visible overshoot at the container edge. */
+		const mix = (a, b, progress) => progress > 1
+			? b + Math.sign(b - a) * Math.min(3, Math.abs(b - a) * (progress - 1))
+			: a + (b - a) * progress;
+		const poses = [
+			// Time, front, tail, cross-axis swell, head curve, tail curve, ripple.
+			[0,   0,     0,      0,    0,    0,    0],
+			[.17, .22,   .018,   -.5,  .83,  .2,   .63],
+			[.45, .63,   .35,    -.68, 1,    .72,  1],
+			[.72, .94,   .77,    -.25, .66,  1,    .72],
+			[.86, 1.035, .98,     1,   .46,  .38,  .45],
+			[.94, .992,  1.014,  -.38, .2,   .16,  .18],
+			[1,   1,     1,       0,    0,    0,    0],
+		];
 
-			/** Drop the finished effect without touching a newer one. */
-			function settled() {
-				if (state.pulse === animation) state.pulse = null;
-			}
-			const animation = animate(indicator, [
-				{ transform, easing: 'ease-in-out' },
-				{ transform: taller, offset: .24, easing: 'ease-in-out' },
-				{ transform: wider, offset: .58, easing: 'ease-in-out' },
-				{ transform },
-			], { duration: 110 }, settled);
-			state.pulse = animation;
+		/** Set the bounds and curvature for one stage of the same continuous surface. */
+		function keyframe([offset, front, tail, swell, nose, trail, ripple]) {
+			const progress = (front + tail) / 2;
+			const near = mix(progress, reverse ? front : tail, pull);
+			const far = mix(progress, reverse ? tail : front, pull);
+			const low = mix(from[axis], to[axis], near);
+			const high = mix(from[axis] + from[length], to[axis] + to[length], far);
+			const crossSize = mix(from[breadth], to[breadth], progress);
+			const crossSwell = Math.min(6, crossSize * .09) * swell;
+			const box = {
+				[axis]: low, [cross]: mix(from[cross], to[cross], progress) - crossSwell / 2,
+				[length]: Math.max(1, high - low), [breadth]: crossSize + crossSwell,
+			};
+			const depths = [0, 0, 0, 0];
+			depths[headSide] = Math.min(21, box[length] * .28) * nose;
+			depths[(headSide + 2) % 4] = Math.min(16, box[length] * .23) * trail;
+			const clipPath = offset === 0 && from.clipPath !== 'none' ? from.clipPath : selectionOutline(
+				box.width, box.height, from.radius, depths, Math.min(15, box[breadth] * .15) * ripple, horizontal);
+			return {
+				offset, clipPath, borderRadius: '0px', width: box.width + 'px', height: box.height + 'px',
+				transform: 'translate(' + box.left + 'px, ' + box.top + 'px)',
+				easing: offset === 0 ? 'ease-in' : offset >= .94 ? 'ease-out' : 'linear',
+			};
 		}
 
-		/** An interrupted slide has no arrival to animate. */
-		function cancelled() {
-			if (state.arrival === pending) state.arrival = null;
+		/** Discard only the completed effect; inline geometry already identifies the target. */
+		function settled() {
+			if (state.flow === animation) state.flow = null;
 		}
-		pending.then(settleBackground, cancelled);
+		state.radius = from.radius;
+		const animation = animate(state.indicator, poses.map(keyframe), { duration: 360 }, settled);
+		state.flow = animation;
 	}
 
 	/** Read the selected item without modifying the app's radio or ARIA state. */
@@ -260,25 +334,27 @@
 		const indicator = state.indicator;
 		const changed = state.active !== (visible ? active : null);
 		const arriving = !immediate && changed && visible && state.active && !indicator.hidden;
+		const from = arriving ? selectionSurface(state) : null;
 		state.active = visible ? active : null;
-		if (changed || immediate) {
-			state.arrival = null;
-			state.pulse?.cancel();
-		}
-		if (immediate) indicator.classList.add('pair-motion-selection-instant');
-		if (visible) {
-			indicator.style.width = active.offsetWidth + 'px';
-			indicator.style.height = active.offsetHeight + 'px';
-			indicator.style.transform = 'translate(' + active.offsetLeft + 'px, ' + active.offsetTop + 'px)';
+		const to = visible ? {
+			left: active.offsetLeft, top: active.offsetTop, width: active.offsetWidth, height: active.offsetHeight,
+		} : null;
+		const instant = immediate || from;
+		if (instant) indicator.classList.add('pair-motion-selection-instant');
+		if (changed || immediate) state.flow?.cancel();
+		if (to) {
+			indicator.style.width = to.width + 'px';
+			indicator.style.height = to.height + 'px';
+			indicator.style.transform = 'translate(' + to.left + 'px, ' + to.top + 'px)';
 		}
 		if (indicator.parentElement !== root) root.prepend(indicator);
 		indicator.hidden = !visible;
 		root.classList.toggle('pair-motion-selection-mounted', visible);
-		if (immediate) {
+		if (instant) {
 			indicator.getBoundingClientRect();
 			indicator.classList.remove('pair-motion-selection-instant');
 		}
-		if (arriving) pulseSelectionArrival(state);
+		if (from) flowSelection(state, from, to);
 	}
 
 	/** Add one decorative layer and observe size changes for this group only. */
@@ -304,8 +380,7 @@
 	function unmountSelection(root) {
 		const state = selections.get(root);
 		if (!state) return;
-		state.arrival = null;
-		state.pulse?.cancel();
+		state.flow?.cancel();
 		state.observer?.disconnect();
 		root.removeEventListener('change', state.update);
 		if (!state.observer) global.removeEventListener('resize', state.resize);

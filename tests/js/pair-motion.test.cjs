@@ -249,6 +249,38 @@ test('a fragment can continue the old reel while keeping its authoritative value
 	assert.equal(runs[1].frames[0].transform, 'translateY(-16.666666666666668%)');
 });
 
+test('a shorter count keeps its units column after settling and after fragment replacement', async () => {
+	const { api, element, runs, window, preference } = fixture();
+	const root = element();
+	const value = { textContent: '12' };
+	const style = new Map();
+	root.style = { setProperty: style.set.bind(style), getPropertyValue: style.get.bind(style) };
+	root.querySelector = () => value;
+	const baseStyle = window.getComputedStyle;
+	window.getComputedStyle = node => ({
+		...baseStyle(node), fontSize: '20px', inlineSize: (node.textContent?.length * 12 || 0) + 'px',
+	});
+
+	api.counter.set(root, '5');
+	assert.equal(value.textContent, '5');
+	assert.deepEqual(Array.from(api.counter.capture(root).positions), [2]);
+	assert.equal(style.get('--pair-motion-counter-reserved-width'), '1.2em');
+	runs[0].finish();
+	await Promise.resolve();
+	assert.equal(root.children.length, 0);
+	assert.equal(api.counter.capture(root).reserve, 1.2);
+
+	const incoming = element();
+	const next = { textContent: '2' };
+	const incomingStyle = new Map();
+	incoming.style = { setProperty: incomingStyle.set.bind(incomingStyle), getPropertyValue: incomingStyle.get.bind(incomingStyle) };
+	incoming.querySelector = () => next;
+	preference.matches = true;
+	api.counter.set(incoming, '2', api.counter.capture(root));
+	assert.equal(incomingStyle.get('--pair-motion-counter-reserved-width'), '1.2em');
+	assert.equal(runs.length, 1);
+});
+
 test('layout snapshots use positions relative to a replacement region', () => {
 	const { api, element, runs } = fixture();
 	const old = element();
@@ -1084,55 +1116,65 @@ test('selection realigns instantly after a resize', () => {
 	assert.equal(indicator.classList.contains('pair-motion-selection-instant'), false);
 });
 
-test('only the last completed slide settles its background without changing the choice', async () => {
-	const { api, element, runs } = fixture();
+test('selection flows from its painted shape through a directional stretch and a softer landing', () => {
+	const { api, element, runs, window, preference } = fixture();
 	const root = element();
-	const items = [element(), element(), element()];
+	const items = [element(), element()];
 	let active = items[0];
 	for (const [index, item] of items.entries()) {
 		item.offsetLeft = 4;
-		item.offsetTop = 4 + index * 44;
+		item.offsetTop = 4 + index * 92;
+		item.offsetWidth = 400;
 		item.matches = () => item === active;
 	}
 	root.append(...items);
 	root.querySelectorAll = () => items;
 	api.selection.mount(root);
 	const indicator = root.firstElementChild;
-	indicator.offsetWidth = 800;
-	let finish;
-	/** Expose the transition associated with each selection, independently of the test clock. */
-	function nextSlide() {
-		const finished = new Promise(resolve => { finish = resolve; });
-		indicator.getAnimations = () => [{ transitionProperty: 'transform', finished }];
-		return finish;
-	}
-	const finishFirst = nextSlide();
+	const baseStyle = window.getComputedStyle;
+	let painted;
+	window.getComputedStyle = node => node === indicator ? {
+		...baseStyle(node), ...node.style, borderTopLeftRadius: '6px', clipPath: 'none', ...painted,
+	} : baseStyle(node);
+	window.DOMMatrixReadOnly = class {
+		/** Map the test's authored translate to the browser's translation components. */
+		constructor(transform) {
+			[this.m41, this.m42] = transform.match(/-?\d+(?:\.\d+)?/g).map(Number);
+		}
+	};
+
 	active = items[1];
 	api.selection.sync(root);
-	const finishLast = nextSlide();
-	active = items[2];
-	api.selection.sync(root);
-	assert.equal(runs.length, 0);
-	finishFirst();
-	await new Promise(resolve => setImmediate(resolve));
-	assert.equal(runs.length, 0);
-	finishLast();
-	await new Promise(resolve => setImmediate(resolve));
 	assert.equal(runs.length, 1);
-	assert.equal(runs[0].target, indicator);
-	assert.equal(runs[0].options.duration, 110);
-	const restingTransform = 'translate(4px, 92px)';
-	assert.deepEqual(Array.from(runs[0].frames, frame => frame.transform), [
-		restingTransform,
-		restingTransform + ' scale(0.99, 1.085)',
-		restingTransform + ' scale(1.005, 0.9575)',
-		restingTransform,
-	]);
-	assert.equal(indicator.style.transform, restingTransform);
+	const first = runs[0];
+	assert.equal(first.target, indicator);
+	assert.equal(first.options.duration, 360);
+	const [initial, launching, traveling,,, rebound, resting] = first.frames;
+	assert.equal(initial.transform, 'translate(4px, 4px)');
+	assert.equal(resting.transform, 'translate(4px, 96px)');
+	assert.equal(resting.clipPath, initial.clipPath);
+	assert.ok(Number.parseFloat(launching.height) > 52);
+	assert.ok(Number.parseFloat(traveling.height) > 60);
+	assert.ok(Number.parseFloat(rebound.height) < 40);
+	assert.notEqual(initial.clipPath, launching.clipPath);
+	assert.notEqual(traveling.clipPath, resting.clipPath);
 	assert.equal(indicator.style.height, '40px');
-	assert.deepEqual(Array.from(runs[0].frames).slice(0, 3).map(frame => frame.easing), ['ease-in-out', 'ease-in-out', 'ease-in-out']);
-	assert.equal(runs[0].frames[1].color, undefined);
+
+	painted = { ...traveling, borderTopLeftRadius: '0px' };
+	active = items[0];
+	api.selection.sync(root);
+	assert.equal(first.cancelled, true);
+	assert.equal(runs.length, 2);
+	assert.equal(runs[1].frames[0].clipPath, traveling.clipPath);
+	assert.equal(runs[1].frames[0].transform, traveling.transform);
+	assert.equal(runs[1].frames.at(-1).clipPath, initial.clipPath);
 	api.selection.unmount(root);
-	assert.equal(runs[0].cancelled, true);
-	await Promise.resolve();
+	assert.equal(runs[1].cancelled, true);
+
+	preference.matches = true;
+	api.selection.mount(root);
+	active = items[1];
+	api.selection.sync(root);
+	assert.equal(runs.length, 2);
+	assert.equal(root.firstElementChild.style.transform, 'translate(4px, 96px)');
 });
